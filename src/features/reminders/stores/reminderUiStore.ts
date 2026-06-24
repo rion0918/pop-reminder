@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 
 import {
-  appendTimeDigit,
-  deleteTimeDigit,
   digitsToTime,
   timeToDigits,
   validateTimeInput,
@@ -23,9 +21,7 @@ type ReminderUiState = {
   setTitle: (title: string) => void;
   setDateOffset: (dateOffset: ReminderDateOffset) => void;
   setCustomTargetDate: (date: string | null) => void;
-  pressTimeDigit: (digit: string) => void;
-  deleteTimeDigit: () => void;
-  confirmTimeInput: () => void;
+  setTargetTime: (time: string) => void;
   setSaving: (isSaving: boolean) => void;
   resetInput: (defaultTime?: string) => void;
 };
@@ -62,19 +58,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
   setTitle: (title) => set({ title }),
   setDateOffset: (dateOffset) => set({ dateOffset, customTargetDate: null }),
   setCustomTargetDate: (customTargetDate) => set({ customTargetDate }),
-  pressTimeDigit: (digit) =>
-    set((state) => {
-      return {
-        timeDigits: appendTimeDigit(state.timeDigits, digit),
-        timeTouched: true,
-      };
-    }),
-  deleteTimeDigit: () =>
-    set((state) => ({
-      timeDigits: deleteTimeDigit(state.timeDigits),
-      timeTouched: true,
-    })),
-  confirmTimeInput: () => set({ timeTouched: true }),
+  setTargetTime: (time) => set({ timeDigits: timeToDigits(time), timeTouched: true }),
   setSaving: (isSaving) => set({ isSaving }),
   resetInput: (defaultTime = '08:00') =>
     set({

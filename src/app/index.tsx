@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ReminderBubbleBoard } from '../features/reminders/components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../features/reminders/components/ReminderDetailSheet';
@@ -116,18 +116,13 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.bubbleArea}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <ReminderBubbleBoard
-            reminders={reminders}
-            loading={loading}
-            error={error}
-            burstingReminderId={burstingReminderId}
-            onReminderPress={setSelectedReminder}
-          />
-        </ScrollView>
+        <ReminderBubbleBoard
+          reminders={reminders}
+          loading={loading}
+          error={error}
+          burstingReminderId={burstingReminderId}
+          onReminderPress={setSelectedReminder}
+        />
       </View>
 
       <ReminderInputSheet
@@ -182,14 +177,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.9)',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: 8,
-    paddingBottom: 136,
-  },
   bubbleArea: {
     flex: 1,
-    marginTop: 12,
+    marginTop: 16,
+    marginBottom: 104,
     overflow: 'visible',
   },
   addButton: {

@@ -27,18 +27,6 @@ export function validateTimeInput(value: string) {
   );
 }
 
-export function appendTimeDigit(current: string, digit: string) {
-  if (!/^\d$/.test(digit)) {
-    return current;
-  }
-
-  return `${current.replace(/\D/g, '')}${digit}`.slice(-4);
-}
-
-export function deleteTimeDigit(value: string) {
-  return value.replace(/\D/g, '').slice(0, -1);
-}
-
 export function normalizeTimeInput(value: string, fallback: string) {
   if (!validateTimeInput(value)) {
     return fallback;

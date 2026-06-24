@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { addDays, format } from 'date-fns';
-import { Calendar, DateData } from 'react-native-calendars';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -19,7 +20,7 @@ import {
   useReminderUiStore,
 } from '../stores/reminderUiStore';
 import { DateChips } from './DateChips';
-import { TimeKeypad } from './TimeKeypad';
+import { TimeChips } from './TimeChips';
 
 type ReminderInputSheetProps = {
   defaultTargetTime?: string;
@@ -34,26 +35,57 @@ export function ReminderInputSheet({
   const titleInputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
   const draftTitleRef = useRef('');
   const isPresentedRef = useRef(false);
+  const isClosingRef = useRef(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
-  const snapPoints = useMemo(() => ['64%', '88%'], []);
-  const minCustomDate = useMemo(() => format(addDays(new Date(), 2), 'yyyy-MM-dd'), []);
+  const snapPoints = useMemo(() => ['58%', '78%'], []);
+  const minCustomDate = useMemo(() => addDays(new Date(), 2), []);
 
   const isOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const time = useReminderUiStore(selectFormattedTime);
   const isTimeValid = useReminderUiStore(selectIsTimeValid);
-  const timeTouched = useReminderUiStore((state) => state.timeTouched);
   const isSaving = useReminderUiStore((state) => state.isSaving);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const setTitle = useReminderUiStore((state) => state.setTitle);
   const setDateOffset = useReminderUiStore((state) => state.setDateOffset);
   const setCustomTargetDate = useReminderUiStore((state) => state.setCustomTargetDate);
-  const pressTimeDigit = useReminderUiStore((state) => state.pressTimeDigit);
-  const deleteTimeDigit = useReminderUiStore((state) => state.deleteTimeDigit);
-  const confirmTimeInput = useReminderUiStore((state) => state.confirmTimeInput);
+  const setTargetTime = useReminderUiStore((state) => state.setTargetTime);
   const resetInput = useReminderUiStore((state) => state.resetInput);
+
+  const datePickerValue = useMemo(() => {
+    if (!customTargetDate) {
+      return minCustomDate;
+    }
+
+    return new Date(`${customTargetDate}T12:00:00`);
+  }, [customTargetDate, minCustomDate]);
+
+  const timePickerValue = useMemo(() => {
+    const [hoursText, minutesText] = time.split(':');
+    const value = new Date();
+
+    value.setHours(Number(hoursText), Number(minutesText), 0, 0);
+    return value;
+  }, [time]);
+
+  const selectedDateLabel = useMemo(() => {
+    if (customTargetDate) {
+      return format(new Date(`${customTargetDate}T00:00:00`), 'M/d');
+    }
+
+    if (dateOffset === 0) {
+      return '今日';
+    }
+
+    if (dateOffset === 1) {
+      return '明日';
+    }
+
+    return '明後日';
+  }, [customTargetDate, dateOffset]);
 
   const resetDraftTitle = useCallback(() => {
     draftTitleRef.current = '';
@@ -68,8 +100,9 @@ export function ReminderInputSheet({
   );
 
   useEffect(() => {
-    if (isOpen && !isPresentedRef.current) {
+    if (isOpen && !isPresentedRef.current && !isClosingRef.current) {
       isPresentedRef.current = true;
+      isClosingRef.current = false;
       resetDraftTitle();
       setTitleNotice(null);
       resetInput(defaultTargetTime);
@@ -78,20 +111,34 @@ export function ReminderInputSheet({
     }
 
     if (!isOpen && isPresentedRef.current) {
+      isClosingRef.current = true;
       sheetRef.current?.dismiss();
     }
   }, [defaultTargetTime, isOpen, resetDraftTitle, resetInput]);
 
-  const handleClosePress = useCallback(() => {
+  const requestClose = useCallback(() => {
+    isClosingRef.current = true;
+    closeQuickAdd();
+    setIsDatePickerOpen(false);
+    setIsTimePickerOpen(false);
     sheetRef.current?.dismiss();
-  }, []);
+  }, [closeQuickAdd]);
+
+  const handleClosePress = useCallback(() => {
+    requestClose();
+  }, [requestClose]);
 
   const handleDismiss = useCallback(() => {
+    isClosingRef.current = true;
+    closeQuickAdd();
     isPresentedRef.current = false;
     setIsDatePickerOpen(false);
+    setIsTimePickerOpen(false);
     resetDraftTitle();
     setTitleNotice(null);
-    closeQuickAdd();
+    requestAnimationFrame(() => {
+      isClosingRef.current = false;
+    });
   }, [closeQuickAdd, resetDraftTitle]);
 
   const handleSave = useCallback(async () => {
@@ -111,18 +158,43 @@ export function ReminderInputSheet({
     setTitle(normalizedTitle);
     try {
       await onSave?.(normalizedTitle);
-      sheetRef.current?.dismiss();
+      requestClose();
     } catch {
       // HomeScreen shows the user-facing error. Keep the sheet open so the title is not lost.
     }
-  }, [onSave, setTitle]);
+  }, [onSave, requestClose, setTitle]);
 
-  const handleSelectDate = useCallback(
-    (day: DateData) => {
-      setCustomTargetDate(day.dateString);
-      setIsDatePickerOpen(false);
+  const handleDatePickerChange = useCallback(
+    (event: DateTimePickerEvent, selectedDate?: Date) => {
+      if (event.type === 'dismissed') {
+        setIsDatePickerOpen(false);
+        return;
+      }
+
+      if (!selectedDate) {
+        return;
+      }
+
+      const nextDate = selectedDate < minCustomDate ? minCustomDate : selectedDate;
+      setCustomTargetDate(format(nextDate, 'yyyy-MM-dd'));
     },
-    [setCustomTargetDate],
+    [minCustomDate, setCustomTargetDate],
+  );
+
+  const handleTimePickerChange = useCallback(
+    (event: DateTimePickerEvent, selectedTime?: Date) => {
+      if (event.type === 'dismissed') {
+        setIsTimePickerOpen(false);
+        return;
+      }
+
+      if (!selectedTime) {
+        return;
+      }
+
+      setTargetTime(format(selectedTime, 'HH:mm'));
+    },
+    [setTargetTime],
   );
 
   return (
@@ -176,16 +248,16 @@ export function ReminderInputSheet({
             onSelectCustomDate={() => setIsDatePickerOpen(true)}
           />
 
-          <TimeKeypad
-            time={time}
-            onDigitPress={pressTimeDigit}
-            onDelete={deleteTimeDigit}
-            onConfirm={confirmTimeInput}
+          <TimeChips
+            value={time}
+            onChange={setTargetTime}
+            onSelectCustomTime={() => setIsTimePickerOpen(true)}
           />
 
-          {!isTimeValid && timeTouched ? (
-            <Text style={styles.noticeText}>時刻は00:00〜23:59で入力してください</Text>
-          ) : null}
+          <View style={styles.summary}>
+            <Ionicons name="notifications-outline" size={17} color={palette.lavenderDeep} />
+            <Text style={styles.summaryText}>{selectedDateLabel} {time} にふわっと通知</Text>
+          </View>
 
           <PrimaryButton
             label={isSaving ? '追加中' : 'ふわっと追加'}
@@ -204,8 +276,8 @@ export function ReminderInputSheet({
         onRequestClose={() => setIsDatePickerOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.calendarPanel}>
-            <View style={styles.calendarHeader}>
+          <View style={styles.pickerPanel}>
+            <View style={styles.pickerHeader}>
               <Text style={styles.calendarTitle}>日付を選択</Text>
               <Pressable
                 accessibilityRole="button"
@@ -215,36 +287,60 @@ export function ReminderInputSheet({
                 <Ionicons name="close" size={20} color={palette.ink} />
               </Pressable>
             </View>
-            <Calendar
-              minDate={minCustomDate}
-              onDayPress={handleSelectDate}
-              markedDates={
-                customTargetDate
-                  ? {
-                      [customTargetDate]: {
-                        selected: true,
-                        selectedColor: palette.skyDeep,
-                        selectedTextColor: palette.white,
-                      },
-                    }
-                  : undefined
-              }
-              theme={{
-                calendarBackground: palette.white,
-                textSectionTitleColor: palette.muted,
-                selectedDayBackgroundColor: palette.skyDeep,
-                selectedDayTextColor: palette.white,
-                todayTextColor: palette.lavenderDeep,
-                dayTextColor: palette.ink,
-                textDisabledColor: '#C9D3E5',
-                arrowColor: palette.skyDeep,
-                monthTextColor: palette.ink,
-                textDayFontWeight: '700',
-                textMonthFontWeight: '800',
-                textDayHeaderFontWeight: '800',
-              }}
+            <DateTimePicker
+              value={datePickerValue}
+              mode="date"
+              display="spinner"
+              minimumDate={minCustomDate}
+              locale="ja-JP"
+              themeVariant="light"
+              onChange={handleDatePickerChange}
             />
             <Text style={styles.calendarHint}>明後日以降の日付を選べます</Text>
+            <PrimaryButton
+              label="この日付にする"
+              icon="calendar-outline"
+              onPress={() => setIsDatePickerOpen(false)}
+              style={styles.pickerButton}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isTimePickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsTimePickerOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerPanel}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.calendarTitle}>時刻を選択</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setIsTimePickerOpen(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={20} color={palette.ink} />
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={timePickerValue}
+              mode="time"
+              display="spinner"
+              is24Hour
+              locale="ja-JP"
+              themeVariant="light"
+              onChange={handleTimePickerChange}
+            />
+            <Text style={styles.calendarHint}>選んだ時刻に当日の通知が届きます</Text>
+            <PrimaryButton
+              label="この時刻にする"
+              icon="time-outline"
+              onPress={() => setIsTimePickerOpen(false)}
+              style={styles.pickerButton}
+            />
           </View>
         </View>
       </Modal>
@@ -308,12 +404,23 @@ const styles = StyleSheet.create({
     marginTop: 14,
     backgroundColor: palette.lavenderDeep,
   },
-  noticeText: {
-    color: '#8B6F2D',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 8,
-    textAlign: 'center',
+  summary: {
+    minHeight: 44,
+    borderRadius: 16,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: 'rgba(237,230,255,0.58)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,145,245,0.24)',
+  },
+  summaryText: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,
@@ -322,7 +429,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     backgroundColor: 'rgba(38,49,81,0.22)',
   },
-  calendarPanel: {
+  pickerPanel: {
     width: '100%',
     borderRadius: 26,
     padding: 16,
@@ -333,7 +440,7 @@ const styles = StyleSheet.create({
     shadowRadius: 26,
     elevation: 8,
   },
-  calendarHeader: {
+  pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -350,5 +457,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginTop: 10,
+  },
+  pickerButton: {
+    marginTop: 14,
+    backgroundColor: palette.skyDeep,
   },
 });

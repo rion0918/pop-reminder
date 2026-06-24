@@ -20,7 +20,7 @@ const chips: Array<{ label: string; value: ReminderDateOffset }> = [
 
 function formatCustomDate(value: string | null) {
   if (!value) {
-    return '選択';
+    return '日付を選ぶ';
   }
 
   return format(new Date(`${value}T00:00:00`), 'M/d');
@@ -64,10 +64,11 @@ export function DateChips({ value, customDate, onChange, onSelectCustomDate }: D
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   chip: {
-    flex: 1,
+    minWidth: 66,
     height: 40,
     borderRadius: 15,
     alignItems: 'center',
@@ -91,6 +92,6 @@ const styles = StyleSheet.create({
     color: palette.white,
   },
   selectChip: {
-    flex: 0.95,
+    paddingHorizontal: 12,
   },
 });
