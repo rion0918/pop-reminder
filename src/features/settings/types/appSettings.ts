@@ -1,5 +1,5 @@
 import { AppSettingsRow } from '../../../db/schema';
-import { AppTheme } from '../../../shared/constants/colors';
+import { AppTheme } from '../../../constants/colors';
 
 export type AppSettings = Omit<AppSettingsRow, 'theme'> & {
   theme: AppTheme;

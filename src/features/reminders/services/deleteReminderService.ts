@@ -1,4 +1,4 @@
-import { cancelReminderNotifications } from './reminderNotificationService';
+import { cancelReminderNotifications } from '../../../lib/notifications/reminderNotifications';
 import { deleteReminderById, getReminderById } from './reminderRepository';
 
 export async function deleteReminder(id: string) {

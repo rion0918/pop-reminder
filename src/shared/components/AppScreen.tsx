@@ -2,7 +2,7 @@ import { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppTheme, appThemes } from '../constants/colors';
+import { AppTheme, appThemes } from '../../constants/colors';
 
 type AppScreenProps = PropsWithChildren<{
   theme?: AppTheme;

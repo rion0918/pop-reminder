@@ -13,7 +13,7 @@ import {
 } from '@gorhom/bottom-sheet';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
-import { palette } from '../../../shared/constants/colors';
+import { palette } from '../../../constants/colors';
 import {
   selectIsTimeValid,
   selectFormattedTime,

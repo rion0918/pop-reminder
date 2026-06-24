@@ -2,7 +2,7 @@ import { ComponentProps, PropsWithChildren } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { palette } from '../../../shared/constants/colors';
+import { palette } from '../../../constants/colors';
 
 type SettingRowProps = PropsWithChildren<{
   icon: ComponentProps<typeof Ionicons>['name'];

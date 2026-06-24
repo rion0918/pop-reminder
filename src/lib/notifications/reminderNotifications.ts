@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 
-import { Reminder } from '../types/reminder';
+import { Reminder } from '../../features/reminders/types/reminder';
 
 type NotificationIds = {
   previousNotificationId: string | null;

@@ -5,7 +5,7 @@ import { buildReminderSchedule } from './reminderDateService';
 import {
   scheduleReminderNotifications,
   scheduleTestReminderNotifications,
-} from './reminderNotificationService';
+} from '../../../lib/notifications/reminderNotifications';
 
 type CreateReminderOptions = {
   useTestNotifications?: boolean;

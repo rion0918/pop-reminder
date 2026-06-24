@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { palette } from '../../../shared/constants/colors';
+import { palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
 import { ReminderBubble } from './ReminderBubble';
 

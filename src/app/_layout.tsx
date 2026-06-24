@@ -7,8 +7,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { initializeDatabase } from '../db/client';
 import { cleanupExpiredReminders } from '../features/reminders/services/reminderCleanupService';
-import { configureNotificationHandler } from '../features/reminders/services/reminderNotificationService';
-import { palette } from '../shared/constants/colors';
+import { configureNotificationHandler } from '../lib/notifications/reminderNotifications';
+import { palette } from '../constants/colors';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);

@@ -4,7 +4,7 @@ import {
   listExpiredReminders,
   markReminderExpired,
 } from './reminderRepository';
-import { cancelReminderNotifications } from './reminderNotificationService';
+import { cancelReminderNotifications } from '../../../lib/notifications/reminderNotifications';
 
 export async function cleanupExpiredReminders(now = new Date()) {
   const [settings, expiredReminders] = await Promise.all([

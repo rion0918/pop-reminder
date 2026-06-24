@@ -10,7 +10,7 @@ import {
 import { format } from 'date-fns';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
-import { palette } from '../../../shared/constants/colors';
+import { palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
 
 type ReminderDetailSheetProps = {

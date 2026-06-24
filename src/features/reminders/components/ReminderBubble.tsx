@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { format, isSameDay, isTomorrow } from 'date-fns';
 
-import { bubbleColors, palette } from '../../../shared/constants/colors';
+import { bubbleColors, palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
 
 type ReminderBubbleProps = {

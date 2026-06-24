@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { palette } from '../../../shared/constants/colors';
+import { palette } from '../../../constants/colors';
 
 type TimeChipsProps = {
   value: string;
