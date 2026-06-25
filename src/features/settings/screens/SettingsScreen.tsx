@@ -108,7 +108,7 @@ export function SettingsScreen() {
     <AppScreen theme={settings?.theme ?? 'sky'}>
       <View style={styles.header}>
         <Link href="/" asChild>
-          <Pressable accessibilityRole="button" style={styles.iconButton}>
+          <Pressable accessibilityRole="button" hitSlop={8} style={styles.iconButton}>
             <Ionicons name="chevron-back" size={24} color={palette.ink} />
           </Pressable>
         </Link>
@@ -154,6 +154,9 @@ export function SettingsScreen() {
               icon="sparkles-outline"
               title="自動消滅"
               caption="期限切れ後は表示せず、起動時に整理します"
+              onPress={() => {
+                void update({ autoDeleteEnabled: !settings.autoDeleteEnabled });
+              }}
             >
               <Switch
                 value={settings.autoDeleteEnabled}
@@ -177,7 +180,11 @@ export function SettingsScreen() {
                       key={theme}
                       accessibilityRole="button"
                       onPress={() => saveTheme(theme)}
-                      style={[styles.themeButton, active ? styles.themeButtonActive : null]}
+                      style={({ pressed }) => [
+                        styles.themeButton,
+                        active ? styles.themeButtonActive : null,
+                        pressed ? styles.themeButtonPressed : null,
+                      ]}
                     >
                       <Text style={[styles.themeLabel, active ? styles.themeLabelActive : null]}>
                         {theme}
@@ -200,6 +207,9 @@ export function SettingsScreen() {
                 icon="timer-outline"
                 title="通知テストモード"
                 caption="保存後10秒・20秒で通知を予約します"
+                onPress={() => {
+                  setNotificationTestModeEnabled(!isNotificationTestModeEnabled);
+                }}
               >
                 <Switch
                   value={isNotificationTestModeEnabled}
@@ -345,6 +355,10 @@ const styles = StyleSheet.create({
   themeButtonActive: {
     backgroundColor: palette.skyDeep,
     borderColor: palette.skyDeep,
+  },
+  themeButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.96 }],
   },
   themeLabel: {
     color: palette.muted,

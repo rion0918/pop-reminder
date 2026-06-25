@@ -7,15 +7,25 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#EFF8FF"
     },
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "bundleIdentifier": "com.rion0918.popreminder"
     },
     "android": {
-      "package": "com.rion0918.popreminder"
+      "package": "com.rion0918.popreminder",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#EFF8FF"
+      }
     },
     "plugins": [
       "expo-router",
@@ -24,6 +34,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8663b7fe-5742-42cf-9ada-86d70b2c31dd"
+      }
     }
   }
 }

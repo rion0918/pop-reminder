@@ -167,7 +167,7 @@ function makeLayoutForItem(
       return penalty + (minReadableDistance - distance) * 4.2;
     }, 0);
     const lowerRightPenalty =
-      centerX > boardSize.width * 0.72 && centerY > boardSize.height * 0.7 ? 88 : 0;
+      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.66 ? 260 : 0;
     const edgePenalty =
       top <= EDGE_CLEARANCE + 2 || left <= EDGE_CLEARANCE + 2 || left >= maxLeft - 2 ? 10 : 0;
     const score =
@@ -218,9 +218,13 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
   const layoutCacheRef = useRef(new Map<string, CachedBubbleLayout>());
   const layoutBoardKeyRef = useRef('');
+  const reminderIdsKey = useMemo(
+    () => reminders.slice(0, MAX_VISIBLE_BUBBLES).map((reminder) => reminder.id).join(','),
+    [reminders],
+  );
   const visibleReminders = useMemo(
     () => reminders.slice(0, MAX_VISIBLE_BUBBLES),
-    [reminders],
+    [reminderIdsKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const overflowCount = Math.max(0, reminders.length - visibleReminders.length);
   const handleBoardLayout = useCallback((event: LayoutChangeEvent) => {
@@ -257,7 +261,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         layoutBoardKeyRef.current = boardKey;
       }
 
-      const reminderIds = new Set(reminders.map((reminder) => reminder.id));
+      const reminderIds = new Set(visibleReminders.map((reminder) => reminder.id));
       layoutCache.forEach((_, reminderId) => {
         if (!reminderIds.has(reminderId)) {
           layoutCache.delete(reminderId);
@@ -356,7 +360,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         overflowBubble,
       };
     },
-    [boardSize, overflowCount, reminders, visibleReminders],
+    [boardSize, overflowCount, reminderIdsKey, visibleReminders], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const { bubbleLayouts, overflowBubble } = boardLayout;
 

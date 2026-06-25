@@ -31,7 +31,11 @@ export function TimeChips({ value, onChange, onSelectCustomTime }: TimeChipsProp
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => onChange(preset.time)}
-              style={[styles.chip, active ? styles.activeChip : null]}
+              style={({ pressed }) => [
+                styles.chip,
+                active ? styles.activeChip : null,
+                pressed ? styles.pressedChip : null,
+              ]}
             >
               <Text style={[styles.label, active ? styles.activeLabel : null]}>{preset.label}</Text>
               <Text style={[styles.time, active ? styles.activeLabel : null]}>{preset.time}</Text>
@@ -43,7 +47,12 @@ export function TimeChips({ value, onChange, onSelectCustomTime }: TimeChipsProp
         accessibilityRole="button"
         accessibilityState={{ selected: !isPresetTime }}
         onPress={onSelectCustomTime}
-        style={[styles.chip, styles.customChip, !isPresetTime ? styles.activeChip : null]}
+        style={({ pressed }) => [
+          styles.chip,
+          styles.customChip,
+          !isPresetTime ? styles.activeChip : null,
+          pressed ? styles.pressedChip : null,
+        ]}
       >
         <Ionicons
           name="time-outline"
@@ -103,5 +112,9 @@ const styles = StyleSheet.create({
   },
   activeLabel: {
     color: palette.white,
+  },
+  pressedChip: {
+    opacity: 0.78,
+    transform: [{ scale: 0.97 }],
   },
 });

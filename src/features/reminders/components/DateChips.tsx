@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { format, getYear } from 'date-fns';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { palette } from '../../../constants/colors';
@@ -42,7 +42,11 @@ function formatCustomDate(value: string | null) {
     return '日付を選ぶ';
   }
 
-  return format(new Date(`${value}T00:00:00`), 'M/d');
+  const date = new Date(`${value}T00:00:00`);
+  const thisYear = getYear(new Date());
+  const pattern = getYear(date) === thisYear ? 'M/d' : 'yyyy/M/d';
+
+  return format(date, pattern);
 }
 
 export function DateChips({
@@ -59,7 +63,7 @@ export function DateChips({
     <View style={styles.wrap}>
       <View style={styles.row}>
         {relativeChips.map((chip) => {
-          const active = preset === chip.preset || (!customDate && chip.value === value);
+          const active = preset === chip.preset;
 
           return (
             <Pressable
@@ -67,7 +71,11 @@ export function DateChips({
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => onChange(chip.value)}
-              style={[styles.chip, active ? styles.activeChip : null]}
+              style={({ pressed }) => [
+                styles.chip,
+                active ? styles.activeChip : null,
+                pressed ? styles.pressedChip : null,
+              ]}
             >
               <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
             </Pressable>
@@ -90,7 +98,11 @@ export function DateChips({
                   formatLocalDate(getReminderDatePresetTarget(chip.preset)),
                 )
               }
-              style={[styles.chip, active ? styles.activeChip : null]}
+              style={({ pressed }) => [
+                styles.chip,
+                active ? styles.activeChip : null,
+                pressed ? styles.pressedChip : null,
+              ]}
             >
               <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
             </Pressable>
@@ -101,7 +113,12 @@ export function DateChips({
           accessibilityRole="button"
           accessibilityState={{ selected: customActive }}
           onPress={onSelectCustomDate}
-          style={[styles.chip, styles.selectChip, customActive ? styles.activeChip : null]}
+          style={({ pressed }) => [
+            styles.chip,
+            styles.selectChip,
+            customActive ? styles.activeChip : null,
+            pressed ? styles.pressedChip : null,
+          ]}
         >
           <Ionicons
             name="calendar-outline"
@@ -153,5 +170,9 @@ const styles = StyleSheet.create({
   selectChip: {
     flex: 1.35,
     paddingHorizontal: 10,
+  },
+  pressedChip: {
+    opacity: 0.78,
+    transform: [{ scale: 0.97 }],
   },
 });

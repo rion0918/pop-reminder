@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { addDays, format, startOfDay } from 'date-fns';
+import { addDays, format, set, startOfDay } from 'date-fns';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -87,6 +87,19 @@ export function ReminderInputSheet({
     () => formatReminderDate(selectedTargetDate),
     [selectedTargetDate],
   );
+
+  const targetAt = useMemo(() => {
+    const [hoursText, minutesText] = time.split(':');
+
+    return set(selectedTargetDate, {
+      hours: Number(hoursText),
+      minutes: Number(minutesText),
+      seconds: 0,
+      milliseconds: 0,
+    });
+  }, [selectedTargetDate, time]);
+
+  const isTargetFuture = targetAt.getTime() > Date.now();
 
   const resetDraftTitle = useCallback(() => {
     draftTitleRef.current = '';
@@ -278,11 +291,17 @@ export function ReminderInputSheet({
             <Text style={styles.summaryText}>{selectedDateLabel} {time} にふわっと通知</Text>
           </View>
 
+          {!isTargetFuture ? (
+            <Text style={styles.timingNoticeText}>
+              過去の日時は選べません。通知を受け取る未来の日時を選んでください。
+            </Text>
+          ) : null}
+
           <PrimaryButton
             label={isSaving ? '追加中' : 'ふわっと追加'}
             icon="cloud-outline"
             onPress={handleSave}
-            disabled={isSaving || !isTimeValid}
+            disabled={isSaving || !isTimeValid || !isTargetFuture}
             style={styles.saveButton}
           />
         </BottomSheetScrollView>
@@ -422,6 +441,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 10,
     textAlign: 'center',
+  },
+  timingNoticeText: {
+    color: palette.peachDeep,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 10,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   saveButton: {
     marginTop: 14,

@@ -34,6 +34,7 @@ export function HomeScreen() {
   const { settings } = useAppSettings();
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
+  const deleteTimeoutRef = useRef<number | null>(null);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const [burstingReminderId, setBurstingReminderId] = useState<string | null>(null);
 
@@ -44,6 +45,14 @@ export function HomeScreen() {
   useEffect(() => {
     isSavingRef.current = isSaving;
   }, [isSaving]);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimeoutRef.current) {
+        clearTimeout(deleteTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,7 +102,7 @@ export function HomeScreen() {
     async (reminder: Reminder) => {
       setBurstingReminderId(reminder.id);
       await new Promise((resolve) => {
-        setTimeout(resolve, 260);
+        deleteTimeoutRef.current = setTimeout(resolve, 260) as unknown as number;
       });
 
       try {
@@ -106,6 +115,7 @@ export function HomeScreen() {
         await refresh();
       } finally {
         setBurstingReminderId(null);
+        deleteTimeoutRef.current = null;
       }
     },
     [refresh],
@@ -203,7 +213,7 @@ const styles = StyleSheet.create({
   bubbleArea: {
     flex: 1,
     marginTop: 16,
-    marginBottom: 104,
+    marginBottom: 118,
     overflow: 'visible',
   },
   addButton: {
