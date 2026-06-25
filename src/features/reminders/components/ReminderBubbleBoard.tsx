@@ -1,7 +1,17 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { LayoutChangeEvent, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
@@ -19,6 +29,7 @@ type ReminderBubbleBoardProps = {
 
 const MAX_VISIBLE_BUBBLES = 7;
 const MIN_EDGE_CLEARANCE = 18;
+const LAYOUT_VERSION = 2;
 const BUBBLE_SIZE_BUCKETS = {
   large: { base: 146, min: 126 },
   medium: { base: 128, min: 114 },
@@ -43,6 +54,7 @@ const FLOATING_SLOTS = [
   { x: 0.48, y: 0.87 },
   { x: 0.68, y: 0.54 },
 ];
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type BubbleSizeName = keyof typeof BUBBLE_SIZE_BUCKETS;
 
@@ -81,6 +93,15 @@ type FloatingItemLayout = {
   top: number;
   centerX: number;
   centerY: number;
+};
+
+type OverflowBubbleProps = {
+  count: number;
+  size: number;
+  left: number;
+  top: number;
+  disabled: boolean;
+  onPress?: () => void;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -134,31 +155,70 @@ function getStableVisualIndex(id: string) {
   return hashString(id) % 97;
 }
 
+function makeOverflowIdleMotionConfig(id: string) {
+  const seed = hashString(id);
+
+  return {
+    delay: Math.round(unitFromHash(seed, 1) * 1000),
+    duration: Math.round(5000 + unitFromHash(seed, 2) * 2200),
+    amplitudeX: 1.4 + unitFromHash(seed, 3) * 1.8,
+    amplitudeY: 1.8 + unitFromHash(seed, 4) * 2.2,
+    rotateDeg: 0.18 + unitFromHash(seed, 5) * 0.28,
+  };
+}
+
+function getTemporalYRatio(index: number, count: number) {
+  if (count <= 1) {
+    return 0.38;
+  }
+
+  return 0.18 + (index / (count - 1)) * 0.66;
+}
+
 function makeLayoutForItem(
   id: string,
   size: number,
   boardSize: BoardSize,
   placedBubbles: PlacedBubble[],
   preferredSlotIndex: number,
+  temporalIndex: number,
+  temporalCount: number,
 ): FloatingItemLayout {
   const seed = hashString(id);
   const edgeClearance = getEdgeClearance(boardSize);
   const maxLeft = Math.max(edgeClearance, boardSize.width - size - edgeClearance);
   const maxTop = Math.max(edgeClearance, boardSize.height - size - edgeClearance);
   const preferredSlot = preferredSlotIndex % FLOATING_SLOTS.length;
+  const temporalYRatio = getTemporalYRatio(temporalIndex, temporalCount);
   const jitterRangeX = clamp(boardSize.width * 0.06, 14, 30);
   const jitterRangeY = clamp(boardSize.height * 0.045, 12, 26);
+  const temporalLaneRatios = [0.5, 0.2, 0.8, 0.34, 0.66, 0.18, 0.82];
+  const laneOffset = Math.floor(unitFromHash(seed, 80) * temporalLaneRatios.length);
+  const temporalSlots = temporalLaneRatios.map((xRatio, index) => {
+    const verticalNudge = (index % 3 - 1) * 0.025;
 
-  const bestLayout = FLOATING_SLOTS.reduce<{
+    return {
+      x: temporalLaneRatios[(index + laneOffset) % temporalLaneRatios.length] ?? xRatio,
+      y: clamp(temporalYRatio + verticalNudge, 0.14, 0.9),
+      temporal: true,
+    };
+  });
+  const slotCandidates = [
+    ...temporalSlots,
+    ...FLOATING_SLOTS.map((slot) => ({ ...slot, temporal: false })),
+  ];
+
+  const bestLayout = slotCandidates.reduce<{
     score: number;
     left: number;
     top: number;
     centerX: number;
     centerY: number;
   } | null>((best, slot, slotIndex) => {
+    const baseSlotIndex = slotIndex % FLOATING_SLOTS.length;
     const distanceFromPreferred = Math.min(
-      Math.abs(slotIndex - preferredSlot),
-      FLOATING_SLOTS.length - Math.abs(slotIndex - preferredSlot),
+      Math.abs(baseSlotIndex - preferredSlot),
+      FLOATING_SLOTS.length - Math.abs(baseSlotIndex - preferredSlot),
     );
     const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * jitterRangeX;
     const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * jitterRangeY;
@@ -180,12 +240,16 @@ function makeLayoutForItem(
       centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.68 ? 280 : 0;
     const edgePenalty =
       top <= edgeClearance + 2 || left <= edgeClearance + 2 || left >= maxLeft - 2 ? 28 : 0;
+    const temporalPenalty = Math.abs(centerY / boardSize.height - temporalYRatio) * 780;
+    const floatingSlotPenalty = slot.temporal ? 0 : 170;
     const score =
-      distanceFromPreferred * 28 +
+      distanceFromPreferred * 8 +
       unitFromHash(seed, slotIndex + 10) * 18 +
       overlapPenalty +
       lowerRightPenalty +
-      edgePenalty;
+      edgePenalty +
+      temporalPenalty +
+      floatingSlotPenalty;
 
     if (!best || score < best.score) {
       return {
@@ -216,6 +280,88 @@ function makeLayoutForItem(
 
   return layout;
 }
+
+const OverflowBubble = memo(function OverflowBubble({
+  count,
+  size,
+  left,
+  top,
+  disabled,
+  onPress,
+}: OverflowBubbleProps) {
+  const reduceMotion = useReducedMotion();
+  const idleProgress = useSharedValue(0);
+  const idleMotion = useMemo(
+    () => makeOverflowIdleMotionConfig(`overflow-${count}`),
+    [count],
+  );
+
+  useEffect(() => {
+    cancelAnimation(idleProgress);
+
+    if (reduceMotion) {
+      idleProgress.value = 0;
+      return;
+    }
+
+    idleProgress.value = 0;
+    idleProgress.value = withDelay(
+      idleMotion.delay,
+      withRepeat(
+        withTiming(1, {
+          duration: idleMotion.duration,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        -1,
+        true,
+      ),
+    );
+
+    return () => {
+      cancelAnimation(idleProgress);
+    };
+  }, [idleMotion.delay, idleMotion.duration, idleProgress, reduceMotion]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX:
+          Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.amplitudeX,
+      },
+      {
+        translateY:
+          Math.cos(idleProgress.value * Math.PI * 2) * idleMotion.amplitudeY,
+      },
+      {
+        rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg}deg`,
+      },
+    ],
+  }));
+
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={`ほか${count}件のリマインダーを一覧で開く`}
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        styles.moreBubble,
+        disabled ? styles.moreBubbleDisabled : null,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          left,
+          top,
+        },
+        animatedStyle,
+      ]}
+    >
+      <Text style={styles.moreCount}>+{count}</Text>
+      <Text style={styles.moreLabel}>ほか</Text>
+    </AnimatedPressable>
+  );
+});
 
 export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   reminders,
@@ -264,7 +410,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         };
       }
 
-      const boardKey = `${boardSize.width}x${boardSize.height}:${visibleReminders.length}`;
+      const boardKey = `${LAYOUT_VERSION}:${boardSize.width}x${boardSize.height}:${reminderIdsKey}`;
       const layoutCache = layoutCacheRef.current;
 
       if (layoutBoardKeyRef.current !== boardKey) {
@@ -295,7 +441,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         });
       });
 
-      const bubbleLayouts = visibleReminders.map((reminder): BubbleLayout => {
+      const bubbleLayouts = visibleReminders.map((reminder, reminderIndex): BubbleLayout => {
         const cachedLayout = layoutCache.get(reminder.id);
 
         if (cachedLayout) {
@@ -321,6 +467,8 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           boardSize,
           placedBubbles,
           visualIndex,
+          reminderIndex,
+          visibleReminders.length,
         );
         const nextLayout = {
           visualIndex,
@@ -356,6 +504,8 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
                 boardSize,
                 placedBubbles,
                 getStableVisualIndex(`overflow-${overflowCount}`),
+                visibleReminders.length,
+                visibleReminders.length + 1,
               );
 
               return {
@@ -371,7 +521,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         overflowBubble,
       };
     },
-    [boardSize, overflowCount, reminderIdsKey, visibleReminders], // eslint-disable-line react-hooks/exhaustive-deps
+    [boardSize, overflowCount, reminderIdsKey, visibleReminders],
   );
   const { bubbleLayouts, overflowBubble } = boardLayout;
 
@@ -439,26 +589,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         />
       )) : null}
       {overflowBubble ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`ほか${overflowCount}件のリマインダーを一覧で開く`}
+        <OverflowBubble
+          count={overflowCount}
           disabled={!onOverflowPress}
+          left={overflowBubble.left}
+          size={overflowBubble.size}
+          top={overflowBubble.top}
           onPress={onOverflowPress}
-          style={[
-            styles.moreBubble,
-            onOverflowPress ? null : styles.moreBubbleDisabled,
-            {
-              width: overflowBubble.size,
-              height: overflowBubble.size,
-              borderRadius: overflowBubble.size / 2,
-              left: overflowBubble.left,
-              top: overflowBubble.top,
-            },
-          ]}
-        >
-          <Text style={styles.moreCount}>+{overflowCount}</Text>
-          <Text style={styles.moreLabel}>ほか</Text>
-        </Pressable>
+        />
       ) : null}
     </View>
   );
