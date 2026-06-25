@@ -66,13 +66,13 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   }, [reminder]);
 
   const handleDismiss = useCallback(() => {
-    isClosingRef.current = true;
     isPresentedRef.current = false;
     if (!isDeletingRef.current) {
       isDeleteRequestedRef.current = false;
       setIsDeleting(false);
     }
     onClose();
+    isClosingRef.current = false;
   }, [onClose]);
 
   const handleClosePress = useCallback(() => {

@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { LayoutChangeEvent, ViewStyle } from 'react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
@@ -14,14 +14,15 @@ type ReminderBubbleBoardProps = {
   burstingReminderId?: string | null;
   idleDisabled?: boolean;
   onReminderPress?: (reminder: Reminder) => void;
+  onOverflowPress?: () => void;
 };
 
 const MAX_VISIBLE_BUBBLES = 7;
-const EDGE_CLEARANCE = 16;
+const MIN_EDGE_CLEARANCE = 18;
 const BUBBLE_SIZE_BUCKETS = {
-  large: { base: 150, min: 136 },
-  medium: { base: 134, min: 124 },
-  small: { base: 120, min: 114 },
+  large: { base: 146, min: 126 },
+  medium: { base: 128, min: 114 },
+  small: { base: 114, min: 104 },
 } as const;
 const BUBBLE_SIZE_SEQUENCE: BubbleSizeName[] = [
   'large',
@@ -33,14 +34,14 @@ const BUBBLE_SIZE_SEQUENCE: BubbleSizeName[] = [
   'medium',
 ];
 const FLOATING_SLOTS = [
-  { x: 0.52, y: 0.2 },
-  { x: 0.24, y: 0.34 },
-  { x: 0.76, y: 0.36 },
-  { x: 0.43, y: 0.53 },
-  { x: 0.2, y: 0.69 },
-  { x: 0.72, y: 0.72 },
-  { x: 0.46, y: 0.84 },
-  { x: 0.62, y: 0.58 },
+  { x: 0.5, y: 0.16 },
+  { x: 0.18, y: 0.31 },
+  { x: 0.82, y: 0.31 },
+  { x: 0.34, y: 0.52 },
+  { x: 0.17, y: 0.73 },
+  { x: 0.82, y: 0.72 },
+  { x: 0.48, y: 0.87 },
+  { x: 0.68, y: 0.54 },
 ];
 
 type BubbleSizeName = keyof typeof BUBBLE_SIZE_BUCKETS;
@@ -104,23 +105,29 @@ function unitFromHash(seed: number, salt: number) {
   return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
 }
 
-function getBubbleSize(id: string, boardSize: BoardSize) {
+function getEdgeClearance(boardSize: BoardSize) {
+  return Math.round(clamp(Math.min(boardSize.width, boardSize.height) * 0.055, MIN_EDGE_CLEARANCE, 30));
+}
+
+function getBubbleSize(id: string, boardSize: BoardSize, visibleCount: number) {
   const seed = hashString(id);
   const sizeName = BUBBLE_SIZE_SEQUENCE[seed % BUBBLE_SIZE_SEQUENCE.length] ?? 'medium';
   const bucket = BUBBLE_SIZE_BUCKETS[sizeName];
-  const maxByWidth = boardSize.width * 0.45;
-  const maxByHeight = boardSize.height * 0.31;
+  const edgeClearance = getEdgeClearance(boardSize);
+  const densityScale = visibleCount >= 7 ? 0.9 : visibleCount >= 5 ? 0.94 : 1;
+  const maxByWidth = boardSize.width * 0.41;
+  const maxByHeight = boardSize.height * 0.28;
   const safeMax = Math.max(
-    108,
+    104,
     Math.min(
-      boardSize.width - EDGE_CLEARANCE * 2,
-      boardSize.height - EDGE_CLEARANCE * 2,
+      boardSize.width - edgeClearance * 2,
+      boardSize.height - edgeClearance * 2,
       maxByWidth,
       maxByHeight,
     ),
   );
 
-  return Math.round(clamp(bucket.base, bucket.min, safeMax));
+  return Math.round(clamp(bucket.base * densityScale, bucket.min, safeMax));
 }
 
 function getStableVisualIndex(id: string) {
@@ -135,9 +142,12 @@ function makeLayoutForItem(
   preferredSlotIndex: number,
 ): FloatingItemLayout {
   const seed = hashString(id);
-  const maxLeft = Math.max(EDGE_CLEARANCE, boardSize.width - size - EDGE_CLEARANCE);
-  const maxTop = Math.max(EDGE_CLEARANCE, boardSize.height - size - EDGE_CLEARANCE);
+  const edgeClearance = getEdgeClearance(boardSize);
+  const maxLeft = Math.max(edgeClearance, boardSize.width - size - edgeClearance);
+  const maxTop = Math.max(edgeClearance, boardSize.height - size - edgeClearance);
   const preferredSlot = preferredSlotIndex % FLOATING_SLOTS.length;
+  const jitterRangeX = clamp(boardSize.width * 0.06, 14, 30);
+  const jitterRangeY = clamp(boardSize.height * 0.045, 12, 26);
 
   const bestLayout = FLOATING_SLOTS.reduce<{
     score: number;
@@ -150,28 +160,28 @@ function makeLayoutForItem(
       Math.abs(slotIndex - preferredSlot),
       FLOATING_SLOTS.length - Math.abs(slotIndex - preferredSlot),
     );
-    const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * 28;
-    const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * 24;
-    const left = clamp(slot.x * boardSize.width - size / 2 + jitterX, EDGE_CLEARANCE, maxLeft);
-    const top = clamp(slot.y * boardSize.height - size / 2 + jitterY, EDGE_CLEARANCE, maxTop);
+    const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * jitterRangeX;
+    const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * jitterRangeY;
+    const left = clamp(slot.x * boardSize.width - size / 2 + jitterX, edgeClearance, maxLeft);
+    const top = clamp(slot.y * boardSize.height - size / 2 + jitterY, edgeClearance, maxTop);
     const centerX = left + size / 2;
     const centerY = top + size / 2;
     const overlapPenalty = placedBubbles.reduce((penalty, placed) => {
       const distance = Math.hypot(centerX - placed.centerX, centerY - placed.centerY);
-      const minReadableDistance = (size + placed.size) * 0.48;
+      const minReadableDistance = (size + placed.size) * 0.68;
 
       if (distance >= minReadableDistance) {
         return penalty;
       }
 
-      return penalty + (minReadableDistance - distance) * 4.2;
+      return penalty + (minReadableDistance - distance) * 7.2;
     }, 0);
     const lowerRightPenalty =
-      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.66 ? 260 : 0;
+      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.68 ? 280 : 0;
     const edgePenalty =
-      top <= EDGE_CLEARANCE + 2 || left <= EDGE_CLEARANCE + 2 || left >= maxLeft - 2 ? 10 : 0;
+      top <= edgeClearance + 2 || left <= edgeClearance + 2 || left >= maxLeft - 2 ? 28 : 0;
     const score =
-      distanceFromPreferred * 46 +
+      distanceFromPreferred * 28 +
       unitFromHash(seed, slotIndex + 10) * 18 +
       overlapPenalty +
       lowerRightPenalty +
@@ -191,10 +201,10 @@ function makeLayoutForItem(
   }, null);
 
   const layout = bestLayout ?? {
-    left: EDGE_CLEARANCE,
-    top: EDGE_CLEARANCE,
-    centerX: EDGE_CLEARANCE + size / 2,
-    centerY: EDGE_CLEARANCE + size / 2,
+    left: edgeClearance,
+    top: edgeClearance,
+    centerX: edgeClearance + size / 2,
+    centerY: edgeClearance + size / 2,
     score: 0,
   };
 
@@ -214,6 +224,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   burstingReminderId,
   idleDisabled,
   onReminderPress,
+  onOverflowPress,
 }: ReminderBubbleBoardProps) {
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
   const layoutCacheRef = useRef(new Map<string, CachedBubbleLayout>());
@@ -253,7 +264,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         };
       }
 
-      const boardKey = `${boardSize.width}x${boardSize.height}`;
+      const boardKey = `${boardSize.width}x${boardSize.height}:${visibleReminders.length}`;
       const layoutCache = layoutCacheRef.current;
 
       if (layoutBoardKeyRef.current !== boardKey) {
@@ -302,7 +313,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           };
         }
 
-        const size = getBubbleSize(reminder.id, boardSize);
+        const size = getBubbleSize(reminder.id, boardSize, visibleReminders.length);
         const visualIndex = getStableVisualIndex(reminder.id);
         const layout = makeLayoutForItem(
           reminder.id,
@@ -428,9 +439,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         />
       )) : null}
       {overflowBubble ? (
-        <View
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`ほか${overflowCount}件のリマインダーを一覧で開く`}
+          disabled={!onOverflowPress}
+          onPress={onOverflowPress}
           style={[
             styles.moreBubble,
+            onOverflowPress ? null : styles.moreBubbleDisabled,
             {
               width: overflowBubble.size,
               height: overflowBubble.size,
@@ -442,7 +458,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         >
           <Text style={styles.moreCount}>+{overflowCount}</Text>
           <Text style={styles.moreLabel}>ほか</Text>
-        </View>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -569,6 +585,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 1,
+  },
+  moreBubbleDisabled: {
+    opacity: 0.9,
   },
   moreCount: {
     color: palette.ink,
