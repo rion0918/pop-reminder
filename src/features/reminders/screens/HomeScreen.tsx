@@ -20,7 +20,7 @@ import { AppScreen } from '../../../shared/components/AppScreen';
 import { palette } from '../../../constants/colors';
 
 export function HomeScreen() {
-  const { reminders, loading, error, refresh } = useReminders();
+  const { reminders, loading, error, refresh, upsertReminder } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
@@ -33,12 +33,17 @@ export function HomeScreen() {
   );
   const { settings } = useAppSettings();
   const isQuickAddOpenRef = useRef(false);
+  const isSavingRef = useRef(false);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const [burstingReminderId, setBurstingReminderId] = useState<string | null>(null);
 
   useEffect(() => {
     isQuickAddOpenRef.current = isQuickAddOpen;
   }, [isQuickAddOpen]);
+
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+  }, [isSaving]);
 
   useFocusEffect(
     useCallback(() => {
@@ -47,10 +52,15 @@ export function HomeScreen() {
   );
 
   const handleSave = async (title: string) => {
+    if (isSavingRef.current) {
+      throw new Error('Reminder save is already in progress');
+    }
+
+    isSavingRef.current = true;
     setSaving(true);
 
     try {
-      await createReminder({
+      const reminder = await createReminder({
         title,
         dateOffset,
         customTargetDate,
@@ -58,13 +68,15 @@ export function HomeScreen() {
       }, {
         useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
       });
-      await refresh();
+      upsertReminder(reminder);
+      void refresh({ silent: true });
     } catch (saveError) {
       console.warn('Failed to save reminder', saveError);
       Alert.alert('追加できませんでした', 'タイトルと時刻を確認してください。');
       throw saveError;
     } finally {
       setSaving(false);
+      isSavingRef.current = false;
     }
   };
 
@@ -100,6 +112,8 @@ export function HomeScreen() {
   );
 
   const isAddButtonDisabled = isQuickAddOpen || isSaving;
+  const isBubbleIdleDisabled =
+    isQuickAddOpen || isSaving || Boolean(selectedReminder) || Boolean(burstingReminderId);
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
@@ -109,7 +123,12 @@ export function HomeScreen() {
           <Text style={styles.title}>ふわっと残す</Text>
         </View>
         <Link href="/settings" asChild>
-          <Pressable accessibilityRole="button" style={styles.iconButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="設定を開く"
+            hitSlop={8}
+            style={styles.iconButton}
+          >
             <Ionicons name="settings-outline" size={22} color={palette.ink} />
           </Pressable>
         </Link>
@@ -121,6 +140,7 @@ export function HomeScreen() {
           loading={loading}
           error={error}
           burstingReminderId={burstingReminderId}
+          idleDisabled={isBubbleIdleDisabled}
           onReminderPress={setSelectedReminder}
         />
       </View>
@@ -138,7 +158,10 @@ export function HomeScreen() {
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="リマインダーを追加"
+        accessibilityState={{ disabled: isAddButtonDisabled }}
         disabled={isAddButtonDisabled}
+        hitSlop={8}
         onPress={handlePressAdd}
         style={[styles.addButton, isAddButtonDisabled ? styles.addButtonDisabled : null]}
       >

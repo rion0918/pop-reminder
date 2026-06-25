@@ -17,7 +17,7 @@ export async function listExpiredReminders(now = new Date()): Promise<Reminder[]
   return db
     .select()
     .from(reminders)
-    .where(lte(reminders.expiresAt, now.toISOString()))
+    .where(and(eq(reminders.status, 'active'), lte(reminders.expiresAt, now.toISOString())))
     .orderBy(asc(reminders.expiresAt));
 }
 

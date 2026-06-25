@@ -5,6 +5,7 @@ import {
   timeToDigits,
   validateTimeInput,
 } from '../../../shared/utils/time';
+import type { ReminderDatePreset } from '../utils/reminderDatePresets';
 
 export type ReminderDateOffset = 0 | 1 | 2;
 
@@ -12,6 +13,7 @@ type ReminderUiState = {
   isQuickAddOpen: boolean;
   title: string;
   dateOffset: ReminderDateOffset;
+  datePreset: ReminderDatePreset;
   customTargetDate: string | null;
   timeDigits: string;
   timeTouched: boolean;
@@ -20,6 +22,7 @@ type ReminderUiState = {
   closeQuickAdd: () => void;
   setTitle: (title: string) => void;
   setDateOffset: (dateOffset: ReminderDateOffset) => void;
+  setPresetTargetDate: (datePreset: 'weekend' | 'nextWeek', date: string) => void;
   setCustomTargetDate: (date: string | null) => void;
   setTargetTime: (time: string) => void;
   setSaving: (isSaving: boolean) => void;
@@ -30,6 +33,7 @@ const initialState = {
   isQuickAddOpen: false,
   title: '',
   dateOffset: 1 as ReminderDateOffset,
+  datePreset: 'tomorrow' as ReminderDatePreset,
   customTargetDate: null,
   timeDigits: '0800',
   timeTouched: false,
@@ -48,6 +52,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
         isQuickAddOpen: true,
         title: '',
         dateOffset: 1,
+        datePreset: 'tomorrow',
         customTargetDate: null,
         timeDigits: timeToDigits(defaultTime),
         timeTouched: false,
@@ -56,14 +61,24 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
     }),
   closeQuickAdd: () => set({ isQuickAddOpen: false, isSaving: false }),
   setTitle: (title) => set({ title }),
-  setDateOffset: (dateOffset) => set({ dateOffset, customTargetDate: null }),
-  setCustomTargetDate: (customTargetDate) => set({ customTargetDate }),
+  setDateOffset: (dateOffset) =>
+    set({
+      dateOffset,
+      datePreset:
+        dateOffset === 0 ? 'today' : dateOffset === 1 ? 'tomorrow' : 'dayAfterTomorrow',
+      customTargetDate: null,
+    }),
+  setPresetTargetDate: (datePreset, customTargetDate) =>
+    set({ datePreset, customTargetDate }),
+  setCustomTargetDate: (customTargetDate) =>
+    set({ customTargetDate, datePreset: customTargetDate ? 'custom' : 'tomorrow' }),
   setTargetTime: (time) => set({ timeDigits: timeToDigits(time), timeTouched: true }),
   setSaving: (isSaving) => set({ isSaving }),
   resetInput: (defaultTime = '08:00') =>
     set({
       title: '',
       dateOffset: 1,
+      datePreset: 'tomorrow',
       customTargetDate: null,
       timeDigits: timeToDigits(defaultTime),
       timeTouched: false,

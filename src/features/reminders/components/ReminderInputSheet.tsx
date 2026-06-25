@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { addDays, format } from 'date-fns';
+import { addDays, format, startOfDay } from 'date-fns';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -19,6 +19,7 @@ import {
   selectFormattedTime,
   useReminderUiStore,
 } from '../stores/reminderUiStore';
+import { formatReminderDate } from '../utils/reminderDateFormat';
 import { DateChips } from './DateChips';
 import { TimeChips } from './TimeChips';
 
@@ -36,14 +37,16 @@ export function ReminderInputSheet({
   const draftTitleRef = useRef('');
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
+  const isSaveRequestedRef = useRef(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const snapPoints = useMemo(() => ['58%', '78%'], []);
-  const minCustomDate = useMemo(() => addDays(new Date(), 2), []);
+  const minCustomDate = useMemo(() => startOfDay(new Date()), []);
 
   const isOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
+  const datePreset = useReminderUiStore((state) => state.datePreset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const time = useReminderUiStore(selectFormattedTime);
   const isTimeValid = useReminderUiStore(selectIsTimeValid);
@@ -51,6 +54,7 @@ export function ReminderInputSheet({
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const setTitle = useReminderUiStore((state) => state.setTitle);
   const setDateOffset = useReminderUiStore((state) => state.setDateOffset);
+  const setPresetTargetDate = useReminderUiStore((state) => state.setPresetTargetDate);
   const setCustomTargetDate = useReminderUiStore((state) => state.setCustomTargetDate);
   const setTargetTime = useReminderUiStore((state) => state.setTargetTime);
   const resetInput = useReminderUiStore((state) => state.resetInput);
@@ -71,21 +75,18 @@ export function ReminderInputSheet({
     return value;
   }, [time]);
 
-  const selectedDateLabel = useMemo(() => {
+  const selectedTargetDate = useMemo(() => {
     if (customTargetDate) {
-      return format(new Date(`${customTargetDate}T00:00:00`), 'M/d');
+      return new Date(`${customTargetDate}T00:00:00`);
     }
 
-    if (dateOffset === 0) {
-      return '今日';
-    }
-
-    if (dateOffset === 1) {
-      return '明日';
-    }
-
-    return '明後日';
+    return addDays(new Date(), dateOffset);
   }, [customTargetDate, dateOffset]);
+
+  const selectedDateLabel = useMemo(
+    () => formatReminderDate(selectedTargetDate),
+    [selectedTargetDate],
+  );
 
   const resetDraftTitle = useCallback(() => {
     draftTitleRef.current = '';
@@ -100,19 +101,25 @@ export function ReminderInputSheet({
   );
 
   useEffect(() => {
-    if (isOpen && !isPresentedRef.current && !isClosingRef.current) {
+    if (!isOpen) {
+      if (isPresentedRef.current) {
+        isClosingRef.current = true;
+        sheetRef.current?.dismiss();
+        return;
+      }
+
+      isClosingRef.current = false;
+      return;
+    }
+
+    if (!isPresentedRef.current && !isClosingRef.current) {
       isPresentedRef.current = true;
       isClosingRef.current = false;
+      isSaveRequestedRef.current = false;
       resetDraftTitle();
       setTitleNotice(null);
       resetInput(defaultTargetTime);
       sheetRef.current?.present();
-      return;
-    }
-
-    if (!isOpen && isPresentedRef.current) {
-      isClosingRef.current = true;
-      sheetRef.current?.dismiss();
     }
   }, [defaultTargetTime, isOpen, resetDraftTitle, resetInput]);
 
@@ -132,16 +139,18 @@ export function ReminderInputSheet({
     isClosingRef.current = true;
     closeQuickAdd();
     isPresentedRef.current = false;
+    isSaveRequestedRef.current = false;
     setIsDatePickerOpen(false);
     setIsTimePickerOpen(false);
     resetDraftTitle();
     setTitleNotice(null);
-    requestAnimationFrame(() => {
-      isClosingRef.current = false;
-    });
   }, [closeQuickAdd, resetDraftTitle]);
 
   const handleSave = useCallback(async () => {
+    if (isSaving || isSaveRequestedRef.current) {
+      return;
+    }
+
     const normalizedTitle = draftTitleRef.current.replace(/\n/g, ' ').trim();
 
     if (normalizedTitle.length === 0) {
@@ -156,13 +165,15 @@ export function ReminderInputSheet({
 
     setTitleNotice(null);
     setTitle(normalizedTitle);
+    isSaveRequestedRef.current = true;
     try {
       await onSave?.(normalizedTitle);
       requestClose();
     } catch {
       // HomeScreen shows the user-facing error. Keep the sheet open so the title is not lost.
+      isSaveRequestedRef.current = false;
     }
-  }, [onSave, requestClose, setTitle]);
+  }, [isSaving, onSave, requestClose, setTitle]);
 
   const handleDatePickerChange = useCallback(
     (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -216,7 +227,13 @@ export function ReminderInputSheet({
         <BottomSheetScrollView contentContainerStyle={styles.content}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>なにを忘れたくない？</Text>
-            <Pressable accessibilityRole="button" onPress={handleClosePress} style={styles.closeButton}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="入力を閉じる"
+              hitSlop={8}
+              onPress={handleClosePress}
+              style={styles.closeButton}
+            >
               <Ionicons name="close" size={20} color={palette.ink} />
             </Pressable>
           </View>
@@ -243,8 +260,10 @@ export function ReminderInputSheet({
 
           <DateChips
             value={dateOffset}
+            preset={datePreset}
             customDate={customTargetDate}
             onChange={setDateOffset}
+            onSelectPresetDate={setPresetTargetDate}
             onSelectCustomDate={() => setIsDatePickerOpen(true)}
           />
 
@@ -281,6 +300,8 @@ export function ReminderInputSheet({
               <Text style={styles.calendarTitle}>日付を選択</Text>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="日付選択を閉じる"
+                hitSlop={8}
                 onPress={() => setIsDatePickerOpen(false)}
                 style={styles.closeButton}
               >
@@ -296,7 +317,7 @@ export function ReminderInputSheet({
               themeVariant="light"
               onChange={handleDatePickerChange}
             />
-            <Text style={styles.calendarHint}>明後日以降の日付を選べます</Text>
+            <Text style={styles.calendarHint}>今日以降の日付を選べます</Text>
             <PrimaryButton
               label="この日付にする"
               icon="calendar-outline"
@@ -319,6 +340,8 @@ export function ReminderInputSheet({
               <Text style={styles.calendarTitle}>時刻を選択</Text>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="時刻選択を閉じる"
+                hitSlop={8}
                 onPress={() => setIsTimePickerOpen(false)}
                 style={styles.closeButton}
               >

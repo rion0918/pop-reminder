@@ -4,18 +4,37 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { palette } from '../../../constants/colors';
 import { ReminderDateOffset } from '../stores/reminderUiStore';
+import type {
+  ComputedReminderDatePreset,
+  ReminderDatePreset,
+} from '../utils/reminderDatePresets';
+import {
+  formatLocalDate,
+  getReminderDatePresetTarget,
+} from '../utils/reminderDatePresets';
 
 type DateChipsProps = {
   value: ReminderDateOffset;
+  preset: ReminderDatePreset;
   customDate: string | null;
   onChange: (value: ReminderDateOffset) => void;
+  onSelectPresetDate: (preset: ComputedReminderDatePreset, date: string) => void;
   onSelectCustomDate: () => void;
 };
 
-const chips: Array<{ label: string; value: ReminderDateOffset }> = [
-  { label: '今日', value: 0 },
-  { label: '明日', value: 1 },
-  { label: '明後日', value: 2 },
+const relativeChips: {
+  label: string;
+  value: ReminderDateOffset;
+  preset: ReminderDatePreset;
+}[] = [
+  { label: '今日', value: 0, preset: 'today' },
+  { label: '明日', value: 1, preset: 'tomorrow' },
+  { label: '明後日', value: 2, preset: 'dayAfterTomorrow' },
+];
+
+const computedChips: { label: string; preset: ComputedReminderDatePreset }[] = [
+  { label: '週末', preset: 'weekend' },
+  { label: '来週', preset: 'nextWeek' },
 ];
 
 function formatCustomDate(value: string | null) {
@@ -26,49 +45,89 @@ function formatCustomDate(value: string | null) {
   return format(new Date(`${value}T00:00:00`), 'M/d');
 }
 
-export function DateChips({ value, customDate, onChange, onSelectCustomDate }: DateChipsProps) {
-  return (
-    <View style={styles.row}>
-      {chips.map((chip) => {
-        const active = !customDate && chip.value === value;
+export function DateChips({
+  value,
+  preset,
+  customDate,
+  onChange,
+  onSelectPresetDate,
+  onSelectCustomDate,
+}: DateChipsProps) {
+  const customActive = preset === 'custom';
 
-        return (
-          <Pressable
-            key={chip.value}
-            accessibilityRole="button"
-            onPress={() => onChange(chip.value)}
-            style={[styles.chip, active ? styles.activeChip : null]}
-          >
-            <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
-          </Pressable>
-        );
-      })}
-      <Pressable
-        accessibilityRole="button"
-        onPress={onSelectCustomDate}
-        style={[styles.chip, styles.selectChip, customDate ? styles.activeChip : null]}
-      >
-        <Ionicons
-          name="calendar-outline"
-          size={14}
-          color={customDate ? palette.white : palette.ink}
-        />
-        <Text style={[styles.label, customDate ? styles.activeLabel : null]}>
-          {formatCustomDate(customDate)}
-        </Text>
-      </Pressable>
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.row}>
+        {relativeChips.map((chip) => {
+          const active = preset === chip.preset || (!customDate && chip.value === value);
+
+          return (
+            <Pressable
+              key={chip.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(chip.value)}
+              style={[styles.chip, active ? styles.activeChip : null]}
+            >
+              <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.row}>
+        {computedChips.map((chip) => {
+          const active = preset === chip.preset;
+
+          return (
+            <Pressable
+              key={chip.preset}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() =>
+                onSelectPresetDate(
+                  chip.preset,
+                  formatLocalDate(getReminderDatePresetTarget(chip.preset)),
+                )
+              }
+              style={[styles.chip, active ? styles.activeChip : null]}
+            >
+              <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
+            </Pressable>
+          );
+        })}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: customActive }}
+          onPress={onSelectCustomDate}
+          style={[styles.chip, styles.selectChip, customActive ? styles.activeChip : null]}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={customActive ? palette.white : palette.ink}
+          />
+          <Text style={[styles.label, customActive ? styles.activeLabel : null]}>
+            {customActive ? formatCustomDate(customDate) : '日付を選ぶ'}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    gap: 8,
+  },
   row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
   chip: {
-    minWidth: 66,
+    flex: 1,
+    minWidth: 0,
     height: 40,
     borderRadius: 15,
     alignItems: 'center',
@@ -92,6 +151,7 @@ const styles = StyleSheet.create({
     color: palette.white,
   },
   selectChip: {
-    paddingHorizontal: 12,
+    flex: 1.35,
+    paddingHorizontal: 10,
   },
 });

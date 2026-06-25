@@ -12,6 +12,14 @@ type ReminderNotificationTarget = Pick<
   'id' | 'title' | 'previousNotifyAt' | 'targetNotifyAt'
 >;
 
+type ScheduleNotificationInput = {
+  title: string;
+  body: string;
+  date?: Date;
+  seconds?: number;
+  reminderId: string;
+};
+
 export function configureNotificationHandler() {
   Notifications.setNotificationHandler({
     handleNotification: async () =>
@@ -67,13 +75,7 @@ async function scheduleIfFuture({
   date,
   reminderId,
   seconds,
-}: {
-  title: string;
-  body: string;
-  date?: Date;
-  seconds?: number;
-  reminderId: string;
-}) {
+}: ScheduleNotificationInput) {
   if (seconds !== undefined) {
     return Notifications.scheduleNotificationAsync({
       content: {
@@ -115,6 +117,15 @@ async function scheduleIfFuture({
   });
 }
 
+async function scheduleIfFutureSafely(input: ScheduleNotificationInput) {
+  try {
+    return await scheduleIfFuture(input);
+  } catch (error) {
+    console.warn('Failed to schedule notification', error);
+    return null;
+  }
+}
+
 async function hasNotificationPermission() {
   const permission = await requestNotificationPermissions();
 
@@ -133,14 +144,14 @@ export async function scheduleReminderNotifications(
     };
   }
 
-  const previousNotificationId = await scheduleIfFuture({
+  const previousNotificationId = await scheduleIfFutureSafely({
     title: '明日の持ちもの',
     body: `「${reminder.title}」をふわっと残しています`,
     date: new Date(reminder.previousNotifyAt),
     reminderId: reminder.id,
   });
 
-  const targetNotificationId = await scheduleIfFuture({
+  const targetNotificationId = await scheduleIfFutureSafely({
     title: 'ポップ・リマインダー',
     body: `「${reminder.title}」の時間です`,
     date: new Date(reminder.targetNotifyAt),
@@ -172,14 +183,14 @@ export async function scheduleTestReminderNotifications(
     };
   }
 
-  const previousNotificationId = await scheduleIfFuture({
+  const previousNotificationId = await scheduleIfFutureSafely({
     title: '通知テスト 前日',
     body: `「${reminder.title}」の前日通知テストです`,
     seconds: 10,
     reminderId: reminder.id,
   });
 
-  const targetNotificationId = await scheduleIfFuture({
+  const targetNotificationId = await scheduleIfFutureSafely({
     title: '通知テスト 当日',
     body: `「${reminder.title}」の当日通知テストです`,
     seconds: 20,

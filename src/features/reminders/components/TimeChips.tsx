@@ -12,7 +12,7 @@ type TimeChipsProps = {
 const presets = [
   { label: '朝', time: '08:00' },
   { label: '昼', time: '12:00' },
-  { label: '夕方', time: '18:00' },
+  { label: '夕', time: '18:00' },
   { label: '夜', time: '20:00' },
 ];
 
@@ -21,23 +21,27 @@ export function TimeChips({ value, onChange, onSelectCustomTime }: TimeChipsProp
 
   return (
     <View style={styles.wrap}>
-      {presets.map((preset) => {
-        const active = value === preset.time;
+      <View style={styles.presetRow}>
+        {presets.map((preset) => {
+          const active = value === preset.time;
 
-        return (
-          <Pressable
-            key={preset.time}
-            accessibilityRole="button"
-            onPress={() => onChange(preset.time)}
-            style={[styles.chip, active ? styles.activeChip : null]}
-          >
-            <Text style={[styles.label, active ? styles.activeLabel : null]}>{preset.label}</Text>
-            <Text style={[styles.time, active ? styles.activeLabel : null]}>{preset.time}</Text>
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              key={preset.time}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(preset.time)}
+              style={[styles.chip, active ? styles.activeChip : null]}
+            >
+              <Text style={[styles.label, active ? styles.activeLabel : null]}>{preset.label}</Text>
+              <Text style={[styles.time, active ? styles.activeLabel : null]}>{preset.time}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ selected: !isPresetTime }}
         onPress={onSelectCustomTime}
         style={[styles.chip, styles.customChip, !isPresetTime ? styles.activeChip : null]}
       >
@@ -56,19 +60,23 @@ export function TimeChips({ value, onChange, onSelectCustomTime }: TimeChipsProp
 
 const styles = StyleSheet.create({
   wrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
     marginTop: 14,
   },
+  presetRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   chip: {
+    flex: 1,
+    minWidth: 0,
     minHeight: 42,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 5,
-    paddingHorizontal: 12,
+    gap: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     backgroundColor: palette.cloud,
     borderWidth: 1,
     borderColor: palette.line,
@@ -78,6 +86,9 @@ const styles = StyleSheet.create({
     borderColor: palette.lavenderDeep,
   },
   customChip: {
+    minHeight: 40,
+    flexDirection: 'row',
+    gap: 6,
     paddingHorizontal: 14,
   },
   label: {

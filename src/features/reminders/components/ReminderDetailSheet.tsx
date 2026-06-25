@@ -7,21 +7,17 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
-import { format } from 'date-fns';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
 import { palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
+import { formatReminderDateTime } from '../utils/reminderDateFormat';
 
 type ReminderDetailSheetProps = {
   reminder: Reminder | null;
   onClose: () => void;
   onDelete: (reminder: Reminder) => Promise<void>;
 };
-
-function formatDateTime(value: string) {
-  return format(new Date(value), 'M/d HH:mm');
-}
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -35,6 +31,9 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDetailSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
   const isPresentedRef = useRef(false);
+  const isClosingRef = useRef(false);
+  const isDeleteRequestedRef = useRef(false);
+  const isDeletingRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const snapPoints = useMemo(() => ['48%', '68%'], []);
 
@@ -46,32 +45,45 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   );
 
   useEffect(() => {
-    if (reminder && !isPresentedRef.current) {
-      isPresentedRef.current = true;
-      sheetRef.current?.present();
+    if (!reminder) {
+      if (isPresentedRef.current) {
+        isClosingRef.current = true;
+        sheetRef.current?.dismiss();
+        return;
+      }
+
+      isClosingRef.current = false;
       return;
     }
 
-    if (!reminder && isPresentedRef.current) {
-      sheetRef.current?.dismiss();
+    if (!isPresentedRef.current && !isClosingRef.current) {
+      isPresentedRef.current = true;
+      isClosingRef.current = false;
+      sheetRef.current?.present();
     }
   }, [reminder]);
 
   const handleDismiss = useCallback(() => {
+    isClosingRef.current = true;
     isPresentedRef.current = false;
-    setIsDeleting(false);
+    if (!isDeletingRef.current) {
+      isDeleteRequestedRef.current = false;
+      setIsDeleting(false);
+    }
     onClose();
   }, [onClose]);
 
   const handleClosePress = useCallback(() => {
+    isClosingRef.current = true;
     sheetRef.current?.dismiss();
   }, []);
 
   const handleDeletePress = useCallback(() => {
-    if (!reminder || isDeleting) {
+    if (!reminder || isDeleting || isDeleteRequestedRef.current) {
       return;
     }
 
+    isDeleteRequestedRef.current = true;
     Alert.alert(
       'リマインダーを削除しますか？',
       '予約済みの通知も一緒にキャンセルします。',
@@ -79,12 +91,17 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
         {
           text: 'キャンセル',
           style: 'cancel',
+          onPress: () => {
+            isDeleteRequestedRef.current = false;
+          },
         },
         {
           text: '削除する',
           style: 'destructive',
           onPress: () => {
+            isDeletingRef.current = true;
             setIsDeleting(true);
+            isClosingRef.current = true;
             sheetRef.current?.dismiss();
             setTimeout(() => {
               void onDelete(reminder)
@@ -93,12 +110,21 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
                   Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
                 })
                 .finally(() => {
+                  isDeletingRef.current = false;
+                  isDeleteRequestedRef.current = false;
                   setIsDeleting(false);
                 });
             }, 160);
           },
         },
       ],
+      {
+        onDismiss: () => {
+          if (!isDeletingRef.current) {
+            isDeleteRequestedRef.current = false;
+          }
+        },
+      },
     );
   }, [isDeleting, onDelete, reminder]);
 
@@ -123,18 +149,24 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
               {reminder?.title ?? ''}
             </Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={handleClosePress} style={styles.closeButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="詳細を閉じる"
+            hitSlop={8}
+            onPress={handleClosePress}
+            style={styles.closeButton}
+          >
             <Ionicons name="close" size={20} color={palette.ink} />
           </Pressable>
         </View>
 
         {reminder ? (
           <View style={styles.detailGroup}>
-            <DetailRow label="通知日時" value={formatDateTime(reminder.targetAt)} />
+            <DetailRow label="通知日時" value={formatReminderDateTime(reminder.targetAt)} />
             <View style={styles.divider} />
-            <DetailRow label="前日通知時刻" value={formatDateTime(reminder.previousNotifyAt)} />
+            <DetailRow label="前日通知時刻" value={formatReminderDateTime(reminder.previousNotifyAt)} />
             <View style={styles.divider} />
-            <DetailRow label="当日通知時刻" value={formatDateTime(reminder.targetNotifyAt)} />
+            <DetailRow label="当日通知時刻" value={formatReminderDateTime(reminder.targetNotifyAt)} />
           </View>
         ) : null}
 

@@ -16,6 +16,7 @@ export function PrimaryButton({ label, icon, onPress, disabled, style }: Primary
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
