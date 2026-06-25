@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { listActiveReminders } from '../services/reminderRepository';
 import { Reminder } from '../types/reminder';
@@ -6,6 +7,8 @@ import { Reminder } from '../types/reminder';
 type RefreshOptions = {
   silent?: boolean;
 };
+
+const MAX_AUTO_REFRESH_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 function sortReminders(reminders: Reminder[]) {
   return [...reminders].sort(
@@ -60,6 +63,43 @@ export function useReminders() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void refresh({ silent: true });
+      }
+    });
+
+    return () => subscription.remove();
+  }, [refresh]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const nextTargetTime = reminders.reduce<number | null>((next, reminder) => {
+      const targetTime = new Date(reminder.targetNotifyAt).getTime();
+
+      if (targetTime <= now) {
+        return next;
+      }
+
+      return next === null ? targetTime : Math.min(next, targetTime);
+    }, null);
+
+    if (nextTargetTime === null) {
+      return;
+    }
+
+    const timeoutMs = Math.min(
+      Math.max(0, nextTargetTime - now) + 1000,
+      MAX_AUTO_REFRESH_TIMEOUT_MS,
+    );
+    const timer = setTimeout(() => {
+      void refresh({ silent: true });
+    }, timeoutMs);
+
+    return () => clearTimeout(timer);
+  }, [refresh, reminders]);
 
   return {
     reminders,

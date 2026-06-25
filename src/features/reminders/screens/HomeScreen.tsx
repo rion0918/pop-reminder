@@ -153,7 +153,7 @@ export function HomeScreen() {
     ? formatReminderBubbleDateTime(reminders[0].targetAt)
     : "完璧！";
   const nextReminderTitle =
-    reminders[0]?.title ?? "忘れたくないものはありません";
+    reminders[0]?.title ?? "忘れたくないことはありません";
 
   return (
     <AppScreen theme={settings?.theme ?? "sky"}>

@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +30,91 @@ import { AppTheme, palette, themeOptions } from '../../../constants/colors';
 
 const appIcon = require('../../../../assets/app-icon.png');
 
+const themeLabels: Record<AppTheme, string> = {
+  sky: 'そら',
+  lavender: 'らべんだー',
+  mint: 'みんと',
+};
+
+type LegalSection = {
+  title: string;
+  body: string;
+};
+
+type LegalDocument = {
+  title: string;
+  updatedAt: string;
+  sections: LegalSection[];
+};
+
+const privacyPolicyDocument: LegalDocument = {
+  title: 'プライバシーポリシー',
+  updatedAt: '2026年6月25日',
+  sections: [
+    {
+      title: '1. 基本方針',
+      body: 'ポップ・リマインダーは、忘れたくないことを気軽に残すための個人開発アプリです。ユーザーのプライバシーを大切にし、必要以上の情報を取得しない方針で運営します。',
+    },
+    {
+      title: '2. 保存する情報',
+      body: '登録したリマインダーのタイトル、日時、通知ID、アプリ設定などを、お使いの端末内に保存します。現時点ではログイン機能や外部サーバーへの同期はありません。',
+    },
+    {
+      title: '3. 通知権限について',
+      body: '本アプリは、お知らせを届けるために端末の通知権限を利用します。通知権限は端末の設定からいつでも変更できます。',
+    },
+    {
+      title: '4. 外部送信について',
+      body: '現時点では、登録したリマインダーや設定内容を開発者のサーバーへ送信することはありません。将来、外部サービスを利用する機能を追加する場合は、分かりやすくお知らせします。',
+    },
+    {
+      title: '5. データの削除',
+      body: 'アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。',
+    },
+    {
+      title: '6. お問い合わせ',
+      body: '不具合やご意見がある場合は、App Storeの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
+    },
+  ],
+};
+
+const termsSections = [
+  {
+    title: '1. はじめに',
+    body: 'ポップ・リマインダーは、忘れたくないことを気軽に残すための個人開発アプリです。本アプリを利用することで、この利用規約に同意したものとします。',
+  },
+  {
+    title: '2. ご利用について',
+    body: 'リマインダーの登録、表示、お知らせは、端末の状態やOSの仕様により予定どおり動作しない場合があります。大切な予定や安全に関わる用途では、他の確認手段もあわせてご利用ください。',
+  },
+  {
+    title: '3. データの取り扱い',
+    body: '登録したリマインダーや設定は、お使いの端末内に保存されます。現時点ではログイン機能や外部サーバーへの同期はありません。アプリの削除や端末の初期化により、保存データが失われる場合があります。',
+  },
+  {
+    title: '4. 通知について',
+    body: '本アプリは、端末の通知権限を利用してお知らせを表示します。通知の表示や通知音は、OS設定、集中モード、通信環境、端末の状態などの影響を受ける場合があります。',
+  },
+  {
+    title: '5. 免責事項',
+    body: '本アプリの利用により生じた損失、予定の見落とし、通知の不達などについて、開発者は法令で認められる範囲で責任を負いません。本アプリは学生の個人開発者により提供されています。',
+  },
+  {
+    title: '6. 規約の変更',
+    body: '必要に応じて、この利用規約を変更することがあります。重要な変更がある場合は、アプリ内などで分かりやすくお知らせします。',
+  },
+  {
+    title: '7. お問い合わせ',
+    body: '不具合やご意見がある場合は、App Storeの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
+  },
+];
+
+const termsDocument: LegalDocument = {
+  title: '利用規約',
+  updatedAt: '2026年6月25日',
+  sections: termsSections,
+};
+
 export function SettingsScreen() {
   const router = useRouter();
   const { settings, loading, update } = useAppSettings();
@@ -45,6 +131,7 @@ export function SettingsScreen() {
     useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] =
     useState(false);
+  const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
 
   useEffect(() => {
     if (!settings) {
@@ -235,12 +322,32 @@ export function SettingsScreen() {
                       ]}
                     >
                       <Text style={[styles.themeLabel, active ? styles.themeLabelActive : null]}>
-                        {theme}
+                        {themeLabels[theme]}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
+            </SettingRow>
+          </View>
+
+          <View style={styles.group}>
+            <SettingRow
+              icon="shield-checkmark-outline"
+              title="プライバシーポリシー"
+              caption="保存データと通知権限について"
+              onPress={() => setLegalDocument(privacyPolicyDocument)}
+            >
+              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+            </SettingRow>
+            <View style={styles.divider} />
+            <SettingRow
+              icon="document-text-outline"
+              title="利用規約"
+              caption="アプリのご利用にあたって"
+              onPress={() => setLegalDocument(termsDocument)}
+            >
+              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>
           </View>
 
@@ -310,7 +417,60 @@ export function SettingsScreen() {
         onChange={handleTimePickerChange}
         onClose={() => setIsPreviousTimePickerOpen(false)}
       />
+      <LegalDocumentModal
+        document={legalDocument}
+        onClose={() => setLegalDocument(null)}
+      />
     </AppScreen>
+  );
+}
+
+type LegalDocumentModalProps = {
+  document: LegalDocument | null;
+  onClose: () => void;
+};
+
+function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
+  return (
+    <Modal
+      animationType="fade"
+      transparent
+      visible={document !== null}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalBackdrop}>
+        <View style={styles.legalModal}>
+          <View style={styles.legalModalHeader}>
+            <View>
+              <Text style={styles.legalModalTitle}>{document?.title}</Text>
+              <Text style={styles.legalModalUpdated}>
+                最終更新日: {document?.updatedAt}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="閉じる"
+              hitSlop={8}
+              onPress={onClose}
+              style={styles.legalCloseButton}
+            >
+              <Ionicons name="close" size={20} color={palette.ink} />
+            </Pressable>
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.legalModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {document?.sections.map((section) => (
+              <View key={section.title} style={styles.legalSection}>
+                <Text style={styles.legalSectionTitle}>{section.title}</Text>
+                <Text style={styles.legalBody}>{section.body}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -430,6 +590,73 @@ const styles = StyleSheet.create({
   },
   themeLabelActive: {
     color: palette.white,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(38,49,81,0.26)',
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  legalModal: {
+    maxHeight: '84%',
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    paddingTop: 18,
+    paddingHorizontal: 18,
+    shadowColor: '#7DB5E8',
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 16 },
+  },
+  legalModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(220,233,247,0.78)',
+  },
+  legalModalTitle: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  legalModalUpdated: {
+    color: palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  legalCloseButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F6FAFF',
+    borderWidth: 1,
+    borderColor: palette.line,
+  },
+  legalModalContent: {
+    paddingTop: 6,
+    paddingBottom: 24,
+  },
+  legalSection: {
+    marginTop: 12,
+  },
+  legalSectionTitle: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
+  legalBody: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 21,
   },
   devGroup: {
     marginBottom: 18,

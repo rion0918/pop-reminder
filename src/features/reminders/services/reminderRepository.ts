@@ -9,7 +9,7 @@ export async function listActiveReminders(now = new Date()): Promise<Reminder[]>
   return db
     .select()
     .from(reminders)
-    .where(and(eq(reminders.status, 'active'), gt(reminders.expiresAt, now.toISOString())))
+    .where(and(eq(reminders.status, 'active'), gt(reminders.targetNotifyAt, now.toISOString())))
     .orderBy(asc(reminders.targetAt));
 }
 
@@ -17,8 +17,8 @@ export async function listExpiredReminders(now = new Date()): Promise<Reminder[]
   return db
     .select()
     .from(reminders)
-    .where(and(eq(reminders.status, 'active'), lte(reminders.expiresAt, now.toISOString())))
-    .orderBy(asc(reminders.expiresAt));
+    .where(and(eq(reminders.status, 'active'), lte(reminders.targetNotifyAt, now.toISOString())))
+    .orderBy(asc(reminders.targetNotifyAt));
 }
 
 export async function insertReminder(draft: CreateReminderDraft): Promise<Reminder> {
