@@ -12,6 +12,7 @@ const defaultSettings: NewAppSettingsRow = {
   previousNotifyTime: '20:00',
   defaultTargetTime: '08:00',
   autoDeleteEnabled: true,
+  notificationSoundEnabled: true,
   theme: 'sky',
 };
 
@@ -36,6 +37,7 @@ export async function getAppSettings(): Promise<AppSettings> {
     previousNotifyTime: '20:00',
     defaultTargetTime: '08:00',
     autoDeleteEnabled: true,
+    notificationSoundEnabled: true,
     theme: 'sky',
   };
 }
@@ -54,6 +56,8 @@ export async function updateAppSettings(input: UpdateAppSettingsInput): Promise<
         ? input.defaultTargetTime
         : current.defaultTargetTime,
     autoDeleteEnabled: input.autoDeleteEnabled ?? current.autoDeleteEnabled,
+    notificationSoundEnabled:
+      input.notificationSoundEnabled ?? current.notificationSoundEnabled,
     theme: input.theme ?? current.theme,
   };
 
@@ -63,6 +67,7 @@ export async function updateAppSettings(input: UpdateAppSettingsInput): Promise<
       previousNotifyTime: next.previousNotifyTime,
       defaultTargetTime: next.defaultTargetTime,
       autoDeleteEnabled: next.autoDeleteEnabled,
+      notificationSoundEnabled: next.notificationSoundEnabled,
       theme: next.theme,
     })
     .where(eq(appSettings.id, DEFAULT_SETTINGS_ID));

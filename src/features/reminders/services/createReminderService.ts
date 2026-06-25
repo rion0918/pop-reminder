@@ -32,8 +32,12 @@ export async function createReminder(input: CreateReminderInput, options?: Creat
   try {
     const notificationIds =
       __DEV__ && options?.useTestNotifications
-        ? await scheduleTestReminderNotifications(reminder)
-        : await scheduleReminderNotifications(reminder);
+        ? await scheduleTestReminderNotifications(reminder, {
+            soundEnabled: settings.notificationSoundEnabled,
+          })
+        : await scheduleReminderNotifications(reminder, {
+            soundEnabled: settings.notificationSoundEnabled,
+          });
 
     return (await updateReminderNotificationIds(reminder.id, notificationIds)) ?? reminder;
   } catch (error) {

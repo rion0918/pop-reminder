@@ -1,26 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
-import { palette } from '../../../constants/colors';
+import { palette } from '../../constants/colors';
 
-type TimeChipsProps = {
+type TimePreset = {
+  label: string;
+  time: string;
+};
+
+type TimeSelectorProps = {
   value: string;
   onChange: (value: string) => void;
   onSelectCustomTime: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
-const presets = [
+const presets: TimePreset[] = [
   { label: '朝', time: '08:00' },
   { label: '昼', time: '12:00' },
   { label: '夕', time: '18:00' },
   { label: '夜', time: '20:00' },
 ];
 
-export function TimeChips({ value, onChange, onSelectCustomTime }: TimeChipsProps) {
+export function TimeSelector({
+  value,
+  onChange,
+  onSelectCustomTime,
+  style,
+}: TimeSelectorProps) {
   const isPresetTime = presets.some((preset) => preset.time === value);
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, style]}>
       <View style={styles.presetRow}>
         {presets.map((preset) => {
           const active = value === preset.time;
@@ -70,7 +82,6 @@ export function TimeChips({ value, onChange, onSelectCustomTime }: TimeChipsProp
 const styles = StyleSheet.create({
   wrap: {
     gap: 8,
-    marginTop: 14,
   },
   presetRow: {
     flexDirection: 'row',

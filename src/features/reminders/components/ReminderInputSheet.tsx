@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { addDays, format, set, startOfDay } from 'date-fns';
+import { addDays, addMinutes, format, isSameDay, set, startOfDay } from 'date-fns';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -13,6 +13,8 @@ import {
 } from '@gorhom/bottom-sheet';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
+import { TimePickerModal } from '../../../shared/components/TimePickerModal';
+import { TimeSelector } from '../../../shared/components/TimeSelector';
 import { palette } from '../../../constants/colors';
 import {
   selectIsTimeValid,
@@ -21,12 +23,42 @@ import {
 } from '../stores/reminderUiStore';
 import { formatReminderDate } from '../utils/reminderDateFormat';
 import { DateChips } from './DateChips';
-import { TimeChips } from './TimeChips';
 
 type ReminderInputSheetProps = {
   defaultTargetTime?: string;
   onSave?: (title: string) => Promise<void> | void;
 };
+
+const sameDayTimePresets = ['08:00', '12:00', '18:00', '20:00'];
+
+function buildTargetDateTime(targetDate: Date, time: string) {
+  const [hoursText, minutesText] = time.split(':');
+
+  return set(targetDate, {
+    hours: Number(hoursText),
+    minutes: Number(minutesText),
+    seconds: 0,
+    milliseconds: 0,
+  });
+}
+
+function getNextAvailableTimeForToday(targetDate: Date, now = new Date()) {
+  if (!isSameDay(targetDate, now)) {
+    return null;
+  }
+
+  const nextPreset = sameDayTimePresets.find(
+    (preset) => buildTargetDateTime(targetDate, preset).getTime() > now.getTime(),
+  );
+
+  if (nextPreset) {
+    return nextPreset;
+  }
+
+  const nextTime = addMinutes(now, 5);
+
+  return isSameDay(nextTime, targetDate) ? format(nextTime, 'HH:mm') : null;
+}
 
 export function ReminderInputSheet({
   defaultTargetTime = '08:00',
@@ -67,14 +99,6 @@ export function ReminderInputSheet({
     return new Date(`${customTargetDate}T12:00:00`);
   }, [customTargetDate, minCustomDate]);
 
-  const timePickerValue = useMemo(() => {
-    const [hoursText, minutesText] = time.split(':');
-    const value = new Date();
-
-    value.setHours(Number(hoursText), Number(minutesText), 0, 0);
-    return value;
-  }, [time]);
-
   const selectedTargetDate = useMemo(() => {
     if (customTargetDate) {
       return new Date(`${customTargetDate}T00:00:00`);
@@ -89,14 +113,7 @@ export function ReminderInputSheet({
   );
 
   const targetAt = useMemo(() => {
-    const [hoursText, minutesText] = time.split(':');
-
-    return set(selectedTargetDate, {
-      hours: Number(hoursText),
-      minutes: Number(minutesText),
-      seconds: 0,
-      milliseconds: 0,
-    });
+    return buildTargetDateTime(selectedTargetDate, time);
   }, [selectedTargetDate, time]);
 
   const isTargetFuture = targetAt.getTime() > Date.now();
@@ -149,7 +166,7 @@ export function ReminderInputSheet({
   }, [requestClose]);
 
   const handleDismiss = useCallback(() => {
-    isClosingRef.current = true;
+    isClosingRef.current = false;
     closeQuickAdd();
     isPresentedRef.current = false;
     isSaveRequestedRef.current = false;
@@ -200,25 +217,59 @@ export function ReminderInputSheet({
       }
 
       const nextDate = selectedDate < minCustomDate ? minCustomDate : selectedDate;
+      const nextTime = getNextAvailableTimeForToday(nextDate);
+
+      if (nextTime && buildTargetDateTime(nextDate, time).getTime() <= Date.now()) {
+        setTargetTime(nextTime);
+      }
+
       setCustomTargetDate(format(nextDate, 'yyyy-MM-dd'));
     },
-    [minCustomDate, setCustomTargetDate],
+    [minCustomDate, setCustomTargetDate, setTargetTime, time],
   );
 
-  const handleTimePickerChange = useCallback(
-    (event: DateTimePickerEvent, selectedTime?: Date) => {
-      if (event.type === 'dismissed') {
-        setIsTimePickerOpen(false);
-        return;
+  const handleDateOffsetChange = useCallback(
+    (nextDateOffset: typeof dateOffset) => {
+      const nextDate = addDays(new Date(), nextDateOffset);
+      const nextTime = getNextAvailableTimeForToday(nextDate);
+
+      if (nextTime && buildTargetDateTime(nextDate, time).getTime() <= Date.now()) {
+        setTargetTime(nextTime);
       }
 
-      if (!selectedTime) {
-        return;
-      }
-
-      setTargetTime(format(selectedTime, 'HH:mm'));
+      setDateOffset(nextDateOffset);
     },
-    [setTargetTime],
+    [setDateOffset, setTargetTime, time],
+  );
+
+  const handlePresetDateChange = useCallback(
+    (nextPreset: Parameters<typeof setPresetTargetDate>[0], nextDateText: string) => {
+      const nextDate = new Date(`${nextDateText}T00:00:00`);
+      const nextTime = getNextAvailableTimeForToday(nextDate);
+
+      if (nextTime && buildTargetDateTime(nextDate, time).getTime() <= Date.now()) {
+        setTargetTime(nextTime);
+      }
+
+      setPresetTargetDate(nextPreset, nextDateText);
+    },
+    [setPresetTargetDate, setTargetTime, time],
+  );
+
+  const handleTargetTimeChange = useCallback(
+    (nextTime: string) => {
+      const targetDateTime = buildTargetDateTime(selectedTargetDate, nextTime);
+
+      if (targetDateTime.getTime() <= Date.now()) {
+        const fallbackTime = getNextAvailableTimeForToday(selectedTargetDate);
+
+        setTargetTime(fallbackTime ?? nextTime);
+        return;
+      }
+
+      setTargetTime(nextTime);
+    },
+    [selectedTargetDate, setTargetTime],
   );
 
   return (
@@ -275,25 +326,26 @@ export function ReminderInputSheet({
             value={dateOffset}
             preset={datePreset}
             customDate={customTargetDate}
-            onChange={setDateOffset}
-            onSelectPresetDate={setPresetTargetDate}
+            onChange={handleDateOffsetChange}
+            onSelectPresetDate={handlePresetDateChange}
             onSelectCustomDate={() => setIsDatePickerOpen(true)}
           />
 
-          <TimeChips
+          <TimeSelector
             value={time}
-            onChange={setTargetTime}
+            onChange={handleTargetTimeChange}
             onSelectCustomTime={() => setIsTimePickerOpen(true)}
+            style={styles.timeSelector}
           />
 
           <View style={styles.summary}>
             <Ionicons name="notifications-outline" size={17} color={palette.lavenderDeep} />
-            <Text style={styles.summaryText}>{selectedDateLabel} {time} にふわっと通知</Text>
+            <Text style={styles.summaryText}>{selectedDateLabel} {time} にふわっとお知らせ</Text>
           </View>
 
           {!isTargetFuture ? (
             <Text style={styles.timingNoticeText}>
-              過去の日時は選べません。通知を受け取る未来の日時を選んでください。
+              過去の日時は選べません。お知らせを受け取る未来の日時を選んでください。
             </Text>
           ) : null}
 
@@ -347,45 +399,13 @@ export function ReminderInputSheet({
         </View>
       </Modal>
 
-      <Modal
+      <TimePickerModal
         visible={isTimePickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsTimePickerOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerPanel}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.calendarTitle}>時刻を選択</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="時刻選択を閉じる"
-                hitSlop={8}
-                onPress={() => setIsTimePickerOpen(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={20} color={palette.ink} />
-              </Pressable>
-            </View>
-            <DateTimePicker
-              value={timePickerValue}
-              mode="time"
-              display="spinner"
-              is24Hour
-              locale="ja-JP"
-              themeVariant="light"
-              onChange={handleTimePickerChange}
-            />
-            <Text style={styles.calendarHint}>選んだ時刻に当日の通知が届きます</Text>
-            <PrimaryButton
-              label="この時刻にする"
-              icon="time-outline"
-              onPress={() => setIsTimePickerOpen(false)}
-              style={styles.pickerButton}
-            />
-          </View>
-        </View>
-      </Modal>
+        value={time}
+        hint="選んだ時刻に当日のお知らせが届きます"
+        onChange={handleTargetTimeChange}
+        onClose={() => setIsTimePickerOpen(false)}
+      />
     </>
   );
 }
@@ -441,6 +461,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 10,
     textAlign: 'center',
+  },
+  timeSelector: {
+    marginTop: 14,
   },
   timingNoticeText: {
     color: palette.peachDeep,

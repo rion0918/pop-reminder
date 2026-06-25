@@ -18,18 +18,22 @@ type ScheduleNotificationInput = {
   date?: Date;
   seconds?: number;
   reminderId: string;
+  soundEnabled?: boolean;
 };
 
 export function configureNotificationHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async () =>
-      ({
+    handleNotification: async (notification) => {
+      const soundEnabled = notification.request.content.data?.soundEnabled === true;
+
+      return {
         shouldShowAlert: true,
         shouldShowBanner: true,
         shouldShowList: true,
-        shouldPlaySound: false,
+        shouldPlaySound: soundEnabled,
         shouldSetBadge: false,
-      }) as Notifications.NotificationBehavior,
+      } as Notifications.NotificationBehavior;
+    },
   });
 }
 
@@ -75,15 +79,17 @@ async function scheduleIfFuture({
   date,
   reminderId,
   seconds,
+  soundEnabled,
 }: ScheduleNotificationInput) {
   if (seconds !== undefined) {
     return Notifications.scheduleNotificationAsync({
       content: {
         title,
         body,
-        sound: false,
+        sound: soundEnabled ? true : false,
         data: {
           reminderId,
+          soundEnabled: Boolean(soundEnabled),
         },
       },
       trigger: {
@@ -105,9 +111,10 @@ async function scheduleIfFuture({
     content: {
       title,
       body,
-      sound: false,
+      sound: soundEnabled ? true : false,
       data: {
         reminderId,
+        soundEnabled: Boolean(soundEnabled),
       },
     },
     trigger: {
@@ -134,6 +141,7 @@ async function hasNotificationPermission() {
 
 export async function scheduleReminderNotifications(
   reminder: ReminderNotificationTarget,
+  options?: { soundEnabled?: boolean },
 ): Promise<NotificationIds> {
   const hasPermission = await hasNotificationPermission();
 
@@ -145,17 +153,19 @@ export async function scheduleReminderNotifications(
   }
 
   const previousNotificationId = await scheduleIfFutureSafely({
-    title: '明日の持ちもの',
-    body: `「${reminder.title}」をふわっと残しています`,
+    title: '前日のお知らせ',
+    body: `明日の「${reminder.title}」をふわっと残しています`,
     date: new Date(reminder.previousNotifyAt),
     reminderId: reminder.id,
+    soundEnabled: options?.soundEnabled,
   });
 
   const targetNotificationId = await scheduleIfFutureSafely({
     title: 'ポップ・リマインダー',
-    body: `「${reminder.title}」の時間です`,
+    body: `「${reminder.title}」の時間をお知らせします`,
     date: new Date(reminder.targetNotifyAt),
     reminderId: reminder.id,
+    soundEnabled: options?.soundEnabled,
   });
 
   return {
@@ -166,6 +176,7 @@ export async function scheduleReminderNotifications(
 
 export async function scheduleTestReminderNotifications(
   reminder: Pick<Reminder, 'id' | 'title'>,
+  options?: { soundEnabled?: boolean },
 ): Promise<NotificationIds> {
   if (!__DEV__) {
     return {
@@ -188,6 +199,7 @@ export async function scheduleTestReminderNotifications(
     body: `「${reminder.title}」の前日通知テストです`,
     seconds: 10,
     reminderId: reminder.id,
+    soundEnabled: options?.soundEnabled,
   });
 
   const targetNotificationId = await scheduleIfFutureSafely({
@@ -195,6 +207,7 @@ export async function scheduleTestReminderNotifications(
     body: `「${reminder.title}」の当日通知テストです`,
     seconds: 20,
     reminderId: reminder.id,
+    soundEnabled: options?.soundEnabled,
   });
 
   return {

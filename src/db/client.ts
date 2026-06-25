@@ -30,19 +30,38 @@ export async function initializeDatabase() {
       previous_notify_time TEXT NOT NULL DEFAULT '20:00',
       default_target_time TEXT NOT NULL DEFAULT '08:00',
       auto_delete_enabled INTEGER NOT NULL DEFAULT 1,
+      notification_sound_enabled INTEGER NOT NULL DEFAULT 1,
       theme TEXT NOT NULL DEFAULT 'sky'
     );
+  `);
 
+  const appSettingsColumns = await sqlite.getAllAsync<{ name: string }>(
+    'PRAGMA table_info(app_settings)',
+  );
+  const hasNotificationSoundColumn = appSettingsColumns.some(
+    (column) => column.name === 'notification_sound_enabled',
+  );
+
+  if (!hasNotificationSoundColumn) {
+    await sqlite.execAsync(`
+      ALTER TABLE app_settings
+      ADD COLUMN notification_sound_enabled INTEGER NOT NULL DEFAULT 1;
+    `);
+  }
+
+  await sqlite.execAsync(`
     INSERT OR IGNORE INTO app_settings (
       id,
       previous_notify_time,
       default_target_time,
       auto_delete_enabled,
+      notification_sound_enabled,
       theme
     ) VALUES (
       'default',
       '20:00',
       '08:00',
+      1,
       1,
       'sky'
     );

@@ -36,6 +36,8 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   const isDeletingRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const snapPoints = useMemo(() => ['48%', '68%'], []);
+  const shouldShowPreviousNotification =
+    reminder && new Date(reminder.previousNotifyAt).getTime() > Date.now();
 
   const renderBackdrop = useCallback(
     (props: ComponentProps<typeof BottomSheetBackdrop>) => (
@@ -86,7 +88,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
     isDeleteRequestedRef.current = true;
     Alert.alert(
       'リマインダーを削除しますか？',
-      '予約済みの通知も一緒にキャンセルします。',
+      '予約済みのお知らせも一緒にキャンセルします。',
       [
         {
           text: 'キャンセル',
@@ -144,7 +146,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
       <BottomSheetScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.kicker}>リマインダー詳細</Text>
+            <Text style={styles.kicker}>お知らせ予定</Text>
             <Text numberOfLines={2} ellipsizeMode="tail" style={styles.title}>
               {reminder?.title ?? ''}
             </Text>
@@ -162,11 +164,16 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
 
         {reminder ? (
           <View style={styles.detailGroup}>
-            <DetailRow label="通知日時" value={formatReminderDateTime(reminder.targetAt)} />
-            <View style={styles.divider} />
-            <DetailRow label="前日通知時刻" value={formatReminderDateTime(reminder.previousNotifyAt)} />
-            <View style={styles.divider} />
-            <DetailRow label="当日通知時刻" value={formatReminderDateTime(reminder.targetNotifyAt)} />
+            {shouldShowPreviousNotification ? (
+              <>
+                <DetailRow
+                  label="前日のお知らせ"
+                  value={formatReminderDateTime(reminder.previousNotifyAt)}
+                />
+                <View style={styles.divider} />
+              </>
+            ) : null}
+            <DetailRow label="当日のお知らせ" value={formatReminderDateTime(reminder.targetNotifyAt)} />
           </View>
         ) : null}
 

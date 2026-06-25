@@ -1,15 +1,15 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -23,10 +23,14 @@ import { useNotificationDevStore } from '../../reminders/stores/notificationDevS
 import { SettingRow } from '../components/SettingRow';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { AppScreen } from '../../../shared/components/AppScreen';
+import { TimePickerModal } from '../../../shared/components/TimePickerModal';
+import { TimeSelector } from '../../../shared/components/TimeSelector';
 import { AppTheme, palette, themeOptions } from '../../../constants/colors';
-import { normalizeTimeInput } from '../../../shared/utils/time';
+
+const appIcon = require('../../../../assets/app-icon.png');
 
 export function SettingsScreen() {
+  const router = useRouter();
   const { settings, loading, update } = useAppSettings();
   const isNotificationTestModeEnabled = useNotificationDevStore(
     (state) => state.isNotificationTestModeEnabled,
@@ -35,7 +39,8 @@ export function SettingsScreen() {
     (state) => state.setNotificationTestModeEnabled,
   );
   const [previousTime, setPreviousTime] = useState('20:00');
-  const [defaultTime, setDefaultTime] = useState('08:00');
+  const [isPreviousTimeSelectorOpen, setIsPreviousTimeSelectorOpen] = useState(false);
+  const [isPreviousTimePickerOpen, setIsPreviousTimePickerOpen] = useState(false);
   const [notificationPermissionLabel, setNotificationPermissionLabel] =
     useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] =
@@ -47,7 +52,6 @@ export function SettingsScreen() {
     }
 
     setPreviousTime(settings.previousNotifyTime);
-    setDefaultTime(settings.defaultTargetTime);
   }, [settings]);
 
   useEffect(() => {
@@ -64,16 +68,9 @@ export function SettingsScreen() {
     setIsNotificationPermissionGranted(permission.status === 'granted');
   };
 
-  const savePreviousTime = async () => {
-    const normalized = normalizeTimeInput(previousTime, settings?.previousNotifyTime ?? '20:00');
-    setPreviousTime(normalized);
-    await update({ previousNotifyTime: normalized });
-  };
-
-  const saveDefaultTime = async () => {
-    const normalized = normalizeTimeInput(defaultTime, settings?.defaultTargetTime ?? '08:00');
-    setDefaultTime(normalized);
-    await update({ defaultTargetTime: normalized });
+  const savePreviousTime = async (value: string) => {
+    setPreviousTime(value);
+    await update({ previousNotifyTime: value });
   };
 
   const saveTheme = async (theme: AppTheme) => {
@@ -104,14 +101,35 @@ export function SettingsScreen() {
     Alert.alert('キャンセルしました', '予約済み通知をすべてキャンセルしました。');
   };
 
+  const handleBackPress = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/');
+  };
+
+  const togglePreviousTimeSelector = () => {
+    setIsPreviousTimeSelectorOpen((current) => !current);
+  };
+
+  const handleTimePickerChange = (value: string) => {
+    void savePreviousTime(value);
+  };
+
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
       <View style={styles.header}>
-        <Link href="/" asChild>
-          <Pressable accessibilityRole="button" hitSlop={8} style={styles.iconButton}>
-            <Ionicons name="chevron-back" size={24} color={palette.ink} />
-          </Pressable>
-        </Link>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="ホームに戻る"
+          hitSlop={8}
+          onPress={handleBackPress}
+          style={styles.iconButton}
+        >
+          <Ionicons name="chevron-back" size={24} color={palette.ink} />
+        </Pressable>
         <Text style={styles.title}>設定</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -122,31 +140,61 @@ export function SettingsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.avatarBubble}>
-            <Ionicons name="sparkles" size={30} color={palette.lavenderDeep} />
-            <Text style={styles.avatarText}>ポップ・リマインダー</Text>
-          </View>
+          <Image source={appIcon} style={styles.appIcon} />
 
           <View style={styles.group}>
-            <SettingRow icon="notifications-outline" title="前日の通知時刻">
-              <TextInput
-                value={previousTime}
-                onChangeText={setPreviousTime}
-                onBlur={savePreviousTime}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                style={styles.timeInput}
-              />
+            <SettingRow
+              icon="notifications-outline"
+              title="前日のお知らせ時刻"
+              onPress={togglePreviousTimeSelector}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="前日のお知らせ時刻を変更"
+                onPress={togglePreviousTimeSelector}
+                style={({ pressed }) => [
+                  styles.timeValueButton,
+                  isPreviousTimeSelectorOpen ? styles.timeValueButtonActive : null,
+                  pressed ? styles.timeValueButtonPressed : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.timeValueText,
+                    isPreviousTimeSelectorOpen ? styles.timeValueTextActive : null,
+                  ]}
+                >
+                  {previousTime}
+                </Text>
+              </Pressable>
             </SettingRow>
+            {isPreviousTimeSelectorOpen ? (
+              <View style={styles.selectorPanel}>
+                <TimeSelector
+                  value={previousTime}
+                  onChange={(value) => {
+                    void savePreviousTime(value);
+                  }}
+                  onSelectCustomTime={() => setIsPreviousTimePickerOpen(true)}
+                />
+              </View>
+            ) : null}
             <View style={styles.divider} />
-            <SettingRow icon="time-outline" title="当日のデフォルト時刻">
-              <TextInput
-                value={defaultTime}
-                onChangeText={setDefaultTime}
-                onBlur={saveDefaultTime}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                style={styles.timeInput}
+            <SettingRow
+              icon="volume-medium-outline"
+              title="通知音"
+              caption="OS標準の通知音を鳴らします"
+              onPress={() => {
+                void update({ notificationSoundEnabled: !settings.notificationSoundEnabled });
+              }}
+            >
+              <Switch
+                value={settings.notificationSoundEnabled}
+                onValueChange={(value) => {
+                  void update({ notificationSoundEnabled: value });
+                }}
+                trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
+                thumbColor={settings.notificationSoundEnabled ? palette.lavenderDeep : palette.white}
               />
             </SettingRow>
             <View style={styles.divider} />
@@ -255,6 +303,13 @@ export function SettingsScreen() {
           ) : null}
         </ScrollView>
       )}
+      <TimePickerModal
+        visible={isPreviousTimePickerOpen}
+        value={previousTime}
+        hint="選んだ時刻に前日のお知らせが届きます"
+        onChange={handleTimePickerChange}
+        onClose={() => setIsPreviousTimePickerOpen(false)}
+      />
     </AppScreen>
   );
 }
@@ -290,28 +345,17 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
-  avatarBubble: {
+  appIcon: {
     alignSelf: 'center',
-    width: 148,
-    height: 148,
-    borderRadius: 74,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    marginBottom: 22,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderWidth: 1,
-    borderColor: '#D7DFFF',
-    shadowColor: palette.shadow,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.14,
-    shadowRadius: 22,
-  },
-  avatarText: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 8,
+    width: 156,
+    height: 156,
+    borderRadius: 36,
+    marginTop: 18,
+    marginBottom: 30,
+    shadowColor: '#A891F5',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
   },
   group: {
     marginBottom: 18,
@@ -325,17 +369,36 @@ const styles = StyleSheet.create({
     marginLeft: 46,
     backgroundColor: 'rgba(220,233,247,0.78)',
   },
-  timeInput: {
-    width: 70,
+  timeValueButton: {
+    minWidth: 72,
     height: 38,
-    borderRadius: 12,
-    color: palette.ink,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#F6FAFF',
     borderWidth: 1,
     borderColor: palette.line,
+  },
+  timeValueButtonActive: {
+    backgroundColor: palette.lavenderDeep,
+    borderColor: palette.lavenderDeep,
+  },
+  timeValueButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.96 }],
+  },
+  timeValueText: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  timeValueTextActive: {
+    color: palette.white,
+  },
+  selectorPanel: {
+    paddingLeft: 46,
+    paddingRight: 2,
+    paddingBottom: 12,
   },
   themeRow: {
     flexDirection: 'row',

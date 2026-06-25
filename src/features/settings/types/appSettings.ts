@@ -9,5 +9,6 @@ export type UpdateAppSettingsInput = Partial<{
   previousNotifyTime: string;
   defaultTargetTime: string;
   autoDeleteEnabled: boolean;
+  notificationSoundEnabled: boolean;
   theme: AppTheme;
 }>;

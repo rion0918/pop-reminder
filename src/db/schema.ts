@@ -19,6 +19,9 @@ export const appSettings = sqliteTable('app_settings', {
   previousNotifyTime: text('previous_notify_time').notNull().default('20:00'),
   defaultTargetTime: text('default_target_time').notNull().default('08:00'),
   autoDeleteEnabled: integer('auto_delete_enabled', { mode: 'boolean' }).notNull().default(true),
+  notificationSoundEnabled: integer('notification_sound_enabled', { mode: 'boolean' })
+    .notNull()
+    .default(true),
   theme: text('theme', { enum: ['sky', 'lavender', 'mint'] }).notNull().default('sky'),
 });
 
