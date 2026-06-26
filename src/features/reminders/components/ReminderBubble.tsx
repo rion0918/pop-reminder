@@ -13,14 +13,15 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { bubbleColors } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
+import { getReminderDueColor } from '../utils/reminderDueColor';
 
 type ReminderBubbleProps = {
   reminder: Reminder;
   index: number;
   size: number;
+  currentDate: Date;
   style?: ViewStyle;
   isBursting?: boolean;
   idleDisabled?: boolean;
@@ -55,6 +56,20 @@ function unitFromHash(seed: number, salt: number) {
   return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getTitleVisualLength(title: string) {
+  return Array.from(title.trim()).reduce((length, character) => {
+    if (character.trim().length === 0) {
+      return length + 0.35;
+    }
+
+    return length + (character.charCodeAt(0) <= 0x007f ? 0.62 : 1);
+  }, 0);
+}
+
 function makeIdleMotionConfig(id: string, index: number): IdleMotionConfig {
   const seed = hashString(`${id}-${index}`);
 
@@ -71,16 +86,31 @@ export const ReminderBubble = memo(function ReminderBubble({
   reminder,
   index,
   size,
+  currentDate,
   style,
   isBursting,
   idleDisabled,
   onPress,
 }: ReminderBubbleProps) {
-  const color = bubbleColors[index % bubbleColors.length];
+  const color = getReminderDueColor(reminder.targetAt, currentDate);
   const gradient = color.gradient as [string, string, string];
-  const titleFontSize = size >= 144 ? 21 : size >= 128 ? 19 : 17;
-  const timeFontSize = size >= 144 ? 14 : size >= 128 ? 13 : 12;
-  const bubblePadding = size >= 144 ? 23 : size >= 128 ? 20 : 17;
+  const titleVisualLength = getTitleVisualLength(reminder.title);
+  const baseTitleFontSize = size >= 144 ? 21 : size >= 128 ? 19 : size >= 112 ? 17 : 15;
+  const titleFontReduction =
+    titleVisualLength >= 24 ? 5 : titleVisualLength >= 18 ? 4 : titleVisualLength >= 13 ? 2 : titleVisualLength >= 9 ? 1 : 0;
+  const titleFontSize = clamp(baseTitleFontSize - titleFontReduction, size >= 112 ? 13 : 12, baseTitleFontSize);
+  const titleLineCount =
+    size >= 136 && titleVisualLength >= 10
+      ? 3
+      : size >= 112 && titleVisualLength >= 18
+        ? 3
+        : 2;
+  const titleLineHeight = titleFontSize + (titleVisualLength >= 13 ? 3 : 5);
+  const baseTimeFontSize = size >= 144 ? 14 : size >= 128 ? 13 : size >= 112 ? 12 : 11;
+  const timeFontSize = titleLineCount >= 3 ? Math.max(10, baseTimeFontSize - 1) : baseTimeFontSize;
+  const baseBubblePadding = size >= 144 ? 23 : size >= 128 ? 20 : size >= 112 ? 17 : 13;
+  const bubblePadding = Math.max(size >= 112 ? 12 : 10, baseBubblePadding - (titleVisualLength >= 13 ? 4 : 0));
+  const timeMarginTop = titleLineCount >= 3 || titleVisualLength >= 13 ? 4 : 8;
   const radius = size / 2;
   const reduceMotion = useReducedMotion();
   const idleMotion = useMemo(
@@ -253,14 +283,14 @@ export const ReminderBubble = memo(function ReminderBubble({
         ]}
       >
         <LinearGradient
-          colors={['rgba(255,255,255,0.7)', gradient[2], 'rgba(255,255,255,0.06)']}
+          colors={['rgba(255,255,255,0.78)', gradient[2], 'rgba(255,255,255,0.08)']}
           locations={[0, 0.52, 1]}
           start={{ x: 0.16, y: 0.08 }}
           end={{ x: 0.86, y: 0.96 }}
           style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
         />
         <LinearGradient
-          colors={['rgba(255,255,255,0.24)', 'rgba(255,255,255,0)', 'rgba(39,48,76,0.12)']}
+          colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0)', 'rgba(39,48,76,0.07)']}
           locations={[0, 0.52, 1]}
           start={{ x: 0.1, y: 0.04 }}
           end={{ x: 0.9, y: 1 }}
@@ -280,23 +310,34 @@ export const ReminderBubble = memo(function ReminderBubble({
         <View style={styles.bottomReflection} />
         <View style={styles.textLayer}>
           <Text
-            numberOfLines={2}
+            adjustsFontSizeToFit
             ellipsizeMode="tail"
+            minimumFontScale={0.78}
+            numberOfLines={titleLineCount}
             style={[
               styles.title,
               {
                 color: color.accent,
                 fontSize: titleFontSize,
-                lineHeight: titleFontSize + 5,
+                lineHeight: titleLineHeight,
               },
             ]}
           >
             {reminder.title}
           </Text>
           <Text
+            adjustsFontSizeToFit
             numberOfLines={1}
             ellipsizeMode="tail"
-            style={[styles.time, { fontSize: timeFontSize, lineHeight: timeFontSize + 4 }]}
+            minimumFontScale={0.82}
+            style={[
+              styles.time,
+              {
+                fontSize: timeFontSize,
+                lineHeight: timeFontSize + 4,
+                marginTop: timeMarginTop,
+              },
+            ]}
           >
             {formatReminderBubbleDateTime(reminder.targetAt)}
           </Text>
@@ -330,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.2,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     shadowColor: '#9EB9EA',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
@@ -344,7 +385,7 @@ const styles = StyleSheet.create({
     left: '16%',
     width: '68%',
     height: '60%',
-    opacity: 0.34,
+    opacity: 0.26,
   },
   lowerDepth: {
     position: 'absolute',
@@ -352,8 +393,8 @@ const styles = StyleSheet.create({
     bottom: '-6%',
     width: '75%',
     height: '58%',
-    backgroundColor: 'rgba(84,91,132,0.1)',
-    opacity: 0.64,
+    backgroundColor: 'rgba(84,91,132,0.07)',
+    opacity: 0.44,
   },
   centerGlow: {
     position: 'absolute',
@@ -361,7 +402,7 @@ const styles = StyleSheet.create({
     left: '16%',
     width: '66%',
     height: '58%',
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   outerGlassRing: {
     position: 'absolute',
@@ -370,7 +411,7 @@ const styles = StyleSheet.create({
     bottom: 2,
     left: 2,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: 'rgba(255,255,255,0.58)',
   },
   innerGlassRing: {
     position: 'absolute',
@@ -379,7 +420,7 @@ const styles = StyleSheet.create({
     bottom: 6,
     left: 6,
     borderWidth: 0.9,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.26)',
   },
   leftLightArc: {
     position: 'absolute',
@@ -389,8 +430,8 @@ const styles = StyleSheet.create({
     height: '76%',
     borderTopWidth: 2.5,
     borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.62)',
-    opacity: 0.72,
+    borderColor: 'rgba(255,255,255,0.68)',
+    opacity: 0.78,
     transform: [{ rotate: '-16deg' }],
   },
   innerColorRim: {
@@ -401,7 +442,7 @@ const styles = StyleSheet.create({
     left: 11,
     borderRightWidth: 2.2,
     borderBottomWidth: 1.4,
-    opacity: 0.22,
+    opacity: 0.16,
   },
   highlightLarge: {
     position: 'absolute',
@@ -504,7 +545,6 @@ const styles = StyleSheet.create({
     color: 'rgba(38,49,81,0.76)',
     textAlign: 'center',
     fontWeight: '800',
-    marginTop: 8,
     textShadowColor: 'rgba(255,255,255,0.62)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 7,

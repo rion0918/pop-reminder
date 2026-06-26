@@ -15,6 +15,7 @@ import Animated, {
 
 import { palette } from '../../../constants/colors';
 import { Reminder } from '../types/reminder';
+import { getMsUntilNextDay } from '../utils/reminderDueColor';
 import { ReminderBubble } from './ReminderBubble';
 
 type ReminderBubbleBoardProps = {
@@ -27,13 +28,15 @@ type ReminderBubbleBoardProps = {
   onOverflowPress?: () => void;
 };
 
-const MAX_VISIBLE_BUBBLES = 7;
+const MAX_VISIBLE_BUBBLES = 12;
 const MIN_EDGE_CLEARANCE = 18;
-const LAYOUT_VERSION = 2;
+const LAYOUT_VERSION = 4;
+const MAX_SOFT_OVERLAP_RATIO = 0.12;
+const MAX_DENSE_SOFT_OVERLAP_RATIO = 0.16;
 const BUBBLE_SIZE_BUCKETS = {
-  large: { base: 146, min: 126 },
-  medium: { base: 128, min: 114 },
-  small: { base: 114, min: 104 },
+  large: { base: 160, min: 116 },
+  medium: { base: 128, min: 98 },
+  small: { base: 114, min: 90 },
 } as const;
 const BUBBLE_SIZE_SEQUENCE: BubbleSizeName[] = [
   'large',
@@ -43,6 +46,11 @@ const BUBBLE_SIZE_SEQUENCE: BubbleSizeName[] = [
   'large',
   'small',
   'medium',
+  'small',
+  'large',
+  'small',
+  'medium',
+  'small',
 ];
 const FLOATING_SLOTS = [
   { x: 0.5, y: 0.16 },
@@ -53,6 +61,21 @@ const FLOATING_SLOTS = [
   { x: 0.82, y: 0.72 },
   { x: 0.48, y: 0.87 },
   { x: 0.68, y: 0.54 },
+];
+const DENSE_FLOATING_SLOTS = [
+  { x: 0.28, y: 0.15 },
+  { x: 0.62, y: 0.15 },
+  { x: 0.82, y: 0.28 },
+  { x: 0.15, y: 0.32 },
+  { x: 0.48, y: 0.34 },
+  { x: 0.72, y: 0.43 },
+  { x: 0.26, y: 0.52 },
+  { x: 0.58, y: 0.58 },
+  { x: 0.84, y: 0.64 },
+  { x: 0.16, y: 0.72 },
+  { x: 0.44, y: 0.82 },
+  { x: 0.72, y: 0.82 },
+  { x: 0.62, y: 0.74 },
 ];
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -74,6 +97,7 @@ type BubbleLayout = {
 };
 
 type CachedBubbleLayout = {
+  contentKey: string;
   visualIndex: number;
   size: number;
   left: number;
@@ -86,6 +110,13 @@ type PlacedBubble = {
   size: number;
   centerX: number;
   centerY: number;
+};
+
+type LayoutSlot = {
+  x: number;
+  y: number;
+  temporal: boolean;
+  slotIndex: number;
 };
 
 type FloatingItemLayout = {
@@ -130,16 +161,86 @@ function getEdgeClearance(boardSize: BoardSize) {
   return Math.round(clamp(Math.min(boardSize.width, boardSize.height) * 0.055, MIN_EDGE_CLEARANCE, 30));
 }
 
-function getBubbleSize(id: string, boardSize: BoardSize, visibleCount: number) {
-  const seed = hashString(id);
+function getTitleVisualLength(title: string) {
+  return Array.from(title.trim()).reduce((length, character) => {
+    if (character.trim().length === 0) {
+      return length + 0.35;
+    }
+
+    return length + (character.charCodeAt(0) <= 0x007f ? 0.62 : 1);
+  }, 0);
+}
+
+function getReminderLayoutContentKey(reminder: Reminder) {
+  return `${Math.round(getTitleVisualLength(reminder.title) * 10)}`;
+}
+
+function getTitleSizeScale(visualLength: number) {
+  if (visualLength >= 18) {
+    return 1.42;
+  }
+
+  if (visualLength >= 13) {
+    return 1.28;
+  }
+
+  if (visualLength >= 9) {
+    return 1.14;
+  }
+
+  if (visualLength <= 3) {
+    return 0.72;
+  }
+
+  if (visualLength <= 4) {
+    return 0.8;
+  }
+
+  return 1;
+}
+
+function getTitleMinSize(visualLength: number, bucketMin: number, visibleCount: number) {
+  const compactMin = visibleCount >= 8 ? 86 : 98;
+
+  if (visualLength >= 18) {
+    return bucketMin + (visibleCount >= 8 ? 18 : 24);
+  }
+
+  if (visualLength >= 13) {
+    return bucketMin + (visibleCount >= 8 ? 12 : 18);
+  }
+
+  if (visualLength <= 4) {
+    return compactMin;
+  }
+
+  return visibleCount >= 8 ? Math.min(bucketMin, 96) : bucketMin;
+}
+
+function getBubbleSize(reminder: Reminder, boardSize: BoardSize, visibleCount: number) {
+  const seed = hashString(reminder.id);
   const sizeName = BUBBLE_SIZE_SEQUENCE[seed % BUBBLE_SIZE_SEQUENCE.length] ?? 'medium';
   const bucket = BUBBLE_SIZE_BUCKETS[sizeName];
   const edgeClearance = getEdgeClearance(boardSize);
-  const densityScale = visibleCount >= 7 ? 0.9 : visibleCount >= 5 ? 0.94 : 1;
-  const maxByWidth = boardSize.width * 0.41;
-  const maxByHeight = boardSize.height * 0.28;
+  const densityScale =
+    visibleCount >= 12
+      ? 0.76
+      : visibleCount >= 10
+        ? 0.8
+        : visibleCount >= 8
+          ? 0.84
+          : visibleCount >= 7
+            ? 0.9
+            : visibleCount >= 5
+              ? 0.94
+              : 1;
+  const titleVisualLength = getTitleVisualLength(reminder.title);
+  const titleScale = getTitleSizeScale(titleVisualLength);
+  const minForTitle = getTitleMinSize(titleVisualLength, bucket.min, visibleCount);
+  const maxByWidth = boardSize.width * (visibleCount >= 8 ? 0.34 : 0.41);
+  const maxByHeight = boardSize.height * (visibleCount >= 8 ? 0.23 : 0.28);
   const safeMax = Math.max(
-    104,
+    visibleCount >= 8 ? 90 : 104,
     Math.min(
       boardSize.width - edgeClearance * 2,
       boardSize.height - edgeClearance * 2,
@@ -148,7 +249,7 @@ function getBubbleSize(id: string, boardSize: BoardSize, visibleCount: number) {
     ),
   );
 
-  return Math.round(clamp(bucket.base * densityScale, bucket.min, safeMax));
+  return Math.round(clamp(bucket.base * densityScale * titleScale, minForTitle, safeMax));
 }
 
 function getStableVisualIndex(id: string) {
@@ -175,6 +276,25 @@ function getTemporalYRatio(index: number, count: number) {
   return 0.18 + (index / (count - 1)) * 0.66;
 }
 
+function makeGridSlots(isDenseLayout: boolean): LayoutSlot[] {
+  const columns = isDenseLayout ? 3 : 3;
+  const rows = isDenseLayout ? 5 : 3;
+
+  return Array.from({ length: columns * rows }, (_, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const rowProgress = rows <= 1 ? 0 : row / (rows - 1);
+    const stagger = row % 2 === 0 ? -0.02 : 0.02;
+
+    return {
+      x: clamp((column + 0.5) / columns + stagger, 0.14, 0.86),
+      y: clamp(0.14 + rowProgress * 0.72, 0.14, 0.88),
+      temporal: isDenseLayout,
+      slotIndex: index,
+    };
+  });
+}
+
 function makeLayoutForItem(
   id: string,
   size: number,
@@ -188,10 +308,16 @@ function makeLayoutForItem(
   const edgeClearance = getEdgeClearance(boardSize);
   const maxLeft = Math.max(edgeClearance, boardSize.width - size - edgeClearance);
   const maxTop = Math.max(edgeClearance, boardSize.height - size - edgeClearance);
-  const preferredSlot = preferredSlotIndex % FLOATING_SLOTS.length;
-  const temporalYRatio = getTemporalYRatio(temporalIndex, temporalCount);
-  const jitterRangeX = clamp(boardSize.width * 0.06, 14, 30);
-  const jitterRangeY = clamp(boardSize.height * 0.045, 12, 26);
+  const isDenseLayout = temporalCount > 7;
+  const activeFloatingSlots = isDenseLayout ? DENSE_FLOATING_SLOTS : FLOATING_SLOTS;
+  const preferredSlot = isDenseLayout
+    ? temporalIndex % activeFloatingSlots.length
+    : preferredSlotIndex % activeFloatingSlots.length;
+  const temporalYRatio = isDenseLayout
+    ? activeFloatingSlots[preferredSlot]?.y ?? getTemporalYRatio(temporalIndex, temporalCount)
+    : getTemporalYRatio(temporalIndex, temporalCount);
+  const jitterRangeX = clamp(boardSize.width * (isDenseLayout ? 0.045 : 0.06), 10, isDenseLayout ? 20 : 30);
+  const jitterRangeY = clamp(boardSize.height * (isDenseLayout ? 0.034 : 0.045), 9, isDenseLayout ? 18 : 26);
   const temporalLaneRatios = [0.5, 0.2, 0.8, 0.34, 0.66, 0.18, 0.82];
   const laneOffset = Math.floor(unitFromHash(seed, 80) * temporalLaneRatios.length);
   const temporalSlots = temporalLaneRatios.map((xRatio, index) => {
@@ -201,12 +327,21 @@ function makeLayoutForItem(
       x: temporalLaneRatios[(index + laneOffset) % temporalLaneRatios.length] ?? xRatio,
       y: clamp(temporalYRatio + verticalNudge, 0.14, 0.9),
       temporal: true,
+      slotIndex: index,
     };
   });
-  const slotCandidates = [
-    ...temporalSlots,
-    ...FLOATING_SLOTS.map((slot) => ({ ...slot, temporal: false })),
-  ];
+  const gridSlots = makeGridSlots(isDenseLayout);
+  const slotCandidates = isDenseLayout
+    ? [
+        ...DENSE_FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: true, slotIndex: index })),
+        ...gridSlots,
+        ...FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: false, slotIndex: index })),
+      ]
+    : [
+        ...temporalSlots,
+        ...FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: false, slotIndex: index })),
+        ...gridSlots,
+      ];
 
   const bestLayout = slotCandidates.reduce<{
     score: number;
@@ -215,10 +350,10 @@ function makeLayoutForItem(
     centerX: number;
     centerY: number;
   } | null>((best, slot, slotIndex) => {
-    const baseSlotIndex = slotIndex % FLOATING_SLOTS.length;
+    const baseSlotIndex = slot.slotIndex % activeFloatingSlots.length;
     const distanceFromPreferred = Math.min(
       Math.abs(baseSlotIndex - preferredSlot),
-      FLOATING_SLOTS.length - Math.abs(baseSlotIndex - preferredSlot),
+      activeFloatingSlots.length - Math.abs(baseSlotIndex - preferredSlot),
     );
     const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * jitterRangeX;
     const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * jitterRangeY;
@@ -228,20 +363,39 @@ function makeLayoutForItem(
     const centerY = top + size / 2;
     const overlapPenalty = placedBubbles.reduce((penalty, placed) => {
       const distance = Math.hypot(centerX - placed.centerX, centerY - placed.centerY);
-      const minReadableDistance = (size + placed.size) * 0.68;
+      const radiusSum = (size + placed.size) / 2;
+      const overlap = Math.max(0, radiusSum - distance);
 
-      if (distance >= minReadableDistance) {
+      if (overlap <= 0) {
         return penalty;
       }
 
-      return penalty + (minReadableDistance - distance) * 7.2;
+      const allowedOverlap =
+        Math.min(size, placed.size) *
+        (isDenseLayout ? MAX_DENSE_SOFT_OVERLAP_RATIO : MAX_SOFT_OVERLAP_RATIO);
+      const excessOverlap = Math.max(0, overlap - allowedOverlap);
+      const coverRiskDistance = Math.abs(size - placed.size) / 2 + Math.min(size, placed.size) * 0.28;
+      const coverRiskPenalty = distance < coverRiskDistance ? 20000 : 0;
+      const hardOverlapPenalty = excessOverlap > 0 ? 12000 : 0;
+
+      return (
+        penalty +
+        overlap * 2.4 +
+        excessOverlap * 260 +
+        hardOverlapPenalty +
+        coverRiskPenalty
+      );
     }, 0);
     const lowerRightPenalty =
-      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.68 ? 280 : 0;
+      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.68
+        ? isDenseLayout
+          ? 180
+          : 280
+        : 0;
     const edgePenalty =
       top <= edgeClearance + 2 || left <= edgeClearance + 2 || left >= maxLeft - 2 ? 28 : 0;
-    const temporalPenalty = Math.abs(centerY / boardSize.height - temporalYRatio) * 780;
-    const floatingSlotPenalty = slot.temporal ? 0 : 170;
+    const temporalPenalty = Math.abs(centerY / boardSize.height - temporalYRatio) * (isDenseLayout ? 520 : 780);
+    const floatingSlotPenalty = slot.temporal ? 0 : isDenseLayout ? 240 : 170;
     const score =
       distanceFromPreferred * 8 +
       unitFromHash(seed, slotIndex + 10) * 18 +
@@ -373,10 +527,15 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   onOverflowPress,
 }: ReminderBubbleBoardProps) {
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
+  const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
   const layoutCacheRef = useRef(new Map<string, CachedBubbleLayout>());
   const layoutBoardKeyRef = useRef('');
   const reminderIdsKey = useMemo(
-    () => reminders.slice(0, MAX_VISIBLE_BUBBLES).map((reminder) => reminder.id).join(','),
+    () =>
+      reminders
+        .slice(0, MAX_VISIBLE_BUBBLES)
+        .map((reminder) => `${reminder.id}:${Math.round(getTitleVisualLength(reminder.title) * 10)}`)
+        .join(','),
     [reminders],
   );
   const visibleReminders = useMemo(
@@ -384,6 +543,13 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
     [reminderIdsKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const overflowCount = Math.max(0, reminders.length - visibleReminders.length);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setColorReferenceDate(new Date());
+    }, getMsUntilNextDay());
+
+    return () => clearTimeout(timer);
+  }, [colorReferenceDate]);
   const handleBoardLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
 
@@ -410,7 +576,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         };
       }
 
-      const boardKey = `${LAYOUT_VERSION}:${boardSize.width}x${boardSize.height}:${reminderIdsKey}`;
+      const boardKey = `${LAYOUT_VERSION}:${boardSize.width}x${boardSize.height}`;
       const layoutCache = layoutCacheRef.current;
 
       if (layoutBoardKeyRef.current !== boardKey) {
@@ -430,7 +596,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       visibleReminders.forEach((reminder) => {
         const cachedLayout = layoutCache.get(reminder.id);
 
-        if (!cachedLayout) {
+        if (!cachedLayout || cachedLayout.contentKey !== getReminderLayoutContentKey(reminder)) {
           return;
         }
 
@@ -443,8 +609,9 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
 
       const bubbleLayouts = visibleReminders.map((reminder, reminderIndex): BubbleLayout => {
         const cachedLayout = layoutCache.get(reminder.id);
+        const contentKey = getReminderLayoutContentKey(reminder);
 
-        if (cachedLayout) {
+        if (cachedLayout && cachedLayout.contentKey === contentKey) {
           return {
             id: reminder.id,
             reminder,
@@ -459,7 +626,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           };
         }
 
-        const size = getBubbleSize(reminder.id, boardSize, visibleReminders.length);
+        const size = getBubbleSize(reminder, boardSize, visibleReminders.length);
         const visualIndex = getStableVisualIndex(reminder.id);
         const layout = makeLayoutForItem(
           reminder.id,
@@ -471,6 +638,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           visibleReminders.length,
         );
         const nextLayout = {
+          contentKey,
           visualIndex,
           size,
           left: layout.left,
@@ -497,7 +665,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       const overflowBubble =
         overflowCount > 0
           ? (() => {
-              const size = Math.round(clamp(boardSize.width * 0.29, 96, 112));
+              const isDenseOverflow = visibleReminders.length >= 10;
+              const size = Math.round(
+                clamp(
+                  boardSize.width * (isDenseOverflow ? 0.24 : 0.29),
+                  isDenseOverflow ? 82 : 96,
+                  isDenseOverflow ? 98 : 112,
+                ),
+              );
               const layout = makeLayoutForItem(
                 `overflow-${overflowCount}`,
                 size,
@@ -521,7 +696,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         overflowBubble,
       };
     },
-    [boardSize, overflowCount, reminderIdsKey, visibleReminders],
+    [boardSize, overflowCount, visibleReminders],
   );
   const { bubbleLayouts, overflowBubble } = boardLayout;
 
@@ -582,6 +757,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           reminder={reminder}
           index={visualIndex}
           size={size}
+          currentDate={colorReferenceDate}
           isBursting={burstingReminderId === reminder.id}
           idleDisabled={idleDisabled || burstingReminderId === reminder.id}
           onPress={onReminderPress}

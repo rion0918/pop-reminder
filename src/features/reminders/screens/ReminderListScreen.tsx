@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -19,6 +19,7 @@ import { deleteReminder } from '../services/deleteReminderService';
 import { listActiveReminders } from '../services/reminderRepository';
 import { Reminder } from '../types/reminder';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
+import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';
 
 function handleBack(router: ReturnType<typeof useRouter>) {
   if (router.canGoBack()) {
@@ -36,6 +37,7 @@ export function ReminderListScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
+  const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
 
   const refresh = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -59,6 +61,14 @@ export function ReminderListScreen() {
       void refresh();
     }, [refresh]),
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setColorReferenceDate(new Date());
+    }, getMsUntilNextDay());
+
+    return () => clearTimeout(timer);
+  }, [colorReferenceDate]);
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
@@ -131,31 +141,43 @@ export function ReminderListScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {reminders.map((reminder, index) => (
-            <Pressable
-              key={reminder.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${reminder.title}の詳細を開く`}
-              onPress={() => setSelectedReminder(reminder)}
-              style={({ pressed }) => [
-                styles.listItem,
-                pressed ? styles.listItemPressed : null,
-              ]}
-            >
-              <View style={styles.indexBubble}>
-                <Text style={styles.indexText}>{index + 1}</Text>
-              </View>
-              <View style={styles.listCopy}>
-                <Text numberOfLines={1} style={styles.listTitle}>
-                  {reminder.title}
-                </Text>
-                <Text numberOfLines={1} style={styles.listTime}>
-                  {formatReminderDateTime(reminder.targetAt)}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
-            </Pressable>
-          ))}
+          {reminders.map((reminder) => {
+            const dueColor = getReminderDueColor(reminder.targetAt, colorReferenceDate);
+
+            return (
+              <Pressable
+                key={reminder.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${reminder.title}の詳細を開く`}
+                onPress={() => setSelectedReminder(reminder)}
+                style={({ pressed }) => [
+                  styles.listItem,
+                  pressed ? styles.listItemPressed : null,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.indexBubble,
+                    {
+                      backgroundColor: dueColor.background,
+                      borderColor: dueColor.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.indexBubbleHighlight} />
+                </View>
+                <View style={styles.listCopy}>
+                  <Text numberOfLines={1} style={styles.listTitle}>
+                    {reminder.title}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.listTime}>
+                    {formatReminderDateTime(reminder.targetAt)}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+              </Pressable>
+            );
+          })}
         </ScrollView>
       )}
 
@@ -299,11 +321,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(237,230,255,0.74)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.82)',
+    overflow: 'hidden',
   },
-  indexText: {
-    color: palette.lavenderDeep,
-    fontSize: 15,
-    fontWeight: '900',
+  indexBubbleHighlight: {
+    position: 'absolute',
+    top: 8,
+    left: 10,
+    width: 14,
+    height: 8,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.64)',
+    transform: [{ rotate: '-28deg' }],
   },
   listCopy: {
     flex: 1,

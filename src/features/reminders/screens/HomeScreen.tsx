@@ -17,10 +17,16 @@ import {
 import { Reminder } from "../types/reminder";
 import { useAppSettings } from "../../settings/hooks/useAppSettings";
 import { AppScreen } from "../../../shared/components/AppScreen";
-import { palette } from "../../../constants/colors";
+import { bubbleDueColors, palette } from "../../../constants/colors";
 import { formatReminderBubbleDateTime } from "../utils/reminderDateFormat";
 
 const appIcon = require("../../../../assets/app-icon.png");
+const dueLegendItems = [
+  { label: "今日", color: bubbleDueColors.today },
+  { label: "明日", color: bubbleDueColors.tomorrow },
+  { label: "2-3日", color: bubbleDueColors.soon },
+  { label: "4日+", color: bubbleDueColors.later },
+];
 
 export function HomeScreen() {
   const router = useRouter();
@@ -230,6 +236,29 @@ export function HomeScreen() {
         onDelete={handleDeleteReminder}
       />
 
+      <View
+        accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
+        accessibilityRole="text"
+        style={styles.dueLegend}
+      >
+        {dueLegendItems.map((item) => (
+          <View key={item.label} style={styles.dueLegendItem}>
+            <View
+              style={[
+                styles.dueLegendBubble,
+                {
+                  backgroundColor: item.color.background,
+                  borderColor: item.color.border,
+                },
+              ]}
+            />
+            <Text numberOfLines={1} style={styles.dueLegendLabel}>
+              {item.label}
+            </Text>
+          </View>
+        ))}
+      </View>
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="リマインダーを追加"
@@ -394,6 +423,51 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 104,
     overflow: "visible",
+  },
+  dueLegend: {
+    position: "absolute",
+    left: 24,
+    right: 136,
+    bottom: 34,
+    minHeight: 52,
+    borderRadius: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    gap: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.66)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.86)",
+    shadowColor: palette.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 1,
+  },
+  dueLegendItem: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  dueLegendBubble: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.4,
+    shadowColor: palette.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  dueLegendLabel: {
+    color: palette.muted,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: "900",
+    textAlign: "center",
   },
   addButton: {
     position: "absolute",
