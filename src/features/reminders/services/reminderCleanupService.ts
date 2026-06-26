@@ -1,14 +1,20 @@
-import { getAppSettings } from '../../settings/services/settingsRepository';
 import {
   deleteReminders,
   listExpiredReminders,
   markReminderExpired,
 } from './reminderRepository';
-import { cancelReminderNotifications } from '../../../lib/notifications/reminderNotifications';
+import {
+  reminderServiceDependencies,
+  ReminderServiceDependencies,
+} from './reminderServiceDependencies';
 
-export async function cleanupExpiredReminders(now = new Date()) {
+export async function cleanupExpiredReminders(
+  now = new Date(),
+  dependencies: ReminderServiceDependencies = reminderServiceDependencies,
+) {
+  const { notificationGateway, settingsGateway } = dependencies;
   const [settings, expiredReminders] = await Promise.all([
-    getAppSettings(),
+    settingsGateway.getAppSettings(),
     listExpiredReminders(now),
   ]);
 
@@ -16,7 +22,11 @@ export async function cleanupExpiredReminders(now = new Date()) {
     return 0;
   }
 
-  await Promise.all(expiredReminders.map((reminder) => cancelReminderNotifications(reminder)));
+  await Promise.all(
+    expiredReminders.map((reminder) =>
+      notificationGateway.cancelReminderNotifications(reminder),
+    ),
+  );
 
   if (settings.autoDeleteEnabled) {
     await deleteReminders(expiredReminders.map((reminder) => reminder.id));

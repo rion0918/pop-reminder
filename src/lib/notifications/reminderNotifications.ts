@@ -1,16 +1,12 @@
 import * as Notifications from 'expo-notifications';
 
+import {
+  ReminderNotificationGateway,
+  ReminderNotificationIds,
+  ReminderNotificationOptions,
+  ReminderNotificationTarget,
+} from '../../features/reminders/ports/reminderNotificationGateway';
 import { Reminder } from '../../features/reminders/types/reminder';
-
-type NotificationIds = {
-  previousNotificationId: string | null;
-  targetNotificationId: string | null;
-};
-
-type ReminderNotificationTarget = Pick<
-  Reminder,
-  'id' | 'title' | 'previousNotifyAt' | 'targetNotifyAt'
->;
 
 type ScheduleNotificationInput = {
   title: string;
@@ -141,8 +137,8 @@ async function hasNotificationPermission() {
 
 export async function scheduleReminderNotifications(
   reminder: ReminderNotificationTarget,
-  options?: { soundEnabled?: boolean },
-): Promise<NotificationIds> {
+  options?: ReminderNotificationOptions,
+): Promise<ReminderNotificationIds> {
   const hasPermission = await hasNotificationPermission();
 
   if (!hasPermission) {
@@ -176,8 +172,8 @@ export async function scheduleReminderNotifications(
 
 export async function scheduleTestReminderNotifications(
   reminder: Pick<Reminder, 'id' | 'title'>,
-  options?: { soundEnabled?: boolean },
-): Promise<NotificationIds> {
+  options?: ReminderNotificationOptions,
+): Promise<ReminderNotificationIds> {
   if (!__DEV__) {
     return {
       previousNotificationId: null,
@@ -231,3 +227,9 @@ export async function cancelReminderNotifications(reminder: Reminder) {
 export async function cancelAllScheduledNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
+
+export const reminderNotificationGateway: ReminderNotificationGateway = {
+  scheduleReminderNotifications,
+  scheduleTestReminderNotifications,
+  cancelReminderNotifications,
+};

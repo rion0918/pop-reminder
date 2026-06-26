@@ -1,19 +1,23 @@
-import { getAppSettings } from '../../settings/services/settingsRepository';
 import { createReminderInputSchema, CreateReminderInput } from '../schemas/reminderSchema';
 import { insertReminder, updateReminderNotificationIds } from './reminderRepository';
 import { buildReminderSchedule } from './reminderDateService';
 import {
-  scheduleReminderNotifications,
-  scheduleTestReminderNotifications,
-} from '../../../lib/notifications/reminderNotifications';
+  reminderServiceDependencies,
+  ReminderServiceDependencies,
+} from './reminderServiceDependencies';
 
 type CreateReminderOptions = {
   useTestNotifications?: boolean;
 };
 
-export async function createReminder(input: CreateReminderInput, options?: CreateReminderOptions) {
+export async function createReminder(
+  input: CreateReminderInput,
+  options?: CreateReminderOptions,
+  dependencies: ReminderServiceDependencies = reminderServiceDependencies,
+) {
+  const { notificationGateway, settingsGateway } = dependencies;
   const parsed = createReminderInputSchema.parse(input);
-  const settings = await getAppSettings();
+  const settings = await settingsGateway.getAppSettings();
   const schedule = buildReminderSchedule({
     dateOffset: parsed.dateOffset,
     customTargetDate: parsed.customTargetDate,
@@ -32,10 +36,10 @@ export async function createReminder(input: CreateReminderInput, options?: Creat
   try {
     const notificationIds =
       __DEV__ && options?.useTestNotifications
-        ? await scheduleTestReminderNotifications(reminder, {
+        ? await notificationGateway.scheduleTestReminderNotifications(reminder, {
             soundEnabled: settings.notificationSoundEnabled,
           })
-        : await scheduleReminderNotifications(reminder, {
+        : await notificationGateway.scheduleReminderNotifications(reminder, {
             soundEnabled: settings.notificationSoundEnabled,
           });
 
