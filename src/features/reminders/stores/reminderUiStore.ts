@@ -21,6 +21,7 @@ type ReminderUiState = {
   openQuickAdd: (defaultTime?: string) => void;
   closeQuickAdd: () => void;
   setTitle: (title: string) => void;
+  resetTitle: () => void;
   setDateOffset: (dateOffset: ReminderDateOffset) => void;
   setPresetTargetDate: (datePreset: 'weekend' | 'nextWeek', date: string) => void;
   setCustomTargetDate: (date: string | null) => void;
@@ -61,6 +62,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
     }),
   closeQuickAdd: () => set({ isQuickAddOpen: false, isSaving: false }),
   setTitle: (title) => set({ title }),
+  resetTitle: () => set({ title: '' }),
   setDateOffset: (dateOffset) =>
     set({
       dateOffset,

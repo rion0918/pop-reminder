@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,7 @@ import { TimeSelector } from '../../../shared/components/TimeSelector';
 import { AppTheme, palette, themeOptions } from '../../../constants/colors';
 
 const appIcon = require('../../../../assets/app-icon.png');
+const BACK_BUTTON_FEEDBACK_MS = 120;
 
 const themeLabels: Record<AppTheme, string> = {
   sky: 'そら',
@@ -132,6 +133,8 @@ export function SettingsScreen() {
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] =
     useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
+  const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
+  const backPressTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!settings) {
@@ -147,6 +150,14 @@ export function SettingsScreen() {
     }
 
     void refreshNotificationPermissionStatus();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (backPressTimeoutRef.current) {
+        clearTimeout(backPressTimeoutRef.current);
+      }
+    };
   }, []);
 
   const refreshNotificationPermissionStatus = async () => {
@@ -189,12 +200,22 @@ export function SettingsScreen() {
   };
 
   const handleBackPress = () => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
+    if (backPressTimeoutRef.current) {
+      clearTimeout(backPressTimeoutRef.current);
     }
 
-    router.replace('/');
+    setIsBackButtonPressed(true);
+    backPressTimeoutRef.current = setTimeout(() => {
+      setIsBackButtonPressed(false);
+      backPressTimeoutRef.current = null;
+
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+
+      router.replace('/');
+    }, BACK_BUTTON_FEEDBACK_MS) as unknown as number;
   };
 
   const togglePreviousTimeSelector = () => {
@@ -213,7 +234,10 @@ export function SettingsScreen() {
           accessibilityLabel="ホームに戻る"
           hitSlop={8}
           onPress={handleBackPress}
-          style={styles.iconButton}
+          style={({ pressed }) => [
+            styles.iconButton,
+            pressed || isBackButtonPressed ? styles.iconButtonPressed : null,
+          ]}
         >
           <Ionicons name="chevron-back" size={24} color={palette.ink} />
         </Pressable>
@@ -493,6 +517,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.78)',
+  },
+  iconButtonPressed: {
+    opacity: 0.82,
+    transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
   headerSpacer: {
     width: 44,

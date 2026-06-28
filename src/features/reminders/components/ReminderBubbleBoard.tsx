@@ -30,7 +30,7 @@ type ReminderBubbleBoardProps = {
 
 const MAX_VISIBLE_BUBBLES = 12;
 const MIN_EDGE_CLEARANCE = 18;
-const LAYOUT_VERSION = 4;
+const LAYOUT_VERSION = 5;
 const MAX_SOFT_OVERLAP_RATIO = 0.12;
 const MAX_DENSE_SOFT_OVERLAP_RATIO = 0.16;
 const BUBBLE_SIZE_BUCKETS = {
@@ -86,11 +86,19 @@ type BoardSize = {
   height: number;
 };
 
+type BubbleDimensions = {
+  width: number;
+  height: number;
+  collisionSize: number;
+};
+
 type BubbleLayout = {
   id: string;
   reminder: Reminder;
   visualIndex: number;
   size: number;
+  width: number;
+  height: number;
   left: number;
   top: number;
   positionStyle: ViewStyle;
@@ -100,6 +108,9 @@ type CachedBubbleLayout = {
   contentKey: string;
   visualIndex: number;
   size: number;
+  width: number;
+  height: number;
+  collisionSize: number;
   left: number;
   top: number;
   centerX: number;
@@ -176,6 +187,14 @@ function getReminderLayoutContentKey(reminder: Reminder) {
 }
 
 function getTitleSizeScale(visualLength: number) {
+  if (visualLength >= 32) {
+    return 1.64;
+  }
+
+  if (visualLength >= 24) {
+    return 1.52;
+  }
+
   if (visualLength >= 18) {
     return 1.42;
   }
@@ -202,6 +221,14 @@ function getTitleSizeScale(visualLength: number) {
 function getTitleMinSize(visualLength: number, bucketMin: number, visibleCount: number) {
   const compactMin = visibleCount >= 8 ? 86 : 98;
 
+  if (visualLength >= 32) {
+    return bucketMin + (visibleCount >= 8 ? 26 : 34);
+  }
+
+  if (visualLength >= 24) {
+    return bucketMin + (visibleCount >= 8 ? 22 : 30);
+  }
+
   if (visualLength >= 18) {
     return bucketMin + (visibleCount >= 8 ? 18 : 24);
   }
@@ -217,7 +244,7 @@ function getTitleMinSize(visualLength: number, bucketMin: number, visibleCount: 
   return visibleCount >= 8 ? Math.min(bucketMin, 96) : bucketMin;
 }
 
-function getBubbleSize(reminder: Reminder, boardSize: BoardSize, visibleCount: number) {
+function getBubbleDimensions(reminder: Reminder, boardSize: BoardSize, visibleCount: number): BubbleDimensions {
   const seed = hashString(reminder.id);
   const sizeName = BUBBLE_SIZE_SEQUENCE[seed % BUBBLE_SIZE_SEQUENCE.length] ?? 'medium';
   const bucket = BUBBLE_SIZE_BUCKETS[sizeName];
@@ -249,7 +276,19 @@ function getBubbleSize(reminder: Reminder, boardSize: BoardSize, visibleCount: n
     ),
   );
 
-  return Math.round(clamp(bucket.base * densityScale * titleScale, minForTitle, safeMax));
+  const height = Math.round(clamp(bucket.base * densityScale * titleScale, minForTitle, safeMax));
+  const aspectRatio = titleVisualLength >= 32 ? 1.72 : titleVisualLength >= 24 ? 1.56 : 1;
+  const maxWideWidth = Math.min(
+    boardSize.width - edgeClearance * 2,
+    boardSize.width * (visibleCount >= 8 ? 0.54 : 0.68),
+  );
+  const width = Math.round(clamp(height * aspectRatio, height, maxWideWidth));
+
+  return {
+    width,
+    height,
+    collisionSize: Math.max(width, height),
+  };
 }
 
 function getStableVisualIndex(id: string) {
@@ -297,7 +336,7 @@ function makeGridSlots(isDenseLayout: boolean): LayoutSlot[] {
 
 function makeLayoutForItem(
   id: string,
-  size: number,
+  dimensions: BubbleDimensions,
   boardSize: BoardSize,
   placedBubbles: PlacedBubble[],
   preferredSlotIndex: number,
@@ -305,9 +344,10 @@ function makeLayoutForItem(
   temporalCount: number,
 ): FloatingItemLayout {
   const seed = hashString(id);
+  const { width, height, collisionSize } = dimensions;
   const edgeClearance = getEdgeClearance(boardSize);
-  const maxLeft = Math.max(edgeClearance, boardSize.width - size - edgeClearance);
-  const maxTop = Math.max(edgeClearance, boardSize.height - size - edgeClearance);
+  const maxLeft = Math.max(edgeClearance, boardSize.width - width - edgeClearance);
+  const maxTop = Math.max(edgeClearance, boardSize.height - height - edgeClearance);
   const isDenseLayout = temporalCount > 7;
   const activeFloatingSlots = isDenseLayout ? DENSE_FLOATING_SLOTS : FLOATING_SLOTS;
   const preferredSlot = isDenseLayout
@@ -357,13 +397,13 @@ function makeLayoutForItem(
     );
     const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * jitterRangeX;
     const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * jitterRangeY;
-    const left = clamp(slot.x * boardSize.width - size / 2 + jitterX, edgeClearance, maxLeft);
-    const top = clamp(slot.y * boardSize.height - size / 2 + jitterY, edgeClearance, maxTop);
-    const centerX = left + size / 2;
-    const centerY = top + size / 2;
+    const left = clamp(slot.x * boardSize.width - width / 2 + jitterX, edgeClearance, maxLeft);
+    const top = clamp(slot.y * boardSize.height - height / 2 + jitterY, edgeClearance, maxTop);
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
     const overlapPenalty = placedBubbles.reduce((penalty, placed) => {
       const distance = Math.hypot(centerX - placed.centerX, centerY - placed.centerY);
-      const radiusSum = (size + placed.size) / 2;
+      const radiusSum = (collisionSize + placed.size) / 2;
       const overlap = Math.max(0, radiusSum - distance);
 
       if (overlap <= 0) {
@@ -371,10 +411,11 @@ function makeLayoutForItem(
       }
 
       const allowedOverlap =
-        Math.min(size, placed.size) *
+        Math.min(collisionSize, placed.size) *
         (isDenseLayout ? MAX_DENSE_SOFT_OVERLAP_RATIO : MAX_SOFT_OVERLAP_RATIO);
       const excessOverlap = Math.max(0, overlap - allowedOverlap);
-      const coverRiskDistance = Math.abs(size - placed.size) / 2 + Math.min(size, placed.size) * 0.28;
+      const coverRiskDistance =
+        Math.abs(collisionSize - placed.size) / 2 + Math.min(collisionSize, placed.size) * 0.28;
       const coverRiskPenalty = distance < coverRiskDistance ? 20000 : 0;
       const hardOverlapPenalty = excessOverlap > 0 ? 12000 : 0;
 
@@ -421,13 +462,13 @@ function makeLayoutForItem(
   const layout = bestLayout ?? {
     left: edgeClearance,
     top: edgeClearance,
-    centerX: edgeClearance + size / 2,
-    centerY: edgeClearance + size / 2,
+    centerX: edgeClearance + width / 2,
+    centerY: edgeClearance + height / 2,
     score: 0,
   };
 
   placedBubbles.push({
-    size,
+    size: collisionSize,
     centerX: layout.centerX,
     centerY: layout.centerY,
   });
@@ -601,7 +642,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         }
 
         placedBubbles.push({
-          size: cachedLayout.size,
+          size: cachedLayout.collisionSize,
           centerX: cachedLayout.centerX,
           centerY: cachedLayout.centerY,
         });
@@ -617,6 +658,8 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
             reminder,
             visualIndex: cachedLayout.visualIndex,
             size: cachedLayout.size,
+            width: cachedLayout.width,
+            height: cachedLayout.height,
             left: cachedLayout.left,
             top: cachedLayout.top,
             positionStyle: {
@@ -626,11 +669,13 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           };
         }
 
-        const size = getBubbleSize(reminder, boardSize, visibleReminders.length);
+        const dimensions = getBubbleDimensions(reminder, boardSize, visibleReminders.length);
+        const size = dimensions.height;
+        const { width, height, collisionSize } = dimensions;
         const visualIndex = getStableVisualIndex(reminder.id);
         const layout = makeLayoutForItem(
           reminder.id,
-          size,
+          dimensions,
           boardSize,
           placedBubbles,
           visualIndex,
@@ -641,6 +686,9 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           contentKey,
           visualIndex,
           size,
+          width,
+          height,
+          collisionSize,
           left: layout.left,
           top: layout.top,
           centerX: layout.centerX,
@@ -654,6 +702,8 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           reminder,
           visualIndex,
           size,
+          width,
+          height,
           left: layout.left,
           top: layout.top,
           positionStyle: {
@@ -675,7 +725,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
               );
               const layout = makeLayoutForItem(
                 `overflow-${overflowCount}`,
-                size,
+                { width: size, height: size, collisionSize: size },
                 boardSize,
                 placedBubbles,
                 getStableVisualIndex(`overflow-${overflowCount}`),
@@ -751,12 +801,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
 
   return (
     <View onLayout={handleBoardLayout} style={styles.board}>
-      {boardReady ? bubbleLayouts.map(({ reminder, visualIndex, size, positionStyle }) => (
+      {boardReady ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => (
         <ReminderBubble
           key={reminder.id}
           reminder={reminder}
           index={visualIndex}
           size={size}
+          width={width}
+          height={height}
           currentDate={colorReferenceDate}
           isBursting={burstingReminderId === reminder.id}
           idleDisabled={idleDisabled || burstingReminderId === reminder.id}

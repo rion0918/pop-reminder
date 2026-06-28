@@ -9,8 +9,9 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetTextInput,
-  BottomSheetScrollView,
+  BottomSheetView,
 } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
@@ -30,6 +31,7 @@ type ReminderInputSheetProps = {
 };
 
 const sameDayTimePresets = ['08:00', '12:00', '18:00', '20:00'];
+const QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE = 360;
 
 function buildTargetDateTime(targetDate: Date, time: string) {
   const [hoursText, minutesText] = time.split(':');
@@ -64,6 +66,7 @@ export function ReminderInputSheet({
   defaultTargetTime = '08:00',
   onSave,
 }: ReminderInputSheetProps) {
+  const safeAreaInsets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
   const titleInputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
   const draftTitleRef = useRef('');
@@ -73,7 +76,7 @@ export function ReminderInputSheet({
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
-  const snapPoints = useMemo(() => ['58%', '78%'], []);
+  const sheetTopInset = safeAreaInsets.top + 8;
   const minCustomDate = useMemo(() => startOfDay(new Date()), []);
 
   const isOpen = useReminderUiStore((state) => state.isQuickAddOpen);
@@ -85,6 +88,7 @@ export function ReminderInputSheet({
   const isSaving = useReminderUiStore((state) => state.isSaving);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const setTitle = useReminderUiStore((state) => state.setTitle);
+  const resetTitle = useReminderUiStore((state) => state.resetTitle);
   const setDateOffset = useReminderUiStore((state) => state.setDateOffset);
   const setPresetTargetDate = useReminderUiStore((state) => state.setPresetTargetDate);
   const setCustomTargetDate = useReminderUiStore((state) => state.setCustomTargetDate);
@@ -198,12 +202,14 @@ export function ReminderInputSheet({
     isSaveRequestedRef.current = true;
     try {
       await onSave?.(normalizedTitle);
-      requestClose();
+      resetTitle();
+      resetDraftTitle();
+      isSaveRequestedRef.current = false;
     } catch {
       // HomeScreen shows the user-facing error. Keep the sheet open so the title is not lost.
       isSaveRequestedRef.current = false;
     }
-  }, [isSaving, onSave, requestClose, setTitle]);
+  }, [isSaving, onSave, resetDraftTitle, resetTitle, setTitle]);
 
   const handleDatePickerChange = useCallback(
     (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -277,20 +283,38 @@ export function ReminderInputSheet({
       <BottomSheetModal
         name="quick-reminder-input"
         ref={sheetRef}
-        snapPoints={snapPoints}
         stackBehavior="replace"
         enableDismissOnClose
+        enableDynamicSizing
         enablePanDownToClose
+        maxDynamicContentSize={QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE}
         onDismiss={handleDismiss}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
+        topInset={sheetTopInset}
         backdropComponent={renderBackdrop}
         handleIndicatorStyle={styles.handle}
         backgroundStyle={styles.sheetBackground}
       >
-        <BottomSheetScrollView contentContainerStyle={styles.content}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>なにを忘れたくない？</Text>
+        <BottomSheetView style={styles.content}>
+          <View style={styles.inputHeader}>
+            <BottomSheetTextInput
+              ref={titleInputRef}
+              defaultValue=""
+              onChangeText={(text) => {
+                draftTitleRef.current = text;
+              }}
+              placeholder="忘れたくないことを入力"
+              placeholderTextColor="#A6B2CE"
+              style={styles.input}
+              keyboardType="default"
+              autoCorrect
+              spellCheck={false}
+              autoCapitalize="none"
+              returnKeyType="done"
+              blurOnSubmit={false}
+              multiline={false}
+            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="入力を閉じる"
@@ -301,24 +325,6 @@ export function ReminderInputSheet({
               <Ionicons name="close" size={20} color={palette.ink} />
             </Pressable>
           </View>
-
-          <BottomSheetTextInput
-            ref={titleInputRef}
-            defaultValue=""
-            onChangeText={(text) => {
-              draftTitleRef.current = text;
-            }}
-            placeholder="インターンの持ち物"
-            placeholderTextColor="#A6B2CE"
-            style={styles.input}
-            keyboardType="default"
-            autoCorrect
-            spellCheck={false}
-            autoCapitalize="none"
-            returnKeyType="done"
-            blurOnSubmit={false}
-            multiline={false}
-          />
 
           {titleNotice ? <Text style={styles.titleNoticeText}>{titleNotice}</Text> : null}
 
@@ -335,13 +341,9 @@ export function ReminderInputSheet({
             value={time}
             onChange={handleTargetTimeChange}
             onSelectCustomTime={() => setIsTimePickerOpen(true)}
+            variant="compact"
             style={styles.timeSelector}
           />
-
-          <View style={styles.summary}>
-            <Ionicons name="notifications-outline" size={17} color={palette.lavenderDeep} />
-            <Text style={styles.summaryText}>{selectedDateLabel} {time} にふわっとお知らせ</Text>
-          </View>
 
           {!isTargetFuture ? (
             <Text style={styles.timingNoticeText}>
@@ -349,14 +351,20 @@ export function ReminderInputSheet({
             </Text>
           ) : null}
 
-          <PrimaryButton
-            label={isSaving ? '追加中' : 'ふわっと追加'}
-            icon="cloud-outline"
-            onPress={handleSave}
-            disabled={isSaving || !isTimeValid || !isTargetFuture}
-            style={styles.saveButton}
-          />
-        </BottomSheetScrollView>
+          <View style={styles.actionRow}>
+            <View style={styles.summary}>
+              <Ionicons name="notifications-outline" size={16} color={palette.lavenderDeep} />
+              <Text style={styles.summaryText}>{selectedDateLabel} {time}</Text>
+            </View>
+            <PrimaryButton
+              label={isSaving ? '追加中' : '追加'}
+              icon="cloud-outline"
+              onPress={handleSave}
+              disabled={isSaving || !isTimeValid || !isTargetFuture}
+              style={styles.saveButton}
+            />
+          </View>
+        </BottomSheetView>
       </BottomSheetModal>
 
       <Modal
@@ -421,19 +429,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#C6D0E4',
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 18,
   },
-  sheetHeader: {
+  inputHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sheetTitle: {
-    color: palette.ink,
-    fontSize: 15,
-    fontWeight: '800',
+    gap: 8,
+    marginBottom: 8,
   },
   closeButton: {
     width: 34,
@@ -444,55 +447,65 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F6FC',
   },
   input: {
-    height: 48,
-    borderRadius: 18,
-    paddingHorizontal: 18,
+    flex: 1,
+    height: 46,
+    borderRadius: 16,
+    paddingHorizontal: 16,
     color: palette.ink,
     fontSize: 16,
     fontWeight: '700',
     backgroundColor: palette.white,
     borderWidth: 1,
     borderColor: palette.line,
-    marginBottom: 10,
   },
   titleNoticeText: {
     color: '#8B6F2D',
     fontSize: 12,
     fontWeight: '700',
-    marginBottom: 10,
+    marginBottom: 8,
     textAlign: 'center',
   },
   timeSelector: {
-    marginTop: 14,
+    marginTop: 8,
   },
   timingNoticeText: {
     color: palette.peachDeep,
     fontSize: 12,
     fontWeight: '800',
-    marginTop: 10,
+    marginTop: 8,
     textAlign: 'center',
     lineHeight: 18,
   },
   saveButton: {
-    marginTop: 14,
+    flex: 0.62,
+    minHeight: 48,
+    borderRadius: 16,
+    paddingHorizontal: 12,
     backgroundColor: palette.lavenderDeep,
   },
+  actionRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
   summary: {
-    minHeight: 44,
-    borderRadius: 16,
-    marginTop: 14,
-    paddingHorizontal: 14,
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 15,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 5,
     backgroundColor: 'rgba(237,230,255,0.58)',
     borderWidth: 1,
     borderColor: 'rgba(168,145,245,0.24)',
   },
   summaryText: {
     color: palette.ink,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
   },
   modalOverlay: {

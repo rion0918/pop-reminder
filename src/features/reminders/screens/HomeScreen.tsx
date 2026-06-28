@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -21,6 +21,7 @@ import { bubbleDueColors, palette } from "../../../constants/colors";
 import { formatReminderBubbleDateTime } from "../utils/reminderDateFormat";
 
 const appIcon = require("../../../../assets/app-icon.png");
+const SETTINGS_BUTTON_FEEDBACK_MS = 120;
 const dueLegendItems = [
   { label: "今日", color: bubbleDueColors.today },
   { label: "明日", color: bubbleDueColors.tomorrow },
@@ -47,6 +48,8 @@ export function HomeScreen() {
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
   const deleteTimeoutRef = useRef<number | null>(null);
+  const settingsPressTimeoutRef = useRef<number | null>(null);
+  const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(
     null,
   );
@@ -66,6 +69,10 @@ export function HomeScreen() {
     return () => {
       if (deleteTimeoutRef.current) {
         clearTimeout(deleteTimeoutRef.current);
+      }
+
+      if (settingsPressTimeoutRef.current) {
+        clearTimeout(settingsPressTimeoutRef.current);
       }
     };
   }, []);
@@ -121,6 +128,19 @@ export function HomeScreen() {
     router.push("/reminders-list");
   }, [router]);
 
+  const handlePressSettings = useCallback(() => {
+    if (settingsPressTimeoutRef.current) {
+      clearTimeout(settingsPressTimeoutRef.current);
+    }
+
+    setIsSettingsButtonPressed(true);
+    settingsPressTimeoutRef.current = setTimeout(() => {
+      setIsSettingsButtonPressed(false);
+      settingsPressTimeoutRef.current = null;
+      router.push("/settings");
+    }, SETTINGS_BUTTON_FEEDBACK_MS) as unknown as number;
+  }, [router]);
+
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
       setBurstingReminderId(reminder.id);
@@ -149,9 +169,8 @@ export function HomeScreen() {
     [refresh],
   );
 
-  const isAddButtonDisabled = isQuickAddOpen || isSaving;
+  const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled =
-    isQuickAddOpen ||
     isSaving ||
     Boolean(selectedReminder) ||
     Boolean(burstingReminderId);
@@ -182,16 +201,18 @@ export function HomeScreen() {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <Link href="/settings" asChild>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="設定を開く"
-              hitSlop={8}
-              style={styles.iconButton}
-            >
-              <Ionicons name="settings-outline" size={22} color={palette.ink} />
-            </Pressable>
-          </Link>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="設定を開く"
+            hitSlop={8}
+            onPress={handlePressSettings}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed || isSettingsButtonPressed ? styles.iconButtonPressed : null,
+            ]}
+          >
+            <Ionicons name="settings-outline" size={22} color={palette.ink} />
+          </Pressable>
         </View>
       </View>
 
@@ -266,8 +287,9 @@ export function HomeScreen() {
         disabled={isAddButtonDisabled}
         hitSlop={8}
         onPress={handlePressAdd}
-        style={[
+        style={({ pressed }) => [
           styles.addButton,
+          pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
           isAddButtonDisabled ? styles.addButtonDisabled : null,
         ]}
       >
@@ -356,6 +378,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.78)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.9)",
+  },
+  iconButtonPressed: {
+    opacity: 0.82,
+    transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
   headerActions: {
     flexDirection: "row",
@@ -490,6 +516,11 @@ const styles = StyleSheet.create({
   },
   addButtonDisabled: {
     opacity: 0.5,
+  },
+  addButtonPressed: {
+    opacity: 0.9,
+    transform: [{ translateY: 2 }, { scale: 0.97 }],
+    shadowOpacity: 0.16,
   },
   addButtonText: {
     color: palette.white,

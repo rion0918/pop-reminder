@@ -21,6 +21,8 @@ type ReminderBubbleProps = {
   reminder: Reminder;
   index: number;
   size: number;
+  width?: number;
+  height?: number;
   currentDate: Date;
   style?: ViewStyle;
   isBursting?: boolean;
@@ -36,6 +38,18 @@ type IdleMotionConfig = {
   amplitudeX: number;
   amplitudeY: number;
   rotateDeg: number;
+};
+
+type BubbleTypography = {
+  titleFontSize: number;
+  titleLineCount: number;
+  titleLineHeight: number;
+  titleMinFontScale: number;
+  titleAdjustsFontSizeToFit: boolean;
+  titleEllipsizeMode: 'clip';
+  timeFontSize: number;
+  timeMarginTop: number;
+  bubblePadding: number;
 };
 
 function hashString(value: string) {
@@ -70,6 +84,41 @@ function getTitleVisualLength(title: string) {
   }, 0);
 }
 
+function getBubbleTypography(width: number, height: number, titleVisualLength: number): BubbleTypography {
+  const isShortTitle = titleVisualLength <= 8;
+  const isMediumTitle = titleVisualLength <= 16;
+  const isLongTitle = titleVisualLength > 24;
+  const textMeasure = Math.min(height, width / 1.45);
+  const titleLineCount = isShortTitle ? 1 : isMediumTitle ? 2 : isLongTitle ? 4 : 3;
+  const titleFontSize = isShortTitle
+    ? clamp(textMeasure * 0.16, 16, 24)
+    : isMediumTitle
+      ? clamp(textMeasure * 0.13, 14, 21)
+      : isLongTitle
+        ? clamp(textMeasure * 0.082, 11, 14)
+        : clamp(textMeasure * 0.108, 13, 18);
+  const timeFontSize = isShortTitle
+    ? clamp(textMeasure * 0.095, 12, 16)
+    : isLongTitle
+      ? clamp(textMeasure * 0.072, 10, 12)
+      : clamp(textMeasure * 0.085, 11, 14);
+  const baseBubblePadding = clamp(textMeasure * 0.14, 12, 23);
+
+  return {
+    titleFontSize: Math.round(titleFontSize),
+    titleLineCount,
+    titleLineHeight: Math.round(titleFontSize + (isShortTitle ? 5 : isLongTitle ? 2 : 4)),
+    titleMinFontScale: isShortTitle ? 1 : isLongTitle ? 0.72 : 0.9,
+    titleAdjustsFontSizeToFit: !isShortTitle,
+    titleEllipsizeMode: 'clip',
+    timeFontSize: Math.round(timeFontSize),
+    timeMarginTop: isShortTitle ? Math.round(clamp(textMeasure * 0.045, 5, 9)) : isLongTitle ? 2 : 4,
+    bubblePadding: Math.round(
+      isShortTitle ? baseBubblePadding : Math.max(10, baseBubblePadding - (isLongTitle ? 5 : 3)),
+    ),
+  };
+}
+
 function makeIdleMotionConfig(id: string, index: number): IdleMotionConfig {
   const seed = hashString(`${id}-${index}`);
 
@@ -86,6 +135,8 @@ export const ReminderBubble = memo(function ReminderBubble({
   reminder,
   index,
   size,
+  width,
+  height,
   currentDate,
   style,
   isBursting,
@@ -95,23 +146,11 @@ export const ReminderBubble = memo(function ReminderBubble({
   const color = getReminderDueColor(reminder.targetAt, currentDate);
   const gradient = color.gradient as [string, string, string];
   const titleVisualLength = getTitleVisualLength(reminder.title);
-  const baseTitleFontSize = size >= 144 ? 21 : size >= 128 ? 19 : size >= 112 ? 17 : 15;
-  const titleFontReduction =
-    titleVisualLength >= 24 ? 5 : titleVisualLength >= 18 ? 4 : titleVisualLength >= 13 ? 2 : titleVisualLength >= 9 ? 1 : 0;
-  const titleFontSize = clamp(baseTitleFontSize - titleFontReduction, size >= 112 ? 13 : 12, baseTitleFontSize);
-  const titleLineCount =
-    size >= 136 && titleVisualLength >= 10
-      ? 3
-      : size >= 112 && titleVisualLength >= 18
-        ? 3
-        : 2;
-  const titleLineHeight = titleFontSize + (titleVisualLength >= 13 ? 3 : 5);
-  const baseTimeFontSize = size >= 144 ? 14 : size >= 128 ? 13 : size >= 112 ? 12 : 11;
-  const timeFontSize = titleLineCount >= 3 ? Math.max(10, baseTimeFontSize - 1) : baseTimeFontSize;
-  const baseBubblePadding = size >= 144 ? 23 : size >= 128 ? 20 : size >= 112 ? 17 : 13;
-  const bubblePadding = Math.max(size >= 112 ? 12 : 10, baseBubblePadding - (titleVisualLength >= 13 ? 4 : 0));
-  const timeMarginTop = titleLineCount >= 3 || titleVisualLength >= 13 ? 4 : 8;
-  const radius = size / 2;
+  const bubbleWidth = width ?? size;
+  const bubbleHeight = height ?? size;
+  const visualSize = Math.min(bubbleWidth, bubbleHeight);
+  const typography = getBubbleTypography(bubbleWidth, bubbleHeight, titleVisualLength);
+  const radius = visualSize / 2;
   const reduceMotion = useReducedMotion();
   const idleMotion = useMemo(
     () => makeIdleMotionConfig(reminder.id, index),
@@ -264,8 +303,8 @@ export const ReminderBubble = memo(function ReminderBubble({
       style={[
         styles.bubble,
         {
-          width: size,
-          height: size,
+          width: bubbleWidth,
+          height: bubbleHeight,
           borderRadius: radius,
         },
         style,
@@ -277,7 +316,7 @@ export const ReminderBubble = memo(function ReminderBubble({
           styles.bubbleSurface,
           {
             borderRadius: radius,
-            padding: bubblePadding,
+            padding: typography.bubblePadding,
             borderColor: 'rgba(255,255,255,0.72)',
           },
         ]}
@@ -303,23 +342,23 @@ export const ReminderBubble = memo(function ReminderBubble({
         <View style={[styles.innerGlassRing, { borderRadius: radius - 6 }]} />
         <View style={[styles.leftLightArc, { borderRadius: radius }]} />
         <View style={[styles.innerColorRim, { borderRadius: radius - 12, borderColor: color.border }]} />
-        <View style={[styles.highlightLarge, { borderRadius: size * 0.2 }]} />
+        <View style={[styles.highlightLarge, { borderRadius: visualSize * 0.2 }]} />
         <View style={styles.highlightSmall} />
         <View style={styles.highlightTiny} />
         <View style={styles.topLightArc} />
         <View style={styles.bottomReflection} />
         <View style={styles.textLayer}>
           <Text
-            adjustsFontSizeToFit
-            ellipsizeMode="tail"
-            minimumFontScale={0.78}
-            numberOfLines={titleLineCount}
+            adjustsFontSizeToFit={typography.titleAdjustsFontSizeToFit}
+            ellipsizeMode={typography.titleEllipsizeMode}
+            minimumFontScale={typography.titleMinFontScale}
+            numberOfLines={typography.titleLineCount}
             style={[
               styles.title,
               {
                 color: color.accent,
-                fontSize: titleFontSize,
-                lineHeight: titleLineHeight,
+                fontSize: typography.titleFontSize,
+                lineHeight: typography.titleLineHeight,
               },
             ]}
           >
@@ -333,9 +372,9 @@ export const ReminderBubble = memo(function ReminderBubble({
             style={[
               styles.time,
               {
-                fontSize: timeFontSize,
-                lineHeight: timeFontSize + 4,
-                marginTop: timeMarginTop,
+                fontSize: typography.timeFontSize,
+                lineHeight: typography.timeFontSize + 4,
+                marginTop: typography.timeMarginTop,
               },
             ]}
           >

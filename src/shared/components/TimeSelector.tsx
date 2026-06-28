@@ -13,6 +13,7 @@ type TimeSelectorProps = {
   value: string;
   onChange: (value: string) => void;
   onSelectCustomTime: () => void;
+  variant?: 'regular' | 'compact';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -27,13 +28,16 @@ export function TimeSelector({
   value,
   onChange,
   onSelectCustomTime,
+  variant = 'regular',
   style,
 }: TimeSelectorProps) {
   const isPresetTime = presets.some((preset) => preset.time === value);
+  const isCompact = variant === 'compact';
+  const customTimeLabel = isCompact && !isPresetTime ? value : '時刻';
 
   return (
-    <View style={[styles.wrap, style]}>
-      <View style={styles.presetRow}>
+    <View style={[styles.wrap, isCompact ? styles.compactWrap : null, style]}>
+      <View style={isCompact ? styles.compactRow : styles.presetRow}>
         {presets.map((preset) => {
           const active = value === preset.time;
 
@@ -45,6 +49,7 @@ export function TimeSelector({
               onPress={() => onChange(preset.time)}
               style={({ pressed }) => [
                 styles.chip,
+                isCompact ? styles.compactChip : null,
                 active ? styles.activeChip : null,
                 pressed ? styles.pressedChip : null,
               ]}
@@ -54,27 +59,37 @@ export function TimeSelector({
             </Pressable>
           );
         })}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: !isPresetTime }}
+          onPress={onSelectCustomTime}
+          style={({ pressed }) => [
+            styles.chip,
+            isCompact ? styles.compactChip : styles.customChip,
+            !isPresetTime ? styles.activeChip : null,
+            pressed ? styles.pressedChip : null,
+          ]}
+        >
+          {isCompact ? null : (
+            <Ionicons
+              name="time-outline"
+              size={15}
+              color={!isPresetTime ? palette.white : palette.ink}
+            />
+          )}
+          <Text
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            style={[
+              styles.label,
+              isCompact ? styles.compactLabel : null,
+              !isPresetTime ? styles.activeLabel : null,
+            ]}
+          >
+            {isCompact ? customTimeLabel : '時刻を選ぶ'}
+          </Text>
+        </Pressable>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected: !isPresetTime }}
-        onPress={onSelectCustomTime}
-        style={({ pressed }) => [
-          styles.chip,
-          styles.customChip,
-          !isPresetTime ? styles.activeChip : null,
-          pressed ? styles.pressedChip : null,
-        ]}
-      >
-        <Ionicons
-          name="time-outline"
-          size={15}
-          color={!isPresetTime ? palette.white : palette.ink}
-        />
-        <Text style={[styles.label, !isPresetTime ? styles.activeLabel : null]}>
-          時刻を選ぶ
-        </Text>
-      </Pressable>
     </View>
   );
 }
@@ -83,9 +98,16 @@ const styles = StyleSheet.create({
   wrap: {
     gap: 8,
   },
+  compactWrap: {
+    gap: 0,
+  },
   presetRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  compactRow: {
+    flexDirection: 'row',
+    gap: 5,
   },
   chip: {
     flex: 1,
@@ -111,10 +133,19 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
   },
+  compactChip: {
+    minHeight: 42,
+    borderRadius: 14,
+    paddingHorizontal: 3,
+    paddingVertical: 5,
+  },
   label: {
     color: palette.ink,
     fontSize: 13,
     fontWeight: '800',
+  },
+  compactLabel: {
+    fontSize: 12,
   },
   time: {
     color: palette.muted,

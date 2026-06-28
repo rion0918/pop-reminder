@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { format, getYear } from 'date-fns';
+import { format } from 'date-fns';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { palette } from '../../../constants/colors';
@@ -29,24 +29,19 @@ const relativeChips: {
 }[] = [
   { label: '今日', value: 0, preset: 'today' },
   { label: '明日', value: 1, preset: 'tomorrow' },
-  { label: '明後日', value: 2, preset: 'dayAfterTomorrow' },
 ];
 
-const computedChips: { label: string; preset: ComputedReminderDatePreset }[] = [
-  { label: '週末', preset: 'weekend' },
-  { label: '来週', preset: 'nextWeek' },
-];
+const weekendChip: { label: string; preset: ComputedReminderDatePreset } = {
+  label: '週末',
+  preset: 'weekend',
+};
 
 function formatCustomDate(value: string | null) {
   if (!value) {
-    return '日付を選ぶ';
+    return '日付';
   }
 
-  const date = new Date(`${value}T00:00:00`);
-  const thisYear = getYear(new Date());
-  const pattern = getYear(date) === thisYear ? 'M/d' : 'yyyy/M/d';
-
-  return format(date, pattern);
+  return format(new Date(`${value}T00:00:00`), 'M/d');
 }
 
 export function DateChips({
@@ -58,6 +53,7 @@ export function DateChips({
   onSelectCustomDate,
 }: DateChipsProps) {
   const customActive = preset === 'custom';
+  const weekendActive = preset === weekendChip.preset;
 
   return (
     <View style={styles.wrap}>
@@ -81,33 +77,25 @@ export function DateChips({
             </Pressable>
           );
         })}
-      </View>
-
-      <View style={styles.row}>
-        {computedChips.map((chip) => {
-          const active = preset === chip.preset;
-
-          return (
-            <Pressable
-              key={chip.preset}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() =>
-                onSelectPresetDate(
-                  chip.preset,
-                  formatLocalDate(getReminderDatePresetTarget(chip.preset)),
-                )
-              }
-              style={({ pressed }) => [
-                styles.chip,
-                active ? styles.activeChip : null,
-                pressed ? styles.pressedChip : null,
-              ]}
-            >
-              <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
-            </Pressable>
-          );
-        })}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: weekendActive }}
+          onPress={() =>
+            onSelectPresetDate(
+              weekendChip.preset,
+              formatLocalDate(getReminderDatePresetTarget(weekendChip.preset)),
+            )
+          }
+          style={({ pressed }) => [
+            styles.chip,
+            weekendActive ? styles.activeChip : null,
+            pressed ? styles.pressedChip : null,
+          ]}
+        >
+          <Text style={[styles.label, weekendActive ? styles.activeLabel : null]}>
+            {weekendChip.label}
+          </Text>
+        </Pressable>
 
         <Pressable
           accessibilityRole="button"
@@ -125,8 +113,12 @@ export function DateChips({
             size={14}
             color={customActive ? palette.white : palette.ink}
           />
-          <Text style={[styles.label, customActive ? styles.activeLabel : null]}>
-            {customActive ? formatCustomDate(customDate) : '日付を選ぶ'}
+          <Text
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            style={[styles.label, customActive ? styles.activeLabel : null]}
+          >
+            {customActive ? formatCustomDate(customDate) : '日付'}
           </Text>
         </Pressable>
       </View>
@@ -145,8 +137,8 @@ const styles = StyleSheet.create({
   chip: {
     flex: 1,
     minWidth: 0,
-    height: 40,
-    borderRadius: 15,
+    height: 38,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -168,8 +160,8 @@ const styles = StyleSheet.create({
     color: palette.white,
   },
   selectChip: {
-    flex: 1.35,
-    paddingHorizontal: 10,
+    flex: 1.18,
+    paddingHorizontal: 8,
   },
   pressedChip: {
     opacity: 0.78,
