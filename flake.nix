@@ -16,10 +16,14 @@
           packages = with pkgs; [
             nodejs_22
             pnpm
-            # Expo CLI は pnpm 経由で利用
+            openjdk17
           ];
 
           shellHook = ''
+            export JAVA_HOME=${pkgs.openjdk17}
+            export ANDROID_HOME=$HOME/Library/Android/sdk
+            export PATH=$PATH:$ANDROID_HOME/emulator
+            export PATH=$PATH:$ANDROID_HOME/platform-tools
             echo "🫧 pop-reminder dev shell (Node $(node --version), pnpm $(pnpm --version))"
           '';
         };

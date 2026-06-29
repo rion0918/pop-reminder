@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
@@ -11,6 +12,7 @@ import {
   configureAndroidNotificationChannels,
   configureNotificationHandler,
 } from '../lib/notifications/reminderNotifications';
+import { useReminderUiStore } from '../features/reminders/stores/reminderUiStore';
 import { palette } from '../constants/colors';
 
 export default function RootLayout() {
@@ -40,6 +42,44 @@ export default function RootLayout() {
       mounted = false;
     };
   }, []);
+
+  const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
+
+  const handleDeepLink = useCallback(
+    (url: string | null) => {
+      if (!url || !ready) {
+        return;
+      }
+
+      const parsed = Linking.parse(url);
+
+      if (parsed.hostname === 'add' || parsed.path === 'add') {
+        // Delay slightly to ensure the home screen is mounted
+        setTimeout(() => {
+          openQuickAdd('08:00');
+        }, 300);
+      }
+    },
+    [openQuickAdd, ready],
+  );
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
+    // Handle the URL that opened the app
+    Linking.getInitialURL().then(handleDeepLink).catch(() => {});
+
+    // Handle URLs while the app is already open
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handleDeepLink, ready]);
 
   if (!ready) {
     return (

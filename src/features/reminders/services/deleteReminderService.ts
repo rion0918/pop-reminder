@@ -3,6 +3,7 @@ import {
   reminderServiceDependencies,
   ReminderServiceDependencies,
 } from './reminderServiceDependencies';
+import { updateWidget } from '../../../widget/widgetUpdateService';
 
 export async function deleteReminder(
   id: string,
@@ -17,6 +18,7 @@ export async function deleteReminder(
 
   await notificationGateway.cancelReminderNotifications(reminder);
   await deleteReminderById(id);
+  void updateWidget();
 
   return true;
 }

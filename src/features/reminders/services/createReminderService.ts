@@ -5,6 +5,7 @@ import {
   reminderServiceDependencies,
   ReminderServiceDependencies,
 } from './reminderServiceDependencies';
+import { updateWidget } from '../../../widget/widgetUpdateService';
 
 type CreateReminderOptions = {
   useTestNotifications?: boolean;
@@ -43,9 +44,12 @@ export async function createReminder(
             soundEnabled: settings.notificationSoundEnabled,
           });
 
-    return (await updateReminderNotificationIds(reminder.id, notificationIds)) ?? reminder;
+    const result = (await updateReminderNotificationIds(reminder.id, notificationIds)) ?? reminder;
+    void updateWidget();
+    return result;
   } catch (error) {
     console.warn('Failed to schedule reminder notifications', error);
+    void updateWidget();
     return reminder;
   }
 }

@@ -44,7 +44,22 @@
           "color": "#5F7FE8"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "PopReminderWidget",
+              "label": "ポップ・リマインダー",
+              "description": "リマインダーのシャボン玉を表示＆すばやく追加",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "resizeMode": "horizontal|vertical"
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
