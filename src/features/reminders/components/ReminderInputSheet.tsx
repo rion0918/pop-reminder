@@ -307,7 +307,7 @@ export function ReminderInputSheet({
         enablePanDownToClose
         maxDynamicContentSize={quickAddMaxDynamicContentSize}
         onDismiss={handleDismiss}
-        keyboardBehavior="interactive"
+        keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
         topInset={sheetTopInset}

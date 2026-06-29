@@ -63,9 +63,11 @@ export function HomeScreen() {
   const deleteTimeoutRef = useRef<number | null>(null);
   const settingsPressTimeoutRef = useRef<number | null>(null);
   const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
-  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(
-    null,
-  );
+  const selectedReminderId = useReminderUiStore((state) => state.selectedReminderId);
+  const setSelectedReminderId = useReminderUiStore((state) => state.setSelectedReminderId);
+
+  const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
+
   const [burstingReminderId, setBurstingReminderId] = useState<string | null>(
     null,
   );
@@ -108,7 +110,7 @@ export function HomeScreen() {
 
       const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
         if (selectedReminderRef.current) {
-          setSelectedReminder(null);
+          setSelectedReminderId(null);
           return true;
         }
 
@@ -123,7 +125,7 @@ export function HomeScreen() {
       return () => {
         subscription.remove();
       };
-    }, [closeQuickAdd]),
+    }, [closeQuickAdd, setSelectedReminderId]),
   );
 
   const handleSave = async (title: string) => {
@@ -289,7 +291,7 @@ export function HomeScreen() {
           burstingReminderId={burstingReminderId}
           freezeLayout={isQuickAddOpen}
           idleDisabled={isBubbleIdleDisabled}
-          onReminderPress={setSelectedReminder}
+          onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
           onOverflowPress={handleOpenReminderList}
         />
       </View>
@@ -298,7 +300,7 @@ export function HomeScreen() {
 
       <ReminderDetailSheet
         reminder={selectedReminder}
-        onClose={() => setSelectedReminder(null)}
+        onClose={() => setSelectedReminderId(null)}
         onDelete={handleDeleteReminder}
       />
 

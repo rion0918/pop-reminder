@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
 
 import { PopReminderWidget } from './PopReminderWidget';
 
@@ -28,7 +29,8 @@ export async function updateWidget(): Promise<void> {
   }
 
   try {
-    const db = SQLite.openDatabaseSync('pop_reminder.db');
+    const databaseDirectory = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}SQLite` : undefined;
+    const db = SQLite.openDatabaseSync('pop_reminder.db', { directory: databaseDirectory } as any);
     const now = new Date().toISOString();
 
     const rows = db.getAllSync<ReminderRow>(

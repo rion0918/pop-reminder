@@ -77,7 +77,7 @@ function BubbleItem({ reminder }: { reminder: WidgetReminder }) {
         height: 'match_parent',
       }}
       clickAction="OPEN_URI"
-      clickActionData={{ uri: `popreminder://reminder/${reminder.id}` }}
+      clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
     >
       <TextWidget
         text={displayTitle}
@@ -273,7 +273,7 @@ export function PopReminderWidget({ reminders }: PopReminderWidgetProps) {
           width: 'match_parent',
         }}
         clickAction="OPEN_URI"
-        clickActionData={{ uri: 'popreminder://add' }}
+        clickActionData={{ uri: 'popreminder://?action=add' }}
       >
         <TextWidget
           text="＋"

@@ -44,6 +44,7 @@ export default function RootLayout() {
   }, []);
 
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
+  const setSelectedReminderId = useReminderUiStore((state) => state.setSelectedReminderId);
 
   const handleDeepLink = useCallback(
     (url: string | null) => {
@@ -53,14 +54,20 @@ export default function RootLayout() {
 
       const parsed = Linking.parse(url);
 
-      if (parsed.hostname === 'add' || parsed.path === 'add') {
+      if (parsed.queryParams?.action === 'add') {
         // Delay slightly to ensure the home screen is mounted
         setTimeout(() => {
           openQuickAdd('08:00');
-        }, 300);
+        }, 600);
+      } else if (parsed.queryParams?.action === 'view' && typeof parsed.queryParams.id === 'string') {
+        const id = parsed.queryParams.id;
+        // Delay slightly to ensure home screen is loaded
+        setTimeout(() => {
+          setSelectedReminderId(id);
+        }, 600);
       }
     },
-    [openQuickAdd, ready],
+    [openQuickAdd, setSelectedReminderId, ready],
   );
 
   useEffect(() => {

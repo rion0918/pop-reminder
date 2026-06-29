@@ -1,15 +1,17 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
 
 import * as schema from './schema';
 
-const sqlite = SQLite.openDatabaseSync('pop_reminder.db');
+const databaseDirectory = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}SQLite` : undefined;
+const sqlite = SQLite.openDatabaseSync('pop_reminder.db', { directory: databaseDirectory } as any);
 
 export const db = drizzle(sqlite, { schema });
 
 export async function initializeDatabase() {
   await sqlite.execAsync(`
-    PRAGMA journal_mode = WAL;
+    PRAGMA journal_mode = DELETE;
 
     CREATE TABLE IF NOT EXISTS reminders (
       id TEXT PRIMARY KEY NOT NULL,

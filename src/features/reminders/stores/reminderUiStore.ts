@@ -18,6 +18,7 @@ type ReminderUiState = {
   timeDigits: string;
   timeTouched: boolean;
   isSaving: boolean;
+  selectedReminderId: string | null;
   openQuickAdd: (defaultTime?: string) => void;
   closeQuickAdd: () => void;
   setTitle: (title: string) => void;
@@ -27,6 +28,7 @@ type ReminderUiState = {
   setCustomTargetDate: (date: string | null) => void;
   setTargetTime: (time: string) => void;
   setSaving: (isSaving: boolean) => void;
+  setSelectedReminderId: (id: string | null) => void;
   resetInput: (defaultTime?: string) => void;
 };
 
@@ -39,6 +41,7 @@ const initialState = {
   timeDigits: '0800',
   timeTouched: false,
   isSaving: false,
+  selectedReminderId: null as string | null,
 };
 
 export const useReminderUiStore = create<ReminderUiState>((set) => ({
@@ -76,6 +79,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
     set({ customTargetDate, datePreset: customTargetDate ? 'custom' : 'tomorrow' }),
   setTargetTime: (time) => set({ timeDigits: timeToDigits(time), timeTouched: true }),
   setSaving: (isSaving) => set({ isSaving }),
+  setSelectedReminderId: (selectedReminderId) => set({ selectedReminderId }),
   resetInput: (defaultTime = '08:00') =>
     set({
       title: '',
@@ -85,6 +89,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
       timeDigits: timeToDigits(defaultTime),
       timeTouched: false,
       isSaving: false,
+      selectedReminderId: null,
     }),
 }));
 

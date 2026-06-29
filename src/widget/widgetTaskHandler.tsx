@@ -1,6 +1,7 @@
 import React from 'react';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
 
 import { PopReminderWidget } from './PopReminderWidget';
 
@@ -16,7 +17,8 @@ async function getActiveReminders(): Promise<
   { id: string; title: string; targetAt: string }[]
 > {
   try {
-    const db = SQLite.openDatabaseSync('pop_reminder.db');
+    const databaseDirectory = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}SQLite` : undefined;
+    const db = SQLite.openDatabaseSync('pop_reminder.db', { directory: databaseDirectory } as any);
     const now = new Date().toISOString();
 
     const rows = db.getAllSync<ReminderRow>(

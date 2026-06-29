@@ -25,6 +25,7 @@
     "android": {
       "package": "com.rion0918.popreminder",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "adjustResize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#EFF8FF"
