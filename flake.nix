@@ -1,0 +1,28 @@
+{
+  description = "pop-reminder – Expo / React Native 開発環境";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            nodejs_22
+            pnpm
+            # Expo CLI は pnpm 経由で利用
+          ];
+
+          shellHook = ''
+            echo "🫧 pop-reminder dev shell (Node $(node --version), pnpm $(pnpm --version))"
+          '';
+        };
+      }
+    );
+}
