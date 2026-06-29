@@ -351,7 +351,6 @@ export function ReminderInputSheet({
           {titleNotice ? <Text style={styles.titleNoticeText}>{titleNotice}</Text> : null}
 
           <DateChips
-            value={dateOffset}
             preset={datePreset}
             customDate={customTargetDate}
             onChange={handleDateOffsetChange}

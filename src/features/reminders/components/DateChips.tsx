@@ -14,7 +14,6 @@ import {
 } from '../utils/reminderDatePresets';
 
 type DateChipsProps = {
-  value: ReminderDateOffset;
   preset: ReminderDatePreset;
   customDate: string | null;
   onChange: (value: ReminderDateOffset) => void;
@@ -45,7 +44,6 @@ function formatCustomDate(value: string | null) {
 }
 
 export function DateChips({
-  value,
   preset,
   customDate,
   onChange,
