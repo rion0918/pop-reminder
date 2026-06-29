@@ -235,6 +235,10 @@ export function ReminderInputSheet({
       }
 
       setCustomTargetDate(format(nextDate, 'yyyy-MM-dd'));
+
+      if (Platform.OS === 'android') {
+        setIsDatePickerOpen(false);
+      }
     },
     [minCustomDate, setCustomTargetDate, setTargetTime, time],
   );
@@ -372,45 +376,58 @@ export function ReminderInputSheet({
         </BottomSheetView>
       </BottomSheetModal>
 
-      <Modal
-        visible={isDatePickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsDatePickerOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerPanel}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.calendarTitle}>日付を選択</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="日付選択を閉じる"
-                hitSlop={8}
+      {isDatePickerOpen && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={datePickerValue}
+          mode="date"
+          display={datePickerDisplay}
+          minimumDate={minCustomDate}
+          locale="ja-JP"
+          onChange={handleDatePickerChange}
+        />
+      )}
+
+      {Platform.OS !== 'android' && (
+        <Modal
+          visible={isDatePickerOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsDatePickerOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.pickerPanel}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.calendarTitle}>日付を選択</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="日付選択を閉じる"
+                  hitSlop={8}
+                  onPress={() => setIsDatePickerOpen(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color={palette.ink} />
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={datePickerValue}
+                mode="date"
+                display={datePickerDisplay}
+                minimumDate={minCustomDate}
+                locale="ja-JP"
+                themeVariant="light"
+                onChange={handleDatePickerChange}
+              />
+              <Text style={styles.calendarHint}>今日以降の日付を選べます</Text>
+              <PrimaryButton
+                label="この日付にする"
+                icon="calendar-outline"
                 onPress={() => setIsDatePickerOpen(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={20} color={palette.ink} />
-              </Pressable>
+                style={styles.pickerButton}
+              />
             </View>
-            <DateTimePicker
-              value={datePickerValue}
-              mode="date"
-              display={datePickerDisplay}
-              minimumDate={minCustomDate}
-              locale="ja-JP"
-              themeVariant="light"
-              onChange={handleDatePickerChange}
-            />
-            <Text style={styles.calendarHint}>今日以降の日付を選べます</Text>
-            <PrimaryButton
-              label="この日付にする"
-              icon="calendar-outline"
-              onPress={() => setIsDatePickerOpen(false)}
-              style={styles.pickerButton}
-            />
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
 
       <TimePickerModal
         visible={isTimePickerOpen}

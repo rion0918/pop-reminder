@@ -51,9 +51,30 @@ export function TimePickerModal({
       }
 
       onChange(format(selectedTime, 'HH:mm'));
+
+      if (Platform.OS === 'android') {
+        onClose();
+      }
     },
     [onChange, onClose],
   );
+
+  if (!visible) {
+    return null;
+  }
+
+  if (Platform.OS === 'android') {
+    return (
+      <DateTimePicker
+        value={pickerValue}
+        mode="time"
+        display={timePickerDisplay}
+        is24Hour
+        locale="ja-JP"
+        onChange={handleChange}
+      />
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
