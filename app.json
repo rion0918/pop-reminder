@@ -4,6 +4,7 @@
     "slug": "pop-reminder",
     "scheme": "popreminder",
     "version": "0.1.0",
+    "description": "忘れたくないことを、ふわっと泡にして残せるシンプルなリマインダーアプリです。",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -14,7 +15,8 @@
       "backgroundColor": "#EFF8FF"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -22,15 +24,27 @@
     },
     "android": {
       "package": "com.rion0918.popreminder",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/app-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#EFF8FF"
       }
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#EFF8FF",
+      "barStyle": "dark-content"
     },
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#5F7FE8"
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,11 @@ type ReminderInputSheetProps = {
 
 const sameDayTimePresets = ['08:00', '12:00', '18:00', '20:00'];
 const QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE = 360;
+const datePickerDisplay = Platform.select({
+  ios: 'spinner',
+  android: 'default',
+  default: 'default',
+} as const);
 
 function buildTargetDateTime(targetDate: Date, time: string) {
   const [hoursText, minutesText] = time.split(':');
@@ -390,7 +395,7 @@ export function ReminderInputSheet({
             <DateTimePicker
               value={datePickerValue}
               mode="date"
-              display="spinner"
+              display={datePickerDisplay}
               minimumDate={minCustomDate}
               locale="ja-JP"
               themeVariant="light"

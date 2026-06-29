@@ -7,7 +7,10 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { initializeDatabase } from '../db/client';
 import { cleanupExpiredReminders } from '../features/reminders/services/reminderCleanupService';
-import { configureNotificationHandler } from '../lib/notifications/reminderNotifications';
+import {
+  configureAndroidNotificationChannels,
+  configureNotificationHandler,
+} from '../lib/notifications/reminderNotifications';
 import { palette } from '../constants/colors';
 
 export default function RootLayout() {
@@ -17,6 +20,10 @@ export default function RootLayout() {
     let mounted = true;
 
     configureNotificationHandler();
+
+    configureAndroidNotificationChannels().catch((error) => {
+      console.warn('Failed to configure notification channels', error);
+    });
 
     initializeDatabase()
       .then(() => cleanupExpiredReminders())

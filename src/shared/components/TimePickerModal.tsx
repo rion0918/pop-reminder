@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,12 @@ import { format } from 'date-fns';
 
 import { palette } from '../../constants/colors';
 import { PrimaryButton } from './PrimaryButton';
+
+const timePickerDisplay = Platform.select({
+  ios: 'spinner',
+  android: 'default',
+  default: 'default',
+} as const);
 
 type TimePickerModalProps = {
   visible: boolean;
@@ -68,7 +74,7 @@ export function TimePickerModal({
           <DateTimePicker
             value={pickerValue}
             mode="time"
-            display="spinner"
+            display={timePickerDisplay}
             is24Hour
             locale="ja-JP"
             themeVariant="light"

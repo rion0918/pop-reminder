@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  BackHandler,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { ReminderBubbleBoard } from "../components/ReminderBubbleBoard";
 import { ReminderDetailSheet } from "../components/ReminderDetailSheet";
@@ -34,6 +43,7 @@ export function HomeScreen() {
   const { reminders, loading, error, refresh, upsertReminder } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
+  const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
   const customTargetDate = useReminderUiStore(
     (state) => state.customTargetDate,
@@ -47,6 +57,7 @@ export function HomeScreen() {
   const { settings } = useAppSettings();
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
+  const selectedReminderRef = useRef<Reminder | null>(null);
   const deleteTimeoutRef = useRef<number | null>(null);
   const settingsPressTimeoutRef = useRef<number | null>(null);
   const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
@@ -60,6 +71,10 @@ export function HomeScreen() {
   useEffect(() => {
     isQuickAddOpenRef.current = isQuickAddOpen;
   }, [isQuickAddOpen]);
+
+  useEffect(() => {
+    selectedReminderRef.current = selectedReminder;
+  }, [selectedReminder]);
 
   useEffect(() => {
     isSavingRef.current = isSaving;
@@ -81,6 +96,32 @@ export function HomeScreen() {
     useCallback(() => {
       void refresh();
     }, [refresh]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") {
+        return undefined;
+      }
+
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (selectedReminderRef.current) {
+          setSelectedReminder(null);
+          return true;
+        }
+
+        if (isQuickAddOpenRef.current) {
+          closeQuickAdd();
+          return true;
+        }
+
+        return false;
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    }, [closeQuickAdd]),
   );
 
   const handleSave = async (title: string) => {

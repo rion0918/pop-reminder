@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -74,7 +76,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '6. お問い合わせ',
-      body: '不具合やご意見がある場合は、App Storeの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
+      body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
     },
   ],
 };
@@ -106,7 +108,7 @@ const termsSections = [
   },
   {
     title: '7. お問い合わせ',
-    body: '不具合やご意見がある場合は、App Storeの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
+    body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
   },
 ];
 
@@ -132,6 +134,8 @@ export function SettingsScreen() {
     useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] =
     useState(false);
+  const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] =
+    useState(true);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   const backPressTimeoutRef = useRef<number | null>(null);
@@ -145,11 +149,19 @@ export function SettingsScreen() {
   }, [settings]);
 
   useEffect(() => {
-    if (!__DEV__) {
-      return;
-    }
-
     void refreshNotificationPermissionStatus();
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        void refreshNotificationPermissionStatus();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -164,6 +176,7 @@ export function SettingsScreen() {
     const permission = await getNotificationPermissionStatus();
     setNotificationPermissionLabel(permission.label);
     setIsNotificationPermissionGranted(permission.status === 'granted');
+    setCanAskNotificationPermissionAgain(permission.canAskAgain);
   };
 
   const savePreviousTime = async (value: string) => {
@@ -178,6 +191,15 @@ export function SettingsScreen() {
   const handleRequestNotificationPermission = async () => {
     await requestNotificationPermissions();
     await refreshNotificationPermissionStatus();
+  };
+
+  const handleOpenAppSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch (error) {
+      console.warn('Failed to open app settings', error);
+      Alert.alert('設定を開けませんでした', '端末の設定アプリから通知を確認してください。');
+    }
   };
 
   const handleSendTestNotification = async () => {
@@ -310,6 +332,44 @@ export function SettingsScreen() {
             </SettingRow>
             <View style={styles.divider} />
             <SettingRow
+              icon="notifications-outline"
+              title="通知権限"
+              caption="端末の通知設定と連動します"
+            >
+              <Text style={styles.permissionLabel}>{notificationPermissionLabel}</Text>
+            </SettingRow>
+            {!isNotificationPermissionGranted ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={
+                    canAskNotificationPermissionAgain
+                      ? handleRequestNotificationPermission
+                      : handleOpenAppSettings
+                  }
+                  style={styles.notificationButton}
+                >
+                  <Ionicons
+                    name={
+                      canAskNotificationPermissionAgain
+                        ? 'notifications-outline'
+                        : 'settings-outline'
+                    }
+                    size={18}
+                    color={palette.white}
+                  />
+                  <Text style={styles.notificationButtonText}>
+                    {canAskNotificationPermissionAgain
+                      ? '通知権限をリクエスト'
+                      : '端末の通知設定を開く'}
+                  </Text>
+                </Pressable>
+                <View style={styles.divider} />
+              </>
+            ) : (
+              <View style={styles.divider} />
+            )}
+            <SettingRow
               icon="sparkles-outline"
               title="自動消滅"
               caption="期限切れ後は表示せず、起動時に整理します"
@@ -398,21 +458,6 @@ export function SettingsScreen() {
                 />
               </SettingRow>
               <View style={styles.divider} />
-              <SettingRow icon="notifications-outline" title="通知権限">
-                <Text style={styles.permissionLabel}>{notificationPermissionLabel}</Text>
-              </SettingRow>
-
-              {!isNotificationPermissionGranted ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handleRequestNotificationPermission}
-                  style={styles.devButton}
-                >
-                  <Ionicons name="notifications-outline" size={18} color={palette.white} />
-                  <Text style={styles.devButtonText}>通知権限をリクエスト</Text>
-                </Pressable>
-              ) : null}
-
               <Pressable
                 accessibilityRole="button"
                 onPress={handleSendTestNotification}
@@ -709,6 +754,23 @@ const styles = StyleSheet.create({
   permissionLabel: {
     color: palette.muted,
     fontSize: 13,
+    fontWeight: '800',
+  },
+  notificationButton: {
+    minHeight: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    marginLeft: 46,
+    marginBottom: 12,
+    backgroundColor: palette.skyDeep,
+  },
+  notificationButtonText: {
+    color: palette.white,
+    fontSize: 14,
     fontWeight: '800',
   },
   devButton: {

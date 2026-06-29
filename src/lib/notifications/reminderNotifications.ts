@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 import {
   ReminderNotificationGateway,
@@ -7,6 +8,9 @@ import {
   ReminderNotificationTarget,
 } from '../../features/reminders/ports/reminderNotificationGateway';
 import { Reminder } from '../../features/reminders/types/reminder';
+
+export const REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts';
+export const SILENT_REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-silent';
 
 type ScheduleNotificationInput = {
   title: string;
@@ -31,6 +35,37 @@ export function configureNotificationHandler() {
       } as Notifications.NotificationBehavior;
     },
   });
+}
+
+export async function configureAndroidNotificationChannels() {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  await Promise.all([
+    Notifications.setNotificationChannelAsync(REMINDER_NOTIFICATION_CHANNEL_ID, {
+      name: 'リマインダー',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      description: 'リマインダーのお知らせを通知音付きで届けます',
+      sound: 'default',
+      enableVibrate: true,
+      showBadge: false,
+    }),
+    Notifications.setNotificationChannelAsync(SILENT_REMINDER_NOTIFICATION_CHANNEL_ID, {
+      name: 'リマインダー（通知音なし）',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      description: '通知音なしでリマインダーのお知らせを届けます',
+      sound: null,
+      enableVibrate: false,
+      showBadge: false,
+    }),
+  ]);
+}
+
+function getReminderNotificationChannelId(soundEnabled?: boolean) {
+  return soundEnabled === false
+    ? SILENT_REMINDER_NOTIFICATION_CHANNEL_ID
+    : REMINDER_NOTIFICATION_CHANNEL_ID;
 }
 
 export async function getNotificationPermissionStatus() {
@@ -91,6 +126,7 @@ async function scheduleIfFuture({
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds,
+        channelId: getReminderNotificationChannelId(soundEnabled),
       },
     });
   }
@@ -116,6 +152,7 @@ async function scheduleIfFuture({
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date,
+      channelId: getReminderNotificationChannelId(soundEnabled),
     },
   });
 }
