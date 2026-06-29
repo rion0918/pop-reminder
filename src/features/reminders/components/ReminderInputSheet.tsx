@@ -309,6 +309,7 @@ export function ReminderInputSheet({
         onDismiss={handleDismiss}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
         topInset={sheetTopInset}
         backdropComponent={renderBackdrop}
         handleIndicatorStyle={styles.handle}

@@ -653,8 +653,7 @@ const styles = StyleSheet.create({
     color: palette.white,
   },
   selectorPanel: {
-    paddingLeft: 46,
-    paddingRight: 2,
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
   themeRow: {

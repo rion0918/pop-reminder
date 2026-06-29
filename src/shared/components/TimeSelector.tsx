@@ -35,61 +35,95 @@ export function TimeSelector({
   const isCompact = variant === 'compact';
   const customTimeLabel = isCompact && !isPresetTime ? value : '時刻';
 
+  const renderPresetChip = (preset: TimePreset) => {
+    const active = value === preset.time;
+
+    return (
+      <Pressable
+        key={preset.time}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        onPress={() => onChange(preset.time)}
+        style={({ pressed }) => [
+          styles.chip,
+          styles.presetChip,
+          isCompact ? styles.compactChip : null,
+          active ? styles.activeChip : null,
+          pressed ? styles.pressedChip : null,
+        ]}
+      >
+        <Text style={[styles.label, isCompact ? styles.compactLabel : null, active ? styles.activeLabel : null]}>
+          {preset.label}
+        </Text>
+        <Text style={[styles.time, active ? styles.activeLabel : null]}>
+          {preset.time}
+        </Text>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={[styles.wrap, isCompact ? styles.compactWrap : null, style]}>
-      <View style={isCompact ? styles.compactRow : styles.presetRow}>
-        {presets.map((preset) => {
-          const active = value === preset.time;
-
-          return (
-            <Pressable
-              key={preset.time}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() => onChange(preset.time)}
-              style={({ pressed }) => [
-                styles.chip,
-                isCompact ? styles.compactChip : null,
-                active ? styles.activeChip : null,
-                pressed ? styles.pressedChip : null,
+      {isCompact ? (
+        <View style={styles.compactRow}>
+          {presets.map(renderPresetChip)}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: !isPresetTime }}
+            onPress={onSelectCustomTime}
+            style={({ pressed }) => [
+              styles.chip,
+              styles.presetChip,
+              styles.compactChip,
+              !isPresetTime ? styles.activeChip : null,
+              pressed ? styles.pressedChip : null,
+            ]}
+          >
+            <Text
+              adjustsFontSizeToFit
+              numberOfLines={1}
+              style={[
+                styles.label,
+                styles.compactLabel,
+                !isPresetTime ? styles.activeLabel : null,
               ]}
             >
-              <Text style={[styles.label, active ? styles.activeLabel : null]}>{preset.label}</Text>
-              <Text style={[styles.time, active ? styles.activeLabel : null]}>{preset.time}</Text>
-            </Pressable>
-          );
-        })}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: !isPresetTime }}
-          onPress={onSelectCustomTime}
-          style={({ pressed }) => [
-            styles.chip,
-            isCompact ? styles.compactChip : styles.customChip,
-            !isPresetTime ? styles.activeChip : null,
-            pressed ? styles.pressedChip : null,
-          ]}
-        >
-          {isCompact ? null : (
+              {isCompact ? customTimeLabel : '時刻を選ぶ'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <View style={styles.presetRow}>
+            {presets.map(renderPresetChip)}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: !isPresetTime }}
+            onPress={onSelectCustomTime}
+            style={({ pressed }) => [
+              styles.chip,
+              styles.customChip,
+              !isPresetTime ? styles.activeChip : null,
+              pressed ? styles.pressedChip : null,
+            ]}
+          >
             <Ionicons
               name="time-outline"
               size={15}
               color={!isPresetTime ? palette.white : palette.ink}
             />
-          )}
-          <Text
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            style={[
-              styles.label,
-              isCompact ? styles.compactLabel : null,
-              !isPresetTime ? styles.activeLabel : null,
-            ]}
-          >
-            {isCompact ? customTimeLabel : '時刻を選ぶ'}
-          </Text>
-        </Pressable>
-      </View>
+            <Text
+              style={[
+                styles.label,
+                !isPresetTime ? styles.activeLabel : null,
+              ]}
+            >
+              {!isPresetTime ? `カスタム: ${value}` : '時刻を選ぶ'}
+            </Text>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
@@ -110,7 +144,6 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   chip: {
-    flex: 1,
     minWidth: 0,
     minHeight: 42,
     borderRadius: 16,
@@ -123,12 +156,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.line,
   },
+  presetChip: {
+    flex: 1,
+  },
   activeChip: {
     backgroundColor: palette.lavenderDeep,
     borderColor: palette.lavenderDeep,
   },
   customChip: {
-    minHeight: 40,
+    width: '100%',
+    minHeight: 42,
     flexDirection: 'row',
     gap: 6,
     paddingHorizontal: 14,
