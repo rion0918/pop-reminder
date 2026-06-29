@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   cancelAnimation,
@@ -145,6 +145,7 @@ export const ReminderBubble = memo(function ReminderBubble({
 }: ReminderBubbleProps) {
   const color = getReminderDueColor(reminder.targetAt, currentDate);
   const gradient = color.gradient as [string, string, string];
+  const androidGradient = color.androidGradient as [string, string, string] | undefined;
   const titleVisualLength = getTitleVisualLength(reminder.title);
   const bubbleWidth = width ?? size;
   const bubbleHeight = height ?? size;
@@ -322,7 +323,11 @@ export const ReminderBubble = memo(function ReminderBubble({
         ]}
       >
         <LinearGradient
-          colors={['rgba(255,255,255,0.78)', gradient[2], 'rgba(255,255,255,0.08)']}
+          colors={
+            Platform.OS === 'android' && androidGradient
+              ? ['rgba(255,255,255,0.78)', androidGradient[1], androidGradient[2]]
+              : ['rgba(255,255,255,0.78)', gradient[2], 'rgba(255,255,255,0.08)']
+          }
           locations={[0, 0.52, 1]}
           start={{ x: 0.16, y: 0.08 }}
           end={{ x: 0.86, y: 0.96 }}
@@ -335,13 +340,13 @@ export const ReminderBubble = memo(function ReminderBubble({
           end={{ x: 0.9, y: 1 }}
           style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
         />
-        <View style={[styles.tintMist, { borderRadius: radius * 0.72, backgroundColor: color.background }]} />
+        <View style={[styles.tintMist, { borderRadius: radius * 0.72, backgroundColor: color.background, opacity: Platform.OS === 'android' ? 0.56 : 0.26 }]} />
         <View style={[styles.lowerDepth, { borderRadius: radius * 0.76 }]} />
         <View style={[styles.centerGlow, { borderRadius: radius * 0.7 }]} />
         <View style={[styles.outerGlassRing, { borderRadius: radius }]} />
         <View style={[styles.innerGlassRing, { borderRadius: radius - 6 }]} />
         <View style={[styles.leftLightArc, { borderRadius: radius }]} />
-        <View style={[styles.innerColorRim, { borderRadius: radius - 12, borderColor: color.border }]} />
+        <View style={[styles.innerColorRim, { borderRadius: radius - 12, borderColor: color.border, opacity: Platform.OS === 'android' ? 0.36 : 0.16 }]} />
         <View style={[styles.highlightLarge, { borderRadius: visualSize * 0.2 }]} />
         <View style={styles.highlightSmall} />
         <View style={styles.highlightTiny} />
