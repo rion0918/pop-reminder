@@ -112,12 +112,19 @@ export function ReminderListScreen() {
       </View>
 
       <View style={styles.summary}>
-        <View>
-          <Text style={styles.kicker}>表示中の7個も含めて</Text>
-          <Text style={styles.title}>リマインドを一覧で見る</Text>
+        <View style={styles.summaryCopy}>
+          <Text numberOfLines={1} style={styles.kicker}>表示中の7個も含めて</Text>
+          <Text numberOfLines={2} style={styles.title}>リマインドを一覧で見る</Text>
         </View>
         <View style={styles.countPill}>
-          <Text style={styles.countText}>{reminders.length}件</Text>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+            style={styles.countText}
+          >
+            {reminders.length}件
+          </Text>
         </View>
       </View>
 
@@ -261,6 +268,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 18,
   },
+  summaryCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
   kicker: {
     color: palette.muted,
     fontSize: 12,
@@ -274,7 +285,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   countPill: {
+    flexShrink: 0,
     minWidth: 58,
+    maxWidth: '34%',
     minHeight: 42,
     borderRadius: 21,
     alignItems: 'center',
@@ -288,6 +301,7 @@ const styles = StyleSheet.create({
     color: palette.lavenderDeep,
     fontSize: 14,
     fontWeight: '900',
+    includeFontPadding: false,
   },
   listContent: {
     paddingBottom: 34,

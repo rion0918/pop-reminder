@@ -23,6 +23,7 @@ type ReminderBubbleBoardProps = {
   loading?: boolean;
   error?: string | null;
   burstingReminderId?: string | null;
+  freezeLayout?: boolean;
   idleDisabled?: boolean;
   onReminderPress?: (reminder: Reminder) => void;
   onOverflowPress?: () => void;
@@ -563,6 +564,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   loading,
   error,
   burstingReminderId,
+  freezeLayout,
   idleDisabled,
   onReminderPress,
   onOverflowPress,
@@ -602,12 +604,16 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         return current;
       }
 
+      if (freezeLayout && current.width > 0 && current.height > 0) {
+        return current;
+      }
+
       return {
         width: nextWidth,
         height: nextHeight,
       };
     });
-  }, []);
+  }, [freezeLayout]);
   const boardLayout = useMemo(
     () => {
       if (boardSize.width === 0 || boardSize.height === 0) {

@@ -224,8 +224,15 @@ export function SearchScreen() {
       </View>
 
       <View style={styles.resultMeta}>
-        <Text style={styles.resultMetaText}>{resultLabel}</Text>
-        <Text style={styles.resultMetaSub}>{filteredReminders.length}件</Text>
+        <Text numberOfLines={1} style={styles.resultMetaText}>{resultLabel}</Text>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.82}
+          style={styles.resultMetaSub}
+        >
+          {filteredReminders.length}件
+        </Text>
       </View>
 
       {loading ? (
@@ -436,18 +443,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   resultMetaText: {
+    flex: 1,
+    minWidth: 0,
     color: palette.ink,
     fontSize: 14,
     fontWeight: '900',
   },
   resultMetaSub: {
+    flexShrink: 0,
     minWidth: 42,
+    maxWidth: '34%',
     minHeight: 28,
     borderRadius: 14,
     overflow: 'hidden',
     color: palette.lavenderDeep,
     fontSize: 12,
     fontWeight: '900',
+    includeFontPadding: false,
     textAlign: 'center',
     paddingHorizontal: 10,
     paddingTop: 6,

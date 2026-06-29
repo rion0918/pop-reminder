@@ -26,3 +26,12 @@ test('bubble board lays out long titles with wide bubble dimensions', () => {
   assert.match(source, /height: cachedLayout\.height,/);
   assert.match(source, /<ReminderBubble\n          key=\{reminder\.id\}\n          reminder=\{reminder\}\n          index=\{visualIndex\}\n          size=\{size\}\n          width=\{width\}\n          height=\{height\}/);
 });
+
+test('bubble board can freeze layout measurements while an overlay is open', () => {
+  const source = readFileSync(__dirname + '/ReminderBubbleBoard.tsx', 'utf8');
+
+  assert.match(source, /freezeLayout\?: boolean;/);
+  assert.match(source, /freezeLayout,/);
+  assert.match(source, /if \(freezeLayout && current\.width > 0 && current\.height > 0\) \{/);
+  assert.match(source, /return current;/);
+});

@@ -28,9 +28,15 @@ test('quick add sheet uses the compact one-screen layout', () => {
 test('quick add sheet sizes to content instead of leaving keyboard gap', () => {
   const source = readFileSync(__dirname + '/ReminderInputSheet.tsx', 'utf8');
 
-  assert.match(source, /BottomSheetView/);
+  assert.match(source, /BottomSheetScrollView/);
   assert.match(source, /enableDynamicSizing/);
-  assert.match(source, /maxDynamicContentSize=\{QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE\}/);
+  assert.match(source, /useWindowDimensions/);
+  assert.match(source, /const quickAddMaxDynamicContentSize = useMemo/);
+  assert.match(source, /windowHeight - sheetTopInset - QUICK_ADD_BOTTOM_CLEARANCE/);
+  assert.match(source, /maxDynamicContentSize=\{quickAddMaxDynamicContentSize\}/);
+  assert.match(source, /contentContainerStyle=\{styles\.content\}/);
+  assert.match(source, /keyboardShouldPersistTaps="handled"/);
+  assert.doesNotMatch(source, /QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE = 360/);
   assert.doesNotMatch(source, /snapPoints=\{snapPoints\}/);
   assert.doesNotMatch(source, /const snapPoints = useMemo/);
 });

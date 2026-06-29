@@ -39,3 +39,19 @@ test('reminder bubble can render as a wide bubble for long text', () => {
   assert.match(source, /width: bubbleWidth,/);
   assert.match(source, /height: bubbleHeight,/);
 });
+
+test('reminder bubble uses shared home visual tokens for iOS-like Android rendering', () => {
+  const source = readFileSync(__dirname + '/ReminderBubble.tsx', 'utf8');
+  const colorsSource = readFileSync(__dirname + '/../../../constants/colors.ts', 'utf8');
+
+  assert.match(colorsSource, /export const homeVisualTokens = \{/);
+  assert.match(colorsSource, /bubbleTintMistOpacity: 0\.26/);
+  assert.match(colorsSource, /bubbleInnerColorRimOpacity: 0\.16/);
+  assert.match(colorsSource, /bubbleSurfaceElevation: 0/);
+  assert.match(source, /homeVisualTokens\.bubbleTintMistOpacity/);
+  assert.match(source, /homeVisualTokens\.bubbleInnerColorRimOpacity/);
+  assert.match(source, /homeVisualTokens\.bubbleSurfaceElevation/);
+  assert.doesNotMatch(source, /sans-serif-medium/);
+  assert.doesNotMatch(source, /androidGradient/);
+  assert.doesNotMatch(source, /Platform\.OS === 'android' \? 0\.[0-9]+ : 0\.[0-9]+/);
+});

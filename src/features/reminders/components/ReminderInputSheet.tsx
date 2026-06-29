@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,8 +8,8 @@ import { addDays, addMinutes, format, isSameDay, set, startOfDay } from 'date-fn
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetTextInput,
-  BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,7 +31,8 @@ type ReminderInputSheetProps = {
 };
 
 const sameDayTimePresets = ['08:00', '12:00', '18:00', '20:00'];
-const QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE = 360;
+const QUICK_ADD_BOTTOM_CLEARANCE = 24;
+const QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE = 320;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
   android: 'default',
@@ -72,6 +73,7 @@ export function ReminderInputSheet({
   onSave,
 }: ReminderInputSheetProps) {
   const safeAreaInsets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
   const titleInputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
   const draftTitleRef = useRef('');
@@ -82,6 +84,13 @@ export function ReminderInputSheet({
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const sheetTopInset = safeAreaInsets.top + 8;
+  const quickAddMaxDynamicContentSize = useMemo(
+    () => Math.max(
+      QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE,
+      windowHeight - sheetTopInset - QUICK_ADD_BOTTOM_CLEARANCE,
+    ),
+    [sheetTopInset, windowHeight],
+  );
   const minCustomDate = useMemo(() => startOfDay(new Date()), []);
 
   const isOpen = useReminderUiStore((state) => state.isQuickAddOpen);
@@ -296,7 +305,7 @@ export function ReminderInputSheet({
         enableDismissOnClose
         enableDynamicSizing
         enablePanDownToClose
-        maxDynamicContentSize={QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE}
+        maxDynamicContentSize={quickAddMaxDynamicContentSize}
         onDismiss={handleDismiss}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
@@ -305,7 +314,10 @@ export function ReminderInputSheet({
         handleIndicatorStyle={styles.handle}
         backgroundStyle={styles.sheetBackground}
       >
-        <BottomSheetView style={styles.content}>
+        <BottomSheetScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.inputHeader}>
             <BottomSheetTextInput
               ref={titleInputRef}
@@ -373,7 +385,7 @@ export function ReminderInputSheet({
               style={styles.saveButton}
             />
           </View>
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheetModal>
 
       {isDatePickerOpen && Platform.OS === 'android' && (

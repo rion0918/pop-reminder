@@ -8,10 +8,22 @@ type SettingRowProps = PropsWithChildren<{
   icon: ComponentProps<typeof Ionicons>['name'];
   title: string;
   caption?: string;
+  labelFlex?: number;
+  controlFlex?: number;
   onPress?: () => void;
 }>;
 
-export function SettingRow({ icon, title, caption, onPress, children }: SettingRowProps) {
+export function SettingRow({
+  icon,
+  title,
+  caption,
+  labelFlex,
+  controlFlex,
+  onPress,
+  children,
+}: SettingRowProps) {
+  const tapAreaStyle = labelFlex ? [styles.tapArea, { flex: labelFlex }] : styles.tapArea;
+  const controlStyle = controlFlex ? [styles.control, { flex: controlFlex }] : styles.control;
   const label = (
     <>
       <View style={styles.iconWrap}>
@@ -27,13 +39,13 @@ export function SettingRow({ icon, title, caption, onPress, children }: SettingR
   return (
     <View style={styles.row}>
       {onPress ? (
-        <Pressable onPress={onPress} hitSlop={4} style={styles.tapArea}>
+        <Pressable onPress={onPress} hitSlop={4} style={tapAreaStyle}>
           {label}
         </Pressable>
       ) : (
-        <View style={styles.tapArea}>{label}</View>
+        <View style={tapAreaStyle}>{label}</View>
       )}
-      <View style={styles.control}>{children}</View>
+      <View style={controlStyle}>{children}</View>
     </View>
   );
 }
@@ -47,6 +59,7 @@ const styles = StyleSheet.create({
   },
   tapArea: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -54,6 +67,7 @@ const styles = StyleSheet.create({
     marginVertical: -10,
   },
   iconWrap: {
+    flexShrink: 0,
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -63,20 +77,24 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 48,
   },
   title: {
     color: palette.ink,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 19,
     fontWeight: '800',
+    includeFontPadding: false,
   },
   caption: {
     color: palette.muted,
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 16,
     fontWeight: '600',
     marginTop: 3,
   },
   control: {
+    flexShrink: 0,
     alignItems: 'flex-end',
   },
 });

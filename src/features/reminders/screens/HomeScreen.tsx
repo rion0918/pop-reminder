@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { ReminderBubbleBoard } from "../components/ReminderBubbleBoard";
@@ -40,6 +41,7 @@ const dueLegendItems = [
 
 export function HomeScreen() {
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const { reminders, loading, error, refresh, upsertReminder } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
@@ -220,6 +222,7 @@ export function HomeScreen() {
     : "完璧！";
   const nextReminderTitle =
     reminders[0]?.title ?? "忘れたくないことはありません";
+  const isCompactPhoneWidth = windowWidth <= 360;
 
   return (
     <AppScreen theme={settings?.theme ?? "sky"}>
@@ -284,6 +287,7 @@ export function HomeScreen() {
           loading={loading}
           error={error}
           burstingReminderId={burstingReminderId}
+          freezeLayout={isQuickAddOpen}
           idleDisabled={isBubbleIdleDisabled}
           onReminderPress={setSelectedReminder}
           onOverflowPress={handleOpenReminderList}
@@ -301,7 +305,7 @@ export function HomeScreen() {
       <View
         accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
         accessibilityRole="text"
-        style={styles.dueLegend}
+        style={[styles.dueLegend, isCompactPhoneWidth ? styles.dueLegendCompact : null]}
       >
         {dueLegendItems.map((item) => (
           <View key={item.label} style={styles.dueLegendItem}>
@@ -330,6 +334,7 @@ export function HomeScreen() {
         onPress={handlePressAdd}
         style={({ pressed }) => [
           styles.addButton,
+          isCompactPhoneWidth ? styles.addButtonCompact : null,
           pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
           isAddButtonDisabled ? styles.addButtonDisabled : null,
         ]}
@@ -512,6 +517,11 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 1,
   },
+  dueLegendCompact: {
+    left: 16,
+    right: 116,
+    paddingHorizontal: 8,
+  },
   dueLegendItem: {
     flex: 1,
     minWidth: 0,
@@ -554,6 +564,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.26,
     shadowRadius: 18,
     elevation: 6,
+  },
+  addButtonCompact: {
+    right: 16,
+    minWidth: 88,
+    paddingHorizontal: 18,
   },
   addButtonDisabled: {
     opacity: 0.5,

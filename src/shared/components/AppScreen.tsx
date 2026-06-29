@@ -1,5 +1,5 @@
 import { PropsWithChildren } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppTheme, appThemes } from '../../constants/colors';
@@ -10,10 +10,12 @@ type AppScreenProps = PropsWithChildren<{
 
 export function AppScreen({ children, theme = 'sky' }: AppScreenProps) {
   const colors = appThemes[theme];
+  const { width } = useWindowDimensions();
+  const horizontalPadding = width <= 360 ? 16 : 20;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <View style={styles.container}>{children}</View>
+      <View style={[styles.container, { paddingHorizontal: horizontalPadding }]}>{children}</View>
     </SafeAreaView>
   );
 }
@@ -24,7 +26,6 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: 20,
     paddingTop: 8,
   },
 });

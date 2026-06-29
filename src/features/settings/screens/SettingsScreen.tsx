@@ -358,7 +358,12 @@ export function SettingsScreen() {
                     size={18}
                     color={palette.white}
                   />
-                  <Text style={styles.notificationButtonText}>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                    style={styles.notificationButtonText}
+                  >
                     {canAskNotificationPermissionAgain
                       ? '通知権限をリクエスト'
                       : '端末の通知設定を開く'}
@@ -389,7 +394,7 @@ export function SettingsScreen() {
           </View>
 
           <View style={styles.group}>
-            <SettingRow icon="color-palette-outline" title="テーマ">
+            <SettingRow icon="color-palette-outline" title="テーマ" labelFlex={0.36} controlFlex={0.64}>
               <View style={styles.themeRow}>
                 {themeOptions.map((theme) => {
                   const active = theme === settings.theme;
@@ -405,7 +410,12 @@ export function SettingsScreen() {
                         pressed ? styles.themeButtonPressed : null,
                       ]}
                     >
-                      <Text style={[styles.themeLabel, active ? styles.themeLabelActive : null]}>
+                      <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.72}
+                        style={[styles.themeLabel, active ? styles.themeLabelActive : null]}
+                      >
                         {themeLabels[theme]}
                       </Text>
                     </Pressable>
@@ -464,7 +474,14 @@ export function SettingsScreen() {
                 style={styles.devButton}
               >
                 <Ionicons name="paper-plane-outline" size={18} color={palette.white} />
-                <Text style={styles.devButtonText}>テスト通知を送る</Text>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  style={styles.devButtonText}
+                >
+                  テスト通知を送る
+                </Text>
               </Pressable>
 
               <Pressable
@@ -473,7 +490,14 @@ export function SettingsScreen() {
                 style={[styles.devButton, styles.cancelButton]}
               >
                 <Ionicons name="close-circle-outline" size={18} color={palette.ink} />
-                <Text style={styles.cancelButtonText}>予約済み通知を全キャンセル</Text>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  style={styles.cancelButtonText}
+                >
+                  予約済み通知を全キャンセル
+                </Text>
               </Pressable>
             </View>
           ) : null}
@@ -510,9 +534,9 @@ function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
       <View style={styles.modalBackdrop}>
         <View style={styles.legalModal}>
           <View style={styles.legalModalHeader}>
-            <View>
-              <Text style={styles.legalModalTitle}>{document?.title}</Text>
-              <Text style={styles.legalModalUpdated}>
+            <View style={styles.legalModalCopy}>
+              <Text numberOfLines={2} style={styles.legalModalTitle}>{document?.title}</Text>
+              <Text numberOfLines={1} style={styles.legalModalUpdated}>
                 最終更新日: {document?.updatedAt}
               </Text>
             </View>
@@ -634,11 +658,15 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   themeRow: {
+    flexShrink: 1,
+    minWidth: 0,
+    width: '100%',
     flexDirection: 'row',
     gap: 6,
   },
   themeButton: {
-    minWidth: 58,
+    flex: 1,
+    minWidth: 0,
     height: 34,
     borderRadius: 17,
     alignItems: 'center',
@@ -658,8 +686,9 @@ const styles = StyleSheet.create({
   },
   themeLabel: {
     color: palette.muted,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
+    includeFontPadding: false,
   },
   themeLabelActive: {
     color: palette.white,
@@ -691,6 +720,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(220,233,247,0.78)',
   },
+  legalModalCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
   legalModalTitle: {
     color: palette.ink,
     fontSize: 18,
@@ -703,6 +736,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   legalCloseButton: {
+    flexShrink: 0,
     width: 42,
     height: 42,
     borderRadius: 21,
@@ -769,9 +803,11 @@ const styles = StyleSheet.create({
     backgroundColor: palette.skyDeep,
   },
   notificationButtonText: {
+    flexShrink: 1,
     color: palette.white,
     fontSize: 14,
     fontWeight: '800',
+    includeFontPadding: false,
   },
   devButton: {
     minHeight: 44,
@@ -785,9 +821,11 @@ const styles = StyleSheet.create({
     backgroundColor: palette.lavenderDeep,
   },
   devButtonText: {
+    flexShrink: 1,
     color: palette.white,
     fontSize: 14,
     fontWeight: '800',
+    includeFontPadding: false,
   },
   cancelButton: {
     backgroundColor: 'rgba(246,250,255,0.96)',
@@ -795,8 +833,10 @@ const styles = StyleSheet.create({
     borderColor: palette.line,
   },
   cancelButtonText: {
+    flexShrink: 1,
     color: palette.ink,
     fontSize: 14,
     fontWeight: '800',
+    includeFontPadding: false,
   },
 });

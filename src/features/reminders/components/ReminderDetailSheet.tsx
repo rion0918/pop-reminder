@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
 import { palette } from '../../../constants/colors';
@@ -19,6 +20,10 @@ type ReminderDetailSheetProps = {
   onDelete: (reminder: Reminder) => Promise<void>;
 };
 
+const DETAIL_SHEET_BOTTOM_CLEARANCE = 24;
+const DETAIL_SHEET_MIN_DYNAMIC_CONTENT_SIZE = 320;
+const DETAIL_SHEET_BASE_BOTTOM_PADDING = 28;
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
@@ -29,13 +34,26 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDetailSheetProps) {
+  const safeAreaInsets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
   const isDeleteRequestedRef = useRef(false);
   const isDeletingRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const snapPoints = useMemo(() => ['48%', '68%'], []);
+  const sheetTopInset = safeAreaInsets.top + 8;
+  const detailMaxDynamicContentSize = useMemo(
+    () => Math.max(
+      DETAIL_SHEET_MIN_DYNAMIC_CONTENT_SIZE,
+      windowHeight - sheetTopInset - safeAreaInsets.bottom - DETAIL_SHEET_BOTTOM_CLEARANCE,
+    ),
+    [safeAreaInsets.bottom, sheetTopInset, windowHeight],
+  );
+  const detailContentBottomPadding = useMemo(
+    () => DETAIL_SHEET_BASE_BOTTOM_PADDING + safeAreaInsets.bottom,
+    [safeAreaInsets.bottom],
+  );
   const shouldShowPreviousNotification =
     reminder && new Date(reminder.previousNotifyAt).getTime() > Date.now();
 
@@ -134,16 +152,22 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
     <BottomSheetModal
       name="reminder-detail"
       ref={sheetRef}
-      snapPoints={snapPoints}
       stackBehavior="replace"
       enableDismissOnClose
+      enableDynamicSizing
       enablePanDownToClose
+      maxDynamicContentSize={detailMaxDynamicContentSize}
       onDismiss={handleDismiss}
+      topInset={sheetTopInset}
+      bottomInset={safeAreaInsets.bottom}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={styles.handle}
       backgroundStyle={styles.sheetBackground}
     >
-      <BottomSheetScrollView contentContainerStyle={styles.content}>
+      <BottomSheetScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: detailContentBottomPadding }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.kicker}>お知らせ予定</Text>

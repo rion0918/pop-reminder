@@ -25,6 +25,13 @@ test('opening quick add keeps reminder bubbles floating', () => {
   assert.match(idleDisabledBlock, /Boolean\(burstingReminderId\)/);
 });
 
+test('opening quick add keeps reminder bubble positions pinned', () => {
+  const source = readFileSync(__dirname + '/HomeScreen.tsx', 'utf8');
+
+  assert.match(source, /<ReminderBubbleBoard/);
+  assert.match(source, /freezeLayout=\{isQuickAddOpen\}/);
+});
+
 test('home add button gives immediate pressed feedback', () => {
   const source = readFileSync(__dirname + '/HomeScreen.tsx', 'utf8');
 
