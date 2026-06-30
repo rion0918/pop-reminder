@@ -89,6 +89,25 @@ test('android widget bubble capacity scales from small to large widgets', () => 
   assert.match(source, /return WIDGET_MAX_VISIBLE_BUBBLES/);
 });
 
+test('android widget shows a bottom due color legend without overlapping scattered bubbles', () => {
+  const source = readFileSync(__dirname + '/PopReminderWidget.tsx', 'utf8');
+
+  assert.match(source, /const WIDGET_DUE_LEGEND_HEIGHT = 42/);
+  assert.match(source, /const WIDGET_DUE_LEGEND_ITEMS = \[/);
+  assert.match(source, /label: '今日'[\s\S]*bubbleDueColors\.today/);
+  assert.match(source, /label: '明日'[\s\S]*bubbleDueColors\.tomorrow/);
+  assert.match(source, /label: '2-3日'[\s\S]*bubbleDueColors\.soon/);
+  assert.match(source, /label: '4日\+'[\s\S]*bubbleDueColors\.later/);
+  assert.match(source, /function WidgetDueLegend/);
+  assert.match(source, /WIDGET_DUE_LEGEND_ITEMS\.map/);
+  assert.match(source, /text=\{item\.label\}/);
+  assert.match(source, /svg=\{makeLegendBubbleSvg\(item\.id, item\.color\)\}/);
+  assert.match(source, /const legendReserve = WIDGET_DUE_LEGEND_HEIGHT \+ WIDGET_SURFACE_PADDING/);
+  assert.match(source, /widgetHeight - edgePadding \* 2 - legendReserve - dimensions\.height/);
+  assert.match(source, /marginTop: Math\.max\(0, widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT\)/);
+  assert.match(source, /<WidgetDueLegend widgetWidth=\{widgetWidth\} widgetHeight=\{widgetHeight\} \/>/);
+});
+
 test('manual widget refresh keeps using the actual widget size', () => {
   const source = readFileSync(__dirname + '/widgetUpdateService.tsx', 'utf8');
 

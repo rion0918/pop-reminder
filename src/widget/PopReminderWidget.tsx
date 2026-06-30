@@ -8,6 +8,7 @@ import {
 } from 'react-native-android-widget';
 
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
+import { bubbleDueColors } from '../constants/colors';
 import {
   getWidgetDueColor,
   homeVisualTokens,
@@ -72,6 +73,15 @@ const WIDGET_SURFACE_PADDING = 12;
 const WIDGET_PLUS_TOUCH_WIDTH = 44;
 const WIDGET_PLUS_TOUCH_HEIGHT = 40;
 const WIDGET_MAX_VISIBLE_BUBBLES = 8;
+const WIDGET_DUE_LEGEND_HEIGHT = 42;
+const WIDGET_DUE_LEGEND_BUBBLE_SIZE = 14;
+
+const WIDGET_DUE_LEGEND_ITEMS = [
+  { id: 'today', label: '今日', color: bubbleDueColors.today },
+  { id: 'tomorrow', label: '明日', color: bubbleDueColors.tomorrow },
+  { id: 'soon', label: '2-3日', color: bubbleDueColors.soon },
+  { id: 'later', label: '4日+', color: bubbleDueColors.later },
+] as const;
 
 const BUBBLE_LAYOUT_ANCHORS = [
   { x: 0.12, y: 0.26 },
@@ -279,18 +289,19 @@ function getWidgetBubbleLayout(
   const seed = hashString(`${reminder.id}-${index}-${visibleCount}`);
   const edgePadding = WIDGET_SURFACE_PADDING + 4;
   const rightReserve = anchor.y < 0.36 ? WIDGET_PLUS_TOUCH_WIDTH + WIDGET_SURFACE_PADDING : 0;
+  const legendReserve = WIDGET_DUE_LEGEND_HEIGHT + WIDGET_SURFACE_PADDING;
   const availableWidth = Math.max(
     0,
     widgetWidth - edgePadding * 2 - rightReserve - dimensions.width,
   );
   const availableHeight = Math.max(
     0,
-    widgetHeight - edgePadding * 2 - dimensions.height,
+    widgetHeight - edgePadding * 2 - legendReserve - dimensions.height,
   );
   const jitterX = (unitFromHash(seed, 11) - 0.5) * Math.min(24, widgetWidth * 0.08);
   const jitterY = (unitFromHash(seed, 12) - 0.5) * Math.min(20, widgetHeight * 0.08);
   const maxLeft = Math.max(edgePadding, widgetWidth - edgePadding - rightReserve - dimensions.width);
-  const maxTop = Math.max(edgePadding, widgetHeight - edgePadding - dimensions.height);
+  const maxTop = Math.max(edgePadding, widgetHeight - edgePadding - legendReserve - dimensions.height);
   const left = clamp(edgePadding + availableWidth * anchor.x + jitterX, edgePadding, maxLeft);
   const top = clamp(edgePadding + availableHeight * anchor.y + jitterY, edgePadding, maxTop);
 
@@ -410,6 +421,89 @@ function makeCloudSurfaceSvg(width: number, height: number) {
   <ellipse cx="${width * 0.04}" cy="${height * 0.08}" rx="${width * 0.38}" ry="${height * 0.36}" fill="url(#cloudShadeTop)"/>
   <ellipse cx="${width * 0.84}" cy="${height * 1.02}" rx="${width * 0.44}" ry="${height * 0.28}" fill="url(#cloudShadeBottom)"/>
 </svg>`;
+}
+
+function makeLegendBubbleSvg(id: string, color: WidgetDueColor) {
+  const svgId = `legend-${id}`;
+  const gradientMist = colorToSvgPaint(color.gradient[2]);
+  const tintMist = svgFill(color.background, 0.9);
+  const outerRing = svgStroke('rgba(255,255,255,0.72)');
+  const colorRing = svgStroke(color.border, 0.78);
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${WIDGET_DUE_LEGEND_BUBBLE_SIZE}" height="${WIDGET_DUE_LEGEND_BUBBLE_SIZE}" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="${svgId}-surface" x1="12%" y1="8%" x2="88%" y2="96%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.82"/>
+      <stop offset="58%" stop-color="${gradientMist.hex}" stop-opacity="${gradientMist.opacity.toFixed(3)}"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="url(#${svgId}-surface)"/>
+  <circle cx="50" cy="50" r="36" ${tintMist}/>
+  <circle cx="50" cy="50" r="47" fill="none" ${outerRing} stroke-width="6"/>
+  <path d="M76 23 C90 43 86 72 62 86" fill="none" ${colorRing} stroke-width="8" stroke-linecap="round"/>
+  <ellipse cx="34" cy="25" rx="16" ry="8" ${svgFill('rgba(255,255,255,0.72)')} transform="rotate(-28 34 25)"/>
+</svg>`;
+}
+
+function WidgetDueLegend({
+  widgetWidth,
+  widgetHeight,
+}: {
+  widgetWidth: number;
+  widgetHeight: number;
+}) {
+  const legendWidth = Math.max(0, widgetWidth - WIDGET_SURFACE_PADDING * 2);
+
+  return (
+    <FlexWidget
+      style={{
+        width: legendWidth,
+        height: WIDGET_DUE_LEGEND_HEIGHT,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        marginTop: Math.max(0, widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT),
+        marginLeft: WIDGET_SURFACE_PADDING,
+      }}
+    >
+      {WIDGET_DUE_LEGEND_ITEMS.map((item) => (
+        <FlexWidget
+          key={item.id}
+          style={{
+            flex: 1,
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <SvgWidget
+            svg={makeLegendBubbleSvg(item.id, item.color)}
+            style={{
+              width: WIDGET_DUE_LEGEND_BUBBLE_SIZE,
+              height: WIDGET_DUE_LEGEND_BUBBLE_SIZE,
+            }}
+          />
+          <TextWidget
+            text={item.label}
+            style={{
+              fontSize: 9,
+              fontWeight: '900',
+              color: widgetTheme.mutedText as ColorProp,
+              textAlign: 'center',
+              marginTop: 2,
+              textShadowColor: widgetTheme.textHalo as ColorProp,
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 5,
+            }}
+            maxLines={1}
+            allowFontScaling={false}
+          />
+        </FlexWidget>
+      ))}
+    </FlexWidget>
+  );
 }
 
 function BubbleItem({
@@ -702,6 +796,7 @@ export function PopReminderWidget({
       ) : (
         <EmptyState renderedAtMs={renderedAtMs} />
       )}
+      <WidgetDueLegend widgetWidth={widgetWidth} widgetHeight={widgetHeight} />
       <FlexWidget
         style={{
           width: WIDGET_PLUS_TOUCH_WIDTH,
