@@ -1,5 +1,4 @@
-import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import { openPopReminderDatabase } from '../db/client';
 
 export type WidgetReminder = {
   id: string;
@@ -17,8 +16,7 @@ type ReminderRow = {
 
 export async function getWidgetReminders(now = new Date()): Promise<WidgetReminder[]> {
   try {
-    const databaseDirectory = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}SQLite` : undefined;
-    const db = SQLite.openDatabaseSync('pop_reminder.db', { directory: databaseDirectory } as any);
+    const db = openPopReminderDatabase();
 
     const rows = db.getAllSync<ReminderRow>(
       `SELECT id, title, target_at, target_notify_at, status

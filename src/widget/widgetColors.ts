@@ -1,6 +1,6 @@
 import { differenceInCalendarDays } from 'date-fns';
 
-import { appThemes, bubbleDueColors, homeVisualTokens, palette } from '../constants/colors';
+import { bubbleDueColors, homeVisualTokens, palette } from '../constants/colors';
 
 export type WidgetDueColor = typeof bubbleDueColors[keyof typeof bubbleDueColors];
 
@@ -25,11 +25,12 @@ export function getWidgetDueColor(targetAt: string | Date, currentDate = new Dat
 }
 
 export const widgetTheme = {
-  background: appThemes.sky.background,
-  surface: palette.white,
   headerText: palette.ink,
   mutedText: palette.muted,
-  addButtonBackground: appThemes.sky.accent,
-  addButtonText: palette.white,
-  borderColor: palette.line,
+  cloudSurfaceBackground: 'rgba(255,255,255,0.44)',
+  cloudSurfaceBorder: 'rgba(255,255,255,0.24)',
+  cloudMistHighlight: 'rgba(255,255,255,0.30)',
+  cloudMistShade: 'rgba(38,49,81,0.10)',
+  plusIconText: palette.white,
+  textHalo: 'rgba(255,255,255,0.72)',
 } as const;

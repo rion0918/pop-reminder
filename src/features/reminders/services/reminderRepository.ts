@@ -30,16 +30,19 @@ export async function insertReminder(draft: CreateReminderDraft): Promise<Remind
     previousNotifyAt: draft.previousNotifyAt,
     targetNotifyAt: draft.targetNotifyAt,
     expiresAt: draft.expiresAt,
-    previousNotificationId: null,
-    targetNotificationId: null,
     status: 'active',
     createdAt: now,
     updatedAt: now,
   };
+  const reminder: Reminder = {
+    ...row,
+    previousNotificationId: null,
+    targetNotificationId: null,
+  } as Reminder;
 
   await db.insert(reminders).values(row);
 
-  return row as Reminder;
+  return reminder;
 }
 
 export async function updateReminderNotificationIds(
@@ -49,6 +52,13 @@ export async function updateReminderNotificationIds(
     targetNotificationId: string | null;
   },
 ): Promise<Reminder | null> {
+  if (
+    notificationIds.previousNotificationId === null &&
+    notificationIds.targetNotificationId === null
+  ) {
+    return getReminderById(id);
+  }
+
   const now = new Date().toISOString();
 
   await db

@@ -46,6 +46,12 @@ type WidgetBubbleDimensions = {
   height: number;
 };
 
+type WidgetBubbleLayout = WidgetBubbleDimensions & {
+  left: number;
+  top: number;
+  zIndex: number;
+};
+
 type WidgetIdleMotionConfig = {
   delay: number;
   duration: number;
@@ -62,9 +68,21 @@ type WidgetMotionFrame = {
 
 const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
-const WIDGET_HORIZONTAL_PADDING = 24;
-const WIDGET_BUBBLE_GAP = 8;
-const MAX_VISIBLE = 3;
+const WIDGET_SURFACE_PADDING = 12;
+const WIDGET_PLUS_TOUCH_WIDTH = 44;
+const WIDGET_PLUS_TOUCH_HEIGHT = 40;
+const WIDGET_MAX_VISIBLE_BUBBLES = 8;
+
+const BUBBLE_LAYOUT_ANCHORS = [
+  { x: 0.12, y: 0.26 },
+  { x: 0.52, y: 0.58 },
+  { x: 0.66, y: 0.24 },
+  { x: 0.2, y: 0.72 },
+  { x: 0.78, y: 0.58 },
+  { x: 0.42, y: 0.18 },
+  { x: 0.08, y: 0.52 },
+  { x: 0.58, y: 0.8 },
+] as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -203,19 +221,84 @@ function getWidgetBubbleDimensions(
   widgetHeight: number,
 ): WidgetBubbleDimensions {
   const titleVisualLength = getTitleVisualLength(reminder.title);
-  const availableWidth =
-    widgetWidth - WIDGET_HORIZONTAL_PADDING * 2 - WIDGET_BUBBLE_GAP * Math.max(0, visibleCount - 1);
-  const slotWidth = Math.floor(availableWidth / Math.max(1, visibleCount));
-  const baseHeight = clamp(Math.min(widgetHeight * 0.43, widgetWidth * 0.34), 68, 96);
-  const indexScale = index === 0 ? 1 : index === 1 ? 0.94 : 0.88;
+  const areaMeasure = Math.sqrt(widgetWidth * widgetHeight);
+  const densityScale = visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : visibleCount <= 6 ? 0.9 : 0.82;
+  const baseHeight = clamp(
+    Math.min(widgetHeight * 0.38, widgetWidth * 0.3, areaMeasure * 0.42) * densityScale,
+    56,
+    98,
+  );
+  const indexScale = index === 0 ? 1 : index === 1 ? 0.96 : index === 2 ? 0.92 : 0.86;
   const titleScale = titleVisualLength >= 24 ? 1.08 : titleVisualLength >= 16 ? 1.02 : 1;
-  const height = Math.round(clamp(baseHeight * indexScale * titleScale, 64, 98));
+  const height = Math.round(clamp(baseHeight * indexScale * titleScale, 54, 100));
   const aspectRatio = titleVisualLength >= 24 ? 1.34 : titleVisualLength >= 16 ? 1.18 : 1;
-  const width = Math.round(clamp(height * aspectRatio, 64, Math.max(64, slotWidth)));
+  const maxWidth = clamp(widgetWidth * (visibleCount <= 3 ? 0.38 : 0.32), 62, 128);
+  const width = Math.round(clamp(height * aspectRatio, 54, maxWidth));
 
   return {
     width,
     height,
+  };
+}
+
+function getWidgetBubbleCapacity(widgetWidth: number, widgetHeight: number) {
+  const area = widgetWidth * widgetHeight;
+
+  if (area < 38000) {
+    return 2;
+  }
+
+  if (area < 62000) {
+    return 3;
+  }
+
+  if (area < 90000) {
+    return 5;
+  }
+
+  if (area < 125000) {
+    return 6;
+  }
+
+  if (area < 165000) {
+    return 7;
+  }
+
+  return WIDGET_MAX_VISIBLE_BUBBLES;
+}
+
+function getWidgetBubbleLayout(
+  reminder: WidgetReminder,
+  index: number,
+  visibleCount: number,
+  widgetWidth: number,
+  widgetHeight: number,
+): WidgetBubbleLayout {
+  const dimensions = getWidgetBubbleDimensions(reminder, index, visibleCount, widgetWidth, widgetHeight);
+  const anchor = BUBBLE_LAYOUT_ANCHORS[index % BUBBLE_LAYOUT_ANCHORS.length];
+  const seed = hashString(`${reminder.id}-${index}-${visibleCount}`);
+  const edgePadding = WIDGET_SURFACE_PADDING + 4;
+  const rightReserve = anchor.y < 0.36 ? WIDGET_PLUS_TOUCH_WIDTH + WIDGET_SURFACE_PADDING : 0;
+  const availableWidth = Math.max(
+    0,
+    widgetWidth - edgePadding * 2 - rightReserve - dimensions.width,
+  );
+  const availableHeight = Math.max(
+    0,
+    widgetHeight - edgePadding * 2 - dimensions.height,
+  );
+  const jitterX = (unitFromHash(seed, 11) - 0.5) * Math.min(24, widgetWidth * 0.08);
+  const jitterY = (unitFromHash(seed, 12) - 0.5) * Math.min(20, widgetHeight * 0.08);
+  const maxLeft = Math.max(edgePadding, widgetWidth - edgePadding - rightReserve - dimensions.width);
+  const maxTop = Math.max(edgePadding, widgetHeight - edgePadding - dimensions.height);
+  const left = clamp(edgePadding + availableWidth * anchor.x + jitterX, edgePadding, maxLeft);
+  const top = clamp(edgePadding + availableHeight * anchor.y + jitterY, edgePadding, maxTop);
+
+  return {
+    ...dimensions,
+    left: Math.round(left),
+    top: Math.round(top),
+    zIndex: WIDGET_MAX_VISIBLE_BUBBLES - index,
   };
 }
 
@@ -292,45 +375,76 @@ function makeBubbleSvg(id: string, width: number, height: number, color: WidgetD
 </svg>`;
 }
 
+function makeCloudSurfaceSvg(width: number, height: number) {
+  const surface = colorToSvgPaint(widgetTheme.cloudSurfaceBackground);
+  const highlight = colorToSvgPaint(widgetTheme.cloudMistHighlight);
+  const shade = colorToSvgPaint(widgetTheme.cloudMistShade);
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+  <defs>
+    <radialGradient id="cloudHighlightLeft" cx="16%" cy="18%" r="66%">
+      <stop offset="0%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.95).toFixed(3)}"/>
+      <stop offset="56%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.42).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${highlight.hex}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cloudHighlightBottom" cx="44%" cy="96%" r="58%">
+      <stop offset="0%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.86).toFixed(3)}"/>
+      <stop offset="62%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.24).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${highlight.hex}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cloudShadeTop" cx="6%" cy="8%" r="48%">
+      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.2).toFixed(3)}"/>
+      <stop offset="52%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.42).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cloudShadeBottom" cx="86%" cy="98%" r="54%">
+      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.15).toFixed(3)}"/>
+      <stop offset="58%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.36).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="${width}" height="${height}" fill="${surface.hex}" fill-opacity="${surface.opacity.toFixed(3)}"/>
+  <ellipse cx="${width * 0.14}" cy="${height * 0.2}" rx="${width * 0.54}" ry="${height * 0.46}" fill="url(#cloudHighlightLeft)"/>
+  <ellipse cx="${width * 0.4}" cy="${height * 0.96}" rx="${width * 0.6}" ry="${height * 0.34}" fill="url(#cloudHighlightBottom)"/>
+  <ellipse cx="${width * 0.04}" cy="${height * 0.08}" rx="${width * 0.38}" ry="${height * 0.36}" fill="url(#cloudShadeTop)"/>
+  <ellipse cx="${width * 0.84}" cy="${height * 1.02}" rx="${width * 0.44}" ry="${height * 0.28}" fill="url(#cloudShadeBottom)"/>
+</svg>`;
+}
+
 function BubbleItem({
   reminder,
   index,
-  visibleCount,
-  widgetWidth,
-  widgetHeight,
+  layout,
   renderedAtMs,
 }: {
   reminder: WidgetReminder;
   index: number;
-  visibleCount: number;
-  widgetWidth: number;
-  widgetHeight: number;
+  layout: WidgetBubbleLayout;
   renderedAtMs: number;
 }) {
   const color = getWidgetDueColor(reminder.targetAt);
-  const dimensions = getWidgetBubbleDimensions(reminder, index, visibleCount, widgetWidth, widgetHeight);
   const titleVisualLength = getTitleVisualLength(reminder.title);
-  const typography = getWidgetBubbleTypography(dimensions.width, dimensions.height, titleVisualLength);
+  const typography = getWidgetBubbleTypography(layout.width, layout.height, titleVisualLength);
   const timeText = formatReminderBubbleDateTime(reminder.targetAt);
-  const verticalNudge = index === 0 ? 0 : index === 1 ? 8 : -4;
   const motionFrame = getWidgetMotionFrame(reminder.id, index, renderedAtMs);
 
   return (
     <OverlapWidget
       style={{
-        width: dimensions.width,
-        height: dimensions.height,
-        borderRadius: Math.round(Math.min(dimensions.width, dimensions.height) / 2),
+        width: layout.width,
+        height: layout.height,
+        borderRadius: Math.round(Math.min(layout.width, layout.height) / 2),
         overflow: 'hidden',
-        marginTop: verticalNudge + motionFrame.translateY,
-        marginLeft: motionFrame.translateX,
+        marginTop: layout.top + motionFrame.translateY,
+        marginLeft: layout.left + motionFrame.translateX,
         rotation: motionFrame.rotation,
       }}
       clickAction="OPEN_URI"
       clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
     >
       <SvgWidget
-        svg={makeBubbleSvg(reminder.id, dimensions.width, dimensions.height, color)}
+        svg={makeBubbleSvg(reminder.id, layout.width, layout.height, color)}
         style={{
           width: 'match_parent',
           height: 'match_parent',
@@ -385,36 +499,32 @@ function BubbleItem({
 
 function OverflowBubble({
   count,
-  widgetWidth,
-  widgetHeight,
+  layout,
   renderedAtMs,
 }: {
   count: number;
-  widgetWidth: number;
-  widgetHeight: number;
+  layout: WidgetBubbleLayout;
   renderedAtMs: number;
 }) {
   const color = getWidgetDueColor(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const width = Math.round(clamp(widgetWidth * 0.26, 68, 88));
-  const height = Math.round(clamp(widgetHeight * 0.38, 64, 82));
-  const radius = Math.round(Math.min(width, height) / 2);
+  const radius = Math.round(Math.min(layout.width, layout.height) / 2);
   const motionFrame = getWidgetMotionFrame(`overflow-${count}`, count, renderedAtMs);
 
   return (
     <OverlapWidget
       style={{
-        width,
-        height,
+        width: layout.width,
+        height: layout.height,
         borderRadius: radius,
         overflow: 'hidden',
-        marginTop: 8 + motionFrame.translateY,
-        marginLeft: motionFrame.translateX,
+        marginTop: layout.top + motionFrame.translateY,
+        marginLeft: layout.left + motionFrame.translateX,
         rotation: motionFrame.rotation,
       }}
       clickAction="OPEN_APP"
     >
       <SvgWidget
-        svg={makeBubbleSvg(`overflow-${count}`, width, height, color)}
+        svg={makeBubbleSvg(`overflow-${count}`, layout.width, layout.height, color)}
         style={{
           width: 'match_parent',
           height: 'match_parent',
@@ -525,54 +635,51 @@ export function PopReminderWidget({
   widgetWidth = WIDGET_DEFAULT_WIDTH,
   widgetHeight = WIDGET_DEFAULT_HEIGHT,
 }: PopReminderWidgetProps) {
-  const visibleReminders = reminders.slice(0, MAX_VISIBLE);
-  const overflowCount = Math.max(0, reminders.length - MAX_VISIBLE);
+  const visibleCapacity = getWidgetBubbleCapacity(widgetWidth, widgetHeight);
+  const visibleReminderLimit = reminders.length > visibleCapacity
+    ? Math.max(1, visibleCapacity - 1)
+    : visibleCapacity;
+  const visibleReminders = reminders.slice(0, visibleReminderLimit);
+  const overflowCount = Math.max(0, reminders.length - visibleReminderLimit);
+  const overflowReminder = {
+    id: `overflow-${overflowCount}`,
+    title: `+${overflowCount}`,
+    targetAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+  const layoutItems = overflowCount > 0 ? [...visibleReminders, overflowReminder] : visibleReminders;
+  const bubbleLayouts = new Map(
+    layoutItems.map((reminder, index) => [
+      reminder.id,
+      getWidgetBubbleLayout(reminder, index, layoutItems.length, widgetWidth, widgetHeight),
+    ]),
+  );
   const hasBubbles = reminders.length > 0;
-  const bubbleCount = visibleReminders.length + (overflowCount > 0 ? 1 : 0);
   const renderedAtMs = Date.now();
 
   return (
-    <FlexWidget
+    <OverlapWidget
       style={{
         width: 'match_parent',
         height: 'match_parent',
-        flexDirection: 'column',
-        backgroundColor: widgetTheme.background as ColorProp,
+        backgroundColor: widgetTheme.cloudSurfaceBackground as ColorProp,
         borderRadius: 24,
-        padding: 12,
         borderWidth: 1,
-        borderColor: widgetTheme.borderColor as ColorProp,
+        borderColor: widgetTheme.cloudSurfaceBorder as ColorProp,
+        overflow: 'hidden',
       }}
     >
-      <FlexWidget
+      <SvgWidget
+        svg={makeCloudSurfaceSvg(widgetWidth, widgetHeight)}
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
           width: 'match_parent',
-          marginBottom: 6,
+          height: 'match_parent',
         }}
-      >
-        <TextWidget
-          text="ポップ・リマインダー"
-          style={{
-            fontSize: 13,
-            fontWeight: '800',
-            color: widgetTheme.headerText as ColorProp,
-          }}
-          allowFontScaling={false}
-        />
-      </FlexWidget>
-
+      />
       {hasBubbles ? (
-        <FlexWidget
+        <OverlapWidget
           style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexGap: WIDGET_BUBBLE_GAP,
             width: 'match_parent',
-            paddingHorizontal: 2,
+            height: 'match_parent',
           }}
         >
           {visibleReminders.map((reminder, index) => (
@@ -580,36 +687,30 @@ export function PopReminderWidget({
               key={reminder.id}
               reminder={reminder}
               index={index}
-              visibleCount={bubbleCount}
-              widgetWidth={widgetWidth}
-              widgetHeight={widgetHeight}
+              layout={bubbleLayouts.get(reminder.id)!}
               renderedAtMs={renderedAtMs}
             />
           ))}
           {overflowCount > 0 ? (
             <OverflowBubble
               count={overflowCount}
-              widgetWidth={widgetWidth}
-              widgetHeight={widgetHeight}
+              layout={bubbleLayouts.get(overflowReminder.id)!}
               renderedAtMs={renderedAtMs}
             />
           ) : null}
-        </FlexWidget>
+        </OverlapWidget>
       ) : (
         <EmptyState renderedAtMs={renderedAtMs} />
       )}
-
       <FlexWidget
         style={{
+          width: WIDGET_PLUS_TOUCH_WIDTH,
+          height: WIDGET_PLUS_TOUCH_HEIGHT,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: widgetTheme.addButtonBackground as ColorProp,
-          borderRadius: 20,
-          paddingVertical: 10,
-          paddingHorizontal: 16,
-          marginTop: 8,
-          width: 'match_parent',
+          marginTop: WIDGET_SURFACE_PADDING,
+          marginLeft: Math.max(0, widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH),
         }}
         clickAction="OPEN_URI"
         clickActionData={{ uri: 'popreminder://?action=add' }}
@@ -617,23 +718,17 @@ export function PopReminderWidget({
         <TextWidget
           text="+"
           style={{
-            fontSize: 16,
-            fontWeight: '900',
-            color: widgetTheme.addButtonText as ColorProp,
-          }}
-          allowFontScaling={false}
-        />
-        <TextWidget
-          text="追加"
-          style={{
-            fontSize: 14,
-            fontWeight: '900',
-            color: widgetTheme.addButtonText as ColorProp,
-            marginLeft: 4,
+            fontSize: 30,
+            fontWeight: '400',
+            color: widgetTheme.plusIconText as ColorProp,
+            textAlign: 'center',
+            textShadowColor: widgetTheme.textHalo as ColorProp,
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 7,
           }}
           allowFontScaling={false}
         />
       </FlexWidget>
-    </FlexWidget>
+    </OverlapWidget>
   );
 }
