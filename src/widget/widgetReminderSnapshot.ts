@@ -1,4 +1,4 @@
-import { openPopReminderDatabase } from '../db/client';
+import * as SQLite from 'expo-sqlite';
 
 export type WidgetReminder = {
   id: string;
@@ -14,9 +14,18 @@ type ReminderRow = {
   status: string;
 };
 
+let widgetDb: SQLite.SQLiteDatabase | null = null;
+
+function getWidgetDb(): SQLite.SQLiteDatabase {
+  if (!widgetDb) {
+    widgetDb = SQLite.openDatabaseSync('pop_reminder.db', { useNewConnection: true });
+  }
+  return widgetDb;
+}
+
 export async function getWidgetReminders(now = new Date()): Promise<WidgetReminder[]> {
   try {
-    const db = openPopReminderDatabase();
+    const db = getWidgetDb();
 
     const rows = db.getAllSync<ReminderRow>(
       `SELECT id, title, target_at, target_notify_at, status

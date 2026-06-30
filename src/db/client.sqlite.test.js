@@ -19,14 +19,12 @@ test('pop reminder database opens with expo-sqlite directory as the third argume
   assert.doesNotMatch(source, /\{\s*directory:\s*databaseDirectory\s*\}\s+as any/);
 });
 
-test('widget snapshot uses the shared pop reminder database opener', () => {
+test('widget snapshot opens a dedicated connection to avoid concurrent-access NPE on android', () => {
   const source = readFileSync(join(srcDir, 'widget/widgetReminderSnapshot.ts'), 'utf8');
 
-  assert.match(source, /import \{ openPopReminderDatabase \} from '\.\.\/db\/client';/);
-  assert.match(source, /const db = openPopReminderDatabase\(\);/);
-  assert.doesNotMatch(source, /expo-sqlite/);
-  assert.doesNotMatch(source, /expo-file-system/);
-  assert.doesNotMatch(source, /\{\s*directory:\s*databaseDirectory\s*\}\s+as any/);
+  assert.match(source, /import \* as SQLite from 'expo-sqlite';/);
+  assert.match(source, /useNewConnection:\s*true/);
+  assert.doesNotMatch(source, /openPopReminderDatabase/);
 });
 
 test('database initialization logs connection info before rethrowing failures', () => {

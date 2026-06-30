@@ -45,8 +45,8 @@ test('reminder bubble uses shared home visual tokens for iOS-like Android render
   const colorsSource = readFileSync(__dirname + '/../../../constants/colors.ts', 'utf8');
 
   assert.match(colorsSource, /export const homeVisualTokens = \{/);
-  assert.match(colorsSource, /bubbleTintMistOpacity: 0\.26/);
-  assert.match(colorsSource, /bubbleInnerColorRimOpacity: 0\.16/);
+  assert.match(colorsSource, /bubbleTintMistOpacity: 0\.46/);
+  assert.match(colorsSource, /bubbleInnerColorRimOpacity: 0\.30/);
   assert.match(colorsSource, /bubbleSurfaceElevation: 0/);
   assert.match(source, /homeVisualTokens\.bubbleTintMistOpacity/);
   assert.match(source, /homeVisualTokens\.bubbleInnerColorRimOpacity/);

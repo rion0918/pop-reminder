@@ -53,8 +53,8 @@ export const appThemes: Record<
 };
 
 export const homeVisualTokens = {
-  bubbleTintMistOpacity: 0.26,
-  bubbleInnerColorRimOpacity: 0.16,
+  bubbleTintMistOpacity: 0.46,
+  bubbleInnerColorRimOpacity: 0.30,
   bubbleSurfaceElevation: 0,
 } as const;
 
@@ -93,27 +93,27 @@ export const bubbleColors = [
 
 export const bubbleDueColors = {
   today: {
-    background: 'rgba(248, 113, 113, 0.14)',
-    gradient: ['rgba(255,255,255,0.84)', 'rgba(248, 113, 113, 0.13)', 'rgba(248, 113, 113, 0.05)'],
-    border: 'rgba(248, 113, 113, 0.36)',
-    accent: 'rgba(164, 45, 55, 0.84)',
+    background: 'rgba(248, 113, 113, 0.32)',
+    gradient: ['rgba(255,255,255,0.78)', 'rgba(248, 113, 113, 0.28)', 'rgba(248, 113, 113, 0.14)'],
+    border: 'rgba(248, 113, 113, 0.58)',
+    accent: 'rgba(164, 45, 55, 0.92)',
   },
   tomorrow: {
-    background: 'rgba(251, 146, 60, 0.13)',
-    gradient: ['rgba(255,255,255,0.84)', 'rgba(251, 146, 60, 0.12)', 'rgba(251, 146, 60, 0.05)'],
-    border: 'rgba(251, 146, 60, 0.34)',
-    accent: 'rgba(154, 83, 23, 0.84)',
+    background: 'rgba(251, 146, 60, 0.30)',
+    gradient: ['rgba(255,255,255,0.78)', 'rgba(251, 146, 60, 0.26)', 'rgba(251, 146, 60, 0.13)'],
+    border: 'rgba(251, 146, 60, 0.56)',
+    accent: 'rgba(154, 83, 23, 0.92)',
   },
   soon: {
-    background: 'rgba(250, 204, 21, 0.12)',
-    gradient: ['rgba(255,255,255,0.84)', 'rgba(250, 204, 21, 0.11)', 'rgba(250, 204, 21, 0.04)'],
-    border: 'rgba(250, 204, 21, 0.32)',
-    accent: 'rgba(132, 94, 12, 0.84)',
+    background: 'rgba(250, 204, 21, 0.28)',
+    gradient: ['rgba(255,255,255,0.78)', 'rgba(250, 204, 21, 0.24)', 'rgba(250, 204, 21, 0.12)'],
+    border: 'rgba(250, 204, 21, 0.52)',
+    accent: 'rgba(132, 94, 12, 0.92)',
   },
   later: {
-    background: 'rgba(125, 211, 252, 0.11)',
-    gradient: ['rgba(255,255,255,0.84)', 'rgba(125, 211, 252, 0.10)', 'rgba(52, 211, 153, 0.04)'],
-    border: 'rgba(125, 211, 252, 0.30)',
-    accent: 'rgba(31, 97, 157, 0.82)',
+    background: 'rgba(125, 211, 252, 0.26)',
+    gradient: ['rgba(255,255,255,0.78)', 'rgba(125, 211, 252, 0.22)', 'rgba(125, 211, 252, 0.11)'],
+    border: 'rgba(125, 211, 252, 0.50)',
+    accent: 'rgba(31, 97, 157, 0.90)',
   },
 } as const;
