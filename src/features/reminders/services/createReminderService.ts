@@ -45,11 +45,11 @@ export async function createReminder(
           });
 
     const result = (await updateReminderNotificationIds(reminder.id, notificationIds)) ?? reminder;
-    void updateWidget();
+    await updateWidget();
     return result;
   } catch (error) {
     console.warn('Failed to schedule reminder notifications', error);
-    void updateWidget();
+    await updateWidget();
     return reminder;
   }
 }

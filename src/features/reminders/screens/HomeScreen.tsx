@@ -42,7 +42,7 @@ const dueLegendItems = [
 export function HomeScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
-  const { reminders, loading, error, refresh, upsertReminder } = useReminders();
+  const { reminders, loading, error, refresh, upsertReminder, removeReminder } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
@@ -149,7 +149,6 @@ export function HomeScreen() {
         },
       );
       upsertReminder(reminder);
-      void refresh({ silent: true });
     } catch (saveError) {
       console.warn("Failed to save reminder", saveError);
       Alert.alert("追加できませんでした", "タイトルと時刻を確認してください。");
@@ -189,21 +188,25 @@ export function HomeScreen() {
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
       setBurstingReminderId(reminder.id);
-      await new Promise((resolve) => {
-        deleteTimeoutRef.current = setTimeout(
-          resolve,
-          260,
-        ) as unknown as number;
-      });
 
       try {
-        const deleted = await deleteReminder(reminder.id);
+        const [deleted] = await Promise.all([
+          deleteReminder(reminder.id),
+          new Promise((resolve) => {
+            deleteTimeoutRef.current = setTimeout(
+              resolve,
+              260,
+            ) as unknown as number;
+          }),
+        ]);
 
         if (!deleted) {
           throw new Error("Reminder was not found");
         }
 
-        await refresh();
+        setSelectedReminderId(null);
+        removeReminder(reminder.id);
+        void refresh({ silent: true });
       } catch (err) {
         console.warn("Failed to delete reminder", err);
       } finally {
@@ -211,7 +214,7 @@ export function HomeScreen() {
         deleteTimeoutRef.current = null;
       }
     },
-    [refresh],
+    [refresh, removeReminder, setSelectedReminderId],
   );
 
   const isAddButtonDisabled = isSaving;

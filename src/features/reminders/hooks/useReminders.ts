@@ -60,6 +60,10 @@ export function useReminders() {
     });
   }, []);
 
+  const removeReminder = useCallback((id: string) => {
+    setReminders((current) => current.filter((item) => item.id !== id));
+  }, []);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -107,5 +111,6 @@ export function useReminders() {
     error,
     refresh,
     upsertReminder,
+    removeReminder,
   };
 }

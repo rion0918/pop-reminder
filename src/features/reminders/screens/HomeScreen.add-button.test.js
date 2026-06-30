@@ -53,3 +53,11 @@ test('settings button gives immediate pressed feedback', () => {
   assert.match(source, /transform: \[\{ translateY: 1 \}, \{ scale: 0\.94 \}\]/);
   assert.doesNotMatch(source, /<Link href="\/settings" asChild>/);
 });
+
+test('home removes deleted reminders locally before the silent database refresh', () => {
+  const source = readFileSync(__dirname + '/HomeScreen.tsx', 'utf8');
+
+  assert.match(source, /const \{ reminders, loading, error, refresh, upsertReminder, removeReminder \} = useReminders\(\);/);
+  assert.match(source, /removeReminder\(reminder\.id\);[\s\S]*void refresh\(\{ silent: true \}\);/);
+  assert.doesNotMatch(source, /await refresh\(\);/);
+});

@@ -1,20 +1,12 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { requestWidgetUpdate } from 'react-native-android-widget';
-import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
 
 import { PopReminderWidget } from './PopReminderWidget';
+import { getWidgetReminders } from './widgetReminderSnapshot';
 
 const WIDGET_NAME = 'PopReminderWidget';
-
-type ReminderRow = {
-  id: string;
-  title: string;
-  target_at: string;
-  target_notify_at: string;
-  status: string;
-};
+let widgetUpdateQueue: Promise<void> = Promise.resolve();
 
 /**
  * Fetch active reminders from SQLite and trigger a widget update.
@@ -28,29 +20,23 @@ export async function updateWidget(): Promise<void> {
     return;
   }
 
+  widgetUpdateQueue = widgetUpdateQueue.then(runWidgetUpdate, runWidgetUpdate);
+  await widgetUpdateQueue;
+}
+
+async function runWidgetUpdate(): Promise<void> {
   try {
-    const databaseDirectory = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}SQLite` : undefined;
-    const db = SQLite.openDatabaseSync('pop_reminder.db', { directory: databaseDirectory } as any);
-    const now = new Date().toISOString();
-
-    const rows = db.getAllSync<ReminderRow>(
-      `SELECT id, title, target_at, target_notify_at, status
-       FROM reminders
-       WHERE status = 'active' AND target_notify_at > ?
-       ORDER BY target_at ASC
-       LIMIT 20`,
-      [now],
-    );
-
-    const reminders = rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      targetAt: row.target_at,
-    }));
+    const reminders = await getWidgetReminders();
 
     await requestWidgetUpdate({
       widgetName: WIDGET_NAME,
-      renderWidget: () => <PopReminderWidget reminders={reminders} />,
+      renderWidget: ({ width, height }) => (
+        <PopReminderWidget
+          reminders={reminders}
+          widgetWidth={width}
+          widgetHeight={height}
+        />
+      ),
       widgetNotFound: () => {
         // Widget not added to home screen — nothing to do
       },

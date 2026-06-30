@@ -81,8 +81,10 @@ export function SearchScreen() {
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const normalizedQuery = query.trim().toLowerCase();
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -131,7 +133,8 @@ export function SearchScreen() {
         }
 
         setSelectedReminder(null);
-        await refresh();
+        setReminders((current) => current.filter((item) => item.id !== reminder.id));
+        await refresh({ silent: true });
       } catch (deleteError) {
         console.warn('Failed to delete reminder from search', deleteError);
         Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');

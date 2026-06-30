@@ -18,7 +18,7 @@ export async function deleteReminder(
 
   await notificationGateway.cancelReminderNotifications(reminder);
   await deleteReminderById(id);
-  void updateWidget();
+  await updateWidget();
 
   return true;
 }

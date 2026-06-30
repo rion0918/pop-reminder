@@ -15,7 +15,7 @@ test('android hardware back closes reminder sheets before leaving home', () => {
   assert.match(source, /Platform\.OS !== "android"/);
   assert.match(source, /BackHandler\.addEventListener\("hardwareBackPress"/);
   assert.match(source, /if \(selectedReminderRef\.current\) \{/);
-  assert.match(source, /setSelectedReminder\(null\);/);
+  assert.match(source, /setSelectedReminderId\(null\);/);
   assert.match(source, /if \(isQuickAddOpenRef\.current\) \{/);
   assert.match(source, /closeQuickAdd\(\);/);
   assert.match(source, /subscription\.remove\(\);/);

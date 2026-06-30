@@ -1,7 +1,19 @@
 import React from 'react';
-import { FlexWidget, TextWidget, type ColorProp } from 'react-native-android-widget';
+import {
+  FlexWidget,
+  OverlapWidget,
+  SvgWidget,
+  TextWidget,
+  type ColorProp,
+} from 'react-native-android-widget';
 
-import { getWidgetDueColor, widgetTheme } from './widgetColors';
+import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
+import {
+  getWidgetDueColor,
+  homeVisualTokens,
+  type WidgetDueColor,
+  widgetTheme,
+} from './widgetColors';
 
 type WidgetReminder = {
   id: string;
@@ -15,136 +27,442 @@ type PopReminderWidgetProps = {
   widgetHeight?: number;
 };
 
-function formatWidgetDateTime(targetAt: string): string {
-  const target = new Date(targetAt);
-  const now = new Date();
-  const hours = String(target.getHours()).padStart(2, '0');
-  const minutes = String(target.getMinutes()).padStart(2, '0');
-  const time = `${hours}:${minutes}`;
+type SvgPaint = {
+  hex: string;
+  opacity: number;
+};
 
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-  const dayAfterStart = new Date(todayStart.getTime() + 2 * 24 * 60 * 60 * 1000);
-  const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+type WidgetBubbleTypography = {
+  titleFontSize: number;
+  titleLineCount: number;
+  titleAdjustsFontSizeToFit: boolean;
+  timeFontSize: number;
+  timeMarginTop: number;
+  bubblePadding: number;
+};
 
-  if (targetDay.getTime() === todayStart.getTime()) {
-    return `今日 ${time}`;
-  }
+type WidgetBubbleDimensions = {
+  width: number;
+  height: number;
+};
 
-  if (targetDay.getTime() === tomorrowStart.getTime()) {
-    return `明日 ${time}`;
-  }
+type WidgetIdleMotionConfig = {
+  delay: number;
+  duration: number;
+  amplitudeX: number;
+  amplitudeY: number;
+  rotateDeg: number;
+};
 
-  if (targetDay.getTime() === dayAfterStart.getTime()) {
-    return `明後日 ${time}`;
-  }
+type WidgetMotionFrame = {
+  translateX: number;
+  translateY: number;
+  rotation: number;
+};
 
-  const month = target.getMonth() + 1;
-  const day = target.getDate();
+const WIDGET_DEFAULT_WIDTH = 250;
+const WIDGET_DEFAULT_HEIGHT = 180;
+const WIDGET_HORIZONTAL_PADDING = 24;
+const WIDGET_BUBBLE_GAP = 8;
+const MAX_VISIBLE = 3;
 
-  if (target.getFullYear() === now.getFullYear()) {
-    return `${month}/${day} ${time}`;
-  }
-
-  return `${target.getFullYear()}/${month}/${day} ${time}`;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
-function truncateTitle(title: string, maxLength: number): string {
-  if (title.length <= maxLength) {
-    return title;
+function hashString(value: string) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
   }
 
-  return `${title.slice(0, maxLength - 1)}…`;
+  return hash >>> 0;
 }
 
-function BubbleItem({ reminder }: { reminder: WidgetReminder }) {
+function unitFromHash(seed: number, salt: number) {
+  let hash = seed ^ Math.imul(salt + 1, 0x9e3779b9);
+  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d);
+  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b);
+  return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
+}
+
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function toHex(value: number) {
+  return Math.round(clamp(value, 0, 255)).toString(16).padStart(2, '0');
+}
+
+function colorToSvgPaint(color: string): SvgPaint {
+  if (color.startsWith('#')) {
+    const hex = color.substring(1);
+
+    if (hex.length === 8) {
+      return {
+        hex: `#${hex.substring(0, 6)}`,
+        opacity: parseInt(hex.substring(6), 16) / 255,
+      };
+    }
+
+    return {
+      hex: color,
+      opacity: 1,
+    };
+  }
+
+  const rgba = color.match(
+    /^rgba\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)$/,
+  );
+
+  if (!rgba) {
+    return {
+      hex: '#ffffff',
+      opacity: 1,
+    };
+  }
+
+  return {
+    hex: `#${toHex(Number(rgba[1]))}${toHex(Number(rgba[2]))}${toHex(Number(rgba[3]))}`,
+    opacity: clamp(Number(rgba[4]), 0, 1),
+  };
+}
+
+function svgFill(color: string, opacityScale = 1) {
+  const paint = colorToSvgPaint(color);
+  const opacity = clamp(paint.opacity * opacityScale, 0, 1);
+
+  return `fill="${paint.hex}" fill-opacity="${opacity.toFixed(3)}"`;
+}
+
+function svgStroke(color: string, opacityScale = 1) {
+  const paint = colorToSvgPaint(color);
+  const opacity = clamp(paint.opacity * opacityScale, 0, 1);
+
+  return `stroke="${paint.hex}" stroke-opacity="${opacity.toFixed(3)}"`;
+}
+
+function getTitleVisualLength(title: string) {
+  return Array.from(title.trim()).reduce((length, character) => {
+    if (character.trim().length === 0) {
+      return length + 0.35;
+    }
+
+    return length + (character.charCodeAt(0) <= 0x007f ? 0.62 : 1);
+  }, 0);
+}
+
+function getWidgetBubbleTypography(
+  width: number,
+  height: number,
+  titleVisualLength: number,
+): WidgetBubbleTypography {
+  const isShortTitle = titleVisualLength <= 8;
+  const isMediumTitle = titleVisualLength <= 16;
+  const isLongTitle = titleVisualLength > 24;
+  const textMeasure = Math.min(height, width / 1.45);
+  const titleLineCount = isShortTitle ? 1 : isMediumTitle ? 2 : isLongTitle ? 4 : 3;
+  const titleFontSize = isShortTitle
+    ? clamp(textMeasure * 0.17, 13, 20)
+    : isMediumTitle
+      ? clamp(textMeasure * 0.135, 12, 17)
+      : isLongTitle
+        ? clamp(textMeasure * 0.086, 9, 12)
+        : clamp(textMeasure * 0.112, 10, 15);
+  const timeFontSize = isShortTitle
+    ? clamp(textMeasure * 0.102, 10, 13)
+    : isLongTitle
+      ? clamp(textMeasure * 0.074, 8, 10)
+      : clamp(textMeasure * 0.088, 9, 11);
+  const baseBubblePadding = clamp(textMeasure * 0.13, 8, 16);
+
+  return {
+    titleFontSize: Math.round(titleFontSize),
+    titleLineCount,
+    titleAdjustsFontSizeToFit: !isShortTitle,
+    timeFontSize: Math.round(timeFontSize),
+    timeMarginTop: isShortTitle ? Math.round(clamp(textMeasure * 0.04, 3, 6)) : isLongTitle ? 1 : 3,
+    bubblePadding: Math.round(
+      isShortTitle ? baseBubblePadding : Math.max(7, baseBubblePadding - (isLongTitle ? 4 : 2)),
+    ),
+  };
+}
+
+function getWidgetBubbleDimensions(
+  reminder: WidgetReminder,
+  index: number,
+  visibleCount: number,
+  widgetWidth: number,
+  widgetHeight: number,
+): WidgetBubbleDimensions {
+  const titleVisualLength = getTitleVisualLength(reminder.title);
+  const availableWidth =
+    widgetWidth - WIDGET_HORIZONTAL_PADDING * 2 - WIDGET_BUBBLE_GAP * Math.max(0, visibleCount - 1);
+  const slotWidth = Math.floor(availableWidth / Math.max(1, visibleCount));
+  const baseHeight = clamp(Math.min(widgetHeight * 0.43, widgetWidth * 0.34), 68, 96);
+  const indexScale = index === 0 ? 1 : index === 1 ? 0.94 : 0.88;
+  const titleScale = titleVisualLength >= 24 ? 1.08 : titleVisualLength >= 16 ? 1.02 : 1;
+  const height = Math.round(clamp(baseHeight * indexScale * titleScale, 64, 98));
+  const aspectRatio = titleVisualLength >= 24 ? 1.34 : titleVisualLength >= 16 ? 1.18 : 1;
+  const width = Math.round(clamp(height * aspectRatio, 64, Math.max(64, slotWidth)));
+
+  return {
+    width,
+    height,
+  };
+}
+
+function makeWidgetIdleMotionConfig(id: string, index: number): WidgetIdleMotionConfig {
+  const seed = hashString(`${id}-${index}`);
+
+  return {
+    delay: Math.round(unitFromHash(seed, 1) * 1200),
+    duration: Math.round(4600 + unitFromHash(seed, 2) * 2600),
+    amplitudeX: unitFromHash(seed, 3) * 2.4,
+    amplitudeY: 2.2 + unitFromHash(seed, 4) * 2.2,
+    rotateDeg: 1 + unitFromHash(seed, 5) * 1.4,
+  };
+}
+
+function getWidgetMotionFrame(
+  id: string,
+  index: number,
+  renderedAtMs: number,
+): WidgetMotionFrame {
+  const motion = makeWidgetIdleMotionConfig(id, index);
+  const elapsed = renderedAtMs - motion.delay;
+  const wrappedElapsed = ((elapsed % motion.duration) + motion.duration) % motion.duration;
+  const phase = wrappedElapsed / motion.duration;
+
+  return {
+    translateX: Math.round(Math.sin(phase * Math.PI * 2) * motion.amplitudeX),
+    translateY: Math.round(Math.cos(phase * Math.PI * 2) * motion.amplitudeY),
+    rotation: Math.round(Math.sin(phase * Math.PI * 2) * motion.rotateDeg),
+  };
+}
+
+function makeBubbleSvg(id: string, width: number, height: number, color: WidgetDueColor) {
+  const svgId = escapeXml(id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24) || 'bubble');
+  const gradientMist = colorToSvgPaint(color.gradient[2]);
+  const bottomShade = colorToSvgPaint('rgba(84,91,132,0.07)');
+  const innerGlass = colorToSvgPaint('rgba(255,255,255,0.26)');
+  const outerGlassRing = svgStroke('rgba(255,255,255,0.58)');
+  const innerColorRim = svgStroke(color.border, homeVisualTokens.bubbleInnerColorRimOpacity);
+  const highlightLarge = svgFill('rgba(255,255,255,0.7)');
+  const highlightSmall = svgFill('rgba(255,255,255,0.62)');
+  const tintMist = svgFill(color.background, homeVisualTokens.bubbleTintMistOpacity);
+  const stretch = width === height ? 'xMidYMid meet' : 'none';
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 100 100" preserveAspectRatio="${stretch}">
+  <defs>
+    <linearGradient id="${svgId}-surface" x1="16%" y1="8%" x2="86%" y2="96%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.78"/>
+      <stop offset="52%" stop-color="${gradientMist.hex}" stop-opacity="${gradientMist.opacity.toFixed(3)}"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="${svgId}-glass" x1="10%" y1="4%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="52%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#27304c" stop-opacity="0.07"/>
+    </linearGradient>
+  </defs>
+  <rect id="bubbleSurface" x="1.4" y="1.4" width="97.2" height="97.2" rx="48.6" ${svgFill('rgba(255,255,255,0.18)')} ${svgStroke('rgba(255,255,255,0.72)')} stroke-width="1.2"/>
+  <rect x="0" y="0" width="100" height="100" rx="50" fill="url(#${svgId}-surface)"/>
+  <rect x="0" y="0" width="100" height="100" rx="50" fill="url(#${svgId}-glass)"/>
+  <ellipse id="tintMist" cx="50" cy="50" rx="34" ry="30" ${tintMist}/>
+  <ellipse id="lowerDepth" cx="69" cy="72" rx="37" ry="29" fill="${bottomShade.hex}" fill-opacity="${(bottomShade.opacity * 0.44).toFixed(3)}"/>
+  <ellipse id="centerGlow" cx="49" cy="47" rx="33" ry="29" ${svgFill('rgba(255,255,255,0.18)')}/>
+  <rect id="outerGlassRing" x="2.4" y="2.4" width="95.2" height="95.2" rx="47.6" fill="none" ${outerGlassRing} stroke-width="2"/>
+  <rect id="innerGlassRing" x="6" y="6" width="88" height="88" rx="44" fill="none" stroke="${innerGlass.hex}" stroke-opacity="${innerGlass.opacity.toFixed(3)}" stroke-width="0.9"/>
+  <path id="leftLightArc" d="M19 73 C7 48 13 18 42 10" fill="none" ${svgStroke('rgba(255,255,255,0.68)')} stroke-width="2.4" stroke-linecap="round"/>
+  <path id="innerColorRim" d="M76 21 C91 42 87 72 63 86" fill="none" ${innerColorRim} stroke-width="2.2" stroke-linecap="round"/>
+  <ellipse id="highlightLarge" cx="32" cy="21" rx="17" ry="8.5" ${highlightLarge} transform="rotate(-28 32 21)"/>
+  <circle id="highlightSmall" cx="61" cy="19" r="7" ${highlightSmall}/>
+  <circle id="highlightTiny" cx="66" cy="28" r="3" ${svgFill('rgba(255,255,255,0.52)')}/>
+  <path id="topLightArc" d="M23 24 C39 14 63 13 79 24" fill="none" ${svgStroke('rgba(255,255,255,0.48)')} stroke-width="2" stroke-linecap="round"/>
+  <path id="bottomReflection" d="M27 77 C41 85 61 85 75 77" fill="none" ${svgStroke('rgba(255,255,255,0.22)')} stroke-width="1" stroke-linecap="round"/>
+</svg>`;
+}
+
+function BubbleItem({
+  reminder,
+  index,
+  visibleCount,
+  widgetWidth,
+  widgetHeight,
+  renderedAtMs,
+}: {
+  reminder: WidgetReminder;
+  index: number;
+  visibleCount: number;
+  widgetWidth: number;
+  widgetHeight: number;
+  renderedAtMs: number;
+}) {
   const color = getWidgetDueColor(reminder.targetAt);
-  const displayTitle = truncateTitle(reminder.title, 8);
-  const displayTime = formatWidgetDateTime(reminder.targetAt);
+  const dimensions = getWidgetBubbleDimensions(reminder, index, visibleCount, widgetWidth, widgetHeight);
+  const titleVisualLength = getTitleVisualLength(reminder.title);
+  const typography = getWidgetBubbleTypography(dimensions.width, dimensions.height, titleVisualLength);
+  const timeText = formatReminderBubbleDateTime(reminder.targetAt);
+  const verticalNudge = index === 0 ? 0 : index === 1 ? 8 : -4;
+  const motionFrame = getWidgetMotionFrame(reminder.id, index, renderedAtMs);
 
   return (
-    <FlexWidget
+    <OverlapWidget
       style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: color.background as ColorProp,
-        borderRadius: 999,
-        padding: 6,
-        borderWidth: 1,
-        borderColor: color.border as ColorProp,
-        width: 'match_parent',
-        height: 'match_parent',
+        width: dimensions.width,
+        height: dimensions.height,
+        borderRadius: Math.round(Math.min(dimensions.width, dimensions.height) / 2),
+        overflow: 'hidden',
+        marginTop: verticalNudge + motionFrame.translateY,
+        marginLeft: motionFrame.translateX,
+        rotation: motionFrame.rotation,
       }}
       clickAction="OPEN_URI"
       clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
     >
-      <TextWidget
-        text={displayTitle}
+      <SvgWidget
+        svg={makeBubbleSvg(reminder.id, dimensions.width, dimensions.height, color)}
         style={{
-          fontSize: 12,
-          fontWeight: '800',
-          color: color.text as ColorProp,
-          textAlign: 'center',
+          width: 'match_parent',
+          height: 'match_parent',
         }}
-        maxLines={2}
       />
-      <TextWidget
-        text={displayTime}
+      <FlexWidget
         style={{
-          fontSize: 10,
-          fontWeight: '700',
-          color: color.accent as ColorProp,
-          textAlign: 'center',
-          marginTop: 2,
+          width: 'match_parent',
+          height: 'match_parent',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: typography.bubblePadding,
         }}
-        maxLines={1}
-      />
-    </FlexWidget>
+      >
+        <TextWidget
+          text={reminder.title}
+          style={{
+            fontSize: typography.titleFontSize,
+            fontWeight: '800',
+            color: color.accent as ColorProp,
+            textAlign: 'center',
+            textShadowColor: 'rgba(255,255,255,0.58)' as ColorProp,
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 8,
+            adjustsFontSizeToFit: typography.titleAdjustsFontSizeToFit,
+          }}
+          maxLines={typography.titleLineCount}
+          allowFontScaling={false}
+        />
+        <TextWidget
+          text={timeText}
+          style={{
+            fontSize: typography.timeFontSize,
+            fontWeight: '800',
+            color: 'rgba(38,49,81,0.76)' as ColorProp,
+            textAlign: 'center',
+            marginTop: typography.timeMarginTop,
+            textShadowColor: 'rgba(255,255,255,0.62)' as ColorProp,
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 7,
+            adjustsFontSizeToFit: true,
+          }}
+          maxLines={1}
+          truncate="END"
+          allowFontScaling={false}
+        />
+      </FlexWidget>
+    </OverlapWidget>
   );
 }
 
-function OverflowBubble({ count }: { count: number }) {
+function OverflowBubble({
+  count,
+  widgetWidth,
+  widgetHeight,
+  renderedAtMs,
+}: {
+  count: number;
+  widgetWidth: number;
+  widgetHeight: number;
+  renderedAtMs: number;
+}) {
+  const color = getWidgetDueColor(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const width = Math.round(clamp(widgetWidth * 0.26, 68, 88));
+  const height = Math.round(clamp(widgetHeight * 0.38, 64, 82));
+  const radius = Math.round(Math.min(width, height) / 2);
+  const motionFrame = getWidgetMotionFrame(`overflow-${count}`, count, renderedAtMs);
+
   return (
-    <FlexWidget
+    <OverlapWidget
       style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F3F4F6' as ColorProp,
-        borderRadius: 999,
-        padding: 6,
-        borderWidth: 1,
-        borderColor: '#E5E7EB' as ColorProp,
-        width: 'match_parent',
-        height: 'match_parent',
+        width,
+        height,
+        borderRadius: radius,
+        overflow: 'hidden',
+        marginTop: 8 + motionFrame.translateY,
+        marginLeft: motionFrame.translateX,
+        rotation: motionFrame.rotation,
       }}
       clickAction="OPEN_APP"
     >
-      <TextWidget
-        text={`+${count}`}
+      <SvgWidget
+        svg={makeBubbleSvg(`overflow-${count}`, width, height, color)}
         style={{
-          fontSize: 14,
-          fontWeight: '900',
-          color: widgetTheme.mutedText as ColorProp,
-          textAlign: 'center',
+          width: 'match_parent',
+          height: 'match_parent',
         }}
       />
-      <TextWidget
-        text="ほか"
+      <FlexWidget
         style={{
-          fontSize: 9,
-          fontWeight: '700',
-          color: widgetTheme.mutedText as ColorProp,
-          textAlign: 'center',
-          marginTop: 1,
+          width: 'match_parent',
+          height: 'match_parent',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 10,
         }}
-      />
-    </FlexWidget>
+      >
+        <TextWidget
+          text={`+${count}`}
+          style={{
+            fontSize: 18,
+            fontWeight: '900',
+            color: widgetTheme.headerText as ColorProp,
+            textAlign: 'center',
+            textShadowColor: 'rgba(255,255,255,0.58)' as ColorProp,
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 8,
+          }}
+          allowFontScaling={false}
+        />
+        <TextWidget
+          text="ほか"
+          style={{
+            fontSize: 10,
+            fontWeight: '800',
+            color: widgetTheme.mutedText as ColorProp,
+            textAlign: 'center',
+            marginTop: 1,
+          }}
+          allowFontScaling={false}
+        />
+      </FlexWidget>
+    </OverlapWidget>
   );
 }
 
-function EmptyState() {
+function EmptyState({ renderedAtMs }: { renderedAtMs: number }) {
+  const color = getWidgetDueColor(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const motionFrame = getWidgetMotionFrame('empty-state', 0, renderedAtMs);
+
   return (
     <FlexWidget
       style={{
@@ -154,32 +472,64 @@ function EmptyState() {
         padding: 8,
       }}
     >
-      <TextWidget
-        text="🫧"
+      <OverlapWidget
         style={{
-          fontSize: 28,
-          textAlign: 'center',
+          width: 118,
+          height: 92,
+          borderRadius: 46,
+          overflow: 'hidden',
+          marginTop: motionFrame.translateY,
+          marginLeft: motionFrame.translateX,
+          rotation: motionFrame.rotation,
         }}
-      />
-      <TextWidget
-        text="泡はまだ浮いていません"
-        style={{
-          fontSize: 12,
-          fontWeight: '700',
-          color: widgetTheme.mutedText as ColorProp,
-          textAlign: 'center',
-          marginTop: 4,
-        }}
-      />
+      >
+        <SvgWidget
+          svg={makeBubbleSvg('empty-state', 118, 92, color)}
+          style={{
+            width: 'match_parent',
+            height: 'match_parent',
+          }}
+        />
+        <FlexWidget
+          style={{
+            width: 'match_parent',
+            height: 'match_parent',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 14,
+          }}
+        >
+          <TextWidget
+            text="まだ泡はひとつも浮いていません"
+            style={{
+              fontSize: 11,
+              fontWeight: '800',
+              color: widgetTheme.headerText as ColorProp,
+              textAlign: 'center',
+              textShadowColor: 'rgba(255,255,255,0.58)' as ColorProp,
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 8,
+              adjustsFontSizeToFit: true,
+            }}
+            maxLines={3}
+            allowFontScaling={false}
+          />
+        </FlexWidget>
+      </OverlapWidget>
     </FlexWidget>
   );
 }
 
-export function PopReminderWidget({ reminders }: PopReminderWidgetProps) {
-  const MAX_VISIBLE = 3;
+export function PopReminderWidget({
+  reminders,
+  widgetWidth = WIDGET_DEFAULT_WIDTH,
+  widgetHeight = WIDGET_DEFAULT_HEIGHT,
+}: PopReminderWidgetProps) {
   const visibleReminders = reminders.slice(0, MAX_VISIBLE);
   const overflowCount = Math.max(0, reminders.length - MAX_VISIBLE);
   const hasBubbles = reminders.length > 0;
+  const bubbleCount = visibleReminders.length + (overflowCount > 0 ? 1 : 0);
+  const renderedAtMs = Date.now();
 
   return (
     <FlexWidget
@@ -194,33 +544,25 @@ export function PopReminderWidget({ reminders }: PopReminderWidgetProps) {
         borderColor: widgetTheme.borderColor as ColorProp,
       }}
     >
-      {/* Header */}
       <FlexWidget
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           width: 'match_parent',
-          marginBottom: 8,
+          marginBottom: 6,
         }}
       >
-        <TextWidget
-          text="🫧"
-          style={{
-            fontSize: 16,
-          }}
-        />
         <TextWidget
           text="ポップ・リマインダー"
           style={{
             fontSize: 13,
             fontWeight: '800',
             color: widgetTheme.headerText as ColorProp,
-            marginLeft: 6,
           }}
+          allowFontScaling={false}
         />
       </FlexWidget>
 
-      {/* Bubble Area */}
       {hasBubbles ? (
         <FlexWidget
           style={{
@@ -228,38 +570,35 @@ export function PopReminderWidget({ reminders }: PopReminderWidgetProps) {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            flexGap: 8,
+            flexGap: WIDGET_BUBBLE_GAP,
             width: 'match_parent',
-            paddingHorizontal: 4,
+            paddingHorizontal: 2,
           }}
         >
-          {visibleReminders.map((reminder) => (
-            <FlexWidget
+          {visibleReminders.map((reminder, index) => (
+            <BubbleItem
               key={reminder.id}
-              style={{
-                flex: 1,
-                height: 80,
-              }}
-            >
-              <BubbleItem reminder={reminder} />
-            </FlexWidget>
+              reminder={reminder}
+              index={index}
+              visibleCount={bubbleCount}
+              widgetWidth={widgetWidth}
+              widgetHeight={widgetHeight}
+              renderedAtMs={renderedAtMs}
+            />
           ))}
           {overflowCount > 0 ? (
-            <FlexWidget
-              style={{
-                flex: 1,
-                height: 80,
-              }}
-            >
-              <OverflowBubble count={overflowCount} />
-            </FlexWidget>
+            <OverflowBubble
+              count={overflowCount}
+              widgetWidth={widgetWidth}
+              widgetHeight={widgetHeight}
+              renderedAtMs={renderedAtMs}
+            />
           ) : null}
         </FlexWidget>
       ) : (
-        <EmptyState />
+        <EmptyState renderedAtMs={renderedAtMs} />
       )}
 
-      {/* Add Button */}
       <FlexWidget
         style={{
           flexDirection: 'row',
@@ -276,12 +615,13 @@ export function PopReminderWidget({ reminders }: PopReminderWidgetProps) {
         clickActionData={{ uri: 'popreminder://?action=add' }}
       >
         <TextWidget
-          text="＋"
+          text="+"
           style={{
             fontSize: 16,
             fontWeight: '900',
             color: widgetTheme.addButtonText as ColorProp,
           }}
+          allowFontScaling={false}
         />
         <TextWidget
           text="追加"
@@ -291,6 +631,7 @@ export function PopReminderWidget({ reminders }: PopReminderWidgetProps) {
             color: widgetTheme.addButtonText as ColorProp,
             marginLeft: 4,
           }}
+          allowFontScaling={false}
         />
       </FlexWidget>
     </FlexWidget>

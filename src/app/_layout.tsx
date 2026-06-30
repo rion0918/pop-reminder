@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,6 +16,7 @@ import { useReminderUiStore } from '../features/reminders/stores/reminderUiStore
 import { palette } from '../constants/colors';
 
 export default function RootLayout() {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -55,19 +56,21 @@ export default function RootLayout() {
       const parsed = Linking.parse(url);
 
       if (parsed.queryParams?.action === 'add') {
+        router.replace('/');
         // Delay slightly to ensure the home screen is mounted
         setTimeout(() => {
           openQuickAdd('08:00');
         }, 600);
       } else if (parsed.queryParams?.action === 'view' && typeof parsed.queryParams.id === 'string') {
         const id = parsed.queryParams.id;
+        router.replace('/');
         // Delay slightly to ensure home screen is loaded
         setTimeout(() => {
           setSelectedReminderId(id);
         }, 600);
       }
     },
-    [openQuickAdd, setSelectedReminderId, ready],
+    [openQuickAdd, router, setSelectedReminderId, ready],
   );
 
   useEffect(() => {
