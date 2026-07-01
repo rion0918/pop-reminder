@@ -37,7 +37,7 @@ test('eas config makes Android preview installable and production store-ready', 
 test('package scripts expose release regression checks', () => {
   assert.equal(
     packageConfig.scripts.test,
-    "node --test config.release.test.js $(rg --files src -g '*.test.js')",
+    "node --import tsx --test config.release.test.js $(rg --files src -g '*.test.js' -g '*.spec.ts' -g '*.spec.tsx')",
   );
 });
 
