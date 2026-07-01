@@ -15,6 +15,16 @@ import {
   type WidgetDueColor,
   widgetTheme,
 } from './widgetColors';
+import {
+  getWidgetBubbleCapacity,
+  getWidgetBubbleLayouts,
+  getWidgetTitleVisualLength,
+  WIDGET_DUE_LEGEND_HEIGHT,
+  WIDGET_PLUS_TOUCH_HEIGHT,
+  WIDGET_PLUS_TOUCH_WIDTH,
+  WIDGET_SURFACE_PADDING,
+  type WidgetBubbleLayout,
+} from './widgetBubbleLayout';
 
 type WidgetReminder = {
   id: string;
@@ -42,17 +52,6 @@ type WidgetBubbleTypography = {
   bubblePadding: number;
 };
 
-type WidgetBubbleDimensions = {
-  width: number;
-  height: number;
-};
-
-type WidgetBubbleLayout = WidgetBubbleDimensions & {
-  left: number;
-  top: number;
-  zIndex: number;
-};
-
 type WidgetIdleMotionConfig = {
   delay: number;
   duration: number;
@@ -69,11 +68,6 @@ type WidgetMotionFrame = {
 
 const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
-const WIDGET_SURFACE_PADDING = 12;
-const WIDGET_PLUS_TOUCH_WIDTH = 44;
-const WIDGET_PLUS_TOUCH_HEIGHT = 40;
-const WIDGET_MAX_VISIBLE_BUBBLES = 8;
-const WIDGET_DUE_LEGEND_HEIGHT = 42;
 const WIDGET_DUE_LEGEND_BUBBLE_SIZE = 14;
 
 const WIDGET_DUE_LEGEND_ITEMS = [
@@ -81,17 +75,6 @@ const WIDGET_DUE_LEGEND_ITEMS = [
   { id: 'tomorrow', label: '明日', color: bubbleDueColors.tomorrow },
   { id: 'soon', label: '2-3日', color: bubbleDueColors.soon },
   { id: 'later', label: '4日+', color: bubbleDueColors.later },
-] as const;
-
-const BUBBLE_LAYOUT_ANCHORS = [
-  { x: 0.12, y: 0.26 },
-  { x: 0.52, y: 0.58 },
-  { x: 0.66, y: 0.24 },
-  { x: 0.2, y: 0.72 },
-  { x: 0.78, y: 0.58 },
-  { x: 0.42, y: 0.18 },
-  { x: 0.08, y: 0.52 },
-  { x: 0.58, y: 0.8 },
 ] as const;
 
 function clamp(value: number, min: number, max: number) {
@@ -179,16 +162,6 @@ function svgStroke(color: string, opacityScale = 1) {
   return `stroke="${paint.hex}" stroke-opacity="${opacity.toFixed(3)}"`;
 }
 
-function getTitleVisualLength(title: string) {
-  return Array.from(title.trim()).reduce((length, character) => {
-    if (character.trim().length === 0) {
-      return length + 0.35;
-    }
-
-    return length + (character.charCodeAt(0) <= 0x007f ? 0.62 : 1);
-  }, 0);
-}
-
 function getWidgetBubbleTypography(
   width: number,
   height: number,
@@ -222,109 +195,6 @@ function getWidgetBubbleTypography(
     bubblePadding: Math.round(
       isShortTitle ? baseBubblePadding : Math.max(7, baseBubblePadding - (isLongTitle ? 4 : 2)),
     ),
-  };
-}
-
-function getWidgetBubbleDimensions(
-  reminder: WidgetReminder,
-  index: number,
-  visibleCount: number,
-  widgetWidth: number,
-  widgetHeight: number,
-): WidgetBubbleDimensions {
-  const titleVisualLength = getTitleVisualLength(reminder.title);
-  const areaMeasure = Math.sqrt(widgetWidth * widgetHeight);
-  const densityScale =
-    visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : visibleCount <= 6 ? 0.9 : 0.82;
-  const baseHeight = clamp(
-    Math.min(widgetHeight * 0.38, widgetWidth * 0.3, areaMeasure * 0.42) * densityScale,
-    56,
-    98,
-  );
-  const indexScale = index === 0 ? 1 : index === 1 ? 0.96 : index === 2 ? 0.92 : 0.86;
-  const titleScale = titleVisualLength >= 24 ? 1.08 : titleVisualLength >= 16 ? 1.02 : 1;
-  const height = Math.round(clamp(baseHeight * indexScale * titleScale, 54, 100));
-  const aspectRatio = titleVisualLength >= 24 ? 1.34 : titleVisualLength >= 16 ? 1.18 : 1;
-  const maxWidth = clamp(widgetWidth * (visibleCount <= 3 ? 0.38 : 0.32), 62, 128);
-  const width = Math.round(clamp(height * aspectRatio, 54, maxWidth));
-
-  return {
-    width,
-    height,
-  };
-}
-
-function getWidgetBubbleCapacity(widgetWidth: number, widgetHeight: number) {
-  const area = widgetWidth * widgetHeight;
-
-  if (area < 38000) {
-    return 2;
-  }
-
-  if (area < 62000) {
-    return 3;
-  }
-
-  if (area < 90000) {
-    return 5;
-  }
-
-  if (area < 125000) {
-    return 6;
-  }
-
-  if (area < 165000) {
-    return 7;
-  }
-
-  return WIDGET_MAX_VISIBLE_BUBBLES;
-}
-
-function getWidgetBubbleLayout(
-  reminder: WidgetReminder,
-  index: number,
-  visibleCount: number,
-  widgetWidth: number,
-  widgetHeight: number,
-): WidgetBubbleLayout {
-  const dimensions = getWidgetBubbleDimensions(
-    reminder,
-    index,
-    visibleCount,
-    widgetWidth,
-    widgetHeight,
-  );
-  const anchor = BUBBLE_LAYOUT_ANCHORS[index % BUBBLE_LAYOUT_ANCHORS.length];
-  const seed = hashString(`${reminder.id}-${index}-${visibleCount}`);
-  const edgePadding = WIDGET_SURFACE_PADDING + 4;
-  const rightReserve = anchor.y < 0.36 ? WIDGET_PLUS_TOUCH_WIDTH + WIDGET_SURFACE_PADDING : 0;
-  const legendReserve = WIDGET_DUE_LEGEND_HEIGHT + WIDGET_SURFACE_PADDING;
-  const availableWidth = Math.max(
-    0,
-    widgetWidth - edgePadding * 2 - rightReserve - dimensions.width,
-  );
-  const availableHeight = Math.max(
-    0,
-    widgetHeight - edgePadding * 2 - legendReserve - dimensions.height,
-  );
-  const jitterX = (unitFromHash(seed, 11) - 0.5) * Math.min(24, widgetWidth * 0.08);
-  const jitterY = (unitFromHash(seed, 12) - 0.5) * Math.min(20, widgetHeight * 0.08);
-  const maxLeft = Math.max(
-    edgePadding,
-    widgetWidth - edgePadding - rightReserve - dimensions.width,
-  );
-  const maxTop = Math.max(
-    edgePadding,
-    widgetHeight - edgePadding - legendReserve - dimensions.height,
-  );
-  const left = clamp(edgePadding + availableWidth * anchor.x + jitterX, edgePadding, maxLeft);
-  const top = clamp(edgePadding + availableHeight * anchor.y + jitterY, edgePadding, maxTop);
-
-  return {
-    ...dimensions,
-    left: Math.round(left),
-    top: Math.round(top),
-    zIndex: WIDGET_MAX_VISIBLE_BUBBLES - index,
   };
 }
 
@@ -529,7 +399,7 @@ function BubbleItem({
   renderedAtMs: number;
 }) {
   const color = getWidgetDueColor(reminder.targetAt);
-  const titleVisualLength = getTitleVisualLength(reminder.title);
+  const titleVisualLength = getWidgetTitleVisualLength(reminder.title);
   const typography = getWidgetBubbleTypography(layout.width, layout.height, titleVisualLength);
   const timeText = formatReminderBubbleDateTime(reminder.targetAt);
   const motionFrame = getWidgetMotionFrame(reminder.id, index, renderedAtMs);
@@ -753,9 +623,9 @@ export function PopReminderWidget({
   const layoutItems =
     overflowCount > 0 ? [...visibleReminders, overflowReminder] : visibleReminders;
   const bubbleLayouts = new Map(
-    layoutItems.map((reminder, index) => [
-      reminder.id,
-      getWidgetBubbleLayout(reminder, index, layoutItems.length, widgetWidth, widgetHeight),
+    getWidgetBubbleLayouts(layoutItems, widgetWidth, widgetHeight).map((layout, index) => [
+      layoutItems[index].id,
+      layout,
     ]),
   );
   const hasBubbles = reminders.length > 0;

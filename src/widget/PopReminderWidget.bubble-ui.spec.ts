@@ -7,6 +7,7 @@ import {
 } from '../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './PopReminderWidget.tsx');
+const layoutSource = readSource(import.meta.url, './widgetBubbleLayout.ts');
 const colorsSource = readSource(import.meta.url, './widgetColors.ts');
 const updateSource = readSource(import.meta.url, './widgetUpdateService.tsx');
 const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx');
@@ -77,29 +78,41 @@ test('android widget floats on a clouded glass surface with a bare top-right add
 test('android widget scatters bubbles across the available glass surface', () => {
   assertSourceContract(source, {
     includes: [
-      /const WIDGET_MAX_VISIBLE_BUBBLES = 8/,
+      /getWidgetBubbleCapacity/,
+      /getWidgetBubbleLayouts/,
       /type WidgetBubbleLayout/,
-      /function getWidgetBubbleCapacity\(widgetWidth: number, widgetHeight: number\)/,
-      /const area = widgetWidth \* widgetHeight/,
-      /function getWidgetBubbleLayout/,
-      /const BUBBLE_LAYOUT_ANCHORS/,
-      /rightReserve/,
       /layout=\{bubbleLayouts\.get\(reminder\.id\)!\}/,
       /marginLeft: layout\.left \+ motionFrame\.translateX/,
       /marginTop: layout\.top \+ motionFrame\.translateY/,
       /const visibleCapacity = getWidgetBubbleCapacity\(widgetWidth, widgetHeight\)/,
       /const visibleReminders = reminders\.slice\(0, visibleReminderLimit\)/,
+      /getWidgetBubbleLayouts\(layoutItems, widgetWidth, widgetHeight\)\.map/,
     ],
     excludes: [
       /const MAX_VISIBLE = 3/,
       /flexGap: WIDGET_BUBBLE_GAP/,
       /visibleCount=\{bubbleCount\}/,
+      /const BUBBLE_LAYOUT_ANCHORS/,
+      /rightReserve/,
     ],
   });
+  assertSourceIncludes(layoutSource, [
+    /export const WIDGET_MAX_VISIBLE_BUBBLES = 8/,
+    /export type WidgetBubbleLayout/,
+    /function getWidgetBubbleCapacity\(widgetWidth: number, widgetHeight: number\)/,
+    /const area = widgetWidth \* widgetHeight/,
+    /function getWidgetBubbleLayout/,
+    /function getWidgetBubbleLayouts/,
+    /const WIDGET_LAYOUT_CANDIDATE_SLOTS/,
+    /function getPreferredSlotDistance/,
+    /function getOverlapPenalty/,
+    /function getCenterBandPenalty/,
+    /function getAddButtonRect/,
+  ]);
 });
 
 test('android widget bubble capacity scales from small to large widgets', () => {
-  assertSourceIncludes(source, [
+  assertSourceIncludes(layoutSource, [
     /if \(area < 38000\) \{\s*return 2;\s*\}/,
     /if \(area < 62000\) \{\s*return 3;\s*\}/,
     /if \(area < 90000\) \{\s*return 5;\s*\}/,
@@ -109,7 +122,6 @@ test('android widget bubble capacity scales from small to large widgets', () => 
 
 test('android widget shows a bottom due color legend without overlapping scattered bubbles', () => {
   assertSourceIncludes(source, [
-    /const WIDGET_DUE_LEGEND_HEIGHT = 42/,
     /const WIDGET_DUE_LEGEND_ITEMS = \[/,
     /label: '今日'[\s\S]*bubbleDueColors\.today/,
     /label: '明日'[\s\S]*bubbleDueColors\.tomorrow/,
@@ -119,10 +131,14 @@ test('android widget shows a bottom due color legend without overlapping scatter
     /WIDGET_DUE_LEGEND_ITEMS\.map/,
     /text=\{item\.label\}/,
     /svg=\{makeLegendBubbleSvg\(item\.id, item\.color\)\}/,
-    /const legendReserve = WIDGET_DUE_LEGEND_HEIGHT \+ WIDGET_SURFACE_PADDING/,
-    /widgetHeight - edgePadding \* 2 - legendReserve - dimensions\.height/,
     /marginTop: Math\.max\(0, widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT\)/,
     /<WidgetDueLegend widgetWidth=\{widgetWidth\} widgetHeight=\{widgetHeight\} \/>/,
+  ]);
+  assertSourceIncludes(layoutSource, [
+    /export const WIDGET_DUE_LEGEND_HEIGHT = 42/,
+    /function getLegendReserve/,
+    /return WIDGET_DUE_LEGEND_HEIGHT \+ WIDGET_SURFACE_PADDING/,
+    /widgetHeight - edgePadding - legendReserve - dimensions\.height/,
   ]);
 });
 
