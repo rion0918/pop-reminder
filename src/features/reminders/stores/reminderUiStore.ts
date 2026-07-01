@@ -1,10 +1,6 @@
 import { create } from 'zustand';
 
-import {
-  digitsToTime,
-  timeToDigits,
-  validateTimeInput,
-} from '../../../shared/utils/time';
+import { digitsToTime, timeToDigits, validateTimeInput } from '../../../shared/utils/time';
 import type { ReminderDatePreset } from '../utils/reminderDatePresets';
 
 export type ReminderDateOffset = 0 | 1 | 2;
@@ -69,12 +65,10 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
   setDateOffset: (dateOffset) =>
     set({
       dateOffset,
-      datePreset:
-        dateOffset === 0 ? 'today' : dateOffset === 1 ? 'tomorrow' : 'dayAfterTomorrow',
+      datePreset: dateOffset === 0 ? 'today' : dateOffset === 1 ? 'tomorrow' : 'dayAfterTomorrow',
       customTargetDate: null,
     }),
-  setPresetTargetDate: (datePreset, customTargetDate) =>
-    set({ datePreset, customTargetDate }),
+  setPresetTargetDate: (datePreset, customTargetDate) => set({ datePreset, customTargetDate }),
   setCustomTargetDate: (customTargetDate) =>
     set({ customTargetDate, datePreset: customTargetDate ? 'custom' : 'tomorrow' }),
   setTargetTime: (time) => set({ timeDigits: timeToDigits(time), timeTouched: true }),

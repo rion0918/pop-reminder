@@ -8,8 +8,14 @@ test('reminder bubble typography is derived from bubble size and title length', 
   const source = readFileSync(__dirname + '/ReminderBubble.tsx', 'utf8');
 
   assert.match(source, /type BubbleTypography = \{/);
-  assert.match(source, /function getBubbleTypography\(width: number, height: number, titleVisualLength: number\): BubbleTypography/);
-  assert.match(source, /const typography = getBubbleTypography\(bubbleWidth, bubbleHeight, titleVisualLength\);/);
+  assert.match(
+    source,
+    /function getBubbleTypography\(\s*width: number,\s*height: number,\s*titleVisualLength: number,\s*\): BubbleTypography/,
+  );
+  assert.match(
+    source,
+    /const typography = getBubbleTypography\(bubbleWidth, bubbleHeight, titleVisualLength\);/,
+  );
   assert.match(source, /titleVisualLength <= 8/);
   assert.match(source, /titleAdjustsFontSizeToFit: !isShortTitle/);
   assert.match(source, /titleMinFontScale: isShortTitle \? 1 : isLongTitle \? 0\.72 : 0\.9/);
@@ -21,10 +27,16 @@ test('long reminder bubble titles avoid tail ellipsis', () => {
   const source = readFileSync(__dirname + '/ReminderBubble.tsx', 'utf8');
 
   assert.match(source, /const isLongTitle = titleVisualLength > 24;/);
-  assert.match(source, /titleLineCount = isShortTitle \? 1 : isMediumTitle \? 2 : isLongTitle \? 4 : 3;/);
+  assert.match(
+    source,
+    /titleLineCount = isShortTitle \? 1 : isMediumTitle \? 2 : isLongTitle \? 4 : 3;/,
+  );
   assert.match(source, /titleEllipsizeMode: 'clip'/);
   assert.match(source, /ellipsizeMode=\{typography.titleEllipsizeMode\}/);
-  assert.doesNotMatch(source, /<Text\n            adjustsFontSizeToFit=\{typography\.titleAdjustsFontSizeToFit\}\n            ellipsizeMode="tail"/);
+  assert.doesNotMatch(
+    source,
+    /<Text\n            adjustsFontSizeToFit=\{typography\.titleAdjustsFontSizeToFit\}\n            ellipsizeMode="tail"/,
+  );
 });
 
 test('reminder bubble can render as a wide bubble for long text', () => {
@@ -34,7 +46,10 @@ test('reminder bubble can render as a wide bubble for long text', () => {
   assert.match(source, /height\?: number;/);
   assert.match(source, /const bubbleWidth = width \?\? size;/);
   assert.match(source, /const bubbleHeight = height \?\? size;/);
-  assert.match(source, /function getBubbleTypography\(width: number, height: number, titleVisualLength: number\): BubbleTypography/);
+  assert.match(
+    source,
+    /function getBubbleTypography\(\s*width: number,\s*height: number,\s*titleVisualLength: number,\s*\): BubbleTypography/,
+  );
   assert.match(source, /const textMeasure = Math\.min\(height, width \/ 1\.45\);/);
   assert.match(source, /width: bubbleWidth,/);
   assert.match(source, /height: bubbleHeight,/);
@@ -46,7 +61,7 @@ test('reminder bubble uses shared home visual tokens for iOS-like Android render
 
   assert.match(colorsSource, /export const homeVisualTokens = \{/);
   assert.match(colorsSource, /bubbleTintMistOpacity: 0\.46/);
-  assert.match(colorsSource, /bubbleInnerColorRimOpacity: 0\.30/);
+  assert.match(colorsSource, /bubbleInnerColorRimOpacity: 0\.3/);
   assert.match(colorsSource, /bubbleSurfaceElevation: 0/);
   assert.match(source, /homeVisualTokens\.bubbleTintMistOpacity/);
   assert.match(source, /homeVisualTokens\.bubbleInnerColorRimOpacity/);

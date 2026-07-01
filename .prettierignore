@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+android/
+ios/
+.direnv/
+result
+*.db
+*.sqlite
+*.sqlite3
+pnpm-lock.yaml

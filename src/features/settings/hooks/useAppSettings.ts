@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import {
-  getAppSettings,
-  updateAppSettings,
-} from '../services/settingsRepository';
+import { getAppSettings, updateAppSettings } from '../services/settingsRepository';
 import { AppSettings, UpdateAppSettingsInput } from '../types/appSettings';
 
 export function useAppSettings() {

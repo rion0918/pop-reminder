@@ -66,7 +66,10 @@ test('android widget scatters bubbles across the available glass surface', () =>
   assert.doesNotMatch(source, /const MAX_VISIBLE = 3/);
   assert.match(source, /const WIDGET_MAX_VISIBLE_BUBBLES = 8/);
   assert.match(source, /type WidgetBubbleLayout/);
-  assert.match(source, /function getWidgetBubbleCapacity\(widgetWidth: number, widgetHeight: number\)/);
+  assert.match(
+    source,
+    /function getWidgetBubbleCapacity\(widgetWidth: number, widgetHeight: number\)/,
+  );
   assert.match(source, /const area = widgetWidth \* widgetHeight/);
   assert.match(source, /function getWidgetBubbleLayout/);
   assert.match(source, /const BUBBLE_LAYOUT_ANCHORS/);
@@ -74,7 +77,10 @@ test('android widget scatters bubbles across the available glass surface', () =>
   assert.match(source, /layout=\{bubbleLayouts\.get\(reminder\.id\)!\}/);
   assert.match(source, /marginLeft: layout\.left \+ motionFrame\.translateX/);
   assert.match(source, /marginTop: layout\.top \+ motionFrame\.translateY/);
-  assert.match(source, /const visibleCapacity = getWidgetBubbleCapacity\(widgetWidth, widgetHeight\)/);
+  assert.match(
+    source,
+    /const visibleCapacity = getWidgetBubbleCapacity\(widgetWidth, widgetHeight\)/,
+  );
   assert.match(source, /const visibleReminders = reminders\.slice\(0, visibleReminderLimit\)/);
   assert.doesNotMatch(source, /flexGap: WIDGET_BUBBLE_GAP/);
   assert.doesNotMatch(source, /visibleCount=\{bubbleCount\}/);
@@ -104,8 +110,14 @@ test('android widget shows a bottom due color legend without overlapping scatter
   assert.match(source, /svg=\{makeLegendBubbleSvg\(item\.id, item\.color\)\}/);
   assert.match(source, /const legendReserve = WIDGET_DUE_LEGEND_HEIGHT \+ WIDGET_SURFACE_PADDING/);
   assert.match(source, /widgetHeight - edgePadding \* 2 - legendReserve - dimensions\.height/);
-  assert.match(source, /marginTop: Math\.max\(0, widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT\)/);
-  assert.match(source, /<WidgetDueLegend widgetWidth=\{widgetWidth\} widgetHeight=\{widgetHeight\} \/>/);
+  assert.match(
+    source,
+    /marginTop: Math\.max\(0, widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT\)/,
+  );
+  assert.match(
+    source,
+    /<WidgetDueLegend widgetWidth=\{widgetWidth\} widgetHeight=\{widgetHeight\} \/>/,
+  );
 });
 
 test('manual widget refresh keeps using the actual widget size', () => {
@@ -121,9 +133,15 @@ test('widget refresh paths share the same optimized reminder snapshot', () => {
   const taskHandlerSource = readFileSync(__dirname + '/widgetTaskHandler.tsx', 'utf8');
 
   assert.match(updateSource, /import \{ getWidgetReminders \} from '\.\/widgetReminderSnapshot';/);
-  assert.match(taskHandlerSource, /import \{ getWidgetReminders \} from '\.\/widgetReminderSnapshot';/);
+  assert.match(
+    taskHandlerSource,
+    /import \{ getWidgetReminders \} from '\.\/widgetReminderSnapshot';/,
+  );
   assert.match(updateSource, /let widgetUpdateQueue: Promise<void> = Promise\.resolve\(\);/);
-  assert.match(updateSource, /widgetUpdateQueue = widgetUpdateQueue\.then\(runWidgetUpdate, runWidgetUpdate\);/);
+  assert.match(
+    updateSource,
+    /widgetUpdateQueue = widgetUpdateQueue\.then\(runWidgetUpdate, runWidgetUpdate\);/,
+  );
   assert.doesNotMatch(updateSource, /expo-sqlite/);
   assert.doesNotMatch(updateSource, /expo-file-system/);
   assert.doesNotMatch(taskHandlerSource, /function getActiveReminders/);

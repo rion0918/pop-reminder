@@ -85,7 +85,11 @@ function getTitleVisualLength(title: string) {
   }, 0);
 }
 
-function getBubbleTypography(width: number, height: number, titleVisualLength: number): BubbleTypography {
+function getBubbleTypography(
+  width: number,
+  height: number,
+  titleVisualLength: number,
+): BubbleTypography {
   const isShortTitle = titleVisualLength <= 8;
   const isMediumTitle = titleVisualLength <= 16;
   const isLongTitle = titleVisualLength > 24;
@@ -113,7 +117,11 @@ function getBubbleTypography(width: number, height: number, titleVisualLength: n
     titleAdjustsFontSizeToFit: !isShortTitle,
     titleEllipsizeMode: 'clip',
     timeFontSize: Math.round(timeFontSize),
-    timeMarginTop: isShortTitle ? Math.round(clamp(textMeasure * 0.045, 5, 9)) : isLongTitle ? 2 : 4,
+    timeMarginTop: isShortTitle
+      ? Math.round(clamp(textMeasure * 0.045, 5, 9))
+      : isLongTitle
+        ? 2
+        : 4,
     bubblePadding: Math.round(
       isShortTitle ? baseBubblePadding : Math.max(10, baseBubblePadding - (isLongTitle ? 5 : 3)),
     ),
@@ -153,10 +161,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   const typography = getBubbleTypography(bubbleWidth, bubbleHeight, titleVisualLength);
   const radius = visualSize / 2;
   const reduceMotion = useReducedMotion();
-  const idleMotion = useMemo(
-    () => makeIdleMotionConfig(reminder.id, index),
-    [index, reminder.id],
-  );
+  const idleMotion = useMemo(() => makeIdleMotionConfig(reminder.id, index), [index, reminder.id]);
   const entryProgress = useSharedValue(0);
   const birthProgress = useSharedValue(0);
   const idleProgress = useSharedValue(0);
@@ -210,14 +215,7 @@ export const ReminderBubble = memo(function ReminderBubble({
     return () => {
       cancelAnimation(idleProgress);
     };
-  }, [
-    idleDisabled,
-    idleMotion.delay,
-    idleMotion.duration,
-    idleProgress,
-    isBursting,
-    reduceMotion,
-  ]);
+  }, [idleDisabled, idleMotion.delay, idleMotion.duration, idleProgress, isBursting, reduceMotion]);
 
   useEffect(() => {
     if (isBursting) {
@@ -336,13 +334,31 @@ export const ReminderBubble = memo(function ReminderBubble({
           end={{ x: 0.9, y: 1 }}
           style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
         />
-        <View style={[styles.tintMist, { borderRadius: radius * 0.72, backgroundColor: color.background, opacity: homeVisualTokens.bubbleTintMistOpacity }]} />
+        <View
+          style={[
+            styles.tintMist,
+            {
+              borderRadius: radius * 0.72,
+              backgroundColor: color.background,
+              opacity: homeVisualTokens.bubbleTintMistOpacity,
+            },
+          ]}
+        />
         <View style={[styles.lowerDepth, { borderRadius: radius * 0.76 }]} />
         <View style={[styles.centerGlow, { borderRadius: radius * 0.7 }]} />
         <View style={[styles.outerGlassRing, { borderRadius: radius }]} />
         <View style={[styles.innerGlassRing, { borderRadius: radius - 6 }]} />
         <View style={[styles.leftLightArc, { borderRadius: radius }]} />
-        <View style={[styles.innerColorRim, { borderRadius: radius - 12, borderColor: color.border, opacity: homeVisualTokens.bubbleInnerColorRimOpacity }]} />
+        <View
+          style={[
+            styles.innerColorRim,
+            {
+              borderRadius: radius - 12,
+              borderColor: color.border,
+              opacity: homeVisualTokens.bubbleInnerColorRimOpacity,
+            },
+          ]}
+        />
         <View style={[styles.highlightLarge, { borderRadius: visualSize * 0.2 }]} />
         <View style={styles.highlightSmall} />
         <View style={styles.highlightTiny} />
@@ -385,11 +401,13 @@ export const ReminderBubble = memo(function ReminderBubble({
       </View>
       {isBursting ? (
         <>
+          <Animated.View style={[styles.burstRing, { borderRadius: radius - 6 }, burstRingStyle]} />
           <Animated.View
-            style={[styles.burstRing, { borderRadius: radius - 6 }, burstRingStyle]}
+            style={[styles.burstParticle, styles.burstParticleOne, particleOneStyle]}
           />
-          <Animated.View style={[styles.burstParticle, styles.burstParticleOne, particleOneStyle]} />
-          <Animated.View style={[styles.burstParticle, styles.burstParticleTwo, particleTwoStyle]} />
+          <Animated.View
+            style={[styles.burstParticle, styles.burstParticleTwo, particleTwoStyle]}
+          />
           <Animated.View
             style={[styles.burstParticle, styles.burstParticleThree, particleThreeStyle]}
           />

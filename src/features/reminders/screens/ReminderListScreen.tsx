@@ -113,8 +113,12 @@ export function ReminderListScreen() {
 
       <View style={styles.summary}>
         <View style={styles.summaryCopy}>
-          <Text numberOfLines={1} style={styles.kicker}>表示中の7個も含めて</Text>
-          <Text numberOfLines={2} style={styles.title}>リマインドを一覧で見る</Text>
+          <Text numberOfLines={1} style={styles.kicker}>
+            表示中の7個も含めて
+          </Text>
+          <Text numberOfLines={2} style={styles.title}>
+            リマインドを一覧で見る
+          </Text>
         </View>
         <View style={styles.countPill}>
           <Text
@@ -157,10 +161,7 @@ export function ReminderListScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`${reminder.title}の詳細を開く`}
                 onPress={() => setSelectedReminder(reminder)}
-                style={({ pressed }) => [
-                  styles.listItem,
-                  pressed ? styles.listItemPressed : null,
-                ]}
+                style={({ pressed }) => [styles.listItem, pressed ? styles.listItemPressed : null]}
               >
                 <View
                   style={[

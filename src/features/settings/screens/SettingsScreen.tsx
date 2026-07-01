@@ -130,12 +130,9 @@ export function SettingsScreen() {
   const [previousTime, setPreviousTime] = useState('20:00');
   const [isPreviousTimeSelectorOpen, setIsPreviousTimeSelectorOpen] = useState(false);
   const [isPreviousTimePickerOpen, setIsPreviousTimePickerOpen] = useState(false);
-  const [notificationPermissionLabel, setNotificationPermissionLabel] =
-    useState('確認が必要');
-  const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] =
-    useState(false);
-  const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] =
-    useState(true);
+  const [notificationPermissionLabel, setNotificationPermissionLabel] = useState('確認が必要');
+  const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] = useState(false);
+  const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] = useState(true);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   const backPressTimeoutRef = useRef<number | null>(null);
@@ -327,7 +324,9 @@ export function SettingsScreen() {
                   void update({ notificationSoundEnabled: value });
                 }}
                 trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
-                thumbColor={settings.notificationSoundEnabled ? palette.lavenderDeep : palette.white}
+                thumbColor={
+                  settings.notificationSoundEnabled ? palette.lavenderDeep : palette.white
+                }
               />
             </SettingRow>
             <View style={styles.divider} />
@@ -394,7 +393,12 @@ export function SettingsScreen() {
           </View>
 
           <View style={styles.group}>
-            <SettingRow icon="color-palette-outline" title="テーマ" labelFlex={0.36} controlFlex={0.64}>
+            <SettingRow
+              icon="color-palette-outline"
+              title="テーマ"
+              labelFlex={0.36}
+              controlFlex={0.64}
+            >
               <View style={styles.themeRow}>
                 {themeOptions.map((theme) => {
                   const active = theme === settings.theme;
@@ -510,10 +514,7 @@ export function SettingsScreen() {
         onChange={handleTimePickerChange}
         onClose={() => setIsPreviousTimePickerOpen(false)}
       />
-      <LegalDocumentModal
-        document={legalDocument}
-        onClose={() => setLegalDocument(null)}
-      />
+      <LegalDocumentModal document={legalDocument} onClose={() => setLegalDocument(null)} />
     </AppScreen>
   );
 }
@@ -525,17 +526,14 @@ type LegalDocumentModalProps = {
 
 function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
   return (
-    <Modal
-      animationType="fade"
-      transparent
-      visible={document !== null}
-      onRequestClose={onClose}
-    >
+    <Modal animationType="fade" transparent visible={document !== null} onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={styles.legalModal}>
           <View style={styles.legalModalHeader}>
             <View style={styles.legalModalCopy}>
-              <Text numberOfLines={2} style={styles.legalModalTitle}>{document?.title}</Text>
+              <Text numberOfLines={2} style={styles.legalModalTitle}>
+                {document?.title}
+              </Text>
               <Text numberOfLines={1} style={styles.legalModalUpdated}>
                 最終更新日: {document?.updatedAt}
               </Text>

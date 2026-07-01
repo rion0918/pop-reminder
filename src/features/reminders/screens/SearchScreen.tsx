@@ -108,8 +108,7 @@ export function SearchScreen() {
     () =>
       reminders.filter((reminder) => {
         const matchesText =
-          normalizedQuery.length === 0 ||
-          reminder.title.toLowerCase().includes(normalizedQuery);
+          normalizedQuery.length === 0 || reminder.title.toLowerCase().includes(normalizedQuery);
 
         return matchesText && matchesFilter(reminder, filter);
       }),
@@ -227,7 +226,9 @@ export function SearchScreen() {
       </View>
 
       <View style={styles.resultMeta}>
-        <Text numberOfLines={1} style={styles.resultMetaText}>{resultLabel}</Text>
+        <Text numberOfLines={1} style={styles.resultMetaText}>
+          {resultLabel}
+        </Text>
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -254,9 +255,7 @@ export function SearchScreen() {
             <Ionicons name="search-outline" size={30} color={palette.lavenderDeep} />
           </View>
           <Text style={styles.centerTitle}>見つかる泡はありません</Text>
-          <Text style={styles.centerText}>
-            キーワードや日付を少しゆるめてみてください
-          </Text>
+          <Text style={styles.centerText}>キーワードや日付を少しゆるめてみてください</Text>
           {hasActiveCondition ? (
             <Pressable
               accessibilityRole="button"

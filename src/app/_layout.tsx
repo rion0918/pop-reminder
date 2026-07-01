@@ -61,7 +61,10 @@ export default function RootLayout() {
         setTimeout(() => {
           openQuickAdd('08:00');
         }, 600);
-      } else if (parsed.queryParams?.action === 'view' && typeof parsed.queryParams.id === 'string') {
+      } else if (
+        parsed.queryParams?.action === 'view' &&
+        typeof parsed.queryParams.id === 'string'
+      ) {
         const id = parsed.queryParams.id;
         router.replace('/');
         // Delay slightly to ensure home screen is loaded
@@ -79,7 +82,9 @@ export default function RootLayout() {
     }
 
     // Handle the URL that opened the app
-    Linking.getInitialURL().then(handleDeepLink).catch(() => {});
+    Linking.getInitialURL()
+      .then(handleDeepLink)
+      .catch(() => {});
 
     // Handle URLs while the app is already open
     const subscription = Linking.addEventListener('url', (event) => {

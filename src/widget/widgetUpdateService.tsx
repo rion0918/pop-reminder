@@ -31,11 +31,7 @@ async function runWidgetUpdate(): Promise<void> {
     await requestWidgetUpdate({
       widgetName: WIDGET_NAME,
       renderWidget: ({ width, height }) => (
-        <PopReminderWidget
-          reminders={reminders}
-          widgetWidth={width}
-          widgetHeight={height}
-        />
+        <PopReminderWidget reminders={reminders} widgetWidth={width} widgetHeight={height} />
       ),
       widgetNotFound: () => {
         // Widget not added to home screen — nothing to do

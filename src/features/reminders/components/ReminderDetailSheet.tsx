@@ -2,11 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
@@ -44,10 +40,11 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   const [isDeleting, setIsDeleting] = useState(false);
   const sheetTopInset = safeAreaInsets.top + 8;
   const detailMaxDynamicContentSize = useMemo(
-    () => Math.max(
-      DETAIL_SHEET_MIN_DYNAMIC_CONTENT_SIZE,
-      windowHeight - sheetTopInset - safeAreaInsets.bottom - DETAIL_SHEET_BOTTOM_CLEARANCE,
-    ),
+    () =>
+      Math.max(
+        DETAIL_SHEET_MIN_DYNAMIC_CONTENT_SIZE,
+        windowHeight - sheetTopInset - safeAreaInsets.bottom - DETAIL_SHEET_BOTTOM_CLEARANCE,
+      ),
     [safeAreaInsets.bottom, sheetTopInset, windowHeight],
   );
   const detailContentBottomPadding = useMemo(
@@ -197,7 +194,10 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
                 <View style={styles.divider} />
               </>
             ) : null}
-            <DetailRow label="当日のお知らせ" value={formatReminderDateTime(reminder.targetNotifyAt)} />
+            <DetailRow
+              label="当日のお知らせ"
+              value={formatReminderDateTime(reminder.targetNotifyAt)}
+            />
           </View>
         ) : null}
 

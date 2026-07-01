@@ -126,7 +126,9 @@ function escapeXml(value: string) {
 }
 
 function toHex(value: number) {
-  return Math.round(clamp(value, 0, 255)).toString(16).padStart(2, '0');
+  return Math.round(clamp(value, 0, 255))
+    .toString(16)
+    .padStart(2, '0');
 }
 
 function colorToSvgPaint(color: string): SvgPaint {
@@ -232,7 +234,8 @@ function getWidgetBubbleDimensions(
 ): WidgetBubbleDimensions {
   const titleVisualLength = getTitleVisualLength(reminder.title);
   const areaMeasure = Math.sqrt(widgetWidth * widgetHeight);
-  const densityScale = visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : visibleCount <= 6 ? 0.9 : 0.82;
+  const densityScale =
+    visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : visibleCount <= 6 ? 0.9 : 0.82;
   const baseHeight = clamp(
     Math.min(widgetHeight * 0.38, widgetWidth * 0.3, areaMeasure * 0.42) * densityScale,
     56,
@@ -284,7 +287,13 @@ function getWidgetBubbleLayout(
   widgetWidth: number,
   widgetHeight: number,
 ): WidgetBubbleLayout {
-  const dimensions = getWidgetBubbleDimensions(reminder, index, visibleCount, widgetWidth, widgetHeight);
+  const dimensions = getWidgetBubbleDimensions(
+    reminder,
+    index,
+    visibleCount,
+    widgetWidth,
+    widgetHeight,
+  );
   const anchor = BUBBLE_LAYOUT_ANCHORS[index % BUBBLE_LAYOUT_ANCHORS.length];
   const seed = hashString(`${reminder.id}-${index}-${visibleCount}`);
   const edgePadding = WIDGET_SURFACE_PADDING + 4;
@@ -300,8 +309,14 @@ function getWidgetBubbleLayout(
   );
   const jitterX = (unitFromHash(seed, 11) - 0.5) * Math.min(24, widgetWidth * 0.08);
   const jitterY = (unitFromHash(seed, 12) - 0.5) * Math.min(20, widgetHeight * 0.08);
-  const maxLeft = Math.max(edgePadding, widgetWidth - edgePadding - rightReserve - dimensions.width);
-  const maxTop = Math.max(edgePadding, widgetHeight - edgePadding - legendReserve - dimensions.height);
+  const maxLeft = Math.max(
+    edgePadding,
+    widgetWidth - edgePadding - rightReserve - dimensions.width,
+  );
+  const maxTop = Math.max(
+    edgePadding,
+    widgetHeight - edgePadding - legendReserve - dimensions.height,
+  );
   const left = clamp(edgePadding + availableWidth * anchor.x + jitterX, edgePadding, maxLeft);
   const top = clamp(edgePadding + availableHeight * anchor.y + jitterY, edgePadding, maxTop);
 
@@ -325,11 +340,7 @@ function makeWidgetIdleMotionConfig(id: string, index: number): WidgetIdleMotion
   };
 }
 
-function getWidgetMotionFrame(
-  id: string,
-  index: number,
-  renderedAtMs: number,
-): WidgetMotionFrame {
+function getWidgetMotionFrame(id: string, index: number, renderedAtMs: number): WidgetMotionFrame {
   const motion = makeWidgetIdleMotionConfig(id, index);
   const elapsed = renderedAtMs - motion.delay;
   const wrappedElapsed = ((elapsed % motion.duration) + motion.duration) % motion.duration;
@@ -730,9 +741,8 @@ export function PopReminderWidget({
   widgetHeight = WIDGET_DEFAULT_HEIGHT,
 }: PopReminderWidgetProps) {
   const visibleCapacity = getWidgetBubbleCapacity(widgetWidth, widgetHeight);
-  const visibleReminderLimit = reminders.length > visibleCapacity
-    ? Math.max(1, visibleCapacity - 1)
-    : visibleCapacity;
+  const visibleReminderLimit =
+    reminders.length > visibleCapacity ? Math.max(1, visibleCapacity - 1) : visibleCapacity;
   const visibleReminders = reminders.slice(0, visibleReminderLimit);
   const overflowCount = Math.max(0, reminders.length - visibleReminderLimit);
   const overflowReminder = {
@@ -740,7 +750,8 @@ export function PopReminderWidget({
     title: `+${overflowCount}`,
     targetAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   };
-  const layoutItems = overflowCount > 0 ? [...visibleReminders, overflowReminder] : visibleReminders;
+  const layoutItems =
+    overflowCount > 0 ? [...visibleReminders, overflowReminder] : visibleReminders;
   const bubbleLayouts = new Map(
     layoutItems.map((reminder, index) => [
       reminder.id,

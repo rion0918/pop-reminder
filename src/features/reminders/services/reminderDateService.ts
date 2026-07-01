@@ -30,7 +30,9 @@ export function buildReminderSchedule({
   previousNotifyTime,
   now = new Date(),
 }: BuildReminderScheduleInput) {
-  const targetDay = startOfDay(customTargetDate ? parseLocalDate(customTargetDate) : addDays(now, dateOffset));
+  const targetDay = startOfDay(
+    customTargetDate ? parseLocalDate(customTargetDate) : addDays(now, dateOffset),
+  );
   const target = parseTime(targetTime);
   const previous = parseTime(previousNotifyTime);
 

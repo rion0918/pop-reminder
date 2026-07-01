@@ -54,7 +54,7 @@ export const appThemes: Record<
 
 export const homeVisualTokens = {
   bubbleTintMistOpacity: 0.46,
-  bubbleInnerColorRimOpacity: 0.30,
+  bubbleInnerColorRimOpacity: 0.3,
   bubbleSurfaceElevation: 0,
 } as const;
 

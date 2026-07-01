@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,10 +93,11 @@ export function ReminderInputSheet({
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const sheetTopInset = safeAreaInsets.top + 8;
   const quickAddMaxDynamicContentSize = useMemo(
-    () => Math.max(
-      QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE,
-      windowHeight - sheetTopInset - QUICK_ADD_BOTTOM_CLEARANCE,
-    ),
+    () =>
+      Math.max(
+        QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE,
+        windowHeight - sheetTopInset - QUICK_ADD_BOTTOM_CLEARANCE,
+      ),
     [sheetTopInset, windowHeight],
   );
   const minCustomDate = useMemo(() => startOfDay(new Date()), []);
@@ -375,7 +384,9 @@ export function ReminderInputSheet({
           <View style={styles.actionRow}>
             <View style={styles.summary}>
               <Ionicons name="notifications-outline" size={16} color={palette.lavenderDeep} />
-              <Text style={styles.summaryText}>{selectedDateLabel} {time}</Text>
+              <Text style={styles.summaryText}>
+                {selectedDateLabel} {time}
+              </Text>
             </View>
             <PrimaryButton
               label={isSaving ? '追加中' : '追加'}

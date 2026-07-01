@@ -9,6 +9,9 @@ test('app screen reduces horizontal padding on compact phone widths', () => {
 
   assert.match(source, /useWindowDimensions/);
   assert.match(source, /const horizontalPadding = width <= 360 \? 16 : 20;/);
-  assert.match(source, /<View style=\{\[styles\.container, \{ paddingHorizontal: horizontalPadding \}\]\}>/);
+  assert.match(
+    source,
+    /<View style=\{\[styles\.container, \{ paddingHorizontal: horizontalPadding \}\]\}>/,
+  );
   assert.doesNotMatch(source, /paddingHorizontal: 20,/);
 });

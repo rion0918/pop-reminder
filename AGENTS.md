@@ -32,6 +32,7 @@
 - 新規テストファイル名は `*.spec.ts` / `*.spec.tsx` を優先する。
 - 既存の `*.test.js` は、触る必要がある時だけ段階的に移行する。
 - 現在の標準検証は以下を使う。
+  - `pnpm run format:check`
   - `pnpm test`
   - `pnpm run typecheck`
   - `pnpm run lint`
@@ -80,6 +81,6 @@
 
 ## リリースと CI
 
-- CI は `.github/workflows/ci.yml` の `pnpm typecheck` と `pnpm lint` を前提にする。
+- CI は `.github/workflows/ci.yml` の `pnpm run format:check`、`pnpm test`、`pnpm typecheck`、`pnpm lint` を前提にする。
 - ストア/リリース関連は `docs/RELEASE_ANDROID_IOS.md`、`docs/QA_CHECKLIST.md`、`config.release.test.js` を確認する。
 - リリース番号、ストア文言、プライバシー文言を変更する場合は、対応する docs と release regression test を合わせて更新する。

@@ -15,6 +15,9 @@ test('setting rows keep controls reachable on compact Android widths', () => {
   assert.match(source, /iconWrap: \{[\s\S]*flexShrink: 0,/);
   assert.match(source, /copy: \{[\s\S]*flex: 1,[\s\S]*minWidth: 48,/);
   assert.match(source, /control: \{[\s\S]*flexShrink: 0,/);
-  assert.match(source, /title: \{[\s\S]*fontSize: 14,[\s\S]*lineHeight: 19,[\s\S]*includeFontPadding: false,/);
+  assert.match(
+    source,
+    /title: \{[\s\S]*fontSize: 14,[\s\S]*lineHeight: 19,[\s\S]*includeFontPadding: false,/,
+  );
   assert.match(source, /caption: \{[\s\S]*fontSize: 11,[\s\S]*lineHeight: 16,/);
 });

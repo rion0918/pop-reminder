@@ -11,9 +11,12 @@ test('android hardware back closes reminder sheets before leaving home', () => {
   assert.match(source, /Platform/);
   assert.match(source, /const selectedReminderRef = useRef<Reminder \| null>\(null\);/);
   assert.match(source, /selectedReminderRef\.current = selectedReminder;/);
-  assert.match(source, /const closeQuickAdd = useReminderUiStore\(\(state\) => state\.closeQuickAdd\);/);
-  assert.match(source, /Platform\.OS !== "android"/);
-  assert.match(source, /BackHandler\.addEventListener\("hardwareBackPress"/);
+  assert.match(
+    source,
+    /const closeQuickAdd = useReminderUiStore\(\(state\) => state\.closeQuickAdd\);/,
+  );
+  assert.match(source, /Platform\.OS !== ['"]android['"]/);
+  assert.match(source, /BackHandler\.addEventListener\(['"]hardwareBackPress['"]/);
   assert.match(source, /if \(selectedReminderRef\.current\) \{/);
   assert.match(source, /setSelectedReminderId\(null\);/);
   assert.match(source, /if \(isQuickAddOpenRef\.current\) \{/);

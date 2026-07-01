@@ -45,9 +45,12 @@ test('settings button gives immediate pressed feedback', () => {
   const source = readFileSync(__dirname + '/HomeScreen.tsx', 'utf8');
 
   assert.match(source, /SETTINGS_BUTTON_FEEDBACK_MS/);
-  assert.match(source, /const \[isSettingsButtonPressed, setIsSettingsButtonPressed\] = useState\(false\);/);
+  assert.match(
+    source,
+    /const \[isSettingsButtonPressed, setIsSettingsButtonPressed\] = useState\(false\);/,
+  );
   assert.match(source, /setTimeout\(\(\) => \{/);
-  assert.match(source, /router\.push\("\/settings"\);/);
+  assert.match(source, /router\.push\(['"]\/settings['"]\);/);
   assert.match(source, /pressed \|\| isSettingsButtonPressed \? styles\.iconButtonPressed : null/);
   assert.match(source, /iconButtonPressed: \{/);
   assert.match(source, /transform: \[\{ translateY: 1 \}, \{ scale: 0\.94 \}\]/);
@@ -57,7 +60,10 @@ test('settings button gives immediate pressed feedback', () => {
 test('home removes deleted reminders locally before the silent database refresh', () => {
   const source = readFileSync(__dirname + '/HomeScreen.tsx', 'utf8');
 
-  assert.match(source, /const \{ reminders, loading, error, refresh, upsertReminder, removeReminder \} = useReminders\(\);/);
+  assert.match(
+    source,
+    /const \{ reminders, loading, error, refresh, upsertReminder, removeReminder \} = useReminders\(\);/,
+  );
   assert.match(source, /removeReminder\(reminder\.id\);[\s\S]*void refresh\(\{ silent: true \}\);/);
   assert.doesNotMatch(source, /await refresh\(\);/);
 });

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
   BackHandler,
@@ -11,32 +11,29 @@ import {
   Text,
   View,
   useWindowDimensions,
-} from "react-native";
+} from 'react-native';
 
-import { ReminderBubbleBoard } from "../components/ReminderBubbleBoard";
-import { ReminderDetailSheet } from "../components/ReminderDetailSheet";
-import { ReminderInputSheet } from "../components/ReminderInputSheet";
-import { useReminders } from "../hooks/useReminders";
-import { createReminder } from "../services/createReminderService";
-import { deleteReminder } from "../services/deleteReminderService";
-import { useNotificationDevStore } from "../stores/notificationDevStore";
-import {
-  selectFormattedTime,
-  useReminderUiStore,
-} from "../stores/reminderUiStore";
-import { Reminder } from "../types/reminder";
-import { useAppSettings } from "../../settings/hooks/useAppSettings";
-import { AppScreen } from "../../../shared/components/AppScreen";
-import { bubbleDueColors, palette } from "../../../constants/colors";
-import { formatReminderBubbleDateTime } from "../utils/reminderDateFormat";
+import { ReminderBubbleBoard } from '../components/ReminderBubbleBoard';
+import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
+import { ReminderInputSheet } from '../components/ReminderInputSheet';
+import { useReminders } from '../hooks/useReminders';
+import { createReminder } from '../services/createReminderService';
+import { deleteReminder } from '../services/deleteReminderService';
+import { useNotificationDevStore } from '../stores/notificationDevStore';
+import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
+import { Reminder } from '../types/reminder';
+import { useAppSettings } from '../../settings/hooks/useAppSettings';
+import { AppScreen } from '../../../shared/components/AppScreen';
+import { bubbleDueColors, palette } from '../../../constants/colors';
+import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 
-const appIcon = require("../../../../assets/app-icon.png");
+const appIcon = require('../../../../assets/app-icon.png');
 const SETTINGS_BUTTON_FEEDBACK_MS = 120;
 const dueLegendItems = [
-  { label: "今日", color: bubbleDueColors.today },
-  { label: "明日", color: bubbleDueColors.tomorrow },
-  { label: "2-3日", color: bubbleDueColors.soon },
-  { label: "4日+", color: bubbleDueColors.later },
+  { label: '今日', color: bubbleDueColors.today },
+  { label: '明日', color: bubbleDueColors.tomorrow },
+  { label: '2-3日', color: bubbleDueColors.soon },
+  { label: '4日+', color: bubbleDueColors.later },
 ];
 
 export function HomeScreen() {
@@ -47,9 +44,7 @@ export function HomeScreen() {
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
-  const customTargetDate = useReminderUiStore(
-    (state) => state.customTargetDate,
-  );
+  const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const targetTime = useReminderUiStore(selectFormattedTime);
   const isSaving = useReminderUiStore((state) => state.isSaving);
   const setSaving = useReminderUiStore((state) => state.setSaving);
@@ -68,9 +63,7 @@ export function HomeScreen() {
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
 
-  const [burstingReminderId, setBurstingReminderId] = useState<string | null>(
-    null,
-  );
+  const [burstingReminderId, setBurstingReminderId] = useState<string | null>(null);
 
   useEffect(() => {
     isQuickAddOpenRef.current = isQuickAddOpen;
@@ -104,11 +97,11 @@ export function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS !== "android") {
+      if (Platform.OS !== 'android') {
         return undefined;
       }
 
-      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
         if (selectedReminderRef.current) {
           setSelectedReminderId(null);
           return true;
@@ -130,7 +123,7 @@ export function HomeScreen() {
 
   const handleSave = async (title: string) => {
     if (isSavingRef.current) {
-      throw new Error("Reminder save is already in progress");
+      throw new Error('Reminder save is already in progress');
     }
 
     isSavingRef.current = true;
@@ -150,8 +143,8 @@ export function HomeScreen() {
       );
       upsertReminder(reminder);
     } catch (saveError) {
-      console.warn("Failed to save reminder", saveError);
-      Alert.alert("追加できませんでした", "タイトルと時刻を確認してください。");
+      console.warn('Failed to save reminder', saveError);
+      Alert.alert('追加できませんでした', 'タイトルと時刻を確認してください。');
       throw saveError;
     } finally {
       setSaving(false);
@@ -165,11 +158,11 @@ export function HomeScreen() {
     }
 
     isQuickAddOpenRef.current = true;
-    openQuickAdd("08:00");
+    openQuickAdd('08:00');
   }, [isSaving, openQuickAdd]);
 
   const handleOpenReminderList = useCallback(() => {
-    router.push("/reminders-list");
+    router.push('/reminders-list');
   }, [router]);
 
   const handlePressSettings = useCallback(() => {
@@ -181,7 +174,7 @@ export function HomeScreen() {
     settingsPressTimeoutRef.current = setTimeout(() => {
       setIsSettingsButtonPressed(false);
       settingsPressTimeoutRef.current = null;
-      router.push("/settings");
+      router.push('/settings');
     }, SETTINGS_BUTTON_FEEDBACK_MS) as unknown as number;
   }, [router]);
 
@@ -193,22 +186,19 @@ export function HomeScreen() {
         const [deleted] = await Promise.all([
           deleteReminder(reminder.id),
           new Promise((resolve) => {
-            deleteTimeoutRef.current = setTimeout(
-              resolve,
-              260,
-            ) as unknown as number;
+            deleteTimeoutRef.current = setTimeout(resolve, 260) as unknown as number;
           }),
         ]);
 
         if (!deleted) {
-          throw new Error("Reminder was not found");
+          throw new Error('Reminder was not found');
         }
 
         setSelectedReminderId(null);
         removeReminder(reminder.id);
         void refresh({ silent: true });
       } catch (err) {
-        console.warn("Failed to delete reminder", err);
+        console.warn('Failed to delete reminder', err);
       } finally {
         setBurstingReminderId(null);
         deleteTimeoutRef.current = null;
@@ -218,19 +208,15 @@ export function HomeScreen() {
   );
 
   const isAddButtonDisabled = isSaving;
-  const isBubbleIdleDisabled =
-    isSaving ||
-    Boolean(selectedReminder) ||
-    Boolean(burstingReminderId);
+  const isBubbleIdleDisabled = isSaving || Boolean(selectedReminder) || Boolean(burstingReminderId);
   const nextReminderLabel = reminders[0]
     ? formatReminderBubbleDateTime(reminders[0].targetAt)
-    : "完璧！";
-  const nextReminderTitle =
-    reminders[0]?.title ?? "忘れたくないことはありません";
+    : '完璧！';
+  const nextReminderTitle = reminders[0]?.title ?? '忘れたくないことはありません';
   const isCompactPhoneWidth = windowWidth <= 360;
 
   return (
-    <AppScreen theme={settings?.theme ?? "sky"}>
+    <AppScreen theme={settings?.theme ?? 'sky'}>
       <View pointerEvents="none" style={styles.ambientLayer}>
         <View style={[styles.ambientBubble, styles.ambientOne]} />
         <View style={[styles.ambientBubble, styles.ambientTwo]} />
@@ -267,11 +253,7 @@ export function HomeScreen() {
 
       <View style={styles.statusRow}>
         <View style={[styles.statusPill, styles.nextPill]}>
-          <Ionicons
-            name="time-outline"
-            size={15}
-            color={palette.lavenderDeep}
-          />
+          <Ionicons name="time-outline" size={15} color={palette.lavenderDeep} />
           <Text numberOfLines={1} style={styles.statusLabel}>
             次
           </Text>
@@ -353,18 +335,18 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   ambientLayer: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
   },
   ambientBubble: {
-    position: "absolute",
+    position: 'absolute',
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.22)",
+    backgroundColor: 'rgba(255,255,255,0.22)',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.42)",
+    borderColor: 'rgba(255,255,255,0.42)',
   },
   ambientOne: {
     top: 116,
@@ -377,27 +359,27 @@ const styles = StyleSheet.create({
     left: -32,
     width: 76,
     height: 76,
-    backgroundColor: "rgba(237,230,255,0.2)",
+    backgroundColor: 'rgba(237,230,255,0.2)',
   },
   ambientThree: {
     right: 54,
     bottom: 132,
     width: 42,
     height: 42,
-    backgroundColor: "rgba(220,248,236,0.2)",
+    backgroundColor: 'rgba(220,248,236,0.2)',
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 8,
     flexShrink: 0,
   },
   brandBlock: {
     flex: 1,
     minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   brandIcon: {
@@ -412,35 +394,35 @@ const styles = StyleSheet.create({
   kicker: {
     color: palette.muted,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   title: {
     color: palette.ink,
     fontSize: 30,
-    fontWeight: "800",
+    fontWeight: '800',
     marginTop: 4,
   },
   iconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.78)",
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.78)',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: 'rgba(255,255,255,0.9)',
   },
   iconButtonPressed: {
     opacity: 0.82,
     transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
   headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   statusRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 10,
     marginTop: 18,
     flexShrink: 0,
@@ -448,13 +430,13 @@ const styles = StyleSheet.create({
   statusPill: {
     minHeight: 54,
     borderRadius: 27,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     paddingHorizontal: 13,
-    backgroundColor: "rgba(255,255,255,0.72)",
+    backgroundColor: 'rgba(255,255,255,0.72)',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: 'rgba(255,255,255,0.9)',
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -467,18 +449,18 @@ const styles = StyleSheet.create({
   statusLabel: {
     color: palette.muted,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: '800',
   },
   statusValue: {
     color: palette.ink,
     fontSize: 14,
-    fontWeight: "900",
+    fontWeight: '900',
   },
   nextCopy: {
     flex: 1,
     minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   nextTitle: {
@@ -487,35 +469,35 @@ const styles = StyleSheet.create({
     color: palette.ink,
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: "900",
+    fontWeight: '900',
   },
   nextValue: {
     color: palette.muted,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "800",
+    fontWeight: '800',
   },
   bubbleArea: {
     flex: 1,
     marginTop: 14,
     marginBottom: 104,
-    overflow: "visible",
+    overflow: 'visible',
   },
   dueLegend: {
-    position: "absolute",
+    position: 'absolute',
     left: 24,
     right: 136,
     bottom: 34,
     minHeight: 52,
     borderRadius: 26,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
     gap: 6,
     paddingHorizontal: 12,
-    backgroundColor: "rgba(255,255,255,0.66)",
+    backgroundColor: 'rgba(255,255,255,0.66)',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
+    borderColor: 'rgba(255,255,255,0.86)',
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -530,8 +512,8 @@ const styles = StyleSheet.create({
   dueLegendItem: {
     flex: 1,
     minWidth: 0,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
   },
   dueLegendBubble: {
@@ -548,19 +530,19 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 10,
     lineHeight: 12,
-    fontWeight: "900",
-    textAlign: "center",
+    fontWeight: '900',
+    textAlign: 'center',
   },
   addButton: {
-    position: "absolute",
+    position: 'absolute',
     right: 24,
     bottom: 28,
     minWidth: 98,
     height: 64,
     borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     gap: 4,
     paddingHorizontal: 22,
     backgroundColor: palette.skyDeep,
@@ -586,6 +568,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: palette.white,
     fontSize: 15,
-    fontWeight: "900",
+    fontWeight: '900',
   },
 });

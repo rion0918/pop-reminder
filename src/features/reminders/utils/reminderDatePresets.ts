@@ -1,19 +1,11 @@
 import { addDays, format, startOfDay } from 'date-fns';
 
 export type ReminderDatePreset =
-  | 'today'
-  | 'tomorrow'
-  | 'dayAfterTomorrow'
-  | 'weekend'
-  | 'nextWeek'
-  | 'custom';
+  'today' | 'tomorrow' | 'dayAfterTomorrow' | 'weekend' | 'nextWeek' | 'custom';
 
 export type ComputedReminderDatePreset = 'weekend' | 'nextWeek';
 
-export function getReminderDatePresetTarget(
-  preset: ComputedReminderDatePreset,
-  now = new Date(),
-) {
+export function getReminderDatePresetTarget(preset: ComputedReminderDatePreset, now = new Date()) {
   const today = startOfDay(now);
 
   if (preset === 'nextWeek') {

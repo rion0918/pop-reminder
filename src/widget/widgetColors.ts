@@ -2,11 +2,14 @@ import { differenceInCalendarDays } from 'date-fns';
 
 import { bubbleDueColors, homeVisualTokens, palette } from '../constants/colors';
 
-export type WidgetDueColor = typeof bubbleDueColors[keyof typeof bubbleDueColors];
+export type WidgetDueColor = (typeof bubbleDueColors)[keyof typeof bubbleDueColors];
 
 export { homeVisualTokens };
 
-export function getWidgetDueColor(targetAt: string | Date, currentDate = new Date()): WidgetDueColor {
+export function getWidgetDueColor(
+  targetAt: string | Date,
+  currentDate = new Date(),
+): WidgetDueColor {
   const daysUntilTarget = differenceInCalendarDays(new Date(targetAt), currentDate);
 
   if (daysUntilTarget <= 0) {

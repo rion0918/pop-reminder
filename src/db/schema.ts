@@ -9,7 +9,9 @@ export const reminders = sqliteTable('reminders', {
   expiresAt: text('expires_at').notNull(),
   previousNotificationId: text('previous_notification_id'),
   targetNotificationId: text('target_notification_id'),
-  status: text('status', { enum: ['active', 'expired'] }).notNull().default('active'),
+  status: text('status', { enum: ['active', 'expired'] })
+    .notNull()
+    .default('active'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -22,7 +24,9 @@ export const appSettings = sqliteTable('app_settings', {
   notificationSoundEnabled: integer('notification_sound_enabled', { mode: 'boolean' })
     .notNull()
     .default(true),
-  theme: text('theme', { enum: ['sky', 'lavender', 'mint'] }).notNull().default('sky'),
+  theme: text('theme', { enum: ['sky', 'lavender', 'mint'] })
+    .notNull()
+    .default('sky'),
 });
 
 export type ReminderRow = typeof reminders.$inferSelect;

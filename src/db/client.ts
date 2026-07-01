@@ -1,13 +1,13 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system';
 
 import * as schema from './schema';
 
 const POP_REMINDER_DATABASE_NAME = 'pop_reminder.db';
 
 export function getPopReminderDatabaseDirectory() {
-  return FileSystem.documentDirectory ? `${FileSystem.documentDirectory}SQLite` : undefined;
+  return `${Paths.document.uri}SQLite`;
 }
 
 export function openPopReminderDatabase() {

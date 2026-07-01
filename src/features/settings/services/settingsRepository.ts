@@ -56,8 +56,7 @@ export async function updateAppSettings(input: UpdateAppSettingsInput): Promise<
         ? input.defaultTargetTime
         : current.defaultTargetTime,
     autoDeleteEnabled: input.autoDeleteEnabled ?? current.autoDeleteEnabled,
-    notificationSoundEnabled:
-      input.notificationSoundEnabled ?? current.notificationSoundEnabled,
+    notificationSoundEnabled: input.notificationSoundEnabled ?? current.notificationSoundEnabled,
     theme: input.theme ?? current.theme,
   };
 

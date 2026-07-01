@@ -1,8 +1,4 @@
-import {
-  deleteReminders,
-  listExpiredReminders,
-  markReminderExpired,
-} from './reminderRepository';
+import { deleteReminders, listExpiredReminders, markReminderExpired } from './reminderRepository';
 import {
   reminderServiceDependencies,
   ReminderServiceDependencies,
@@ -23,9 +19,7 @@ export async function cleanupExpiredReminders(
   }
 
   await Promise.all(
-    expiredReminders.map((reminder) =>
-      notificationGateway.cancelReminderNotifications(reminder),
-    ),
+    expiredReminders.map((reminder) => notificationGateway.cancelReminderNotifications(reminder)),
   );
 
   if (settings.autoDeleteEnabled) {

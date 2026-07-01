@@ -12,10 +12,11 @@
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm run format:check
 pnpm test
 pnpm run typecheck
 pnpm run lint
-npx expo-doctor
+pnpm run doctor
 ```
 
 まとめて確認する場合:

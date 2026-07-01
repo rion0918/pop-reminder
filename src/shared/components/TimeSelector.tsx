@@ -52,12 +52,16 @@ export function TimeSelector({
           pressed ? styles.pressedChip : null,
         ]}
       >
-        <Text style={[styles.label, isCompact ? styles.compactLabel : null, active ? styles.activeLabel : null]}>
+        <Text
+          style={[
+            styles.label,
+            isCompact ? styles.compactLabel : null,
+            active ? styles.activeLabel : null,
+          ]}
+        >
           {preset.label}
         </Text>
-        <Text style={[styles.time, active ? styles.activeLabel : null]}>
-          {preset.time}
-        </Text>
+        <Text style={[styles.time, active ? styles.activeLabel : null]}>{preset.time}</Text>
       </Pressable>
     );
   };
@@ -82,11 +86,7 @@ export function TimeSelector({
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}
-              style={[
-                styles.label,
-                styles.compactLabel,
-                !isPresetTime ? styles.activeLabel : null,
-              ]}
+              style={[styles.label, styles.compactLabel, !isPresetTime ? styles.activeLabel : null]}
             >
               {isCompact ? customTimeLabel : '時刻を選ぶ'}
             </Text>
@@ -94,9 +94,7 @@ export function TimeSelector({
         </View>
       ) : (
         <>
-          <View style={styles.presetRow}>
-            {presets.map(renderPresetChip)}
-          </View>
+          <View style={styles.presetRow}>{presets.map(renderPresetChip)}</View>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: !isPresetTime }}
@@ -113,12 +111,7 @@ export function TimeSelector({
               size={15}
               color={!isPresetTime ? palette.white : palette.ink}
             />
-            <Text
-              style={[
-                styles.label,
-                !isPresetTime ? styles.activeLabel : null,
-              ]}
-            >
+            <Text style={[styles.label, !isPresetTime ? styles.activeLabel : null]}>
               {!isPresetTime ? `カスタム: ${value}` : '時刻を選ぶ'}
             </Text>
           </Pressable>
