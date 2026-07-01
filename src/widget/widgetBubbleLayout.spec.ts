@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  getWidgetBubbleCapacity,
   getWidgetBubbleLayouts,
   WIDGET_DUE_LEGEND_HEIGHT,
   WIDGET_PLUS_TOUCH_HEIGHT,
@@ -20,10 +21,12 @@ const reminderTitles = [
   '書類提出',
   '予約',
   'long long long title',
+  '散歩',
+  'email follow up',
 ];
 
-function makeReminders(): WidgetLayoutReminder[] {
-  return reminderTitles.map((title, index) => ({
+function makeReminders(count = reminderTitles.length): WidgetLayoutReminder[] {
+  return reminderTitles.slice(0, count).map((title, index) => ({
     id: `reminder-${index + 1}`,
     title,
     targetAt: new Date(2026, 6, index + 1, 9).toISOString(),
@@ -74,7 +77,7 @@ function assertDistributedLayout(
   const layouts = getWidgetBubbleLayouts(makeReminders(), widgetWidth, widgetHeight);
   const metrics = getLayoutMetrics(layouts, widgetWidth, widgetHeight);
 
-  assert.equal(layouts.length, 8);
+  assert.equal(layouts.length, 10);
   assert.ok(
     metrics.horizontalCoverage >= 0.85,
     `expected horizontal coverage >= 0.85, got ${metrics.horizontalCoverage}`,
@@ -105,15 +108,22 @@ function rectanglesIntersect(
   );
 }
 
-test('android widget layout spreads eight reminders across medium and large surfaces', () => {
-  assertDistributedLayout(360, 280, 42);
-  assertDistributedLayout(480, 320, 60);
+test('android widget capacity shows ten reminders on practical widget sizes', () => {
+  assert.equal(getWidgetBubbleCapacity(250, 180), 3);
+  assert.equal(getWidgetBubbleCapacity(320, 220), 5);
+  assert.equal(getWidgetBubbleCapacity(360, 280), 10);
+  assert.equal(getWidgetBubbleCapacity(480, 320), 10);
 });
 
-test('android widget layout keeps small surfaces clear of the add button and legend', () => {
+test('android widget layout spreads ten reminders across medium and large surfaces', () => {
+  assertDistributedLayout(360, 280, 32);
+  assertDistributedLayout(480, 320, 48);
+});
+
+test('android widget layout keeps ten reminders clear of the add button and legend', () => {
   const widgetWidth = 250;
   const widgetHeight = 180;
-  const layouts = getWidgetBubbleLayouts(makeReminders(), widgetWidth, widgetHeight);
+  const layouts = getWidgetBubbleLayouts(makeReminders(10), widgetWidth, widgetHeight);
   const addButtonRect = {
     left: widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH,
     top: WIDGET_SURFACE_PADDING,

@@ -5,8 +5,13 @@ import type { ReminderDatePreset } from '../utils/reminderDatePresets';
 
 export type ReminderDateOffset = 0 | 1 | 2;
 
+type QuickAddOptions = {
+  focusTitle?: boolean;
+};
+
 type ReminderUiState = {
   isQuickAddOpen: boolean;
+  shouldFocusTitleOnOpen: boolean;
   title: string;
   dateOffset: ReminderDateOffset;
   datePreset: ReminderDatePreset;
@@ -15,7 +20,7 @@ type ReminderUiState = {
   timeTouched: boolean;
   isSaving: boolean;
   selectedReminderId: string | null;
-  openQuickAdd: (defaultTime?: string) => void;
+  openQuickAdd: (defaultTime?: string, options?: QuickAddOptions) => void;
   closeQuickAdd: () => void;
   setTitle: (title: string) => void;
   resetTitle: () => void;
@@ -30,6 +35,7 @@ type ReminderUiState = {
 
 const initialState = {
   isQuickAddOpen: false,
+  shouldFocusTitleOnOpen: false,
   title: '',
   dateOffset: 1 as ReminderDateOffset,
   datePreset: 'tomorrow' as ReminderDatePreset,
@@ -42,14 +48,17 @@ const initialState = {
 
 export const useReminderUiStore = create<ReminderUiState>((set) => ({
   ...initialState,
-  openQuickAdd: (defaultTime = '08:00') =>
+  openQuickAdd: (defaultTime = '08:00', options) =>
     set((state) => {
+      const shouldFocusTitleOnOpen = Boolean(options?.focusTitle);
+
       if (state.isQuickAddOpen) {
-        return {};
+        return shouldFocusTitleOnOpen ? { shouldFocusTitleOnOpen } : {};
       }
 
       return {
         isQuickAddOpen: true,
+        shouldFocusTitleOnOpen,
         title: '',
         dateOffset: 1,
         datePreset: 'tomorrow',
@@ -59,7 +68,8 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
         isSaving: false,
       };
     }),
-  closeQuickAdd: () => set({ isQuickAddOpen: false, isSaving: false }),
+  closeQuickAdd: () =>
+    set({ isQuickAddOpen: false, shouldFocusTitleOnOpen: false, isSaving: false }),
   setTitle: (title) => set({ title }),
   resetTitle: () => set({ title: '' }),
   setDateOffset: (dateOffset) =>
@@ -84,6 +94,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
       timeTouched: false,
       isSaving: false,
       selectedReminderId: null,
+      shouldFocusTitleOnOpen: false,
     }),
 }));
 

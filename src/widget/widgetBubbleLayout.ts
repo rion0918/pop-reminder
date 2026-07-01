@@ -44,14 +44,14 @@ type WidgetRect = {
 export const WIDGET_SURFACE_PADDING = 12;
 export const WIDGET_PLUS_TOUCH_WIDTH = 44;
 export const WIDGET_PLUS_TOUCH_HEIGHT = 40;
-export const WIDGET_MAX_VISIBLE_BUBBLES = 8;
+export const WIDGET_MAX_VISIBLE_BUBBLES = 10;
 export const WIDGET_DUE_LEGEND_HEIGHT = 42;
 
 const WIDGET_LAYOUT_CANDIDATE_SLOTS: WidgetLayoutSlot[] = [
   { x: 0.14, y: 0.16 },
   { x: 0.82, y: 0.18 },
   { x: 0.18, y: 0.5 },
-  { x: 0.76, y: 0.5 },
+  { x: 0.84, y: 0.5 },
   { x: 0.38, y: 0.3 },
   { x: 0.28, y: 0.86 },
   { x: 0.7, y: 0.84 },
@@ -136,7 +136,7 @@ export function getWidgetBubbleDimensions(
   const titleVisualLength = getTitleVisualLength(reminder.title);
   const areaMeasure = Math.sqrt(widgetWidth * widgetHeight);
   const densityScale =
-    visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : visibleCount <= 6 ? 0.9 : 0.82;
+    visibleCount >= 9 ? 0.72 : visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : 0.9;
   const baseHeight = clamp(
     Math.min(widgetHeight * 0.38, widgetWidth * 0.3, areaMeasure * 0.42) * densityScale,
     56,
@@ -146,7 +146,11 @@ export function getWidgetBubbleDimensions(
   const titleScale = titleVisualLength >= 24 ? 1.08 : titleVisualLength >= 16 ? 1.02 : 1;
   const height = Math.round(clamp(baseHeight * indexScale * titleScale, 54, 100));
   const aspectRatio = titleVisualLength >= 24 ? 1.34 : titleVisualLength >= 16 ? 1.18 : 1;
-  const maxWidth = clamp(widgetWidth * (visibleCount <= 3 ? 0.38 : 0.32), 62, 128);
+  const maxWidth = clamp(
+    widgetWidth * (visibleCount >= 9 ? 0.28 : visibleCount <= 3 ? 0.38 : 0.32),
+    58,
+    128,
+  );
   const width = Math.round(clamp(height * aspectRatio, 54, maxWidth));
 
   return {
@@ -168,14 +172,6 @@ export function getWidgetBubbleCapacity(widgetWidth: number, widgetHeight: numbe
 
   if (area < 90000) {
     return 5;
-  }
-
-  if (area < 125000) {
-    return 6;
-  }
-
-  if (area < 165000) {
-    return 7;
   }
 
   return WIDGET_MAX_VISIBLE_BUBBLES;

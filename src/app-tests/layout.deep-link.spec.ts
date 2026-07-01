@@ -19,6 +19,8 @@ test('widget deep links always land on home before opening add or detail UI', ()
     /const router = useRouter\(\);/,
     /\[openQuickAdd, router, setSelectedReminderId, ready\]/,
   ]);
-  assertSourceIncludes(addBlock, [/router\.replace\('\/'\);[\s\S]*openQuickAdd\('08:00'\);/]);
+  assertSourceIncludes(addBlock, [
+    /router\.replace\('\/'\);[\s\S]*openQuickAdd\('08:00', \{ focusTitle: true \}\);/,
+  ]);
   assertSourceIncludes(viewBlock, [/router\.replace\('\/'\);[\s\S]*setSelectedReminderId\(id\);/]);
 });

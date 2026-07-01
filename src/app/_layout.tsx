@@ -57,10 +57,7 @@ export default function RootLayout() {
 
       if (parsed.queryParams?.action === 'add') {
         router.replace('/');
-        // Delay slightly to ensure the home screen is mounted
-        setTimeout(() => {
-          openQuickAdd('08:00');
-        }, 600);
+        openQuickAdd('08:00', { focusTitle: true });
       } else if (
         parsed.queryParams?.action === 'view' &&
         typeof parsed.queryParams.id === 'string'

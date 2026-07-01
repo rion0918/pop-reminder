@@ -23,6 +23,20 @@ test('successful quick add does not focus the title input again', () => {
   assert.equal(saveSuccessBlock.includes('focus()'), false);
 });
 
+test('widget quick add focuses the title input when the sheet opens', () => {
+  const openBlock = source.slice(
+    source.indexOf('if (!isPresentedRef.current && !isClosingRef.current) {'),
+    source.indexOf('const requestClose = useCallback'),
+  );
+
+  assertSourceIncludes(source, [
+    /const shouldFocusTitleOnOpen = useReminderUiStore\(\(state\) => state\.shouldFocusTitleOnOpen\);/,
+  ]);
+  assertSourceIncludes(openBlock, [
+    /sheetRef\.current\?\.present\(\);[\s\S]*if \(shouldFocusTitleOnOpen\) \{[\s\S]*titleInputRef\.current\?\.focus\(\);/,
+  ]);
+});
+
 test('quick add sheet uses the compact one-screen layout', () => {
   assertSourceContract(source, {
     includes: [

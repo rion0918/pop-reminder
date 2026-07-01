@@ -97,7 +97,7 @@ test('android widget scatters bubbles across the available glass surface', () =>
     ],
   });
   assertSourceIncludes(layoutSource, [
-    /export const WIDGET_MAX_VISIBLE_BUBBLES = 8/,
+    /export const WIDGET_MAX_VISIBLE_BUBBLES = 10/,
     /export type WidgetBubbleLayout/,
     /function getWidgetBubbleCapacity\(widgetWidth: number, widgetHeight: number\)/,
     /const area = widgetWidth \* widgetHeight/,
@@ -117,6 +117,19 @@ test('android widget bubble capacity scales from small to large widgets', () => 
     /if \(area < 62000\) \{\s*return 3;\s*\}/,
     /if \(area < 90000\) \{\s*return 5;\s*\}/,
     /return WIDGET_MAX_VISIBLE_BUBBLES/,
+  ]);
+  assertSourceContract(layoutSource, {
+    excludes: [/if \(area < 125000\)/, /if \(area < 165000\)/],
+  });
+});
+
+test('android widget reserves one of ten slots for overflow when needed', () => {
+  assertSourceIncludes(source, [
+    /const visibleCapacity = getWidgetBubbleCapacity\(widgetWidth, widgetHeight\)/,
+    /reminders\.length > visibleCapacity \? Math\.max\(1, visibleCapacity - 1\) : visibleCapacity/,
+    /const visibleReminders = reminders\.slice\(0, visibleReminderLimit\)/,
+    /const overflowCount = Math\.max\(0, reminders\.length - visibleReminderLimit\)/,
+    /overflowCount > 0 \? \[\.\.\.visibleReminders, overflowReminder\] : visibleReminders/,
   ]);
 });
 
