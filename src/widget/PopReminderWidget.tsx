@@ -281,39 +281,61 @@ function makeFrostedGlassSurfaceSvg(width: number, height: number) {
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
   <defs>
     <linearGradient id="glassVeilGradient" x1="8%" y1="0%" x2="92%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 1.18).toFixed(3)}"/>
-      <stop offset="46%" stop-color="${surface.hex}" stop-opacity="${surface.opacity.toFixed(3)}"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 0.34).toFixed(3)}"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 1.28).toFixed(3)}"/>
+      <stop offset="42%" stop-color="${surface.hex}" stop-opacity="${surface.opacity.toFixed(3)}"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 0.72).toFixed(3)}"/>
     </linearGradient>
     <radialGradient id="glassRefractionAGradient" cx="18%" cy="14%" r="70%">
-      <stop offset="0%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 1.18).toFixed(3)}"/>
-      <stop offset="58%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 0.52).toFixed(3)}"/>
+      <stop offset="0%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 1.24).toFixed(3)}"/>
+      <stop offset="58%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 0.62).toFixed(3)}"/>
       <stop offset="100%" stop-color="${refractionA.hex}" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="glassRefractionBGradient" cx="78%" cy="30%" r="72%">
-      <stop offset="0%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 1.1).toFixed(3)}"/>
-      <stop offset="56%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 0.44).toFixed(3)}"/>
+      <stop offset="0%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 1.18).toFixed(3)}"/>
+      <stop offset="56%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 0.58).toFixed(3)}"/>
       <stop offset="100%" stop-color="${refractionB.hex}" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="glassRefractionCGradient" cx="52%" cy="96%" r="66%">
-      <stop offset="0%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 1.08).toFixed(3)}"/>
-      <stop offset="62%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 0.36).toFixed(3)}"/>
+      <stop offset="0%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 1.14).toFixed(3)}"/>
+      <stop offset="62%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 0.5).toFixed(3)}"/>
       <stop offset="100%" stop-color="${refractionC.hex}" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="glassShadowGradient" cx="14%" cy="96%" r="68%">
-      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.28).toFixed(3)}"/>
-      <stop offset="50%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.42).toFixed(3)}"/>
+      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.42).toFixed(3)}"/>
+      <stop offset="50%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.56).toFixed(3)}"/>
       <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="glassLeftDepthGradient" x1="0%" y1="12%" x2="46%" y2="88%">
+      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.04).toFixed(3)}"/>
+      <stop offset="46%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.22).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="glassBottomDepthGradient" x1="0%" y1="72%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="0"/>
+      <stop offset="72%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.42).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.9).toFixed(3)}"/>
+    </linearGradient>
   </defs>
   <rect id="glassVeil" x="0" y="0" width="${width}" height="${height}" fill="url(#glassVeilGradient)"/>
   <ellipse id="glassRefractionA" cx="${width * 0.16}" cy="${height * 0.2}" rx="${width * 0.62}" ry="${height * 0.5}" fill="url(#glassRefractionAGradient)"/>
   <ellipse id="glassRefractionB" cx="${width * 0.82}" cy="${height * 0.34}" rx="${width * 0.58}" ry="${height * 0.52}" fill="url(#glassRefractionBGradient)"/>
   <ellipse id="glassRefractionC" cx="${width * 0.48}" cy="${height * 1.02}" rx="${width * 0.7}" ry="${height * 0.38}" fill="url(#glassRefractionCGradient)"/>
+  <ellipse id="glassRefractionD" cx="${width * 0.28}" cy="${height * 0.76}" rx="${width * 0.5}" ry="${height * 0.32}" fill="url(#glassRefractionBGradient)" opacity="0.62"/>
   <ellipse id="glassSoftShade" cx="${width * 0.12}" cy="${height * 0.98}" rx="${width * 0.56}" ry="${height * 0.42}" fill="url(#glassShadowGradient)"/>
-  <rect id="glassInnerShadow" x="1.2" y="1.2" width="${Math.max(0, width - 2.4)}" height="${Math.max(0, height - 2.4)}" rx="23" ry="23" fill="none" stroke="${innerShadow.hex}" stroke-opacity="${innerShadow.opacity.toFixed(3)}" stroke-width="1"/>
-  <path id="glassTopEdge" d="M24 1.4 H ${Math.max(24, width - 24)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${edgeHighlight.opacity.toFixed(3)}" stroke-width="1.2" stroke-linecap="round"/>
-  <path id="glassBottomEdge" d="M24 ${Math.max(0, height - 1.4)} H ${Math.max(24, width - 24)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${(edgeHighlight.opacity * 0.64).toFixed(3)}" stroke-width="1" stroke-linecap="round"/>
+  <rect id="glassLeftDepth" x="0" y="0" width="${width * 0.5}" height="${height}" fill="url(#glassLeftDepthGradient)"/>
+  <rect id="glassBottomDepth" x="0" y="${height * 0.58}" width="${width}" height="${height * 0.42}" fill="url(#glassBottomDepthGradient)"/>
+  <g id="glassFrostGrain" opacity="0.34">
+    <circle cx="${width * 0.18}" cy="${height * 0.18}" r="1.1" fill="#ffffff" fill-opacity="0.62"/>
+    <circle cx="${width * 0.42}" cy="${height * 0.28}" r="0.9" fill="#ffffff" fill-opacity="0.42"/>
+    <circle cx="${width * 0.68}" cy="${height * 0.2}" r="1" fill="#ffffff" fill-opacity="0.46"/>
+    <circle cx="${width * 0.78}" cy="${height * 0.62}" r="1.2" fill="#ffffff" fill-opacity="0.34"/>
+    <path d="M${width * 0.24} ${height * 0.48} h ${Math.max(8, width * 0.08)}" stroke="#ffffff" stroke-opacity="0.28" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M${width * 0.54} ${height * 0.68} h ${Math.max(10, width * 0.1)}" stroke="#ffffff" stroke-opacity="0.22" stroke-width="0.8" stroke-linecap="round"/>
+    <path d="M${width * 0.12} ${height * 0.82} h ${Math.max(9, width * 0.09)}" stroke="#ffffff" stroke-opacity="0.24" stroke-width="0.7" stroke-linecap="round"/>
+  </g>
+  <rect id="glassInnerShadow" x="1.2" y="1.2" width="${Math.max(0, width - 2.4)}" height="${Math.max(0, height - 2.4)}" rx="23" ry="23" fill="none" stroke="${innerShadow.hex}" stroke-opacity="${innerShadow.opacity.toFixed(3)}" stroke-width="1.4"/>
+  <path id="glassTopEdge" d="M18 1.4 H ${Math.max(18, width - 18)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${edgeHighlight.opacity.toFixed(3)}" stroke-width="2.4" stroke-linecap="round"/>
+  <path id="glassBottomEdge" d="M18 ${Math.max(0, height - 1.4)} H ${Math.max(18, width - 18)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${(edgeHighlight.opacity * 0.76).toFixed(3)}" stroke-width="1.8" stroke-linecap="round"/>
 </svg>`;
 }
 
