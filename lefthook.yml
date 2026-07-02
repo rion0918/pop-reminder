@@ -1,0 +1,10 @@
+pre-commit:
+  parallel: false
+  commands:
+    00-protected-harness-config:
+      run: node scripts/mvh-guard-protected-files.mjs
+      fail_text: 'Protected MVH files changed. Set MVH_ALLOW_PROTECTED_CONFIG_CHANGE=1 only after explicit user approval.'
+    10-biome:
+      run: pnpm exec biome check .
+    20-test:
+      run: pnpm test

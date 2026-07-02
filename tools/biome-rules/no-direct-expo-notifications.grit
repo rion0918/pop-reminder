@@ -1,0 +1,7 @@
+engine biome(1.0)
+language js(typescript, jsx)
+
+JsModuleSource() as $source where {
+  $source <: `"expo-notifications"`,
+  register_diagnostic(span=$source, message="Do not import expo-notifications here. Put notification scheduling, channels, and permissions in src/lib/notifications/, then expose a typed service to features.")
+}

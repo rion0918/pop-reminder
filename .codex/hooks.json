@@ -5,7 +5,7 @@
       "matcher": {
         "tool": "apply_patch"
       },
-      "command": "bash .codex/hooks/auto_format.sh \"$CODEX_TOOL_ARG_path\""
+      "command": "bash .codex/hooks/post_write_feedback.sh"
     }
   ]
 }

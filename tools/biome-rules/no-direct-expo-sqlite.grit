@@ -1,0 +1,7 @@
+engine biome(1.0)
+language js(typescript, jsx)
+
+JsModuleSource() as $source where {
+  $source <: `"expo-sqlite"`,
+  register_diagnostic(span=$source, message="Do not import expo-sqlite here. Move SQLite access into src/db/ or src/widget/, then call it through the existing repository/service boundary.")
+}

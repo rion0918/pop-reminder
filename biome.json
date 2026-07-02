@@ -1,0 +1,75 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.expo",
+      "!.direnv",
+      "!.pnpm-store",
+      "!android",
+      "!ios",
+      "!dist"
+    ],
+    "ignoreUnknown": true
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "trailingCommas": "all",
+      "semicolons": "always"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "error"
+      }
+    }
+  },
+  "assist": {
+    "enabled": false
+  },
+  "plugins": [
+    {
+      "path": "./tools/biome-rules/no-direct-expo-sqlite.grit",
+      "includes": ["**/src/**/*.ts", "**/src/**/*.tsx", "!**/src/db/**", "!**/src/widget/**"]
+    },
+    {
+      "path": "./tools/biome-rules/no-direct-expo-notifications.grit",
+      "includes": ["**/src/**/*.ts", "**/src/**/*.tsx", "!**/src/lib/notifications/**"]
+    }
+  ],
+  "overrides": [
+    {
+      "includes": ["src/**/*.ts", "src/**/*.tsx", "config.release.test.js", "babel.config.js"],
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ]
+}
