@@ -44,27 +44,45 @@ test('android widget due colors come from the app bubble tokens', () => {
   });
 });
 
-test('android widget floats on a clouded glass surface with a bare top-right add icon', () => {
+test('android widget floats on a frosted glass surface with a bare top-right add icon', () => {
   assertSourceIncludes(colorsSource, [
-    /cloudSurfaceBackground: 'rgba\(255,255,255,0\.44\)'/,
-    /cloudSurfaceBorder: 'rgba\(255,255,255,0\.24\)'/,
-    /cloudMistHighlight/,
-    /cloudMistShade/,
-    /plusIconText/,
-    /textHalo/,
+    /headerText: 'rgba\(255,255,255,0\.90\)'/,
+    /mutedText: 'rgba\(255,255,255,0\.72\)'/,
+    /cloudSurfaceBackground: 'rgba\(239,248,255,0\.24\)'/,
+    /cloudSurfaceBorder: 'rgba\(255,255,255,0\.28\)'/,
+    /cloudMistHighlight: 'rgba\(255,255,255,0\.18\)'/,
+    /cloudMistShade: 'rgba\(38,49,81,0\.10\)'/,
+    /glassRefractionA: 'rgba\(223,243,255,0\.24\)'/,
+    /glassRefractionB: 'rgba\(237,230,255,0\.18\)'/,
+    /glassRefractionC: 'rgba\(255,241,216,0\.16\)'/,
+    /glassInnerShadow: 'rgba\(38,49,81,0\.12\)'/,
+    /glassEdgeHighlight: 'rgba\(255,255,255,0\.46\)'/,
+    /plusIconText: palette\.white/,
+    /textHalo: 'rgba\(38,49,81,0\.50\)'/,
   ]);
   assertSourceContract(source, {
     includes: [
-      /function makeCloudSurfaceSvg/,
-      /<SvgWidget\s+svg=\{makeCloudSurfaceSvg\(widgetWidth, widgetHeight\)\}/,
+      /function makeFrostedGlassSurfaceSvg/,
+      /<SvgWidget\s+svg=\{makeFrostedGlassSurfaceSvg\(widgetWidth, widgetHeight\)\}/,
       /backgroundColor: widgetTheme\.cloudSurfaceBackground as ColorProp/,
       /borderColor: widgetTheme\.cloudSurfaceBorder as ColorProp/,
       /color: widgetTheme\.plusIconText as ColorProp/,
       /textShadowColor: widgetTheme\.textHalo as ColorProp/,
+      /id="glassVeil"/,
+      /id="glassRefractionA"/,
+      /id="glassRefractionB"/,
+      /id="glassRefractionC"/,
+      /id="glassInnerShadow"/,
+      /id="glassTopEdge"/,
+      /id="glassBottomEdge"/,
       /text="\+"/,
       /popreminder:\/\/\?action=add/,
     ],
     excludes: [
+      /function makeCloudSurfaceSvg/,
+      /feGaussianBlur/,
+      /filter="url/,
+      /cloudSurfaceBackground: 'rgba\(14,18,30,0\.22\)'/,
       /backgroundColor: widgetTheme\.background/,
       /borderColor: widgetTheme\.borderColor/,
       /text="ポップ・リマインダー"/,

@@ -267,40 +267,53 @@ function makeBubbleSvg(id: string, width: number, height: number, color: WidgetD
 </svg>`;
 }
 
-function makeCloudSurfaceSvg(width: number, height: number) {
+function makeFrostedGlassSurfaceSvg(width: number, height: number) {
   const surface = colorToSvgPaint(widgetTheme.cloudSurfaceBackground);
   const highlight = colorToSvgPaint(widgetTheme.cloudMistHighlight);
   const shade = colorToSvgPaint(widgetTheme.cloudMistShade);
+  const refractionA = colorToSvgPaint(widgetTheme.glassRefractionA);
+  const refractionB = colorToSvgPaint(widgetTheme.glassRefractionB);
+  const refractionC = colorToSvgPaint(widgetTheme.glassRefractionC);
+  const innerShadow = colorToSvgPaint(widgetTheme.glassInnerShadow);
+  const edgeHighlight = colorToSvgPaint(widgetTheme.glassEdgeHighlight);
 
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
   <defs>
-    <radialGradient id="cloudHighlightLeft" cx="16%" cy="18%" r="66%">
-      <stop offset="0%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.95).toFixed(3)}"/>
-      <stop offset="56%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.42).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${highlight.hex}" stop-opacity="0"/>
+    <linearGradient id="glassVeilGradient" x1="8%" y1="0%" x2="92%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 1.18).toFixed(3)}"/>
+      <stop offset="46%" stop-color="${surface.hex}" stop-opacity="${surface.opacity.toFixed(3)}"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 0.34).toFixed(3)}"/>
+    </linearGradient>
+    <radialGradient id="glassRefractionAGradient" cx="18%" cy="14%" r="70%">
+      <stop offset="0%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 1.18).toFixed(3)}"/>
+      <stop offset="58%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 0.52).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${refractionA.hex}" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="cloudHighlightBottom" cx="44%" cy="96%" r="58%">
-      <stop offset="0%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.86).toFixed(3)}"/>
-      <stop offset="62%" stop-color="${highlight.hex}" stop-opacity="${(highlight.opacity * 0.24).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${highlight.hex}" stop-opacity="0"/>
+    <radialGradient id="glassRefractionBGradient" cx="78%" cy="30%" r="72%">
+      <stop offset="0%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 1.1).toFixed(3)}"/>
+      <stop offset="56%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 0.44).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${refractionB.hex}" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="cloudShadeTop" cx="6%" cy="8%" r="48%">
-      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.2).toFixed(3)}"/>
-      <stop offset="52%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.42).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
+    <radialGradient id="glassRefractionCGradient" cx="52%" cy="96%" r="66%">
+      <stop offset="0%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 1.08).toFixed(3)}"/>
+      <stop offset="62%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 0.36).toFixed(3)}"/>
+      <stop offset="100%" stop-color="${refractionC.hex}" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="cloudShadeBottom" cx="86%" cy="98%" r="54%">
-      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.15).toFixed(3)}"/>
-      <stop offset="58%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.36).toFixed(3)}"/>
+    <radialGradient id="glassShadowGradient" cx="14%" cy="96%" r="68%">
+      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.28).toFixed(3)}"/>
+      <stop offset="50%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.42).toFixed(3)}"/>
       <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect x="0" y="0" width="${width}" height="${height}" fill="${surface.hex}" fill-opacity="${surface.opacity.toFixed(3)}"/>
-  <ellipse cx="${width * 0.14}" cy="${height * 0.2}" rx="${width * 0.54}" ry="${height * 0.46}" fill="url(#cloudHighlightLeft)"/>
-  <ellipse cx="${width * 0.4}" cy="${height * 0.96}" rx="${width * 0.6}" ry="${height * 0.34}" fill="url(#cloudHighlightBottom)"/>
-  <ellipse cx="${width * 0.04}" cy="${height * 0.08}" rx="${width * 0.38}" ry="${height * 0.36}" fill="url(#cloudShadeTop)"/>
-  <ellipse cx="${width * 0.84}" cy="${height * 1.02}" rx="${width * 0.44}" ry="${height * 0.28}" fill="url(#cloudShadeBottom)"/>
+  <rect id="glassVeil" x="0" y="0" width="${width}" height="${height}" fill="url(#glassVeilGradient)"/>
+  <ellipse id="glassRefractionA" cx="${width * 0.16}" cy="${height * 0.2}" rx="${width * 0.62}" ry="${height * 0.5}" fill="url(#glassRefractionAGradient)"/>
+  <ellipse id="glassRefractionB" cx="${width * 0.82}" cy="${height * 0.34}" rx="${width * 0.58}" ry="${height * 0.52}" fill="url(#glassRefractionBGradient)"/>
+  <ellipse id="glassRefractionC" cx="${width * 0.48}" cy="${height * 1.02}" rx="${width * 0.7}" ry="${height * 0.38}" fill="url(#glassRefractionCGradient)"/>
+  <ellipse id="glassSoftShade" cx="${width * 0.12}" cy="${height * 0.98}" rx="${width * 0.56}" ry="${height * 0.42}" fill="url(#glassShadowGradient)"/>
+  <rect id="glassInnerShadow" x="1.2" y="1.2" width="${Math.max(0, width - 2.4)}" height="${Math.max(0, height - 2.4)}" rx="23" ry="23" fill="none" stroke="${innerShadow.hex}" stroke-opacity="${innerShadow.opacity.toFixed(3)}" stroke-width="1"/>
+  <path id="glassTopEdge" d="M24 1.4 H ${Math.max(24, width - 24)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${edgeHighlight.opacity.toFixed(3)}" stroke-width="1.2" stroke-linecap="round"/>
+  <path id="glassBottomEdge" d="M24 ${Math.max(0, height - 1.4)} H ${Math.max(24, width - 24)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${(edgeHighlight.opacity * 0.64).toFixed(3)}" stroke-width="1" stroke-linecap="round"/>
 </svg>`;
 }
 
@@ -644,7 +657,7 @@ export function PopReminderWidget({
       }}
     >
       <SvgWidget
-        svg={makeCloudSurfaceSvg(widgetWidth, widgetHeight)}
+        svg={makeFrostedGlassSurfaceSvg(widgetWidth, widgetHeight)}
         style={{
           width: 'match_parent',
           height: 'match_parent',
