@@ -1,4 +1,4 @@
-import { ReminderRow } from '../../../db/schema';
+import type { ReminderRow } from '../../../db/schema';
 
 export type ReminderStatus = 'active' | 'expired';
 

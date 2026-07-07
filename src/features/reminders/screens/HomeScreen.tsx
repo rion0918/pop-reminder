@@ -21,7 +21,7 @@ import { createReminder } from '../services/createReminderService';
 import { deleteReminder } from '../services/deleteReminderService';
 import { useNotificationDevStore } from '../stores/notificationDevStore';
 import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 import { useAppSettings } from '../../settings/hooks/useAppSettings';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { bubbleDueColors, palette } from '../../../constants/colors';

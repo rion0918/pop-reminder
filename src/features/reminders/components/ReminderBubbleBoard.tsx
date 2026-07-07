@@ -14,7 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { palette } from '../../../constants/colors';
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 import { getMsUntilNextDay } from '../utils/reminderDueColor';
 import { ReminderBubble } from './ReminderBubble';
 

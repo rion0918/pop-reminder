@@ -1,11 +1,13 @@
 const assert = require('node:assert/strict');
 const { existsSync, readFileSync } = require('node:fs');
+const { join } = require('node:path');
 const { test } = require('node:test');
 
-const appConfig = JSON.parse(readFileSync(__dirname + '/app.json', 'utf8'));
-const easConfig = JSON.parse(readFileSync(__dirname + '/eas.json', 'utf8'));
-const packageConfig = JSON.parse(readFileSync(__dirname + '/package.json', 'utf8'));
-const nodeVersionPath = __dirname + '/.node-version';
+const appConfig = JSON.parse(readFileSync(join(__dirname, 'app.json'), 'utf8'));
+const easConfig = JSON.parse(readFileSync(join(__dirname, 'eas.json'), 'utf8'));
+const packageConfig = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
+const flakeConfig = readFileSync(join(__dirname, 'flake.nix'), 'utf8');
+const nodeVersionPath = join(__dirname, '.node-version');
 
 function readPngColorType(path) {
   const pngSignatureLength = 8;
@@ -44,6 +46,7 @@ test('package scripts expose release regression checks', () => {
 test('package scripts expose a release verification command', () => {
   const releaseScript = packageConfig.scripts['verify:release'];
 
+  assert.match(releaseScript, /pnpm run format:check/);
   assert.match(releaseScript, /pnpm test/);
   assert.match(releaseScript, /pnpm run typecheck/);
   assert.match(releaseScript, /pnpm run lint/);
@@ -61,7 +64,8 @@ test('local development uses the Expo-compatible Node version', () => {
 
   const nodeVersion = readFileSync(nodeVersionPath, 'utf8').trim();
 
-  assert.equal(nodeVersion, '22.22.3');
+  assert.equal(nodeVersion, '24.16.0');
+  assert.match(flakeConfig, /nodejs_24/);
 });
 
 test('native release dependencies include vector icon peer dependencies', () => {
@@ -76,11 +80,11 @@ test('Android notifications have a release-ready small icon and accent color', (
   assert.ok(notificationsPlugin);
   assert.equal(notificationsPlugin[1].icon, './assets/notification-icon.png');
   assert.equal(notificationsPlugin[1].color, '#5F7FE8');
-  assert.equal(existsSync(__dirname + '/assets/notification-icon.png'), true);
+  assert.equal(existsSync(join(__dirname, 'assets/notification-icon.png')), true);
 });
 
 test('Android adaptive icon uses a transparent foreground asset', () => {
-  const adaptiveIconPath = __dirname + '/assets/adaptive-icon.png';
+  const adaptiveIconPath = join(__dirname, 'assets/adaptive-icon.png');
 
   assert.equal(appConfig.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
   assert.equal(appConfig.expo.android.adaptiveIcon.backgroundColor, '#EFF8FF');
@@ -95,7 +99,7 @@ test('Android navigation bar matches the light app chrome', () => {
 });
 
 test('release runbook documents Android-first and iOS-later commands', () => {
-  const runbookPath = __dirname + '/docs/RELEASE_ANDROID_IOS.md';
+  const runbookPath = join(__dirname, 'docs/RELEASE_ANDROID_IOS.md');
 
   assert.equal(existsSync(runbookPath), true);
 
@@ -109,7 +113,7 @@ test('release runbook documents Android-first and iOS-later commands', () => {
 });
 
 test('store listing draft documents privacy and platform release notes', () => {
-  const storeDraftPath = __dirname + '/docs/STORE_LISTING_DRAFT.md';
+  const storeDraftPath = join(__dirname, 'docs/STORE_LISTING_DRAFT.md');
 
   assert.equal(existsSync(storeDraftPath), true);
 
@@ -125,7 +129,7 @@ test('store listing draft documents privacy and platform release notes', () => {
 });
 
 test('privacy policy draft is ready to publish for store review', () => {
-  const privacyPolicyPath = __dirname + '/docs/PRIVACY_POLICY.md';
+  const privacyPolicyPath = join(__dirname, 'docs/PRIVACY_POLICY.md');
 
   assert.equal(existsSync(privacyPolicyPath), true);
 

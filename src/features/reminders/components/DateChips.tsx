@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { palette } from '../../../constants/colors';
-import { ReminderDateOffset } from '../stores/reminderUiStore';
+import type { ReminderDateOffset } from '../stores/reminderUiStore';
 import type { ComputedReminderDatePreset, ReminderDatePreset } from '../utils/reminderDatePresets';
 import { formatLocalDate, getReminderDatePresetTarget } from '../utils/reminderDatePresets';
 

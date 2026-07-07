@@ -28,7 +28,7 @@ import { useAppSettings } from '../hooks/useAppSettings';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
 import { TimeSelector } from '../../../shared/components/TimeSelector';
-import { AppTheme, palette, themeOptions } from '../../../constants/colors';
+import { type AppTheme, palette, themeOptions } from '../../../constants/colors';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const BACK_BUTTON_FEEDBACK_MS = 120;

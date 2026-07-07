@@ -1,9 +1,9 @@
 import { and, asc, eq, gt, inArray, lte } from 'drizzle-orm';
 
 import { db } from '../../../db/client';
-import { NewReminderRow, reminders } from '../../../db/schema';
+import { type NewReminderRow, reminders } from '../../../db/schema';
 import { createId } from '../../../shared/utils/id';
-import { CreateReminderDraft, Reminder } from '../types/reminder';
+import type { CreateReminderDraft, Reminder } from '../types/reminder';
 
 export async function listActiveReminders(now = new Date()): Promise<Reminder[]> {
   return db

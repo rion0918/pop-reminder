@@ -32,7 +32,7 @@ test('long reminder bubble titles avoid tail ellipsis', () => {
       /ellipsizeMode=\{typography.titleEllipsizeMode\}/,
     ],
     excludes: [
-      /<Text\n            adjustsFontSizeToFit=\{typography\.titleAdjustsFontSizeToFit\}\n            ellipsizeMode="tail"/,
+      /<Text\n {12}adjustsFontSizeToFit=\{typography\.titleAdjustsFontSizeToFit\}\n {12}ellipsizeMode="tail"/,
     ],
   });
 });

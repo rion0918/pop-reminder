@@ -1,7 +1,7 @@
 import { deleteReminders, listExpiredReminders, markReminderExpired } from './reminderRepository';
 import {
   reminderServiceDependencies,
-  ReminderServiceDependencies,
+  type ReminderServiceDependencies,
 } from './reminderServiceDependencies';
 
 export async function cleanupExpiredReminders(

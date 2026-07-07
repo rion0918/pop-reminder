@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
 
 import { db } from '../../../db/client';
-import { appSettings, NewAppSettingsRow } from '../../../db/schema';
+import { appSettings, type NewAppSettingsRow } from '../../../db/schema';
 import { coerceTheme, isTimeString } from '../../../shared/utils/time';
-import { AppSettings, UpdateAppSettingsInput } from '../types/appSettings';
+import type { AppSettings, UpdateAppSettingsInput } from '../types/appSettings';
 
 export const DEFAULT_SETTINGS_ID = 'default';
 

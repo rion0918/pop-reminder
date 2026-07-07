@@ -4,12 +4,13 @@
 
 ## 仕組み
 
-- `biome.json` は Codex 向けの高速フィードバックエンジンです。既存の Prettier / Expo ESLint を置き換えず、追加のガードとして動きます。
+- `biome.json` は Codex 向けの高速フィードバックエンジンです。既存の Prettier / Expo ESLint を置き換えず、warning も失敗扱いにする追加のガードとして動きます。
 - `tools/biome-rules/*.grit` は Biome のカスタムルールです。`expo-sqlite` は `src/db/` / `src/widget/` 以外、`expo-notifications` は `src/lib/notifications/` 以外から直接 import すると、修正方針つきで失敗します。
 - `.codex/hooks.json` は Codex の `apply_patch` 後に `.codex/hooks/post_write_feedback.sh` を呼びます。そこで `scripts/mvh-feedback.mjs` が guard、Biome、test を実行し、失敗時は `::mvh-feedback-json-begin` / `::mvh-feedback-json-end` の間に構造化 JSON を出します。
 - `lefthook.yml` は `pre-commit` で `00-protected-harness-config`、`10-biome`、`20-test` の順に実行します。
 - `scripts/mvh-guard-protected-files.mjs` は `biome.json`、`lefthook.yml`、`package.json`、`.codex/hooks/**`、`scripts/mvh-*`、`tools/biome-rules/**` などの保護対象ファイルが無断変更されていないかを確認します。
 - `src/app-tests/mvh-harness.spec.ts` は package script、Codex hook、保護対象パスの期待値をテストで固定しています。
+- `docs/adr/0001-harness-policy.md` は、ハーネスの真実を実行可能なルール・テスト・CI に置く方針を記録します。
 
 ## メリット
 
@@ -45,7 +46,7 @@
 - Biome や Lefthook のエラーを消す目的で、保護対象ファイルを無断で緩めないでください。
 - `MVH_ALLOW_PROTECTED_CONFIG_CHANGE=1` は「ユーザーがハーネス変更を明示した時」だけ使ってください。
 - Biome は Prettier / Expo ESLint の完全な置き換えではありません。既存の標準検証は引き続き使います。
-- `pnpm run format:check` が docs だけで失敗する場合でも、ユーザー作成中の未追跡ファイルは勝手に整形しないでください。
+- `pnpm run mvh:verify` は `format:check` も含みます。docs だけで失敗する場合でも、ユーザー作成中の未追跡ファイルは勝手に整形しないでください。
 - Lefthook の hook install は `.git/hooks` に書き込むため、環境によっては権限確認が必要です。
 
 ## 失敗した時の見方

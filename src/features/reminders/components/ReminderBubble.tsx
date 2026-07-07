@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   cancelAnimation,
@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 import { getReminderDueColor } from '../utils/reminderDueColor';
 import { homeVisualTokens } from '../../../constants/colors';

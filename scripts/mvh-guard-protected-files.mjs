@@ -9,6 +9,7 @@ const ALLOW_ENV = 'MVH_ALLOW_PROTECTED_CONFIG_CHANGE';
 const PROTECTED_EXACT_PATHS = new Set([
   'AGENTS.md',
   'biome.json',
+  'docs/adr/0001-harness-policy.md',
   'flake.nix',
   'lefthook.yml',
   'package.json',

@@ -1,8 +1,8 @@
-import { PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppTheme, appThemes } from '../../constants/colors';
+import { type AppTheme, appThemes } from '../../constants/colors';
 
 type AppScreenProps = PropsWithChildren<{
   theme?: AppTheme;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { listActiveReminders } from '../services/reminderRepository';
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 
 type RefreshOptions = {
   silent?: boolean;

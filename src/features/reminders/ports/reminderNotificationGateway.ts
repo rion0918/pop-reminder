@@ -1,4 +1,4 @@
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 
 export type ReminderNotificationIds = {
   previousNotificationId: string | null;

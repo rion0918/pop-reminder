@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   FlexWidget,
   OverlapWidget,
@@ -663,6 +662,12 @@ export function PopReminderWidget({
       layout,
     ]),
   );
+  const visibleReminderItems = visibleReminders.flatMap((reminder, index) => {
+    const layout = bubbleLayouts.get(reminder.id);
+
+    return layout ? [{ reminder, index, layout }] : [];
+  });
+  const overflowLayout = bubbleLayouts.get(overflowReminder.id);
   const hasBubbles = reminders.length > 0;
   const renderedAtMs = Date.now();
 
@@ -692,19 +697,19 @@ export function PopReminderWidget({
             height: 'match_parent',
           }}
         >
-          {visibleReminders.map((reminder, index) => (
+          {visibleReminderItems.map(({ reminder, index, layout }) => (
             <BubbleItem
               key={reminder.id}
               reminder={reminder}
               index={index}
-              layout={bubbleLayouts.get(reminder.id)!}
+              layout={layout}
               renderedAtMs={renderedAtMs}
             />
           ))}
-          {overflowCount > 0 ? (
+          {overflowCount > 0 && overflowLayout ? (
             <OverflowBubble
               count={overflowCount}
-              layout={bubbleLayouts.get(overflowReminder.id)!}
+              layout={overflowLayout}
               renderedAtMs={renderedAtMs}
             />
           ) : null}

@@ -1,13 +1,13 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import {
+import type {
   ReminderNotificationGateway,
   ReminderNotificationIds,
   ReminderNotificationOptions,
   ReminderNotificationTarget,
 } from '../../features/reminders/ports/reminderNotificationGateway';
-import { Reminder } from '../../features/reminders/types/reminder';
+import type { Reminder } from '../../features/reminders/types/reminder';
 
 export const REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts';
 export const SILENT_REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-silent';
@@ -117,7 +117,7 @@ async function scheduleIfFuture({
       content: {
         title,
         body,
-        sound: soundEnabled ? true : false,
+        sound: Boolean(soundEnabled),
         data: {
           reminderId,
           soundEnabled: Boolean(soundEnabled),
@@ -143,7 +143,7 @@ async function scheduleIfFuture({
     content: {
       title,
       body,
-      sound: soundEnabled ? true : false,
+      sound: Boolean(soundEnabled),
       data: {
         reminderId,
         soundEnabled: Boolean(soundEnabled),

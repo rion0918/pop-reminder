@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
 import { palette } from '../../../constants/colors';
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 
 type ReminderDetailSheetProps = {

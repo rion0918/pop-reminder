@@ -1,9 +1,9 @@
-import { createReminderInputSchema, CreateReminderInput } from '../schemas/reminderSchema';
+import { createReminderInputSchema, type CreateReminderInput } from '../schemas/reminderSchema';
 import { insertReminder, updateReminderNotificationIds } from './reminderRepository';
 import { buildReminderSchedule } from './reminderDateService';
 import {
   reminderServiceDependencies,
-  ReminderServiceDependencies,
+  type ReminderServiceDependencies,
 } from './reminderServiceDependencies';
 import { updateWidget } from '../../../widget/widgetUpdateService';
 

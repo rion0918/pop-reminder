@@ -12,15 +12,22 @@ import {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const packageConfig = JSON.parse(readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'));
 const hooksConfig = JSON.parse(readFileSync(resolve(repositoryRoot, '.codex/hooks.json'), 'utf8'));
+const ciConfig = readFileSync(resolve(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
 
 test('MVH package scripts expose deterministic feedback and verification commands', () => {
-  assert.equal(packageConfig.scripts['biome:check'], 'biome check .');
+  assert.equal(packageConfig.scripts['biome:check'], 'biome check . --error-on-warnings');
   assert.equal(packageConfig.scripts['mvh:feedback'], 'node scripts/mvh-feedback.mjs');
   assert.equal(
     packageConfig.scripts['mvh:verify'],
-    'node scripts/mvh-guard-protected-files.mjs && pnpm run biome:check && pnpm test && pnpm run typecheck && pnpm run lint',
+    'pnpm run format:check && node scripts/mvh-guard-protected-files.mjs && pnpm run biome:check && pnpm test && pnpm run typecheck && pnpm run lint',
   );
   assert.equal(packageConfig.scripts['mvh:setup'], 'bash scripts/mvh-setup.sh');
+});
+
+test('CI uses the shared Node version and standard MVH verification gate', () => {
+  assert.match(ciConfig, /node-version-file: \.node-version/);
+  assert.match(ciConfig, /run: pnpm run mvh:verify/);
+  assert.doesNotMatch(ciConfig, /run: pnpm run format:check/);
 });
 
 test('Codex post-write hook runs structured MVH feedback instead of background formatters', () => {
@@ -42,6 +49,7 @@ test('MVH protected-file guard covers harness configuration and rules', () => {
   assert.equal(isProtectedHarnessPath('package.json'), true);
   assert.equal(isProtectedHarnessPath('pnpm-lock.yaml'), true);
   assert.equal(isProtectedHarnessPath('AGENTS.md'), true);
+  assert.equal(isProtectedHarnessPath('docs/adr/0001-harness-policy.md'), true);
   assert.equal(isProtectedHarnessPath('.codex/hooks.json'), true);
   assert.equal(isProtectedHarnessPath('.codex/hooks/post_write_feedback.sh'), true);
   assert.equal(isProtectedHarnessPath('scripts/mvh-feedback.mjs'), true);
@@ -54,9 +62,14 @@ test('MVH protected-file guard reports only protected changed paths', () => {
     findProtectedChanges([
       'src/features/reminders/screens/HomeScreen.tsx',
       'biome.json',
+      'docs/adr/0001-harness-policy.md',
       'tools/biome-rules/no-direct-expo-notifications.grit',
       'docs/QA_CHECKLIST.md',
     ]),
-    ['biome.json', 'tools/biome-rules/no-direct-expo-notifications.grit'],
+    [
+      'biome.json',
+      'docs/adr/0001-harness-policy.md',
+      'tools/biome-rules/no-direct-expo-notifications.grit',
+    ],
   );
 });

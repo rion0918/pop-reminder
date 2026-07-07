@@ -1,5 +1,5 @@
-import { ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import type { ComponentProps } from 'react';
+import { Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { palette } from '../../constants/colors';

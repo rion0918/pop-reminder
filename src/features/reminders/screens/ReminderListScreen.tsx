@@ -17,7 +17,7 @@ import { useAppSettings } from '../../settings/hooks/useAppSettings';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { deleteReminder } from '../services/deleteReminderService';
 import { listActiveReminders } from '../services/reminderRepository';
-import { Reminder } from '../types/reminder';
+import type { Reminder } from '../types/reminder';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';
 

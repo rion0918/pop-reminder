@@ -13,7 +13,7 @@ const insertReminderSource =
     /export async function insertReminder[\s\S]*?export async function updateReminderNotificationIds/,
   )?.[0] ?? '';
 const insertRowSource =
-  insertReminderSource.match(/const row: NewReminderRow = \{[\s\S]*?\n  \};/)?.[0] ?? '';
+  insertReminderSource.match(/const row: NewReminderRow = \{[\s\S]*?\n {2}\};/)?.[0] ?? '';
 const updateNotificationIdsSource =
   source.match(
     /export async function updateReminderNotificationIds[\s\S]*?export async function markReminderExpired/,

@@ -1,7 +1,7 @@
 import { deleteReminderById, getReminderById } from './reminderRepository';
 import {
   reminderServiceDependencies,
-  ReminderServiceDependencies,
+  type ReminderServiceDependencies,
 } from './reminderServiceDependencies';
 import { updateWidget } from '../../../widget/widgetUpdateService';
 

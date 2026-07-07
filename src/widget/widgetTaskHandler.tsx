@@ -1,4 +1,3 @@
-import React from 'react';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { PopReminderWidget } from './PopReminderWidget';
