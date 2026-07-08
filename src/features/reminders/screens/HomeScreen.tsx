@@ -308,51 +308,52 @@ export function HomeScreen() {
       />
 
       <View
-        accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
-        accessibilityRole="text"
-        className="min-h-[52px] flex-row items-center justify-around gap-[6px] rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.66)] px-[12px]"
-        style={[styles.dueLegend, isCompactPhoneWidth ? styles.dueLegendCompact : null]}
+        style={[styles.bottomControls, isCompactPhoneWidth ? styles.bottomControlsCompact : null]}
       >
-        {dueLegendItems.map((item) => (
-          <View key={item.label} className="min-w-0 flex-1 items-center justify-center gap-[3px]">
-            <View
-              className="h-[18px] w-[18px] rounded-[9px] border-[1.4px]"
-              style={[
-                styles.dueLegendBubble,
-                {
-                  backgroundColor: item.color.background,
-                  borderColor: item.color.border,
-                },
-              ]}
-            />
-            <Text
-              numberOfLines={1}
-              className="text-center text-[10px] font-black leading-[12px] text-app-muted"
-            >
-              {item.label}
-            </Text>
-          </View>
-        ))}
-      </View>
+        <View
+          accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
+          accessibilityRole="text"
+          className="min-h-[52px] flex-row items-center justify-around gap-[6px] rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.66)] px-[12px]"
+          style={[styles.dueLegend, isCompactPhoneWidth ? styles.dueLegendCompact : null]}
+        >
+          {dueLegendItems.map((item) => (
+            <View key={item.label} className="min-w-0 flex-1 items-center justify-center gap-[3px]">
+              <View
+                className="h-[18px] w-[18px] rounded-[9px] border-[1.4px]"
+                style={[
+                  styles.dueLegendBubble,
+                  {
+                    backgroundColor: item.color.background,
+                    borderColor: item.color.border,
+                  },
+                ]}
+              />
+              <Text
+                numberOfLines={1}
+                className="text-center text-[10px] font-black leading-[12px] text-app-muted"
+              >
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="リマインダーを追加"
-        accessibilityState={{ disabled: isAddButtonDisabled }}
-        disabled={isAddButtonDisabled}
-        hitSlop={8}
-        onPress={handlePressAdd}
-        className="h-[64px] min-w-[98px] flex-row items-center justify-center gap-[4px] rounded-[32px] bg-app-sky-deep px-[22px]"
-        style={({ pressed }) => [
-          styles.addButton,
-          isCompactPhoneWidth ? styles.addButtonCompact : null,
-          pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
-          isAddButtonDisabled ? styles.addButtonDisabled : null,
-        ]}
-      >
-        <Ionicons name="add" size={26} color={palette.white} />
-        <Text className="text-[15px] font-black text-app-white">追加</Text>
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="リマインダーを追加"
+          accessibilityState={{ disabled: isAddButtonDisabled }}
+          disabled={isAddButtonDisabled}
+          hitSlop={8}
+          onPress={handlePressAdd}
+          style={({ pressed }) => [
+            styles.addButton,
+            pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
+            isAddButtonDisabled ? styles.addButtonDisabled : null,
+          ]}
+        >
+          <Ionicons name="add" size={30} color={palette.white} />
+        </Pressable>
+      </View>
     </AppScreen>
   );
 }
@@ -387,11 +388,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 14,
   },
-  dueLegend: {
+  bottomControls: {
     position: 'absolute',
     left: 24,
-    right: 136,
-    bottom: 34,
+    right: 24,
+    bottom: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bottomControlsCompact: {
+    left: 16,
+    right: 16,
+  },
+  dueLegend: {
+    flex: 1,
+    minWidth: 0,
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -399,8 +411,6 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   dueLegendCompact: {
-    left: 16,
-    right: 116,
     paddingHorizontal: 8,
   },
   dueLegendBubble: {
@@ -410,19 +420,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   addButton: {
-    position: 'absolute',
-    right: 24,
-    bottom: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.skyDeep,
+    flexShrink: 0,
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.26,
     shadowRadius: 18,
     elevation: 6,
-  },
-  addButtonCompact: {
-    right: 16,
-    minWidth: 88,
-    paddingHorizontal: 18,
   },
   addButtonDisabled: {
     opacity: 0.5,

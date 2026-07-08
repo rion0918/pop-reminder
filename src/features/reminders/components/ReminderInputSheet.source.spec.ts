@@ -9,6 +9,7 @@ import {
 
 const source = readSource(import.meta.url, './ReminderInputSheet.tsx');
 const dateChipsSource = readSource(import.meta.url, './DateChips.tsx');
+const rootLayoutSource = readSource(import.meta.url, '../../../app/_layout.tsx');
 const timeSelectorSource = readSource(
   import.meta.url,
   '../../../shared/components/TimeSelector.tsx',
@@ -56,16 +57,36 @@ test('quick add sheet sizes to content instead of leaving keyboard gap', () => {
       /enableDynamicSizing/,
       /useWindowDimensions/,
       /const quickAddMaxDynamicContentSize = useMemo/,
-      /windowHeight - sheetTopInset - QUICK_ADD_BOTTOM_CLEARANCE/,
+      /windowHeight - sheetTopInset - safeAreaInsets\.bottom - QUICK_ADD_BOTTOM_CLEARANCE/,
+      /const quickAddContentBottomPadding = useMemo/,
+      /18 \+ safeAreaInsets\.bottom/,
       /maxDynamicContentSize=\{quickAddMaxDynamicContentSize\}/,
-      /contentContainerStyle=\{styles\.content\}/,
+      /bottomInset=\{safeAreaInsets\.bottom\}/,
+      /keyboardBehavior="interactive"/,
+      /android_keyboardInputMode="adjustPan"/,
+      /contentContainerStyle=\{\[styles\.content, \{ paddingBottom: quickAddContentBottomPadding \}\]\}/,
       /keyboardShouldPersistTaps="handled"/,
     ],
     excludes: [
+      /BottomSheetKeyboardAwareScrollView/,
+      /KeyboardAwareScrollView/,
+      /quickAddKeyboardBottomOffset/,
+      /bottomOffset=\{/,
       /QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE = 360/,
+      /keyboardBehavior=\{Platform\.OS === 'ios' \? 'interactive' : 'fillParent'\}/,
+      /android_keyboardInputMode="adjustResize"/,
+      /fillParent/,
+      /contentContainerStyle=\{styles\.content\}/,
       /snapPoints=\{snapPoints\}/,
       /const snapPoints = useMemo/,
     ],
+  });
+});
+
+test('keyboard controller is not mounted around bottom sheet content', () => {
+  assertSourceContract(rootLayoutSource, {
+    includes: [/<BottomSheetModalProvider>[\s\S]*<\/BottomSheetModalProvider>/],
+    excludes: [/KeyboardProvider/, /react-native-keyboard-controller/],
   });
 });
 

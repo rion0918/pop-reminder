@@ -109,6 +109,19 @@ lsof -iTCP:8081 -sTCP:LISTEN -P -n
 
 同じリポジトリの `start:dev-client` が既に起動している場合は、その QR を使えます。古い Metro、Expo Go 用、別プロジェクトの Metro が残っている場合は、そのターミナルで `Ctrl+C` してから `pnpm run start:dev-client` を起動し直してください。
 
+残っているターミナルが見つからない場合は、`lsof` の `PID` を指定して停止します。
+
+```bash
+lsof -iTCP:8081 -sTCP:LISTEN -P -n
+kill <PID>
+```
+
+通常の `kill` で止まらない場合だけ、同じ `PID` に対して強制終了します。
+
+```bash
+kill -9 <PID>
+```
+
 ## 検証
 
 変更後は、Nix 開発シェルの中で MVH 全体を通します。

@@ -46,6 +46,38 @@ test('home add button gives immediate pressed feedback', () => {
   ]);
 });
 
+test('home add button stays a compact floating action button', () => {
+  const addButtonStart = source.indexOf('accessibilityLabel="リマインダーを追加"');
+  const addButtonBlock = source.slice(
+    addButtonStart,
+    source.indexOf('</Pressable>', addButtonStart),
+  );
+  const addButtonStyleBlock = source.slice(
+    source.indexOf('addButton: {'),
+    source.indexOf('addButtonDisabled:'),
+  );
+
+  assertSourceContract(addButtonBlock, {
+    includes: [
+      /styles\.addButton/,
+      /<Ionicons name="add" size=\{30\} color=\{palette\.white\} \/>/,
+    ],
+    excludes: [/className=/, />追加<\/Text>/],
+  });
+  assertSourceContract(addButtonStyleBlock, {
+    includes: [
+      /width: 64/,
+      /height: 64/,
+      /borderRadius: 32/,
+      /alignItems: 'center'/,
+      /justifyContent: 'center'/,
+      /backgroundColor: palette\.skyDeep/,
+      /flexShrink: 0/,
+    ],
+    excludes: [/position: 'absolute'/, /right: 24/, /bottom: 28/],
+  });
+});
+
 test('settings button gives immediate pressed feedback', () => {
   assertSourceContract(source, {
     includes: [
@@ -89,12 +121,46 @@ test('android hardware back closes reminder sheets before leaving home', () => {
 });
 
 test('home bottom controls use compact spacing on narrow Android widths', () => {
+  const bottomControlsBlock = source.slice(
+    source.indexOf('bottomControls:'),
+    source.indexOf('bottomControlsCompact:'),
+  );
+  const bottomControlsCompactBlock = source.slice(
+    source.indexOf('bottomControlsCompact:'),
+    source.indexOf('dueLegend:'),
+  );
+  const dueLegendBlock = source.slice(
+    source.indexOf('dueLegend:'),
+    source.indexOf('dueLegendCompact:'),
+  );
+  const dueLegendCompactBlock = source.slice(
+    source.indexOf('dueLegendCompact:'),
+    source.indexOf('dueLegendBubble:'),
+  );
+
   assertSourceIncludes(source, [
     /useWindowDimensions/,
     /const isCompactPhoneWidth = windowWidth <= 360;/,
+    /style=\{\[styles\.bottomControls, isCompactPhoneWidth \? styles\.bottomControlsCompact : null\]\}/,
     /style=\{\[styles\.dueLegend, isCompactPhoneWidth \? styles\.dueLegendCompact : null\]\}/,
-    /styles\.addButton,[\s\S]*isCompactPhoneWidth \? styles\.addButtonCompact : null,/,
-    /dueLegendCompact: \{[\s\S]*left: 16,[\s\S]*right: 116,[\s\S]*paddingHorizontal: 8,/,
-    /addButtonCompact: \{[\s\S]*right: 16,[\s\S]*minWidth: 88,[\s\S]*paddingHorizontal: 18,/,
+    /styles\.addButton,[\s\S]*pressed && !isAddButtonDisabled \? styles\.addButtonPressed : null,/,
   ]);
+  assertSourceIncludes(bottomControlsBlock, [
+    /position: 'absolute'/,
+    /left: 24/,
+    /right: 24/,
+    /bottom: 28/,
+    /flexDirection: 'row'/,
+    /alignItems: 'center'/,
+    /gap: 12/,
+  ]);
+  assertSourceIncludes(bottomControlsCompactBlock, [/left: 16/, /right: 16/]);
+  assertSourceContract(dueLegendBlock, {
+    includes: [/flex: 1/, /minWidth: 0/],
+    excludes: [/position: 'absolute'/, /left: 24/, /right: 136/, /bottom: 34/],
+  });
+  assertSourceContract(dueLegendCompactBlock, {
+    includes: [/paddingHorizontal: 8/],
+    excludes: [/left: 16/, /right: 116/],
+  });
 });

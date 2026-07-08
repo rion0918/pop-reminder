@@ -97,9 +97,13 @@ export function ReminderInputSheet({
     () =>
       Math.max(
         QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE,
-        windowHeight - sheetTopInset - QUICK_ADD_BOTTOM_CLEARANCE,
+        windowHeight - sheetTopInset - safeAreaInsets.bottom - QUICK_ADD_BOTTOM_CLEARANCE,
       ),
-    [sheetTopInset, windowHeight],
+    [safeAreaInsets.bottom, sheetTopInset, windowHeight],
+  );
+  const quickAddContentBottomPadding = useMemo(
+    () => 18 + safeAreaInsets.bottom,
+    [safeAreaInsets.bottom],
   );
   const minCustomDate = useMemo(() => startOfDay(new Date()), []);
 
@@ -353,17 +357,19 @@ export function ReminderInputSheet({
         enablePanDownToClose
         maxDynamicContentSize={quickAddMaxDynamicContentSize}
         onDismiss={handleDismiss}
-        keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
+        keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
+        android_keyboardInputMode="adjustPan"
         topInset={sheetTopInset}
+        bottomInset={safeAreaInsets.bottom}
         backdropComponent={renderBackdrop}
         handleIndicatorStyle={styles.handle}
         backgroundStyle={styles.sheetBackground}
       >
         <BottomSheetScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: quickAddContentBottomPadding }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.inputHeader}>
             <BottomSheetTextInput
@@ -512,7 +518,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 18,
   },
   inputHeader: {
     flexDirection: 'row',
