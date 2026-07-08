@@ -52,28 +52,22 @@ test('settings action controls stay inside compact Android widths', () => {
   assertSourceContract(source, {
     includes: [
       /<SettingRow[\s\S]*icon="color-palette-outline"[\s\S]*title="テーマ"[\s\S]*labelFlex=\{0\.36\}[\s\S]*controlFlex=\{0\.64\}[\s\S]*>/,
-      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*style=\{\[styles\.themeLabel, active \? styles\.themeLabelActive : null\]\}/,
-      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*style=\{styles\.notificationButtonText\}/,
-      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*style=\{styles\.devButtonText\}/,
-      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*style=\{styles\.cancelButtonText\}/,
-      /themeRow: \{[\s\S]*flexShrink: 1,[\s\S]*minWidth: 0,/,
-      /themeRow: \{[\s\S]*width: '100%',/,
-      /themeButton: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,/,
-      /themeLabel: \{[\s\S]*fontSize: 11,[\s\S]*includeFontPadding: false,/,
-      /notificationButtonText: \{[\s\S]*flexShrink: 1,[\s\S]*includeFontPadding: false,/,
-      /devButtonText: \{[\s\S]*flexShrink: 1,[\s\S]*includeFontPadding: false,/,
-      /cancelButtonText: \{[\s\S]*flexShrink: 1,[\s\S]*includeFontPadding: false,/,
+      /className="w-full min-w-0 shrink flex-row gap-\[6px\]"/,
+      /className=\{`h-\[34px\] min-w-0 flex-1/,
+      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*className=\{`text-\[11px\] font-extrabold/,
+      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*className="shrink text-\[14px\] font-extrabold text-app-white"[\s\S]*style=\{styles\.noFontPadding\}/,
+      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*className="shrink text-\[14px\] font-extrabold text-app-ink"[\s\S]*style=\{styles\.noFontPadding\}/,
+      /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
     ],
-    excludes: [/themeButton: \{[\s\S]*minWidth: 58,/],
+    excludes: [/min-w-\[58px\]/],
   });
 });
 
 test('legal modal header keeps close button reachable on compact widths', () => {
   assertSourceIncludes(source, [
-    /<View style=\{styles\.legalModalCopy\}>/,
-    /<Text numberOfLines=\{2\} style=\{styles\.legalModalTitle\}>/,
-    /<Text numberOfLines=\{1\} style=\{styles\.legalModalUpdated\}>/,
-    /legalModalCopy: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,/,
-    /legalCloseButton: \{[\s\S]*flexShrink: 0,/,
+    /<View className="min-w-0 flex-1">/,
+    /<Text numberOfLines=\{2\} className="text-\[18px\] font-black text-app-ink">/,
+    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*className="mt-\[4px\] text-\[12px\] font-bold text-app-muted"/,
+    /className="h-\[42px\] w-\[42px\] shrink-0 items-center justify-center rounded-\[21px\] border border-app-line bg-\[#F6FAFF\]"/,
   ]);
 });

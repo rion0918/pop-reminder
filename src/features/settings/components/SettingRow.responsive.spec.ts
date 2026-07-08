@@ -11,12 +11,10 @@ const source = readSource(import.meta.url, './SettingRow.tsx');
 test('setting rows keep controls reachable on compact Android widths', () => {
   assertSourceContract(source, {
     includes: [
-      /<Text style=\{styles\.title\}>/,
-      /<Text style=\{styles\.caption\}>/,
-      /tapArea: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,/,
-      /iconWrap: \{[\s\S]*flexShrink: 0,/,
-      /copy: \{[\s\S]*flex: 1,[\s\S]*minWidth: 48,/,
-      /control: \{[\s\S]*flexShrink: 0,/,
+      /className="-my-\[10px\] min-w-0 flex-1 flex-row items-center gap-\[12px\] py-\[10px\]"/,
+      /className="h-\[34px\] w-\[34px\] shrink-0 items-center justify-center rounded-\[17px\] bg-\[#F2F7FE\]"/,
+      /className="min-w-\[48px\] flex-1"/,
+      /className="shrink-0 items-end"/,
     ],
     excludes: [
       /<Text numberOfLines=\{1\} style=\{styles\.title\}>/,
@@ -25,7 +23,7 @@ test('setting rows keep controls reachable on compact Android widths', () => {
   });
 
   assertSourceIncludes(source, [
-    /title: \{[\s\S]*fontSize: 14,[\s\S]*lineHeight: 19,[\s\S]*includeFontPadding: false,/,
-    /caption: \{[\s\S]*fontSize: 11,[\s\S]*lineHeight: 16,/,
+    /className="text-\[14px\] font-extrabold leading-\[19px\] text-app-ink"[\s\S]*style=\{\{ includeFontPadding: false \}\}/,
+    /className="mt-\[3px\] text-\[11px\] font-semibold leading-\[16px\] text-app-muted"/,
   ]);
 });

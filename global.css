@@ -1,0 +1,6 @@
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind directives are compiled by NativeWind. */
+@tailwind base;
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind directives are compiled by NativeWind. */
+@tailwind components;
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind directives are compiled by NativeWind. */
+@tailwind utilities;

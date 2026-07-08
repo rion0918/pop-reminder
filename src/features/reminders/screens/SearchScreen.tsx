@@ -144,38 +144,54 @@ export function SearchScreen() {
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
-      <View pointerEvents="none" style={styles.ambientLayer}>
-        <View style={[styles.ambientBubble, styles.ambientOne]} />
-        <View style={[styles.ambientBubble, styles.ambientTwo]} />
+      <View pointerEvents="none" className="absolute inset-0">
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.46)] bg-[rgba(255,255,255,0.22)]"
+          style={styles.ambientOne}
+        />
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.46)] bg-[rgba(237,230,255,0.22)]"
+          style={styles.ambientTwo}
+        />
       </View>
 
-      <View style={styles.header}>
+      <View className="h-[52px] flex-row items-center justify-between">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="ホームに戻る"
           hitSlop={8}
           onPress={() => handleBack(router)}
-          style={styles.iconButton}
+          className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
         >
           <Ionicons name="chevron-back" size={24} color={palette.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>探す</Text>
-        <View style={styles.headerSpacer} />
+        <Text className="text-[18px] font-black text-app-ink">探す</Text>
+        <View className="w-[44px]" />
       </View>
 
-      <View style={styles.hero}>
-        <Image source={appIcon} style={styles.heroIcon} />
-        <View style={styles.heroCopy}>
-          <Text numberOfLines={1} style={styles.kicker}>
+      <View className="mb-[20px] mt-[20px] flex-row items-center gap-[14px]">
+        <Image source={appIcon} className="h-[76px] w-[76px] rounded-[20px]" />
+        <View className="min-w-0 flex-1">
+          <Text numberOfLines={1} className="text-[13px] font-extrabold text-app-muted">
             浮かべた泡を探す
           </Text>
-          <Text numberOfLines={2} style={styles.title}>
+          <Text
+            className="mt-[4px] text-[24px] font-black leading-[31px] text-app-ink"
+            numberOfLines={2}
+          >
             必要な時に、そっと見つける
           </Text>
         </View>
       </View>
 
-      <View style={[styles.searchBox, isSearchFocused ? styles.searchBoxFocused : null]}>
+      <View
+        className={`min-h-[52px] flex-row items-center gap-[10px] rounded-[22px] border px-[16px] ${
+          isSearchFocused
+            ? 'border-[rgba(168,145,245,0.48)] bg-[rgba(255,255,255,0.96)]'
+            : 'border-[rgba(255,255,255,0.96)] bg-[rgba(255,255,255,0.84)]'
+        }`}
+        style={isSearchFocused ? styles.searchBoxFocused : null}
+      >
         <Ionicons name="search-outline" size={19} color={palette.muted} />
         <TextInput
           value={query}
@@ -186,7 +202,7 @@ export function SearchScreen() {
           placeholderTextColor="#A6B2CE"
           autoCapitalize="none"
           autoCorrect={false}
-          style={styles.searchInput}
+          className="min-w-0 flex-1 py-[12px] text-[16px] font-extrabold text-app-ink"
         />
         {query.length > 0 ? (
           <Pressable
@@ -194,14 +210,14 @@ export function SearchScreen() {
             accessibilityLabel="検索文字を消す"
             hitSlop={8}
             onPress={() => setQuery('')}
-            style={styles.clearButton}
+            className="h-[28px] w-[28px] items-center justify-center rounded-[14px] bg-[#F3F6FC]"
           >
             <Ionicons name="close" size={16} color={palette.muted} />
           </Pressable>
         ) : null}
       </View>
 
-      <View style={styles.filterRow}>
+      <View className="mt-[12px] flex-row gap-[8px]">
         {filters.map((item) => {
           const active = item.key === filter;
 
@@ -211,13 +227,16 @@ export function SearchScreen() {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => setFilter(item.key)}
-              style={({ pressed }) => [
-                styles.filterChip,
-                active ? styles.filterChipActive : null,
-                pressed ? styles.filterChipPressed : null,
-              ]}
+              className={`min-h-[38px] flex-1 items-center justify-center rounded-[19px] border px-[10px] ${
+                active
+                  ? 'border-app-lavender-deep bg-app-lavender-deep'
+                  : 'border-app-line bg-[rgba(255,255,255,0.62)]'
+              }`}
+              style={({ pressed }) => [pressed ? styles.filterChipPressed : null]}
             >
-              <Text style={[styles.filterText, active ? styles.filterTextActive : null]}>
+              <Text
+                className={`text-[12px] font-black ${active ? 'text-app-white' : 'text-app-ink'}`}
+              >
                 {item.label}
               </Text>
             </Pressable>
@@ -225,54 +244,63 @@ export function SearchScreen() {
         })}
       </View>
 
-      <View style={styles.resultMeta}>
-        <Text numberOfLines={1} style={styles.resultMetaText}>
+      <View className="mb-[8px] mt-[18px] flex-row items-center justify-between">
+        <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] font-black text-app-ink">
           {resultLabel}
         </Text>
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.82}
-          style={styles.resultMetaSub}
+          className="min-h-[28px] min-w-[42px] max-w-[34%] shrink-0 overflow-hidden rounded-[14px] bg-[rgba(255,255,255,0.68)] px-[10px] pt-[6px] text-center text-[12px] font-black text-app-lavender-deep"
+          style={styles.noFontPadding}
         >
           {filteredReminders.length}件
         </Text>
       </View>
 
       {loading ? (
-        <View style={styles.centerState}>
+        <View className="flex-1 items-center justify-center px-[28px]">
           <ActivityIndicator color={palette.skyDeep} />
-          <Text style={styles.centerText}>泡を探しています</Text>
+          <Text className="mt-[8px] text-center text-[13px] font-extrabold leading-[19px] text-app-muted">
+            泡を探しています
+          </Text>
         </View>
       ) : error ? (
-        <View style={styles.centerState}>
-          <Text style={styles.centerTitle}>うまく探せませんでした</Text>
-          <Text style={styles.centerText}>{error}</Text>
+        <View className="flex-1 items-center justify-center px-[28px]">
+          <Text className="text-center text-[17px] font-black leading-[24px] text-app-ink">
+            うまく探せませんでした
+          </Text>
+          <Text className="mt-[8px] text-center text-[13px] font-extrabold leading-[19px] text-app-muted">
+            {error}
+          </Text>
         </View>
       ) : filteredReminders.length === 0 ? (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyBubble}>
+        <View className="min-h-[260px] flex-1 items-center justify-center px-[30px]">
+          <View className="mb-[18px] h-[72px] w-[72px] items-center justify-center rounded-[36px] border-2 border-[rgba(255,255,255,0.68)] bg-[rgba(255,255,255,0.40)]">
             <Ionicons name="search-outline" size={30} color={palette.lavenderDeep} />
           </View>
-          <Text style={styles.centerTitle}>見つかる泡はありません</Text>
-          <Text style={styles.centerText}>キーワードや日付を少しゆるめてみてください</Text>
+          <Text className="text-center text-[17px] font-black leading-[24px] text-app-ink">
+            見つかる泡はありません
+          </Text>
+          <Text className="mt-[8px] text-center text-[13px] font-extrabold leading-[19px] text-app-muted">
+            キーワードや日付を少しゆるめてみてください
+          </Text>
           {hasActiveCondition ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="検索条件をリセット"
               onPress={resetConditions}
-              style={({ pressed }) => [
-                styles.resetButton,
-                pressed ? styles.resetButtonPressed : null,
-              ]}
+              className="mt-[18px] min-h-[42px] flex-row items-center justify-center gap-[7px] rounded-[21px] border border-[rgba(216,204,255,0.72)] bg-[rgba(255,255,255,0.72)] px-[16px]"
+              style={({ pressed }) => [pressed ? styles.resetButtonPressed : null]}
             >
               <Ionicons name="refresh" size={16} color={palette.ink} />
-              <Text style={styles.resetButtonText}>条件をリセット</Text>
+              <Text className="text-[13px] font-black text-app-ink">条件をリセット</Text>
             </Pressable>
           ) : null}
         </View>
       ) : (
-        <View style={styles.resultsBoard}>
+        <View className="mb-[12px] flex-1 overflow-visible">
           <ReminderBubbleBoard
             reminders={filteredReminders}
             idleDisabled={Boolean(selectedReminder)}
@@ -291,20 +319,6 @@ export function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  ambientLayer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  ambientBubble: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.46)',
-  },
   ambientOne: {
     top: 94,
     right: -34,
@@ -316,221 +330,22 @@ const styles = StyleSheet.create({
     bottom: 120,
     width: 74,
     height: 74,
-    backgroundColor: 'rgba(237,230,255,0.22)',
-  },
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    color: palette.ink,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  headerSpacer: {
-    width: 44,
-  },
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  heroIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 20,
-  },
-  heroCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  kicker: {
-    color: palette.muted,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  title: {
-    color: palette.ink,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  searchBox: {
-    minHeight: 52,
-    borderRadius: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.84)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.96)',
   },
   searchBoxFocused: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderColor: 'rgba(168,145,245,0.48)',
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 18,
   },
-  searchInput: {
-    flex: 1,
-    minWidth: 0,
-    color: palette.ink,
-    fontSize: 16,
-    fontWeight: '800',
-    paddingVertical: 12,
-  },
-  clearButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F6FC',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  filterChip: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    backgroundColor: 'rgba(255,255,255,0.62)',
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  filterChipActive: {
-    backgroundColor: palette.lavenderDeep,
-    borderColor: palette.lavenderDeep,
-  },
   filterChipPressed: {
     opacity: 0.78,
     transform: [{ scale: 0.97 }],
   },
-  filterText: {
-    color: palette.ink,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  filterTextActive: {
-    color: palette.white,
-  },
-  resultMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 18,
-    marginBottom: 8,
-  },
-  resultMetaText: {
-    flex: 1,
-    minWidth: 0,
-    color: palette.ink,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  resultMetaSub: {
-    flexShrink: 0,
-    minWidth: 42,
-    maxWidth: '34%',
-    minHeight: 28,
-    borderRadius: 14,
-    overflow: 'hidden',
-    color: palette.lavenderDeep,
-    fontSize: 12,
-    fontWeight: '900',
+  noFontPadding: {
     includeFontPadding: false,
-    textAlign: 'center',
-    paddingHorizontal: 10,
-    paddingTop: 6,
-    backgroundColor: 'rgba(255,255,255,0.68)',
-  },
-  resultsBoard: {
-    flex: 1,
-    marginBottom: 12,
-    overflow: 'visible',
-  },
-  centerState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  emptyState: {
-    flex: 1,
-    minHeight: 260,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-  },
-  emptyBubble: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.68)',
-  },
-  resetButton: {
-    minHeight: 42,
-    borderRadius: 21,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    paddingHorizontal: 16,
-    marginTop: 18,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(216,204,255,0.72)',
   },
   resetButtonPressed: {
     opacity: 0.78,
     transform: [{ scale: 0.97 }],
-  },
-  resetButtonText: {
-    color: palette.ink,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  centerTitle: {
-    color: palette.ink,
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  centerText: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: 8,
   },
 });

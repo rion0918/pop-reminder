@@ -92,40 +92,53 @@ export function ReminderListScreen() {
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
-      <View pointerEvents="none" style={styles.ambientLayer}>
-        <View style={[styles.ambientBubble, styles.ambientOne]} />
-        <View style={[styles.ambientBubble, styles.ambientTwo]} />
+      <View pointerEvents="none" className="absolute inset-0">
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.46)] bg-[rgba(255,255,255,0.22)]"
+          style={styles.ambientOne}
+        />
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.46)] bg-[rgba(237,230,255,0.22)]"
+          style={styles.ambientTwo}
+        />
       </View>
 
-      <View style={styles.header}>
+      <View className="h-[52px] flex-row items-center justify-between">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="ホームに戻る"
           hitSlop={8}
           onPress={() => handleBack(router)}
-          style={styles.iconButton}
+          className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
         >
           <Ionicons name="chevron-back" size={24} color={palette.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>すべての泡</Text>
-        <View style={styles.headerSpacer} />
+        <Text className="text-[18px] font-black text-app-ink">すべての泡</Text>
+        <View className="w-[44px]" />
       </View>
 
-      <View style={styles.summary}>
-        <View style={styles.summaryCopy}>
-          <Text numberOfLines={1} style={styles.kicker}>
+      <View
+        className="mb-[14px] mt-[18px] min-h-[94px] flex-row items-center justify-between gap-[14px] rounded-[28px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.68)] px-[18px] py-[18px]"
+        style={styles.softShadow}
+      >
+        <View className="min-w-0 flex-1">
+          <Text numberOfLines={1} className="text-[12px] font-extrabold text-app-muted">
             表示中の7個も含めて
           </Text>
-          <Text numberOfLines={2} style={styles.title}>
+          <Text
+            className="mt-[5px] text-[22px] font-black leading-[29px] text-app-ink"
+            numberOfLines={2}
+          >
             リマインドを一覧で見る
           </Text>
         </View>
-        <View style={styles.countPill}>
+        <View className="min-h-[42px] min-w-[58px] max-w-[34%] shrink-0 items-center justify-center rounded-[21px] border border-[rgba(255,255,255,0.86)] bg-[rgba(237,230,255,0.84)] px-[12px]">
           <Text
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.82}
-            style={styles.countText}
+            className="text-[14px] font-black text-app-lavender-deep"
+            style={styles.noFontPadding}
           >
             {reminders.length}件
           </Text>
@@ -133,22 +146,32 @@ export function ReminderListScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.centerState}>
+        <View className="flex-1 items-center justify-center px-[28px]">
           <ActivityIndicator color={palette.skyDeep} />
-          <Text style={styles.centerText}>泡を並べています</Text>
+          <Text className="mt-[8px] text-center text-[13px] font-extrabold leading-[19px] text-app-muted">
+            泡を並べています
+          </Text>
         </View>
       ) : error ? (
-        <View style={styles.centerState}>
-          <Text style={styles.centerTitle}>うまく読めませんでした</Text>
-          <Text style={styles.centerText}>{error}</Text>
+        <View className="flex-1 items-center justify-center px-[28px]">
+          <Text className="text-center text-[17px] font-black leading-[24px] text-app-ink">
+            うまく読めませんでした
+          </Text>
+          <Text className="mt-[8px] text-center text-[13px] font-extrabold leading-[19px] text-app-muted">
+            {error}
+          </Text>
         </View>
       ) : reminders.length === 0 ? (
-        <View style={styles.centerState}>
-          <View style={styles.emptyBubble}>
+        <View className="flex-1 items-center justify-center px-[28px]">
+          <View className="mb-[18px] h-[72px] w-[72px] items-center justify-center rounded-[36px] border-2 border-[rgba(255,255,255,0.68)] bg-[rgba(255,255,255,0.40)]">
             <Ionicons name="ellipse-outline" size={30} color={palette.lavenderDeep} />
           </View>
-          <Text style={styles.centerTitle}>浮いている泡はありません</Text>
-          <Text style={styles.centerText}>ホームからふわっと追加しましょう</Text>
+          <Text className="text-center text-[17px] font-black leading-[24px] text-app-ink">
+            浮いている泡はありません
+          </Text>
+          <Text className="mt-[8px] text-center text-[13px] font-extrabold leading-[19px] text-app-muted">
+            ホームからふわっと追加しましょう
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
@@ -161,24 +184,32 @@ export function ReminderListScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`${reminder.title}の詳細を開く`}
                 onPress={() => setSelectedReminder(reminder)}
-                style={({ pressed }) => [styles.listItem, pressed ? styles.listItemPressed : null]}
+                className="mb-[10px] min-h-[72px] flex-row items-center gap-[12px] rounded-[24px] border border-[rgba(255,255,255,0.92)] bg-[rgba(255,255,255,0.82)] px-[14px]"
+                style={({ pressed }) => [
+                  styles.softShadow,
+                  pressed ? styles.listItemPressed : null,
+                ]}
               >
                 <View
+                  className="h-[44px] w-[44px] items-center justify-center overflow-hidden rounded-[22px] border"
                   style={[
-                    styles.indexBubble,
+                    styles.indexBubbleFallback,
                     {
                       backgroundColor: dueColor.background,
                       borderColor: dueColor.border,
                     },
                   ]}
                 >
-                  <View style={styles.indexBubbleHighlight} />
+                  <View className="absolute left-[10px] top-[8px] h-[8px] w-[14px] rotate-[-28deg] rounded-[7px] bg-[rgba(255,255,255,0.64)]" />
                 </View>
-                <View style={styles.listCopy}>
-                  <Text numberOfLines={1} style={styles.listTitle}>
+                <View className="min-w-0 flex-1">
+                  <Text numberOfLines={1} className="text-[15px] font-black text-app-ink">
                     {reminder.title}
                   </Text>
-                  <Text numberOfLines={1} style={styles.listTime}>
+                  <Text
+                    numberOfLines={1}
+                    className="mt-[4px] text-[12px] font-extrabold text-app-muted"
+                  >
                     {formatReminderDateTime(reminder.targetAt)}
                   </Text>
                 </View>
@@ -199,20 +230,6 @@ export function ReminderListScreen() {
 }
 
 const styles = StyleSheet.create({
-  ambientLayer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  ambientBubble: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.46)',
-  },
   ambientOne: {
     top: 96,
     right: -28,
@@ -224,175 +241,25 @@ const styles = StyleSheet.create({
     bottom: 118,
     width: 76,
     height: 76,
-    backgroundColor: 'rgba(237,230,255,0.22)',
   },
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  headerTitle: {
-    color: palette.ink,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  headerSpacer: {
-    width: 44,
-  },
-  summary: {
-    minHeight: 94,
-    borderRadius: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    marginTop: 18,
-    marginBottom: 14,
-    backgroundColor: 'rgba(255,255,255,0.68)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.86)',
+  softShadow: {
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
   },
-  summaryCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  kicker: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  title: {
-    color: palette.ink,
-    fontSize: 22,
-    lineHeight: 29,
-    fontWeight: '900',
-    marginTop: 5,
-  },
-  countPill: {
-    flexShrink: 0,
-    minWidth: 58,
-    maxWidth: '34%',
-    minHeight: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(237,230,255,0.84)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.86)',
-  },
-  countText: {
-    color: palette.lavenderDeep,
-    fontSize: 14,
-    fontWeight: '900',
+  noFontPadding: {
     includeFontPadding: false,
   },
   listContent: {
     paddingBottom: 34,
   },
-  listItem: {
-    minHeight: 72,
-    borderRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.92)',
-    shadowColor: palette.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-  },
   listItemPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.99 }],
   },
-  indexBubble: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+  indexBubbleFallback: {
     backgroundColor: 'rgba(237,230,255,0.74)',
-    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.82)',
-    overflow: 'hidden',
-  },
-  indexBubbleHighlight: {
-    position: 'absolute',
-    top: 8,
-    left: 10,
-    width: 14,
-    height: 8,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255,255,255,0.64)',
-    transform: [{ rotate: '-28deg' }],
-  },
-  listCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  listTitle: {
-    color: palette.ink,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  listTime: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  centerState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  emptyBubble: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.68)',
-  },
-  centerTitle: {
-    color: palette.ink,
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  centerText: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: 8,
   },
 });

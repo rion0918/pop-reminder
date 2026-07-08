@@ -48,8 +48,8 @@ export function DateChips({
   const weekendActive = preset === weekendChip.preset;
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.row}>
+    <View className="gap-[8px]">
+      <View className="flex-row gap-[8px]">
         {relativeChips.map((chip) => {
           const active = preset === chip.preset;
 
@@ -59,13 +59,18 @@ export function DateChips({
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => onChange(chip.value)}
-              style={({ pressed }) => [
-                styles.chip,
-                active ? styles.activeChip : null,
-                pressed ? styles.pressedChip : null,
-              ]}
+              className={`h-[38px] min-w-0 flex-1 flex-row items-center justify-center gap-[4px] rounded-[14px] border ${
+                active ? 'border-app-sky-deep bg-app-sky-deep' : 'border-app-line bg-app-cloud'
+              }`}
+              style={({ pressed }) => [pressed ? styles.pressedChip : null]}
             >
-              <Text style={[styles.label, active ? styles.activeLabel : null]}>{chip.label}</Text>
+              <Text
+                className={`text-[13px] font-extrabold ${
+                  active ? 'text-app-white' : 'text-app-ink'
+                }`}
+              >
+                {chip.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -78,13 +83,16 @@ export function DateChips({
               formatLocalDate(getReminderDatePresetTarget(weekendChip.preset)),
             )
           }
-          style={({ pressed }) => [
-            styles.chip,
-            weekendActive ? styles.activeChip : null,
-            pressed ? styles.pressedChip : null,
-          ]}
+          className={`h-[38px] min-w-0 flex-1 flex-row items-center justify-center gap-[4px] rounded-[14px] border ${
+            weekendActive ? 'border-app-sky-deep bg-app-sky-deep' : 'border-app-line bg-app-cloud'
+          }`}
+          style={({ pressed }) => [pressed ? styles.pressedChip : null]}
         >
-          <Text style={[styles.label, weekendActive ? styles.activeLabel : null]}>
+          <Text
+            className={`text-[13px] font-extrabold ${
+              weekendActive ? 'text-app-white' : 'text-app-ink'
+            }`}
+          >
             {weekendChip.label}
           </Text>
         </Pressable>
@@ -93,12 +101,10 @@ export function DateChips({
           accessibilityRole="button"
           accessibilityState={{ selected: customActive }}
           onPress={onSelectCustomDate}
-          style={({ pressed }) => [
-            styles.chip,
-            styles.selectChip,
-            customActive ? styles.activeChip : null,
-            pressed ? styles.pressedChip : null,
-          ]}
+          className={`h-[38px] min-w-0 flex-row items-center justify-center gap-[4px] rounded-[14px] border px-[8px] ${
+            customActive ? 'border-app-sky-deep bg-app-sky-deep' : 'border-app-line bg-app-cloud'
+          }`}
+          style={({ pressed }) => [styles.selectChip, pressed ? styles.pressedChip : null]}
         >
           <Ionicons
             name="calendar-outline"
@@ -108,7 +114,9 @@ export function DateChips({
           <Text
             adjustsFontSizeToFit
             numberOfLines={1}
-            style={[styles.label, customActive ? styles.activeLabel : null]}
+            className={`text-[13px] font-extrabold ${
+              customActive ? 'text-app-white' : 'text-app-ink'
+            }`}
           >
             {customActive ? formatCustomDate(customDate) : '日付'}
           </Text>
@@ -119,41 +127,8 @@ export function DateChips({
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chip: {
-    flex: 1,
-    minWidth: 0,
-    height: 38,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 4,
-    backgroundColor: palette.cloud,
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  activeChip: {
-    backgroundColor: palette.skyDeep,
-    borderColor: palette.skyDeep,
-  },
-  label: {
-    color: palette.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  activeLabel: {
-    color: palette.white,
-  },
   selectChip: {
     flex: 1.18,
-    paddingHorizontal: 8,
   },
   pressedChip: {
     opacity: 0.78,

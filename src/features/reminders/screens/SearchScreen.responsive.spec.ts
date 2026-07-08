@@ -6,11 +6,10 @@ const source = readSource(import.meta.url, './SearchScreen.tsx');
 
 test('search result meta keeps the result count inside narrow widths', () => {
   assertSourceIncludes(source, [
-    /<Text numberOfLines=\{1\} style=\{styles\.resultMetaText\}>/,
-    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*style=\{styles\.resultMetaSub\}/,
-    /resultMetaText: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,/,
-    /resultMetaSub: \{[\s\S]*flexShrink: 0,[\s\S]*maxWidth: '34%',/,
-    /resultMetaSub: \{[\s\S]*includeFontPadding: false,/,
+    /<Text numberOfLines=\{1\} className="min-w-0 flex-1 text-\[14px\] font-black text-app-ink">/,
+    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*className="min-h-\[28px\] min-w-\[42px\] max-w-\[34%\] shrink-0/,
+    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*style=\{styles\.noFontPadding\}/,
+    /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
   ]);
 });
 

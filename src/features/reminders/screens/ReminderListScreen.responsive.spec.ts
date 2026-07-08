@@ -6,12 +6,11 @@ const source = readSource(import.meta.url, './ReminderListScreen.tsx');
 
 test('reminder list summary keeps count inside narrow Android widths', () => {
   assertSourceIncludes(source, [
-    /<View style=\{styles\.summaryCopy\}>/,
-    /<Text numberOfLines=\{1\} style=\{styles\.kicker\}>/,
-    /<Text numberOfLines=\{2\} style=\{styles\.title\}>/,
-    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*style=\{styles\.countText\}/,
-    /summaryCopy: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,/,
-    /countPill: \{[\s\S]*flexShrink: 0,[\s\S]*maxWidth: '34%',/,
-    /countText: \{[\s\S]*includeFontPadding: false,/,
+    /<View className="min-w-0 flex-1">/,
+    /<Text numberOfLines=\{1\} className="text-\[12px\] font-extrabold text-app-muted">/,
+    /<Text[\s\S]*className="mt-\[5px\] text-\[22px\] font-black leading-\[29px\] text-app-ink"[\s\S]*numberOfLines=\{2\}/,
+    /<View className="min-h-\[42px\] min-w-\[58px\] max-w-\[34%\] shrink-0/,
+    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*style=\{styles\.noFontPadding\}/,
+    /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
   ]);
 });

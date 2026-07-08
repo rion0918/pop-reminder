@@ -19,29 +19,22 @@ export function PrimaryButton({ label, icon, onPress, disabled, style }: Primary
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
+      className="min-h-[56px] flex-row items-center justify-center gap-[8px] rounded-[18px] bg-app-sky-deep px-[20px]"
       style={({ pressed }) => [
-        styles.button,
+        styles.shadow,
         style,
         pressed && !disabled ? styles.pressed : null,
         disabled ? styles.disabled : null,
       ]}
     >
       {icon ? <Ionicons name={icon} color={palette.white} size={20} /> : null}
-      <Text style={styles.label}>{label}</Text>
+      <Text className="text-[16px] font-bold text-app-white">{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: palette.skyDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
+  shadow: {
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.22,
@@ -54,10 +47,5 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
-  },
-  label: {
-    color: palette.white,
-    fontSize: 16,
-    fontWeight: '700',
   },
 });

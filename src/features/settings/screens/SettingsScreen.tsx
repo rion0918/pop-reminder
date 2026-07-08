@@ -247,32 +247,36 @@ export function SettingsScreen() {
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
-      <View style={styles.header}>
+      <View className="h-[52px] flex-row items-center justify-between">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="ホームに戻る"
           hitSlop={8}
           onPress={handleBackPress}
+          className="h-[44px] w-[44px] items-center justify-center rounded-[22px] bg-[rgba(255,255,255,0.78)]"
           style={({ pressed }) => [
-            styles.iconButton,
             pressed || isBackButtonPressed ? styles.iconButtonPressed : null,
           ]}
         >
           <Ionicons name="chevron-back" size={24} color={palette.ink} />
         </Pressable>
-        <Text style={styles.title}>設定</Text>
-        <View style={styles.headerSpacer} />
+        <Text className="text-[18px] font-extrabold text-app-ink">設定</Text>
+        <View className="w-[44px]" />
       </View>
 
       {loading || !settings ? (
-        <View style={styles.loading}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={palette.skyDeep} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Image source={appIcon} style={styles.appIcon} />
+          <Image
+            source={appIcon}
+            className="mb-[30px] mt-[18px] h-[156px] w-[156px] self-center rounded-[36px]"
+            style={styles.appIconShadow}
+          />
 
-          <View style={styles.group}>
+          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow
               icon="notifications-outline"
               title="前日のお知らせ時刻"
@@ -282,24 +286,24 @@ export function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="前日のお知らせ時刻を変更"
                 onPress={togglePreviousTimeSelector}
-                style={({ pressed }) => [
-                  styles.timeValueButton,
-                  isPreviousTimeSelectorOpen ? styles.timeValueButtonActive : null,
-                  pressed ? styles.timeValueButtonPressed : null,
-                ]}
+                className={`h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border ${
+                  isPreviousTimeSelectorOpen
+                    ? 'border-app-lavender-deep bg-app-lavender-deep'
+                    : 'border-app-line bg-[#F6FAFF]'
+                }`}
+                style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
               >
                 <Text
-                  style={[
-                    styles.timeValueText,
-                    isPreviousTimeSelectorOpen ? styles.timeValueTextActive : null,
-                  ]}
+                  className={`text-[15px] font-extrabold ${
+                    isPreviousTimeSelectorOpen ? 'text-app-white' : 'text-app-ink'
+                  }`}
                 >
                   {previousTime}
                 </Text>
               </Pressable>
             </SettingRow>
             {isPreviousTimeSelectorOpen ? (
-              <View style={styles.selectorPanel}>
+              <View className="px-[16px] pb-[12px]">
                 <TimeSelector
                   value={previousTime}
                   onChange={(value) => {
@@ -309,7 +313,7 @@ export function SettingsScreen() {
                 />
               </View>
             ) : null}
-            <View style={styles.divider} />
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
               icon="volume-medium-outline"
               title="通知音"
@@ -329,13 +333,15 @@ export function SettingsScreen() {
                 }
               />
             </SettingRow>
-            <View style={styles.divider} />
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
               icon="notifications-outline"
               title="通知権限"
               caption="端末の通知設定と連動します"
             >
-              <Text style={styles.permissionLabel}>{notificationPermissionLabel}</Text>
+              <Text className="text-[13px] font-extrabold text-app-muted">
+                {notificationPermissionLabel}
+              </Text>
             </SettingRow>
             {!isNotificationPermissionGranted ? (
               <>
@@ -346,7 +352,7 @@ export function SettingsScreen() {
                       ? handleRequestNotificationPermission
                       : handleOpenAppSettings
                   }
-                  style={styles.notificationButton}
+                  className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
                 >
                   <Ionicons
                     name={
@@ -361,17 +367,18 @@ export function SettingsScreen() {
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     minimumFontScale={0.72}
-                    style={styles.notificationButtonText}
+                    className="shrink text-[14px] font-extrabold text-app-white"
+                    style={styles.noFontPadding}
                   >
                     {canAskNotificationPermissionAgain
                       ? '通知権限をリクエスト'
                       : '端末の通知設定を開く'}
                   </Text>
                 </Pressable>
-                <View style={styles.divider} />
+                <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
               </>
             ) : (
-              <View style={styles.divider} />
+              <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             )}
             <SettingRow
               icon="sparkles-outline"
@@ -392,14 +399,14 @@ export function SettingsScreen() {
             </SettingRow>
           </View>
 
-          <View style={styles.group}>
+          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow
               icon="color-palette-outline"
               title="テーマ"
               labelFlex={0.36}
               controlFlex={0.64}
             >
-              <View style={styles.themeRow}>
+              <View className="w-full min-w-0 shrink flex-row gap-[6px]">
                 {themeOptions.map((theme) => {
                   const active = theme === settings.theme;
 
@@ -408,17 +415,21 @@ export function SettingsScreen() {
                       key={theme}
                       accessibilityRole="button"
                       onPress={() => saveTheme(theme)}
-                      style={({ pressed }) => [
-                        styles.themeButton,
-                        active ? styles.themeButtonActive : null,
-                        pressed ? styles.themeButtonPressed : null,
-                      ]}
+                      className={`h-[34px] min-w-0 flex-1 items-center justify-center rounded-[17px] border px-[10px] ${
+                        active
+                          ? 'border-app-sky-deep bg-app-sky-deep'
+                          : 'border-app-line bg-[#F6FAFF]'
+                      }`}
+                      style={({ pressed }) => [pressed ? styles.themeButtonPressed : null]}
                     >
                       <Text
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         minimumFontScale={0.72}
-                        style={[styles.themeLabel, active ? styles.themeLabelActive : null]}
+                        className={`text-[11px] font-extrabold ${
+                          active ? 'text-app-white' : 'text-app-muted'
+                        }`}
+                        style={styles.noFontPadding}
                       >
                         {themeLabels[theme]}
                       </Text>
@@ -429,7 +440,7 @@ export function SettingsScreen() {
             </SettingRow>
           </View>
 
-          <View style={styles.group}>
+          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow
               icon="shield-checkmark-outline"
               title="プライバシーポリシー"
@@ -438,7 +449,7 @@ export function SettingsScreen() {
             >
               <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>
-            <View style={styles.divider} />
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
               icon="document-text-outline"
               title="利用規約"
@@ -450,10 +461,10 @@ export function SettingsScreen() {
           </View>
 
           {__DEV__ ? (
-            <View style={styles.devGroup}>
-              <View style={styles.devHeader}>
+            <View className="mb-[18px] rounded-[24px] border border-[rgba(168,145,245,0.22)] bg-[rgba(255,255,255,0.88)] px-[16px] py-[14px]">
+              <View className="mb-[6px] flex-row items-center gap-[8px]">
                 <Ionicons name="flask-outline" size={20} color={palette.lavenderDeep} />
-                <Text style={styles.devTitle}>開発用通知テスト</Text>
+                <Text className="text-[16px] font-black text-app-ink">開発用通知テスト</Text>
               </View>
 
               <SettingRow
@@ -471,18 +482,19 @@ export function SettingsScreen() {
                   thumbColor={isNotificationTestModeEnabled ? palette.lavenderDeep : palette.white}
                 />
               </SettingRow>
-              <View style={styles.divider} />
+              <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
               <Pressable
                 accessibilityRole="button"
                 onPress={handleSendTestNotification}
-                style={styles.devButton}
+                className="mt-[10px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-lavender-deep px-[14px]"
               >
                 <Ionicons name="paper-plane-outline" size={18} color={palette.white} />
                 <Text
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.72}
-                  style={styles.devButtonText}
+                  className="shrink text-[14px] font-extrabold text-app-white"
+                  style={styles.noFontPadding}
                 >
                   テスト通知を送る
                 </Text>
@@ -491,14 +503,15 @@ export function SettingsScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={handleCancelAllNotifications}
-                style={[styles.devButton, styles.cancelButton]}
+                className="mt-[10px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] border border-app-line bg-[rgba(246,250,255,0.96)] px-[14px]"
               >
                 <Ionicons name="close-circle-outline" size={18} color={palette.ink} />
                 <Text
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.72}
-                  style={styles.cancelButtonText}
+                  className="shrink text-[14px] font-extrabold text-app-ink"
+                  style={styles.noFontPadding}
                 >
                   予約済み通知を全キャンセル
                 </Text>
@@ -527,14 +540,17 @@ type LegalDocumentModalProps = {
 function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
   return (
     <Modal animationType="fade" transparent visible={document !== null} onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <View style={styles.legalModal}>
-          <View style={styles.legalModalHeader}>
-            <View style={styles.legalModalCopy}>
-              <Text numberOfLines={2} style={styles.legalModalTitle}>
+      <View className="flex-1 justify-end bg-[rgba(38,49,81,0.26)] px-[14px] pb-[14px]">
+        <View
+          className="max-h-[84%] rounded-[28px] bg-[rgba(255,255,255,0.96)] px-[18px] pt-[18px]"
+          style={styles.legalModalShadow}
+        >
+          <View className="flex-row items-center justify-between gap-[14px] border-b border-[rgba(220,233,247,0.78)] pb-[12px]">
+            <View className="min-w-0 flex-1">
+              <Text numberOfLines={2} className="text-[18px] font-black text-app-ink">
                 {document?.title}
               </Text>
-              <Text numberOfLines={1} style={styles.legalModalUpdated}>
+              <Text numberOfLines={1} className="mt-[4px] text-[12px] font-bold text-app-muted">
                 最終更新日: {document?.updatedAt}
               </Text>
             </View>
@@ -543,7 +559,7 @@ function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
               accessibilityLabel="閉じる"
               hitSlop={8}
               onPress={onClose}
-              style={styles.legalCloseButton}
+              className="h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[21px] border border-app-line bg-[#F6FAFF]"
             >
               <Ionicons name="close" size={20} color={palette.ink} />
             </Pressable>
@@ -553,9 +569,13 @@ function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
             showsVerticalScrollIndicator={false}
           >
             {document?.sections.map((section) => (
-              <View key={section.title} style={styles.legalSection}>
-                <Text style={styles.legalSectionTitle}>{section.title}</Text>
-                <Text style={styles.legalBody}>{section.body}</Text>
+              <View key={section.title} className="mt-[12px]">
+                <Text className="mb-[5px] text-[14px] font-black text-app-ink">
+                  {section.title}
+                </Text>
+                <Text className="text-[13px] font-semibold leading-[21px] text-app-muted">
+                  {section.body}
+                </Text>
               </View>
             ))}
           </ScrollView>
@@ -566,274 +586,38 @@ function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    color: palette.ink,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-  },
   iconButtonPressed: {
     opacity: 0.82,
     transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
-  headerSpacer: {
-    width: 44,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: {
     paddingBottom: 40,
   },
-  appIcon: {
-    alignSelf: 'center',
-    width: 156,
-    height: 156,
-    borderRadius: 36,
-    marginTop: 18,
-    marginBottom: 30,
+  appIconShadow: {
     shadowColor: '#A891F5',
     shadowOpacity: 0.18,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 14 },
   },
-  group: {
-    marginBottom: 18,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-  },
-  divider: {
-    height: 1,
-    marginLeft: 46,
-    backgroundColor: 'rgba(220,233,247,0.78)',
-  },
-  timeValueButton: {
-    minWidth: 72,
-    height: 38,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F6FAFF',
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  timeValueButtonActive: {
-    backgroundColor: palette.lavenderDeep,
-    borderColor: palette.lavenderDeep,
-  },
   timeValueButtonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.96 }],
-  },
-  timeValueText: {
-    color: palette.ink,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  timeValueTextActive: {
-    color: palette.white,
-  },
-  selectorPanel: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  themeRow: {
-    flexShrink: 1,
-    minWidth: 0,
-    width: '100%',
-    flexDirection: 'row',
-    gap: 6,
-  },
-  themeButton: {
-    flex: 1,
-    minWidth: 0,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    backgroundColor: '#F6FAFF',
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  themeButtonActive: {
-    backgroundColor: palette.skyDeep,
-    borderColor: palette.skyDeep,
   },
   themeButtonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.96 }],
   },
-  themeLabel: {
-    color: palette.muted,
-    fontSize: 11,
-    fontWeight: '800',
+  noFontPadding: {
     includeFontPadding: false,
   },
-  themeLabelActive: {
-    color: palette.white,
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(38,49,81,0.26)',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-  },
-  legalModal: {
-    maxHeight: '84%',
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    paddingTop: 18,
-    paddingHorizontal: 18,
+  legalModalShadow: {
     shadowColor: '#7DB5E8',
     shadowOpacity: 0.24,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 16 },
   },
-  legalModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 14,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(220,233,247,0.78)',
-  },
-  legalModalCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  legalModalTitle: {
-    color: palette.ink,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  legalModalUpdated: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  legalCloseButton: {
-    flexShrink: 0,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F6FAFF',
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
   legalModalContent: {
     paddingTop: 6,
     paddingBottom: 24,
-  },
-  legalSection: {
-    marginTop: 12,
-  },
-  legalSectionTitle: {
-    color: palette.ink,
-    fontSize: 14,
-    fontWeight: '900',
-    marginBottom: 5,
-  },
-  legalBody: {
-    color: palette.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 21,
-  },
-  devGroup: {
-    marginBottom: 18,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(168,145,245,0.22)',
-  },
-  devHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  devTitle: {
-    color: palette.ink,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  permissionLabel: {
-    color: palette.muted,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  notificationButton: {
-    minHeight: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 14,
-    marginLeft: 46,
-    marginBottom: 12,
-    backgroundColor: palette.skyDeep,
-  },
-  notificationButtonText: {
-    flexShrink: 1,
-    color: palette.white,
-    fontSize: 14,
-    fontWeight: '800',
-    includeFontPadding: false,
-  },
-  devButton: {
-    minHeight: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 14,
-    marginTop: 10,
-    backgroundColor: palette.lavenderDeep,
-  },
-  devButtonText: {
-    flexShrink: 1,
-    color: palette.white,
-    fontSize: 14,
-    fontWeight: '800',
-    includeFontPadding: false,
-  },
-  cancelButton: {
-    backgroundColor: 'rgba(246,250,255,0.96)',
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  cancelButtonText: {
-    flexShrink: 1,
-    color: palette.ink,
-    fontSize: 14,
-    fontWeight: '800',
-    includeFontPadding: false,
   },
 });

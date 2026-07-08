@@ -217,32 +217,41 @@ export function HomeScreen() {
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
-      <View pointerEvents="none" style={styles.ambientLayer}>
-        <View style={[styles.ambientBubble, styles.ambientOne]} />
-        <View style={[styles.ambientBubble, styles.ambientTwo]} />
-        <View style={[styles.ambientBubble, styles.ambientThree]} />
+      <View pointerEvents="none" className="absolute inset-0">
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.42)] bg-[rgba(255,255,255,0.22)]"
+          style={styles.ambientOne}
+        />
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.42)] bg-[rgba(237,230,255,0.20)]"
+          style={styles.ambientTwo}
+        />
+        <View
+          className="absolute rounded-full border border-[rgba(255,255,255,0.42)] bg-[rgba(220,248,236,0.20)]"
+          style={styles.ambientThree}
+        />
       </View>
 
-      <View style={styles.header}>
-        <View style={styles.brandBlock}>
-          <Image source={appIcon} style={styles.brandIcon} />
-          <View style={styles.brandCopy}>
-            <Text numberOfLines={1} style={styles.kicker}>
+      <View className="shrink-0 flex-row items-center justify-between pt-[8px]">
+        <View className="min-w-0 flex-1 flex-row items-center gap-[12px]">
+          <Image source={appIcon} className="h-[54px] w-[54px] rounded-[15px]" />
+          <View className="min-w-0 flex-1">
+            <Text numberOfLines={1} className="text-[13px] font-bold text-app-muted">
               ポップ・リマインダー
             </Text>
-            <Text numberOfLines={1} style={styles.title}>
+            <Text numberOfLines={1} className="mt-[4px] text-[30px] font-extrabold text-app-ink">
               ふわっと残す
             </Text>
           </View>
         </View>
-        <View style={styles.headerActions}>
+        <View className="flex-row items-center gap-[8px]">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="設定を開く"
             hitSlop={8}
             onPress={handlePressSettings}
+            className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
             style={({ pressed }) => [
-              styles.iconButton,
               pressed || isSettingsButtonPressed ? styles.iconButtonPressed : null,
             ]}
           >
@@ -251,24 +260,33 @@ export function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.statusRow}>
-        <View style={[styles.statusPill, styles.nextPill]}>
+      <View className="mt-[18px] shrink-0 flex-row gap-[10px]">
+        <View
+          className="min-h-[54px] min-w-0 flex-1 flex-row items-center gap-[6px] rounded-[27px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.72)] px-[13px]"
+          style={styles.statusPillShadow}
+        >
           <Ionicons name="time-outline" size={15} color={palette.lavenderDeep} />
-          <Text numberOfLines={1} style={styles.statusLabel}>
+          <Text numberOfLines={1} className="text-[12px] font-extrabold text-app-muted">
             次
           </Text>
-          <View style={styles.nextCopy}>
-            <Text numberOfLines={1} style={styles.nextTitle}>
+          <View className="min-w-0 flex-1 flex-row items-center gap-[8px]">
+            <Text
+              numberOfLines={1}
+              className="min-w-0 flex-1 text-[14px] font-black leading-[18px] text-app-ink"
+            >
               {nextReminderTitle}
             </Text>
-            <Text numberOfLines={1} style={styles.nextValue}>
+            <Text
+              numberOfLines={1}
+              className="text-[12px] font-extrabold leading-[16px] text-app-muted"
+            >
               {nextReminderLabel}
             </Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.bubbleArea}>
+      <View className="mb-[104px] mt-[14px] flex-1 overflow-visible">
         <ReminderBubbleBoard
           reminders={reminders}
           loading={loading}
@@ -292,11 +310,13 @@ export function HomeScreen() {
       <View
         accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
         accessibilityRole="text"
+        className="min-h-[52px] flex-row items-center justify-around gap-[6px] rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.66)] px-[12px]"
         style={[styles.dueLegend, isCompactPhoneWidth ? styles.dueLegendCompact : null]}
       >
         {dueLegendItems.map((item) => (
-          <View key={item.label} style={styles.dueLegendItem}>
+          <View key={item.label} className="min-w-0 flex-1 items-center justify-center gap-[3px]">
             <View
+              className="h-[18px] w-[18px] rounded-[9px] border-[1.4px]"
               style={[
                 styles.dueLegendBubble,
                 {
@@ -305,7 +325,10 @@ export function HomeScreen() {
                 },
               ]}
             />
-            <Text numberOfLines={1} style={styles.dueLegendLabel}>
+            <Text
+              numberOfLines={1}
+              className="text-center text-[10px] font-black leading-[12px] text-app-muted"
+            >
               {item.label}
             </Text>
           </View>
@@ -319,6 +342,7 @@ export function HomeScreen() {
         disabled={isAddButtonDisabled}
         hitSlop={8}
         onPress={handlePressAdd}
+        className="h-[64px] min-w-[98px] flex-row items-center justify-center gap-[4px] rounded-[32px] bg-app-sky-deep px-[22px]"
         style={({ pressed }) => [
           styles.addButton,
           isCompactPhoneWidth ? styles.addButtonCompact : null,
@@ -327,27 +351,13 @@ export function HomeScreen() {
         ]}
       >
         <Ionicons name="add" size={26} color={palette.white} />
-        <Text style={styles.addButtonText}>追加</Text>
+        <Text className="text-[15px] font-black text-app-white">追加</Text>
       </Pressable>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  ambientLayer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  ambientBubble: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.42)',
-  },
   ambientOne: {
     top: 116,
     right: -28,
@@ -366,138 +376,22 @@ const styles = StyleSheet.create({
     bottom: 132,
     width: 42,
     height: 42,
-    backgroundColor: 'rgba(220,248,236,0.2)',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-    flexShrink: 0,
-  },
-  brandBlock: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  brandIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 15,
-  },
-  brandCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  kicker: {
-    color: palette.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  title: {
-    color: palette.ink,
-    fontSize: 30,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
   },
   iconButtonPressed: {
     opacity: 0.82,
     transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-    flexShrink: 0,
-  },
-  statusPill: {
-    minHeight: 54,
-    borderRadius: 27,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 13,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
+  statusPillShadow: {
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
-  },
-  nextPill: {
-    flex: 1,
-    minWidth: 0,
-  },
-  statusLabel: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  statusValue: {
-    color: palette.ink,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  nextCopy: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  nextTitle: {
-    flex: 1,
-    minWidth: 0,
-    color: palette.ink,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '900',
-  },
-  nextValue: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
-  },
-  bubbleArea: {
-    flex: 1,
-    marginTop: 14,
-    marginBottom: 104,
-    overflow: 'visible',
   },
   dueLegend: {
     position: 'absolute',
     left: 24,
     right: 136,
     bottom: 34,
-    minHeight: 52,
-    borderRadius: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    gap: 6,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(255,255,255,0.66)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.86)',
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -509,43 +403,16 @@ const styles = StyleSheet.create({
     right: 116,
     paddingHorizontal: 8,
   },
-  dueLegendItem: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
   dueLegendBubble: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.4,
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
   },
-  dueLegendLabel: {
-    color: palette.muted,
-    fontSize: 10,
-    lineHeight: 12,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
   addButton: {
     position: 'absolute',
     right: 24,
     bottom: 28,
-    minWidth: 98,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 4,
-    paddingHorizontal: 22,
-    backgroundColor: palette.skyDeep,
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.26,
@@ -564,10 +431,5 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     transform: [{ translateY: 2 }, { scale: 0.97 }],
     shadowOpacity: 0.16,
-  },
-  addButtonText: {
-    color: palette.white,
-    fontSize: 15,
-    fontWeight: '900',
   },
 });

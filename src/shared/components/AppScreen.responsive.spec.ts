@@ -9,7 +9,7 @@ test('app screen reduces horizontal padding on compact phone widths', () => {
     includes: [
       /useWindowDimensions/,
       /const horizontalPadding = width <= 360 \? 16 : 20;/,
-      /<View style=\{\[styles\.container, \{ paddingHorizontal: horizontalPadding \}\]\}>/,
+      /<View className="flex-1 pt-\[8px\]" style=\{\{ paddingHorizontal: horizontalPadding \}\}>/,
     ],
     excludes: [/paddingHorizontal: 20,/],
   });

@@ -37,6 +37,9 @@ export function TimeSelector({
 
   const renderPresetChip = (preset: TimePreset) => {
     const active = value === preset.time;
+    const presetChipClassName = `min-w-0 flex-1 items-center justify-center gap-[2px] border px-[8px] py-[7px] ${
+      isCompact ? 'min-h-[42px] rounded-[14px] px-[3px] py-[5px]' : 'min-h-[42px] rounded-[16px]'
+    } ${active ? 'border-app-lavender-deep bg-app-lavender-deep' : 'border-app-line bg-app-cloud'}`;
 
     return (
       <Pressable
@@ -44,49 +47,47 @@ export function TimeSelector({
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         onPress={() => onChange(preset.time)}
-        style={({ pressed }) => [
-          styles.chip,
-          styles.presetChip,
-          isCompact ? styles.compactChip : null,
-          active ? styles.activeChip : null,
-          pressed ? styles.pressedChip : null,
-        ]}
+        className={presetChipClassName}
+        style={({ pressed }) => [pressed ? styles.pressedChip : null]}
       >
         <Text
-          style={[
-            styles.label,
-            isCompact ? styles.compactLabel : null,
-            active ? styles.activeLabel : null,
-          ]}
+          className={`font-extrabold ${isCompact ? 'text-[12px]' : 'text-[13px]'} ${
+            active ? 'text-app-white' : 'text-app-ink'
+          }`}
         >
           {preset.label}
         </Text>
-        <Text style={[styles.time, active ? styles.activeLabel : null]}>{preset.time}</Text>
+        <Text
+          className={`text-[12px] font-extrabold ${active ? 'text-app-white' : 'text-app-muted'}`}
+        >
+          {preset.time}
+        </Text>
       </Pressable>
     );
   };
 
   return (
-    <View style={[styles.wrap, isCompact ? styles.compactWrap : null, style]}>
+    <View className={isCompact ? 'gap-0' : 'gap-[8px]'} style={style}>
       {isCompact ? (
-        <View style={styles.compactRow}>
+        <View className="flex-row gap-[5px]">
           {presets.map(renderPresetChip)}
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: !isPresetTime }}
             onPress={onSelectCustomTime}
-            style={({ pressed }) => [
-              styles.chip,
-              styles.presetChip,
-              styles.compactChip,
-              !isPresetTime ? styles.activeChip : null,
-              pressed ? styles.pressedChip : null,
-            ]}
+            className={`min-h-[42px] min-w-0 flex-1 items-center justify-center gap-[2px] rounded-[14px] border px-[3px] py-[5px] ${
+              !isPresetTime
+                ? 'border-app-lavender-deep bg-app-lavender-deep'
+                : 'border-app-line bg-app-cloud'
+            }`}
+            style={({ pressed }) => [pressed ? styles.pressedChip : null]}
           >
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}
-              style={[styles.label, styles.compactLabel, !isPresetTime ? styles.activeLabel : null]}
+              className={`text-[12px] font-extrabold ${
+                !isPresetTime ? 'text-app-white' : 'text-app-ink'
+              }`}
             >
               {isCompact ? customTimeLabel : '時刻を選ぶ'}
             </Text>
@@ -94,24 +95,28 @@ export function TimeSelector({
         </View>
       ) : (
         <>
-          <View style={styles.presetRow}>{presets.map(renderPresetChip)}</View>
+          <View className="flex-row gap-[8px]">{presets.map(renderPresetChip)}</View>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: !isPresetTime }}
             onPress={onSelectCustomTime}
-            style={({ pressed }) => [
-              styles.chip,
-              styles.customChip,
-              !isPresetTime ? styles.activeChip : null,
-              pressed ? styles.pressedChip : null,
-            ]}
+            className={`min-h-[42px] w-full min-w-0 flex-row items-center justify-center gap-[6px] rounded-[16px] border px-[14px] py-[7px] ${
+              !isPresetTime
+                ? 'border-app-lavender-deep bg-app-lavender-deep'
+                : 'border-app-line bg-app-cloud'
+            }`}
+            style={({ pressed }) => [pressed ? styles.pressedChip : null]}
           >
             <Ionicons
               name="time-outline"
               size={15}
               color={!isPresetTime ? palette.white : palette.ink}
             />
-            <Text style={[styles.label, !isPresetTime ? styles.activeLabel : null]}>
+            <Text
+              className={`text-[13px] font-extrabold ${
+                !isPresetTime ? 'text-app-white' : 'text-app-ink'
+              }`}
+            >
               {!isPresetTime ? `カスタム: ${value}` : '時刻を選ぶ'}
             </Text>
           </Pressable>
@@ -122,69 +127,6 @@ export function TimeSelector({
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: 8,
-  },
-  compactWrap: {
-    gap: 0,
-  },
-  presetRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  compactRow: {
-    flexDirection: 'row',
-    gap: 5,
-  },
-  chip: {
-    minWidth: 0,
-    minHeight: 42,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-    backgroundColor: palette.cloud,
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  presetChip: {
-    flex: 1,
-  },
-  activeChip: {
-    backgroundColor: palette.lavenderDeep,
-    borderColor: palette.lavenderDeep,
-  },
-  customChip: {
-    width: '100%',
-    minHeight: 42,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 14,
-  },
-  compactChip: {
-    minHeight: 42,
-    borderRadius: 14,
-    paddingHorizontal: 3,
-    paddingVertical: 5,
-  },
-  label: {
-    color: palette.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  compactLabel: {
-    fontSize: 12,
-  },
-  time: {
-    color: palette.muted,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  activeLabel: {
-    color: palette.white,
-  },
   pressedChip: {
     opacity: 0.78,
     transform: [{ scale: 0.97 }],

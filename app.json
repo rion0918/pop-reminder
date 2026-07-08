@@ -35,6 +35,9 @@
       "backgroundColor": "#EFF8FF",
       "barStyle": "dark-content"
     },
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
       "expo-router",
       "expo-sqlite",
