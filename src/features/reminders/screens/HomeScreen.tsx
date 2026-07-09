@@ -208,7 +208,7 @@ export function HomeScreen() {
   );
 
   const isAddButtonDisabled = isSaving;
-  const isBubbleIdleDisabled = isSaving || Boolean(selectedReminder) || Boolean(burstingReminderId);
+  const isBubbleIdleDisabled = isSaving || Boolean(burstingReminderId);
   const nextReminderLabel = reminders[0]
     ? formatReminderBubbleDateTime(reminders[0].targetAt)
     : '完璧！';
@@ -345,6 +345,7 @@ export function HomeScreen() {
           disabled={isAddButtonDisabled}
           hitSlop={8}
           onPress={handlePressAdd}
+          className="h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[32px] border-[2px] border-app-white bg-app-ink"
           style={({ pressed }) => [
             styles.addButton,
             pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
@@ -420,16 +421,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   addButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.skyDeep,
-    flexShrink: 0,
-    shadowColor: palette.shadow,
+    shadowColor: palette.ink,
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.26,
+    shadowOpacity: 0.24,
     shadowRadius: 18,
     elevation: 6,
   },

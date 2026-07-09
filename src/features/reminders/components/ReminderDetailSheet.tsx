@@ -201,13 +201,15 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
           </View>
         ) : null}
 
-        <PrimaryButton
-          label={isDeleting ? '削除中' : '削除する'}
-          icon="trash-outline"
-          onPress={handleDeletePress}
-          disabled={!reminder || isDeleting}
-          style={styles.deleteButton}
-        />
+        <View style={styles.deleteButtonSpacer}>
+          <PrimaryButton
+            label={isDeleting ? '削除中' : '削除する'}
+            icon="trash-outline"
+            onPress={handleDeletePress}
+            disabled={!reminder || isDeleting}
+            style={styles.deleteButton}
+          />
+        </View>
       </BottomSheetScrollView>
     </BottomSheetModal>
   );
@@ -285,8 +287,10 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(220,233,247,0.88)',
   },
+  deleteButtonSpacer: {
+    marginTop: 26,
+  },
   deleteButton: {
-    marginTop: 18,
     backgroundColor: palette.peachDeep,
   },
 });

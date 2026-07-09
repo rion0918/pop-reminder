@@ -28,15 +28,15 @@ import { useAppSettings } from '../hooks/useAppSettings';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
 import { TimeSelector } from '../../../shared/components/TimeSelector';
-import { type AppTheme, palette, themeOptions } from '../../../constants/colors';
+import { type AppTheme, appThemes, palette, themeOptions } from '../../../constants/colors';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const BACK_BUTTON_FEEDBACK_MS = 120;
 
 const themeLabels: Record<AppTheme, string> = {
-  sky: 'そら',
-  lavender: 'らべんだー',
-  mint: 'みんと',
+  sky: 'Dawn',
+  lavender: 'Dream',
+  mint: 'Breeze',
 };
 
 type LegalSection = {
@@ -399,14 +399,25 @@ export function SettingsScreen() {
             </SettingRow>
           </View>
 
-          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
-            <SettingRow
-              icon="color-palette-outline"
-              title="テーマ"
-              labelFlex={0.36}
-              controlFlex={0.64}
-            >
-              <View className="w-full min-w-0 shrink flex-row gap-[6px]">
+          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[14px]">
+            <View className="mb-[12px] flex-row items-center gap-[12px]">
+              <View className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[17px] bg-[#F2F7FE]">
+                <Ionicons name="color-palette-outline" size={20} color={palette.muted} />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text
+                  className="text-[14px] font-extrabold leading-[19px] text-app-ink"
+                  style={styles.noFontPadding}
+                >
+                  テーマ
+                </Text>
+                <Text className="mt-[3px] text-[11px] font-semibold leading-[16px] text-app-muted">
+                  テーマを選択
+                </Text>
+              </View>
+            </View>
+            <View className="rounded-[24px] border border-[rgba(220,233,247,0.78)] bg-[#F6FAFF] p-[4px]">
+              <View className="min-w-0 flex-row gap-[4px]">
                 {themeOptions.map((theme) => {
                   const active = theme === settings.theme;
 
@@ -414,22 +425,45 @@ export function SettingsScreen() {
                     <Pressable
                       key={theme}
                       accessibilityRole="button"
+                      accessibilityLabel={`${themeLabels[theme]}テーマを選択`}
+                      accessibilityState={{ selected: active }}
                       onPress={() => saveTheme(theme)}
-                      className={`h-[34px] min-w-0 flex-1 items-center justify-center rounded-[17px] border px-[10px] ${
-                        active
-                          ? 'border-app-sky-deep bg-app-sky-deep'
-                          : 'border-app-line bg-[#F6FAFF]'
-                      }`}
-                      style={({ pressed }) => [pressed ? styles.themeButtonPressed : null]}
+                      className="min-w-0 flex-1 items-center justify-center gap-[5px] px-[6px]"
+                      style={({ pressed }) => [
+                        styles.themeButton,
+                        {
+                          backgroundColor: active ? palette.white : appThemes[theme].accentSoft,
+                          borderColor: active ? appThemes[theme].accent : 'transparent',
+                        },
+                        active ? styles.themeButtonActive : null,
+                        pressed ? styles.themeButtonPressed : null,
+                      ]}
                     >
+                      <View
+                        style={[
+                          styles.themeSwatch,
+                          {
+                            backgroundColor: active
+                              ? appThemes[theme].accentSoft
+                              : appThemes[theme].accent,
+                          },
+                        ]}
+                      >
+                        {active ? (
+                          <Ionicons name="checkmark" size={11} color={appThemes[theme].accent} />
+                        ) : null}
+                      </View>
                       <Text
                         numberOfLines={1}
                         adjustsFontSizeToFit
-                        minimumFontScale={0.72}
-                        className={`text-[11px] font-extrabold ${
-                          active ? 'text-app-white' : 'text-app-muted'
-                        }`}
-                        style={styles.noFontPadding}
+                        minimumFontScale={0.78}
+                        className="text-[13px] font-black"
+                        style={[
+                          styles.themeLabel,
+                          {
+                            color: appThemes[theme].accent,
+                          },
+                        ]}
                       >
                         {themeLabels[theme]}
                       </Text>
@@ -437,7 +471,7 @@ export function SettingsScreen() {
                   );
                 })}
               </View>
-            </SettingRow>
+            </View>
           </View>
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
@@ -594,7 +628,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   appIconShadow: {
-    shadowColor: '#A891F5',
+    shadowColor: palette.lavenderDeep,
     shadowOpacity: 0.18,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 14 },
@@ -603,9 +637,34 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     transform: [{ scale: 0.96 }],
   },
+  themeButton: {
+    minHeight: 58,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  themeButtonActive: {
+    shadowColor: palette.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
   themeButtonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.96 }],
+  },
+  themeSwatch: {
+    height: 18,
+    width: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeLabel: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '900',
+    includeFontPadding: false,
   },
   noFontPadding: {
     includeFontPadding: false,

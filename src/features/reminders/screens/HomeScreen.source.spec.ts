@@ -19,18 +19,15 @@ test('home add button is visually disabled only while saving', () => {
   });
 });
 
-test('opening quick add keeps reminder bubbles floating', () => {
+test('home overlays keep reminder bubbles floating until save or burst work is active', () => {
   const idleDisabledBlock = source.slice(
     source.indexOf('const isBubbleIdleDisabled ='),
     source.indexOf('const nextReminderLabel ='),
   );
 
   assert.equal(idleDisabledBlock.includes('isQuickAddOpen'), false);
-  assertSourceIncludes(idleDisabledBlock, [
-    /isSaving/,
-    /Boolean\(selectedReminder\)/,
-    /Boolean\(burstingReminderId\)/,
-  ]);
+  assert.equal(idleDisabledBlock.includes('selectedReminder'), false);
+  assertSourceIncludes(idleDisabledBlock, [/isSaving/, /Boolean\(burstingReminderId\)/]);
 });
 
 test('opening quick add keeps reminder bubble positions pinned', () => {
@@ -59,22 +56,34 @@ test('home add button stays a compact floating action button', () => {
 
   assertSourceContract(addButtonBlock, {
     includes: [
+      /className="[^"]*h-\[64px\][^"]*"/,
+      /className="[^"]*w-\[64px\][^"]*"/,
+      /className="[^"]*shrink-0[^"]*"/,
+      /className="[^"]*items-center[^"]*"/,
+      /className="[^"]*justify-center[^"]*"/,
+      /className="[^"]*rounded-\[32px\][^"]*"/,
+      /className="[^"]*border-\[2px\][^"]*"/,
+      /className="[^"]*border-app-white[^"]*"/,
+      /className="[^"]*bg-app-ink[^"]*"/,
       /styles\.addButton/,
       /<Ionicons name="add" size=\{30\} color=\{palette\.white\} \/>/,
     ],
-    excludes: [/className=/, />追加<\/Text>/],
+    excludes: [/>追加<\/Text>/],
   });
   assertSourceContract(addButtonStyleBlock, {
     includes: [
-      /width: 64/,
-      /height: 64/,
-      /borderRadius: 32/,
-      /alignItems: 'center'/,
-      /justifyContent: 'center'/,
-      /backgroundColor: palette\.skyDeep/,
-      /flexShrink: 0/,
+      /shadowColor: palette\.ink/,
+      /shadowOffset: \{ width: 0, height: 12 \}/,
+      /shadowOpacity: 0\.24/,
+      /shadowRadius: 18/,
+      /elevation: 6/,
     ],
-    excludes: [/position: 'absolute'/, /right: 24/, /bottom: 28/],
+    excludes: [
+      /position: 'absolute'/,
+      /right: 24/,
+      /bottom: 28/,
+      /backgroundColor: palette\.skyDeep/,
+    ],
   });
 });
 

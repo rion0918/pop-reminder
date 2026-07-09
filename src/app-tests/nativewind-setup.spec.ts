@@ -48,7 +48,15 @@ test('tailwind config exposes app color tokens without platform-specific colors'
   assert.match(tailwindConfig, /'\.\/src\/\*\*\/\*\.\{js,jsx,ts,tsx\}'/);
   assert.match(tailwindConfig, /app: \{/);
   assert.match(tailwindConfig, /ink: '#263151'/);
-  assert.match(tailwindConfig, /'sky-deep': '#74BDF6'/);
+  assert.match(tailwindConfig, /sky: '#DCEBFF'/);
+  assert.match(tailwindConfig, /'sky-deep': '#2F6FE4'/);
+  assert.match(tailwindConfig, /lavender: '#EDE5FF'/);
+  assert.match(tailwindConfig, /'lavender-deep': '#7957D5'/);
+  assert.match(tailwindConfig, /mint: '#DDF7EC'/);
+  assert.match(tailwindConfig, /'mint-deep': '#12866A'/);
+  assert.match(tailwindConfig, /'screen-sky': '#F1F7FF'/);
+  assert.match(tailwindConfig, /'screen-lavender': '#F8F4FF'/);
+  assert.match(tailwindConfig, /'screen-mint': '#F1FBF7'/);
   assert.doesNotMatch(tailwindConfig, /android:/);
   assert.doesNotMatch(tailwindConfig, /ios:/);
 });

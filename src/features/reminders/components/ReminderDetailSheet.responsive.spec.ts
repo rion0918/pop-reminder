@@ -19,6 +19,8 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
       /bottomInset=\{safeAreaInsets\.bottom\}/,
       /contentContainerStyle=\{\[styles\.content, \{ paddingBottom: detailContentBottomPadding \}\]\}/,
       /keyboardShouldPersistTaps="handled"/,
+      /<View style=\{styles\.deleteButtonSpacer\}>[\s\S]*<PrimaryButton[\s\S]*style=\{styles\.deleteButton\}[\s\S]*<\/View>/,
+      /deleteButtonSpacer: \{[\s\S]*marginTop: 26,/,
     ],
     excludes: [/snapPoints=\{snapPoints\}/, /const snapPoints = useMemo/, /\['48%', '68%'\]/],
   });
