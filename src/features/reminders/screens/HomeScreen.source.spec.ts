@@ -19,15 +19,17 @@ test('home add button is visually disabled only while saving', () => {
   });
 });
 
-test('home overlays keep reminder bubbles floating until save or burst work is active', () => {
+test('home keeps non-deleted reminder bubbles floating during burst delete work', () => {
   const idleDisabledBlock = source.slice(
     source.indexOf('const isBubbleIdleDisabled ='),
     source.indexOf('const nextReminderLabel ='),
   );
 
+  assert.equal(idleDisabledBlock.includes('Boolean(burstingReminderId)'), false);
   assert.equal(idleDisabledBlock.includes('isQuickAddOpen'), false);
   assert.equal(idleDisabledBlock.includes('selectedReminder'), false);
-  assertSourceIncludes(idleDisabledBlock, [/isSaving/, /Boolean\(burstingReminderId\)/]);
+  assertSourceIncludes(idleDisabledBlock, [/const isBubbleIdleDisabled = isSaving;/]);
+  assertSourceIncludes(source, [/burstingReminderId=\{burstingReminderId\}/]);
 });
 
 test('opening quick add keeps reminder bubble positions pinned', () => {

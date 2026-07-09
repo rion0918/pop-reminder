@@ -214,7 +214,7 @@ export function HomeScreen() {
   );
 
   const isAddButtonDisabled = isSaving;
-  const isBubbleIdleDisabled = isSaving || Boolean(burstingReminderId);
+  const isBubbleIdleDisabled = isSaving;
   const nextReminderLabel = reminders[0]
     ? formatReminderBubbleDateTime(reminders[0].targetAt)
     : '完璧！';
