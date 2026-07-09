@@ -70,3 +70,20 @@ test('reminder bubble uses shared home visual tokens for iOS-like Android render
     ],
   });
 });
+
+test('reminder bubble delete motion reads as a visible pop burst', () => {
+  assertSourceContract(source, {
+    includes: [
+      /export const REMINDER_BUBBLE_BURST_MS = 320;/,
+      /const burstParticleTravel = Math\.max\(visualSize \* 0\.42, 34\);/,
+      /const bubbleSurfaceAnimatedStyle = useAnimatedStyle\(\(\) => \{/,
+      /const popSnap =\s*burstProgress\.value < 0\.35/,
+      /opacity: entryProgress\.value,/,
+      /styles\.bubbleSurface[\s\S]*bubbleSurfaceAnimatedStyle/,
+      /styles\.burstFlash/,
+      /styles\.burstCrack/,
+      /styles\.burstParticleFive/,
+    ],
+    excludes: [/opacity: entryProgress\.value \* \(1 - burstProgress\.value\)/],
+  });
+});

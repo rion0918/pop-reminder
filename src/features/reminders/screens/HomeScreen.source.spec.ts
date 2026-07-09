@@ -121,6 +121,26 @@ test('home removes deleted reminders locally before the silent database refresh'
   });
 });
 
+test('home waits for the reminder bubble burst before removing it locally', () => {
+  assertSourceContract(source, {
+    includes: [
+      /import \{ REMINDER_BUBBLE_BURST_MS \} from '\.\.\/components\/ReminderBubble';/,
+      /setTimeout\(\s*resolve,\s*REMINDER_BUBBLE_BURST_MS,\s*\)/,
+    ],
+    excludes: [/setTimeout\(resolve, 260\)/],
+  });
+});
+
+test('home ignores stale detail sheet dismisses after another reminder is selected', () => {
+  assertSourceIncludes(source, [
+    /const selectedReminderIdRef = useRef<string \| null>\(null\);/,
+    /selectedReminderIdRef\.current = selectedReminderId;/,
+    /const handleCloseReminderDetail = useCallback\(\s*\(closedReminderId: string \| null\) => \{/,
+    /if \(selectedReminderIdRef\.current === closedReminderId\) \{[\s\S]*setSelectedReminderId\(null\);[\s\S]*\}/,
+    /onClose=\{handleCloseReminderDetail\}/,
+  ]);
+});
+
 test('android hardware back closes reminder sheets before leaving home', () => {
   assertSourceIncludes(source, [
     /BackHandler/,

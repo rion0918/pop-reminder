@@ -32,6 +32,7 @@ type ReminderBubbleProps = {
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+export const REMINDER_BUBBLE_BURST_MS = 320;
 
 type IdleMotionConfig = {
   delay: number;
@@ -160,6 +161,8 @@ export const ReminderBubble = memo(function ReminderBubble({
   const visualSize = Math.min(bubbleWidth, bubbleHeight);
   const typography = getBubbleTypography(bubbleWidth, bubbleHeight, titleVisualLength);
   const radius = visualSize / 2;
+  const burstCrackLength = Math.max(visualSize * 0.44, 36);
+  const burstParticleTravel = Math.max(visualSize * 0.42, 34);
   const reduceMotion = useReducedMotion();
   const idleMotion = useMemo(() => makeIdleMotionConfig(reminder.id, index), [index, reminder.id]);
   const entryProgress = useSharedValue(0);
@@ -221,7 +224,7 @@ export const ReminderBubble = memo(function ReminderBubble({
     if (isBursting) {
       burstProgress.value = 0;
       burstProgress.value = withTiming(1, {
-        duration: reduceMotion ? 1 : 260,
+        duration: reduceMotion ? 1 : REMINDER_BUBBLE_BURST_MS,
         easing: Easing.out(Easing.cubic),
       });
       return;
@@ -230,66 +233,149 @@ export const ReminderBubble = memo(function ReminderBubble({
     burstProgress.value = 0;
   }, [burstProgress, isBursting, reduceMotion]);
 
-  const bubbleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: entryProgress.value * (1 - burstProgress.value),
-    transform: [
-      {
-        translateX:
-          Math.sin(idleProgress.value * Math.PI * 2) *
-          idleMotion.amplitudeX *
-          (1 - burstProgress.value),
-      },
-      {
-        translateY:
-          (1 - entryProgress.value) * 8 +
-          Math.cos(idleProgress.value * Math.PI * 2) *
-            idleMotion.amplitudeY *
-            (1 - burstProgress.value),
-      },
-      {
-        rotate: `${
-          Math.sin(idleProgress.value * Math.PI * 2) *
-          idleMotion.rotateDeg *
-          (1 - burstProgress.value)
-        }deg`,
-      },
-      {
-        scale:
-          (0.98 + entryProgress.value * 0.02 + birthProgress.value * 0.01) *
-          (1 - burstProgress.value * 0.18),
-      },
-    ],
+  const bubbleAnimatedStyle = useAnimatedStyle(() => {
+    const idleWeight = 1 - burstProgress.value;
+    const popSnap =
+      burstProgress.value < 0.35
+        ? burstProgress.value / 0.35
+        : Math.max(0, (1 - burstProgress.value) / 0.65);
+
+    return {
+      opacity: entryProgress.value,
+      transform: [
+        {
+          translateX:
+            Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.amplitudeX * idleWeight,
+        },
+        {
+          translateY:
+            (1 - entryProgress.value) * 8 +
+            Math.cos(idleProgress.value * Math.PI * 2) * idleMotion.amplitudeY * idleWeight,
+        },
+        {
+          rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg * idleWeight}deg`,
+        },
+        {
+          scale:
+            (0.98 + entryProgress.value * 0.02 + birthProgress.value * 0.01) * (1 + popSnap * 0.03),
+        },
+      ],
+    };
+  });
+
+  const bubbleSurfaceAnimatedStyle = useAnimatedStyle(() => {
+    const popSnap =
+      burstProgress.value < 0.35
+        ? burstProgress.value / 0.35
+        : Math.max(0, (1 - burstProgress.value) / 0.65);
+    const fadeProgress =
+      burstProgress.value < 0.18 ? 0 : Math.min(1, (burstProgress.value - 0.18) / 0.82);
+
+    return {
+      opacity: 1 - fadeProgress,
+      transform: [{ scale: 1 + popSnap * 0.09 - burstProgress.value * 0.42 }],
+    };
+  });
+
+  const burstFlashStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - burstProgress.value * 4.2) * 0.46,
+    transform: [{ scale: 0.72 + burstProgress.value * 0.42 }],
   }));
 
   const burstRingStyle = useAnimatedStyle(() => ({
-    opacity: (1 - burstProgress.value) * 0.75,
-    transform: [{ scale: 1 + burstProgress.value * 0.32 }],
+    opacity: Math.max(0, 1 - burstProgress.value * 1.05) * 0.84,
+    transform: [{ scale: 1 + burstProgress.value * 0.58 }],
   }));
 
+  const burstCrackOneStyle = useAnimatedStyle(() => {
+    const grow = burstProgress.value < 0.18 ? burstProgress.value / 0.18 : 1;
+    const fade = burstProgress.value < 0.72 ? 1 : Math.max(0, (1 - burstProgress.value) / 0.28);
+
+    return {
+      opacity: grow * fade * 0.74,
+      transform: [
+        { rotate: '-18deg' },
+        { translateX: -burstProgress.value * 7 },
+        { scaleX: 0.24 + grow * 0.86 },
+      ],
+    };
+  });
+
+  const burstCrackTwoStyle = useAnimatedStyle(() => {
+    const grow = burstProgress.value < 0.2 ? burstProgress.value / 0.2 : 1;
+    const fade = burstProgress.value < 0.68 ? 1 : Math.max(0, (1 - burstProgress.value) / 0.32);
+
+    return {
+      opacity: grow * fade * 0.62,
+      transform: [
+        { rotate: '35deg' },
+        { translateX: burstProgress.value * 9 },
+        { scaleX: 0.2 + grow * 0.76 },
+      ],
+    };
+  });
+
+  const burstCrackThreeStyle = useAnimatedStyle(() => {
+    const grow = burstProgress.value < 0.22 ? burstProgress.value / 0.22 : 1;
+    const fade = burstProgress.value < 0.7 ? 1 : Math.max(0, (1 - burstProgress.value) / 0.3);
+
+    return {
+      opacity: grow * fade * 0.54,
+      transform: [
+        { rotate: '82deg' },
+        { translateY: -burstProgress.value * 6 },
+        { scaleX: 0.18 + grow * 0.68 },
+      ],
+    };
+  });
+
   const particleOneStyle = useAnimatedStyle(() => ({
-    opacity: (1 - burstProgress.value) * 0.72,
+    opacity: Math.max(0, 1 - burstProgress.value) * 0.82,
     transform: [
-      { translateX: -18 * burstProgress.value },
-      { translateY: -18 * burstProgress.value },
-      { scale: 1 - burstProgress.value * 0.3 },
+      { translateX: -burstParticleTravel * 0.64 * burstProgress.value },
+      { translateY: -burstParticleTravel * 0.54 * burstProgress.value },
+      { rotate: '-24deg' },
+      { scale: 1 - burstProgress.value * 0.46 },
     ],
   }));
 
   const particleTwoStyle = useAnimatedStyle(() => ({
-    opacity: (1 - burstProgress.value) * 0.58,
+    opacity: Math.max(0, 1 - burstProgress.value) * 0.68,
     transform: [
-      { translateX: 20 * burstProgress.value },
-      { translateY: -12 * burstProgress.value },
-      { scale: 1 - burstProgress.value * 0.32 },
+      { translateX: burstParticleTravel * 0.72 * burstProgress.value },
+      { translateY: -burstParticleTravel * 0.4 * burstProgress.value },
+      { rotate: '18deg' },
+      { scale: 1 - burstProgress.value * 0.42 },
     ],
   }));
 
   const particleThreeStyle = useAnimatedStyle(() => ({
-    opacity: (1 - burstProgress.value) * 0.48,
+    opacity: Math.max(0, 1 - burstProgress.value) * 0.6,
     transform: [
-      { translateX: 14 * burstProgress.value },
-      { translateY: 18 * burstProgress.value },
-      { scale: 1 - burstProgress.value * 0.35 },
+      { translateX: burstParticleTravel * 0.46 * burstProgress.value },
+      { translateY: burstParticleTravel * 0.66 * burstProgress.value },
+      { rotate: '31deg' },
+      { scale: 1 - burstProgress.value * 0.5 },
+    ],
+  }));
+
+  const particleFourStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - burstProgress.value) * 0.56,
+    transform: [
+      { translateX: -burstParticleTravel * 0.44 * burstProgress.value },
+      { translateY: burstParticleTravel * 0.72 * burstProgress.value },
+      { rotate: '-36deg' },
+      { scale: 1 - burstProgress.value * 0.48 },
+    ],
+  }));
+
+  const particleFiveStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - burstProgress.value) * 0.5,
+    transform: [
+      { translateX: burstParticleTravel * 0.18 * burstProgress.value },
+      { translateY: -burstParticleTravel * 0.82 * burstProgress.value },
+      { rotate: '42deg' },
+      { scale: 1 - burstProgress.value * 0.44 },
     ],
   }));
 
@@ -310,7 +396,7 @@ export const ReminderBubble = memo(function ReminderBubble({
         bubbleAnimatedStyle,
       ]}
     >
-      <View
+      <Animated.View
         style={[
           styles.bubbleSurface,
           {
@@ -318,6 +404,7 @@ export const ReminderBubble = memo(function ReminderBubble({
             padding: typography.bubblePadding,
             borderColor: 'rgba(255,255,255,0.72)',
           },
+          bubbleSurfaceAnimatedStyle,
         ]}
       >
         <LinearGradient
@@ -398,10 +485,50 @@ export const ReminderBubble = memo(function ReminderBubble({
             {formatReminderBubbleDateTime(reminder.targetAt)}
           </Text>
         </View>
-      </View>
+      </Animated.View>
       {isBursting ? (
         <>
-          <Animated.View style={[styles.burstRing, { borderRadius: radius - 6 }, burstRingStyle]} />
+          <Animated.View style={[styles.burstFlash, { borderRadius: radius }, burstFlashStyle]} />
+          <Animated.View
+            style={[
+              styles.burstCrack,
+              {
+                top: bubbleHeight / 2 - 1,
+                left: bubbleWidth / 2 - burstCrackLength / 2,
+                width: burstCrackLength,
+              },
+              burstCrackOneStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.burstCrack,
+              {
+                top: bubbleHeight / 2 - 1,
+                left: bubbleWidth / 2 - burstCrackLength / 2,
+                width: burstCrackLength,
+              },
+              burstCrackTwoStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.burstCrack,
+              {
+                top: bubbleHeight / 2 - 1,
+                left: bubbleWidth / 2 - burstCrackLength / 2,
+                width: burstCrackLength,
+              },
+              burstCrackThreeStyle,
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.burstRing,
+              { borderColor: color.border, borderRadius: radius - 6 },
+              burstRingStyle,
+            ]}
+          />
           <Animated.View
             style={[styles.burstParticle, styles.burstParticleOne, particleOneStyle]}
           />
@@ -410,6 +537,12 @@ export const ReminderBubble = memo(function ReminderBubble({
           />
           <Animated.View
             style={[styles.burstParticle, styles.burstParticleThree, particleThreeStyle]}
+          />
+          <Animated.View
+            style={[styles.burstParticle, styles.burstParticleFour, particleFourStyle]}
+          />
+          <Animated.View
+            style={[styles.burstParticle, styles.burstParticleFive, particleFiveStyle]}
           />
         </>
       ) : null}
@@ -551,6 +684,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     opacity: 0.72,
   },
+  burstFlash: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    zIndex: 3,
+  },
   burstRing: {
     position: 'absolute',
     top: 6,
@@ -559,13 +701,30 @@ const styles = StyleSheet.create({
     left: 6,
     borderWidth: 1.4,
     borderColor: 'rgba(255,255,255,0.72)',
+    zIndex: 4,
+  },
+  burstCrack: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.38,
+    shadowRadius: 5,
+    zIndex: 5,
   },
   burstParticle: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 4,
+    borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.74)',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.42,
+    shadowRadius: 7,
+    zIndex: 6,
   },
   burstParticleOne: {
     top: '24%',
@@ -578,10 +737,24 @@ const styles = StyleSheet.create({
   burstParticleThree: {
     right: '30%',
     bottom: '25%',
+    width: 8,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.58)',
+  },
+  burstParticleFour: {
+    left: '31%',
+    bottom: '26%',
+    width: 7,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+  },
+  burstParticleFive: {
+    top: '17%',
+    left: '48%',
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.58)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
   },
   textLayer: {
     position: 'relative',

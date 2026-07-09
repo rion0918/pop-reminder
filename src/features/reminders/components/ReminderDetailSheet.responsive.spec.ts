@@ -25,3 +25,30 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
     excludes: [/snapPoints=\{snapPoints\}/, /const snapPoints = useMemo/, /\['48%', '68%'\]/],
   });
 });
+
+test('reminder detail sheet closes only the reminder that was dismissed', () => {
+  assertSourceContract(source, {
+    includes: [
+      /onClose: \(closedReminderId: string \| null\) => void;/,
+      /const displayedReminderIdRef = useRef<string \| null>\(null\);/,
+      /const closingReminderIdRef = useRef<string \| null>\(null\);/,
+      /const latestReminderIdRef = useRef<string \| null>\(null\);/,
+      /const closedReminderId = closingReminderIdRef\.current \?\? displayedReminderIdRef\.current;/,
+      /const pendingReminderId = latestReminderIdRef\.current;/,
+      /onClose\(closedReminderId\);/,
+      /if \(pendingReminderId && pendingReminderId !== closedReminderId\) \{/,
+    ],
+    excludes: [/onClose: \(\) => void;/],
+  });
+});
+
+test('reminder detail sheet can present a new reminder after stale closing state', () => {
+  assertSourceContract(source, {
+    includes: [
+      /displayedReminderIdRef\.current = reminder\.id;/,
+      /if \(!isPresentedRef\.current\) \{\s*isClosingRef\.current = false;[\s\S]*sheetRef\.current\?\.present\(\);/,
+      /closingReminderIdRef\.current = displayedReminderIdRef\.current;/,
+    ],
+    excludes: [/if \(!isPresentedRef\.current && !isClosingRef\.current\) \{/],
+  });
+});

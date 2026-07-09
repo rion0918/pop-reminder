@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { REMINDER_BUBBLE_BURST_MS } from '../components/ReminderBubble';
 import { ReminderBubbleBoard } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
@@ -55,6 +56,7 @@ export function HomeScreen() {
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
+  const selectedReminderIdRef = useRef<string | null>(null);
   const deleteTimeoutRef = useRef<number | null>(null);
   const settingsPressTimeoutRef = useRef<number | null>(null);
   const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
@@ -72,6 +74,10 @@ export function HomeScreen() {
   useEffect(() => {
     selectedReminderRef.current = selectedReminder;
   }, [selectedReminder]);
+
+  useEffect(() => {
+    selectedReminderIdRef.current = selectedReminderId;
+  }, [selectedReminderId]);
 
   useEffect(() => {
     isSavingRef.current = isSaving;
@@ -192,7 +198,10 @@ export function HomeScreen() {
         const [deleted] = await Promise.all([
           deleteReminder(reminder.id),
           new Promise((resolve) => {
-            deleteTimeoutRef.current = setTimeout(resolve, 260) as unknown as number;
+            deleteTimeoutRef.current = setTimeout(
+              resolve,
+              REMINDER_BUBBLE_BURST_MS,
+            ) as unknown as number;
           }),
         ]);
 
@@ -211,6 +220,15 @@ export function HomeScreen() {
       }
     },
     [refresh, removeReminder, setSelectedReminderId],
+  );
+
+  const handleCloseReminderDetail = useCallback(
+    (closedReminderId: string | null) => {
+      if (selectedReminderIdRef.current === closedReminderId) {
+        setSelectedReminderId(null);
+      }
+    },
+    [setSelectedReminderId],
   );
 
   const isAddButtonDisabled = isSaving;
@@ -309,7 +327,7 @@ export function HomeScreen() {
 
       <ReminderDetailSheet
         reminder={selectedReminder}
-        onClose={() => setSelectedReminderId(null)}
+        onClose={handleCloseReminderDetail}
         onDelete={handleDeleteReminder}
       />
 

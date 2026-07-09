@@ -12,7 +12,7 @@ import { formatReminderDateTime } from '../utils/reminderDateFormat';
 
 type ReminderDetailSheetProps = {
   reminder: Reminder | null;
-  onClose: () => void;
+  onClose: (closedReminderId: string | null) => void;
   onDelete: (reminder: Reminder) => Promise<void>;
 };
 
@@ -37,6 +37,9 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   const isClosingRef = useRef(false);
   const isDeleteRequestedRef = useRef(false);
   const isDeletingRef = useRef(false);
+  const displayedReminderIdRef = useRef<string | null>(null);
+  const closingReminderIdRef = useRef<string | null>(null);
+  const latestReminderIdRef = useRef<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const sheetTopInset = safeAreaInsets.top + 8;
   const detailMaxDynamicContentSize = useMemo(
@@ -53,6 +56,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   );
   const shouldShowPreviousNotification =
     reminder && new Date(reminder.previousNotifyAt).getTime() > Date.now();
+  latestReminderIdRef.current = reminder?.id ?? null;
 
   const renderBackdrop = useCallback(
     (props: ComponentProps<typeof BottomSheetBackdrop>) => (
@@ -64,33 +68,55 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   useEffect(() => {
     if (!reminder) {
       if (isPresentedRef.current) {
+        closingReminderIdRef.current = displayedReminderIdRef.current;
         isClosingRef.current = true;
         sheetRef.current?.dismiss();
         return;
       }
 
       isClosingRef.current = false;
+      displayedReminderIdRef.current = null;
       return;
     }
 
-    if (!isPresentedRef.current && !isClosingRef.current) {
-      isPresentedRef.current = true;
+    displayedReminderIdRef.current = reminder.id;
+
+    if (!isPresentedRef.current) {
       isClosingRef.current = false;
+      closingReminderIdRef.current = null;
+      isPresentedRef.current = true;
       sheetRef.current?.present();
     }
   }, [reminder]);
 
   const handleDismiss = useCallback(() => {
+    const closedReminderId = closingReminderIdRef.current ?? displayedReminderIdRef.current;
+    const pendingReminderId = latestReminderIdRef.current;
+
     isPresentedRef.current = false;
     if (!isDeletingRef.current) {
       isDeleteRequestedRef.current = false;
       setIsDeleting(false);
     }
-    onClose();
+
+    onClose(closedReminderId);
     isClosingRef.current = false;
+    closingReminderIdRef.current = null;
+
+    if (pendingReminderId && pendingReminderId !== closedReminderId) {
+      displayedReminderIdRef.current = pendingReminderId;
+      isPresentedRef.current = true;
+      sheetRef.current?.present();
+      return;
+    }
+
+    if (!pendingReminderId) {
+      displayedReminderIdRef.current = null;
+    }
   }, [onClose]);
 
   const handleClosePress = useCallback(() => {
+    closingReminderIdRef.current = displayedReminderIdRef.current;
     isClosingRef.current = true;
     sheetRef.current?.dismiss();
   }, []);
@@ -118,6 +144,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
           onPress: () => {
             isDeletingRef.current = true;
             setIsDeleting(true);
+            closingReminderIdRef.current = displayedReminderIdRef.current;
             isClosingRef.current = true;
             sheetRef.current?.dismiss();
             setTimeout(() => {

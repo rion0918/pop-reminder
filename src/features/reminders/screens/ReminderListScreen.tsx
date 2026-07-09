@@ -222,7 +222,9 @@ export function ReminderListScreen() {
 
       <ReminderDetailSheet
         reminder={selectedReminder}
-        onClose={() => setSelectedReminder(null)}
+        onClose={(closedReminderId) =>
+          setSelectedReminder((current) => (current?.id === closedReminderId ? null : current))
+        }
         onDelete={handleDeleteReminder}
       />
     </AppScreen>
