@@ -102,6 +102,13 @@ test('settings button gives immediate pressed feedback', () => {
   });
 });
 
+test('home refreshes app settings when returning to focus', () => {
+  assertSourceIncludes(source, [
+    /const \{ settings, refresh: refreshSettings \} = useAppSettings\(\);/,
+    /useFocusEffect\(\s*useCallback\(\(\) => \{\s*void refreshSettings\(\);\s*\}, \[refreshSettings\]\),\s*\);/,
+  ]);
+});
+
 test('home removes deleted reminders locally before the silent database refresh', () => {
   assertSourceContract(source, {
     includes: [

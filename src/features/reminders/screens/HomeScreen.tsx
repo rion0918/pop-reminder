@@ -51,7 +51,7 @@ export function HomeScreen() {
   const isNotificationTestModeEnabled = useNotificationDevStore(
     (state) => state.isNotificationTestModeEnabled,
   );
-  const { settings } = useAppSettings();
+  const { settings, refresh: refreshSettings } = useAppSettings();
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
@@ -93,6 +93,12 @@ export function HomeScreen() {
     useCallback(() => {
       void refresh();
     }, [refresh]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshSettings();
+    }, [refreshSettings]),
   );
 
   useFocusEffect(
