@@ -16,16 +16,23 @@ import Animated, {
 import { palette } from '../../../constants/colors';
 import type { Reminder } from '../types/reminder';
 import { getMsUntilNextDay } from '../utils/reminderDueColor';
-import { ReminderBubble } from './ReminderBubble';
+import { ReminderBubble, type BubbleDeleteMotionPhase } from './ReminderBubble';
+
+export type BubbleDeleteMotion = {
+  reminderId: string;
+  phase: BubbleDeleteMotionPhase;
+};
 
 type ReminderBubbleBoardProps = {
   reminders: Reminder[];
   loading?: boolean;
   error?: string | null;
-  burstingReminderId?: string | null;
+  selectedReminderId?: string | null;
+  deleteMotion?: BubbleDeleteMotion | null;
   freezeLayout?: boolean;
   idleDisabled?: boolean;
   onReminderPress?: (reminder: Reminder) => void;
+  onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
   onOverflowPress?: () => void;
 };
 
@@ -571,10 +578,12 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   reminders,
   loading,
   error,
-  burstingReminderId,
+  selectedReminderId,
+  deleteMotion,
   freezeLayout,
   idleDisabled,
   onReminderPress,
+  onDeleteMotionComplete,
   onOverflowPress,
 }: ReminderBubbleBoardProps) {
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
@@ -827,9 +836,13 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
               width={width}
               height={height}
               currentDate={colorReferenceDate}
-              isBursting={burstingReminderId === reminder.id}
-              idleDisabled={idleDisabled || burstingReminderId === reminder.id}
+              isSelected={selectedReminderId === reminder.id}
+              deleteMotionPhase={
+                deleteMotion?.reminderId === reminder.id ? deleteMotion.phase : undefined
+              }
+              idleDisabled={idleDisabled || deleteMotion?.reminderId === reminder.id}
               onPress={onReminderPress}
+              onDeleteMotionComplete={onDeleteMotionComplete}
               style={positionStyle}
             />
           ))

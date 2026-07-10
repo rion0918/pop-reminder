@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -17,6 +17,14 @@ import type { Reminder } from '../types/reminder';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 import { getReminderDueColor } from '../utils/reminderDueColor';
 import { homeVisualTokens } from '../../../constants/colors';
+import { ReminderBubbleBurst } from './ReminderBubbleBurst';
+import {
+  REMINDER_BUBBLE_BURST_MS,
+  REMINDER_BUBBLE_RESTORE_MS,
+  REMINDER_BUBBLE_RUPTURE_MS,
+} from './ReminderBubbleBurst.types';
+
+export type BubbleDeleteMotionPhase = 'bursting' | 'restoring';
 
 type ReminderBubbleProps = {
   reminder: Reminder;
@@ -26,13 +34,14 @@ type ReminderBubbleProps = {
   height?: number;
   currentDate: Date;
   style?: ViewStyle;
-  isBursting?: boolean;
+  isSelected?: boolean;
+  deleteMotionPhase?: BubbleDeleteMotionPhase;
   idleDisabled?: boolean;
   onPress?: (reminder: Reminder) => void;
+  onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-export const REMINDER_BUBBLE_BURST_MS = 320;
 
 type IdleMotionConfig = {
   delay: number;
@@ -149,9 +158,11 @@ export const ReminderBubble = memo(function ReminderBubble({
   height,
   currentDate,
   style,
-  isBursting,
+  isSelected,
+  deleteMotionPhase,
   idleDisabled,
   onPress,
+  onDeleteMotionComplete,
 }: ReminderBubbleProps) {
   const color = getReminderDueColor(reminder.targetAt, currentDate);
   const gradient = color.gradient as [string, string, string];
@@ -161,14 +172,13 @@ export const ReminderBubble = memo(function ReminderBubble({
   const visualSize = Math.min(bubbleWidth, bubbleHeight);
   const typography = getBubbleTypography(bubbleWidth, bubbleHeight, titleVisualLength);
   const radius = visualSize / 2;
-  const burstCrackLength = Math.max(visualSize * 0.44, 36);
-  const burstParticleTravel = Math.max(visualSize * 0.42, 34);
   const reduceMotion = useReducedMotion();
+  const surfaceRef = useRef<View>(null);
   const idleMotion = useMemo(() => makeIdleMotionConfig(reminder.id, index), [index, reminder.id]);
   const entryProgress = useSharedValue(0);
   const birthProgress = useSharedValue(0);
   const idleProgress = useSharedValue(0);
-  const burstProgress = useSharedValue(0);
+  const deleteMotionProgress = useSharedValue(0);
 
   useEffect(() => {
     entryProgress.value = 0;
@@ -194,7 +204,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   useEffect(() => {
     cancelAnimation(idleProgress);
 
-    if (reduceMotion || idleDisabled || isBursting) {
+    if (reduceMotion || idleDisabled || deleteMotionPhase) {
       idleProgress.value = withTiming(0, {
         duration: 220,
         easing: Easing.out(Easing.cubic),
@@ -218,27 +228,34 @@ export const ReminderBubble = memo(function ReminderBubble({
     return () => {
       cancelAnimation(idleProgress);
     };
-  }, [idleDisabled, idleMotion.delay, idleMotion.duration, idleProgress, isBursting, reduceMotion]);
+  }, [
+    deleteMotionPhase,
+    idleDisabled,
+    idleMotion.delay,
+    idleMotion.duration,
+    idleProgress,
+    reduceMotion,
+  ]);
 
   useEffect(() => {
-    if (isBursting) {
-      burstProgress.value = 0;
-      burstProgress.value = withTiming(1, {
-        duration: reduceMotion ? 1 : REMINDER_BUBBLE_BURST_MS,
-        easing: Easing.out(Easing.cubic),
-      });
+    cancelAnimation(deleteMotionProgress);
+    deleteMotionProgress.value = 0;
+
+    if (!deleteMotionPhase || reduceMotion) {
       return;
     }
 
-    burstProgress.value = 0;
-  }, [burstProgress, isBursting, reduceMotion]);
+    deleteMotionProgress.value = withTiming(1, {
+      duration:
+        deleteMotionPhase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
+      easing: Easing.linear,
+    });
+
+    return () => cancelAnimation(deleteMotionProgress);
+  }, [deleteMotionPhase, deleteMotionProgress, reduceMotion]);
 
   const bubbleAnimatedStyle = useAnimatedStyle(() => {
-    const idleWeight = 1 - burstProgress.value;
-    const popSnap =
-      burstProgress.value < 0.35
-        ? burstProgress.value / 0.35
-        : Math.max(0, (1 - burstProgress.value) / 0.65);
+    const idleWeight = deleteMotionPhase ? 0 : 1;
 
     return {
       opacity: entryProgress.value,
@@ -256,134 +273,51 @@ export const ReminderBubble = memo(function ReminderBubble({
           rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg * idleWeight}deg`,
         },
         {
-          scale:
-            (0.98 + entryProgress.value * 0.02 + birthProgress.value * 0.01) * (1 + popSnap * 0.03),
+          scale: 0.98 + entryProgress.value * 0.02 + birthProgress.value * 0.01,
         },
       ],
     };
   });
 
   const bubbleSurfaceAnimatedStyle = useAnimatedStyle(() => {
-    const popSnap =
-      burstProgress.value < 0.35
-        ? burstProgress.value / 0.35
-        : Math.max(0, (1 - burstProgress.value) / 0.65);
-    const fadeProgress =
-      burstProgress.value < 0.18 ? 0 : Math.min(1, (burstProgress.value - 0.18) / 0.82);
+    if (reduceMotion) {
+      return {
+        opacity: deleteMotionPhase === 'bursting' ? 0 : 1,
+        transform: [{ scale: 1 }],
+      };
+    }
+
+    if (deleteMotionPhase === 'bursting') {
+      const ruptureProgress = REMINDER_BUBBLE_RUPTURE_MS / REMINDER_BUBBLE_BURST_MS;
+      const tension = Math.min(1, deleteMotionProgress.value / ruptureProgress);
+      const fade = Math.min(1, Math.max(0, (deleteMotionProgress.value - ruptureProgress) / 0.27));
+
+      return {
+        opacity: 1 - fade,
+        transform: [{ scale: 1 + tension * 0.035 - fade * 0.08 }],
+      };
+    }
+
+    if (deleteMotionPhase === 'restoring') {
+      const restore = 1 - (1 - deleteMotionProgress.value) ** 3;
+
+      return {
+        opacity: restore,
+        transform: [{ scale: 0.92 + restore * 0.08 }],
+      };
+    }
 
     return {
-      opacity: 1 - fadeProgress,
-      transform: [{ scale: 1 + popSnap * 0.09 - burstProgress.value * 0.42 }],
+      opacity: 1,
+      transform: [{ scale: 1 }],
     };
   });
-
-  const burstFlashStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value * 4.2) * 0.46,
-    transform: [{ scale: 0.72 + burstProgress.value * 0.42 }],
-  }));
-
-  const burstRingStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value * 1.05) * 0.84,
-    transform: [{ scale: 1 + burstProgress.value * 0.58 }],
-  }));
-
-  const burstCrackOneStyle = useAnimatedStyle(() => {
-    const grow = burstProgress.value < 0.18 ? burstProgress.value / 0.18 : 1;
-    const fade = burstProgress.value < 0.72 ? 1 : Math.max(0, (1 - burstProgress.value) / 0.28);
-
-    return {
-      opacity: grow * fade * 0.74,
-      transform: [
-        { rotate: '-18deg' },
-        { translateX: -burstProgress.value * 7 },
-        { scaleX: 0.24 + grow * 0.86 },
-      ],
-    };
-  });
-
-  const burstCrackTwoStyle = useAnimatedStyle(() => {
-    const grow = burstProgress.value < 0.2 ? burstProgress.value / 0.2 : 1;
-    const fade = burstProgress.value < 0.68 ? 1 : Math.max(0, (1 - burstProgress.value) / 0.32);
-
-    return {
-      opacity: grow * fade * 0.62,
-      transform: [
-        { rotate: '35deg' },
-        { translateX: burstProgress.value * 9 },
-        { scaleX: 0.2 + grow * 0.76 },
-      ],
-    };
-  });
-
-  const burstCrackThreeStyle = useAnimatedStyle(() => {
-    const grow = burstProgress.value < 0.22 ? burstProgress.value / 0.22 : 1;
-    const fade = burstProgress.value < 0.7 ? 1 : Math.max(0, (1 - burstProgress.value) / 0.3);
-
-    return {
-      opacity: grow * fade * 0.54,
-      transform: [
-        { rotate: '82deg' },
-        { translateY: -burstProgress.value * 6 },
-        { scaleX: 0.18 + grow * 0.68 },
-      ],
-    };
-  });
-
-  const particleOneStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value) * 0.82,
-    transform: [
-      { translateX: -burstParticleTravel * 0.64 * burstProgress.value },
-      { translateY: -burstParticleTravel * 0.54 * burstProgress.value },
-      { rotate: '-24deg' },
-      { scale: 1 - burstProgress.value * 0.46 },
-    ],
-  }));
-
-  const particleTwoStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value) * 0.68,
-    transform: [
-      { translateX: burstParticleTravel * 0.72 * burstProgress.value },
-      { translateY: -burstParticleTravel * 0.4 * burstProgress.value },
-      { rotate: '18deg' },
-      { scale: 1 - burstProgress.value * 0.42 },
-    ],
-  }));
-
-  const particleThreeStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value) * 0.6,
-    transform: [
-      { translateX: burstParticleTravel * 0.46 * burstProgress.value },
-      { translateY: burstParticleTravel * 0.66 * burstProgress.value },
-      { rotate: '31deg' },
-      { scale: 1 - burstProgress.value * 0.5 },
-    ],
-  }));
-
-  const particleFourStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value) * 0.56,
-    transform: [
-      { translateX: -burstParticleTravel * 0.44 * burstProgress.value },
-      { translateY: burstParticleTravel * 0.72 * burstProgress.value },
-      { rotate: '-36deg' },
-      { scale: 1 - burstProgress.value * 0.48 },
-    ],
-  }));
-
-  const particleFiveStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - burstProgress.value) * 0.5,
-    transform: [
-      { translateX: burstParticleTravel * 0.18 * burstProgress.value },
-      { translateY: -burstParticleTravel * 0.82 * burstProgress.value },
-      { rotate: '42deg' },
-      { scale: 1 - burstProgress.value * 0.44 },
-    ],
-  }));
 
   return (
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={`${reminder.title}の詳細を開く`}
-      disabled={isBursting}
+      disabled={Boolean(deleteMotionPhase)}
       onPress={() => onPress?.(reminder)}
       style={[
         styles.bubble,
@@ -397,6 +331,8 @@ export const ReminderBubble = memo(function ReminderBubble({
       ]}
     >
       <Animated.View
+        ref={surfaceRef}
+        collapsable={false}
         style={[
           styles.bubbleSurface,
           {
@@ -486,66 +422,16 @@ export const ReminderBubble = memo(function ReminderBubble({
           </Text>
         </View>
       </Animated.View>
-      {isBursting ? (
-        <>
-          <Animated.View style={[styles.burstFlash, { borderRadius: radius }, burstFlashStyle]} />
-          <Animated.View
-            style={[
-              styles.burstCrack,
-              {
-                top: bubbleHeight / 2 - 1,
-                left: bubbleWidth / 2 - burstCrackLength / 2,
-                width: burstCrackLength,
-              },
-              burstCrackOneStyle,
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.burstCrack,
-              {
-                top: bubbleHeight / 2 - 1,
-                left: bubbleWidth / 2 - burstCrackLength / 2,
-                width: burstCrackLength,
-              },
-              burstCrackTwoStyle,
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.burstCrack,
-              {
-                top: bubbleHeight / 2 - 1,
-                left: bubbleWidth / 2 - burstCrackLength / 2,
-                width: burstCrackLength,
-              },
-              burstCrackThreeStyle,
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.burstRing,
-              { borderColor: color.border, borderRadius: radius - 6 },
-              burstRingStyle,
-            ]}
-          />
-          <Animated.View
-            style={[styles.burstParticle, styles.burstParticleOne, particleOneStyle]}
-          />
-          <Animated.View
-            style={[styles.burstParticle, styles.burstParticleTwo, particleTwoStyle]}
-          />
-          <Animated.View
-            style={[styles.burstParticle, styles.burstParticleThree, particleThreeStyle]}
-          />
-          <Animated.View
-            style={[styles.burstParticle, styles.burstParticleFour, particleFourStyle]}
-          />
-          <Animated.View
-            style={[styles.burstParticle, styles.burstParticleFive, particleFiveStyle]}
-          />
-        </>
-      ) : null}
+      <ReminderBubbleBurst
+        reminderId={reminder.id}
+        width={bubbleWidth}
+        height={bubbleHeight}
+        color={color}
+        phase={deleteMotionPhase}
+        isSelected={isSelected}
+        surfaceRef={surfaceRef}
+        onMotionComplete={onDeleteMotionComplete}
+      />
     </AnimatedPressable>
   );
 });
@@ -683,78 +569,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.22)',
     borderRadius: 999,
     opacity: 0.72,
-  },
-  burstFlash: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    bottom: 4,
-    left: 4,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    zIndex: 3,
-  },
-  burstRing: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    bottom: 6,
-    left: 6,
-    borderWidth: 1.4,
-    borderColor: 'rgba(255,255,255,0.72)',
-    zIndex: 4,
-  },
-  burstCrack: {
-    position: 'absolute',
-    height: 2,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.38,
-    shadowRadius: 5,
-    zIndex: 5,
-  },
-  burstParticle: {
-    position: 'absolute',
-    width: 10,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.74)',
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.42,
-    shadowRadius: 7,
-    zIndex: 6,
-  },
-  burstParticleOne: {
-    top: '24%',
-    left: '25%',
-  },
-  burstParticleTwo: {
-    top: '23%',
-    right: '24%',
-  },
-  burstParticleThree: {
-    right: '30%',
-    bottom: '25%',
-    width: 8,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.58)',
-  },
-  burstParticleFour: {
-    left: '31%',
-    bottom: '26%',
-    width: 7,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.62)',
-  },
-  burstParticleFive: {
-    top: '17%',
-    left: '48%',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.7)',
   },
   textLayer: {
     position: 'relative',

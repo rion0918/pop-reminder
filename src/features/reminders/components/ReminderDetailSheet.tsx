@@ -40,6 +40,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   const displayedReminderIdRef = useRef<string | null>(null);
   const closingReminderIdRef = useRef<string | null>(null);
   const latestReminderIdRef = useRef<string | null>(null);
+  const pendingDeleteReminderRef = useRef<Reminder | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const sheetTopInset = safeAreaInsets.top + 8;
   const detailMaxDynamicContentSize = useMemo(
@@ -92,9 +93,11 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
   const handleDismiss = useCallback(() => {
     const closedReminderId = closingReminderIdRef.current ?? displayedReminderIdRef.current;
     const pendingReminderId = latestReminderIdRef.current;
+    const pendingDeleteReminder = pendingDeleteReminderRef.current;
+    pendingDeleteReminderRef.current = null;
 
     isPresentedRef.current = false;
-    if (!isDeletingRef.current) {
+    if (!pendingDeleteReminder) {
       isDeleteRequestedRef.current = false;
       setIsDeleting(false);
     }
@@ -102,6 +105,21 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
     onClose(closedReminderId);
     isClosingRef.current = false;
     closingReminderIdRef.current = null;
+
+    if (pendingDeleteReminder) {
+      displayedReminderIdRef.current = null;
+      void onDelete(pendingDeleteReminder)
+        .catch((error) => {
+          console.warn('Failed to delete reminder', error);
+          Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
+        })
+        .finally(() => {
+          isDeletingRef.current = false;
+          isDeleteRequestedRef.current = false;
+          setIsDeleting(false);
+        });
+      return;
+    }
 
     if (pendingReminderId && pendingReminderId !== closedReminderId) {
       displayedReminderIdRef.current = pendingReminderId;
@@ -113,7 +131,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
     if (!pendingReminderId) {
       displayedReminderIdRef.current = null;
     }
-  }, [onClose]);
+  }, [onClose, onDelete]);
 
   const handleClosePress = useCallback(() => {
     closingReminderIdRef.current = displayedReminderIdRef.current;
@@ -144,21 +162,10 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
           onPress: () => {
             isDeletingRef.current = true;
             setIsDeleting(true);
+            pendingDeleteReminderRef.current = reminder;
             closingReminderIdRef.current = displayedReminderIdRef.current;
             isClosingRef.current = true;
             sheetRef.current?.dismiss();
-            setTimeout(() => {
-              void onDelete(reminder)
-                .catch((error) => {
-                  console.warn('Failed to delete reminder', error);
-                  Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
-                })
-                .finally(() => {
-                  isDeletingRef.current = false;
-                  isDeleteRequestedRef.current = false;
-                  setIsDeleting(false);
-                });
-            }, 160);
           },
         },
       ],
@@ -170,7 +177,7 @@ export function ReminderDetailSheet({ reminder, onClose, onDelete }: ReminderDet
         },
       },
     );
-  }, [isDeleting, onDelete, reminder]);
+  }, [isDeleting, reminder]);
 
   return (
     <BottomSheetModal

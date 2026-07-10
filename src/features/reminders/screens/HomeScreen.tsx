@@ -13,8 +13,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { REMINDER_BUBBLE_BURST_MS } from '../components/ReminderBubble';
-import { ReminderBubbleBoard } from '../components/ReminderBubbleBoard';
+import type { BubbleDeleteMotionPhase } from '../components/ReminderBubble';
+import { ReminderBubbleBoard, type BubbleDeleteMotion } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
 import { useReminders } from '../hooks/useReminders';
@@ -30,6 +30,15 @@ import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const SETTINGS_BUTTON_FEEDBACK_MS = 120;
+type DeleteMotionWaiter = {
+  key: string;
+  resolve: () => void;
+};
+
+function makeDeleteMotionKey(reminderId: string, phase: BubbleDeleteMotionPhase) {
+  return `${reminderId}:${phase}`;
+}
+
 const dueLegendItems = [
   { label: '今日', color: bubbleDueColors.today },
   { label: '明日', color: bubbleDueColors.tomorrow },
@@ -57,7 +66,8 @@ export function HomeScreen() {
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
-  const deleteTimeoutRef = useRef<number | null>(null);
+  const deleteMotionWaiterRef = useRef<DeleteMotionWaiter | null>(null);
+  const isMountedRef = useRef(true);
   const settingsPressTimeoutRef = useRef<number | null>(null);
   const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
   const selectedReminderId = useReminderUiStore((state) => state.selectedReminderId);
@@ -65,7 +75,7 @@ export function HomeScreen() {
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
 
-  const [burstingReminderId, setBurstingReminderId] = useState<string | null>(null);
+  const [deleteMotion, setDeleteMotion] = useState<BubbleDeleteMotion | null>(null);
 
   useEffect(() => {
     isQuickAddOpenRef.current = isQuickAddOpen;
@@ -84,10 +94,12 @@ export function HomeScreen() {
   }, [isSaving]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     return () => {
-      if (deleteTimeoutRef.current) {
-        clearTimeout(deleteTimeoutRef.current);
-      }
+      isMountedRef.current = false;
+      deleteMotionWaiterRef.current?.resolve();
+      deleteMotionWaiterRef.current = null;
 
       if (settingsPressTimeoutRef.current) {
         clearTimeout(settingsPressTimeoutRef.current);
@@ -190,36 +202,70 @@ export function HomeScreen() {
     }, SETTINGS_BUTTON_FEEDBACK_MS) as unknown as number;
   }, [router]);
 
+  const waitForDeleteMotion = useCallback(
+    (reminderId: string, phase: BubbleDeleteMotionPhase) =>
+      new Promise<void>((resolve) => {
+        deleteMotionWaiterRef.current?.resolve();
+        deleteMotionWaiterRef.current = {
+          key: makeDeleteMotionKey(reminderId, phase),
+          resolve,
+        };
+      }),
+    [],
+  );
+
+  const handleDeleteMotionComplete = useCallback(
+    (reminderId: string, phase: BubbleDeleteMotionPhase) => {
+      const waiter = deleteMotionWaiterRef.current;
+
+      if (waiter?.key !== makeDeleteMotionKey(reminderId, phase)) {
+        return;
+      }
+
+      deleteMotionWaiterRef.current = null;
+      waiter.resolve();
+    },
+    [],
+  );
+
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
-      setBurstingReminderId(reminder.id);
+      setDeleteMotion({ reminderId: reminder.id, phase: 'bursting' });
+      const [deleteResult] = await Promise.allSettled([
+        deleteReminder(reminder.id),
+        waitForDeleteMotion(reminder.id, 'bursting'),
+      ]);
 
-      try {
-        const [deleted] = await Promise.all([
-          deleteReminder(reminder.id),
-          new Promise((resolve) => {
-            deleteTimeoutRef.current = setTimeout(
-              resolve,
-              REMINDER_BUBBLE_BURST_MS,
-            ) as unknown as number;
-          }),
-        ]);
+      if (!isMountedRef.current) {
+        return;
+      }
 
-        if (!deleted) {
-          throw new Error('Reminder was not found');
+      const deleteError =
+        deleteResult.status === 'rejected'
+          ? deleteResult.reason
+          : deleteResult.value
+            ? null
+            : new Error('Reminder was not found');
+
+      if (deleteError) {
+        setDeleteMotion({ reminderId: reminder.id, phase: 'restoring' });
+        await waitForDeleteMotion(reminder.id, 'restoring');
+
+        if (!isMountedRef.current) {
+          return;
         }
 
-        setSelectedReminderId(null);
-        removeReminder(reminder.id);
-        void refresh({ silent: true });
-      } catch (err) {
-        console.warn('Failed to delete reminder', err);
-      } finally {
-        setBurstingReminderId(null);
-        deleteTimeoutRef.current = null;
+        setDeleteMotion(null);
+        console.warn('Failed to delete reminder', deleteError);
+        throw deleteError;
       }
+
+      setSelectedReminderId(null);
+      removeReminder(reminder.id);
+      setDeleteMotion(null);
+      void refresh({ silent: true });
     },
-    [refresh, removeReminder, setSelectedReminderId],
+    [refresh, removeReminder, setSelectedReminderId, waitForDeleteMotion],
   );
 
   const handleCloseReminderDetail = useCallback(
@@ -315,10 +361,12 @@ export function HomeScreen() {
           reminders={reminders}
           loading={loading}
           error={error}
-          burstingReminderId={burstingReminderId}
+          selectedReminderId={selectedReminderId}
+          deleteMotion={deleteMotion}
           freezeLayout={isQuickAddOpen}
           idleDisabled={isBubbleIdleDisabled}
           onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
+          onDeleteMotionComplete={handleDeleteMotionComplete}
           onOverflowPress={handleOpenReminderList}
         />
       </View>

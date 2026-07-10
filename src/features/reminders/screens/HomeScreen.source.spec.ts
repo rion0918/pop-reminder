@@ -29,7 +29,7 @@ test('home keeps non-deleted reminder bubbles floating during burst delete work'
   assert.equal(idleDisabledBlock.includes('isQuickAddOpen'), false);
   assert.equal(idleDisabledBlock.includes('selectedReminder'), false);
   assertSourceIncludes(idleDisabledBlock, [/const isBubbleIdleDisabled = isSaving;/]);
-  assertSourceIncludes(source, [/burstingReminderId=\{burstingReminderId\}/]);
+  assertSourceIncludes(source, [/deleteMotion=\{deleteMotion\}/]);
 });
 
 test('opening quick add keeps reminder bubble positions pinned', () => {
@@ -121,14 +121,28 @@ test('home removes deleted reminders locally before the silent database refresh'
   });
 });
 
-test('home waits for the reminder bubble burst before removing it locally', () => {
+test('home waits for the reported bubble motion instead of a fixed timer', () => {
   assertSourceContract(source, {
     includes: [
-      /import \{ REMINDER_BUBBLE_BURST_MS \} from '\.\.\/components\/ReminderBubble';/,
-      /setTimeout\(\s*resolve,\s*REMINDER_BUBBLE_BURST_MS,\s*\)/,
+      /BubbleDeleteMotionPhase/,
+      /const \[deleteMotion, setDeleteMotion\] = useState<BubbleDeleteMotion \| null>\(null\);/,
+      /waitForDeleteMotion/,
+      /handleDeleteMotionComplete/,
+      /Promise\.allSettled\(\[/,
+      /deleteReminder\(reminder\.id\)/,
+      /waitForDeleteMotion\(reminder\.id, 'bursting'\)/,
+      /onDeleteMotionComplete=\{handleDeleteMotionComplete\}/,
     ],
-    excludes: [/setTimeout\(resolve, 260\)/],
+    excludes: [/REMINDER_BUBBLE_BURST_MS/, /deleteTimeoutRef/, /setTimeout\(\s*resolve/],
   });
+});
+
+test('home restores a burst bubble before propagating delete failures', () => {
+  assertSourceIncludes(source, [
+    /setDeleteMotion\(\{ reminderId: reminder\.id, phase: 'restoring' \}\);/,
+    /await waitForDeleteMotion\(reminder\.id, 'restoring'\);/,
+    /throw deleteError;/,
+  ]);
 });
 
 test('home ignores stale detail sheet dismisses after another reminder is selected', () => {

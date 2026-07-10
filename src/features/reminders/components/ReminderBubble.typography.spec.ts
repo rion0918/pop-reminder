@@ -7,6 +7,9 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './ReminderBubble.tsx');
+const nativeBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.native.tsx');
+const webBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.web.tsx');
+const burstTypesSource = readSource(import.meta.url, './ReminderBubbleBurst.types.ts');
 const colorsSource = readSource(import.meta.url, '../../../constants/colors.ts');
 
 test('reminder bubble typography is derived from bubble size and title length', () => {
@@ -71,19 +74,49 @@ test('reminder bubble uses shared home visual tokens for iOS-like Android render
   });
 });
 
-test('reminder bubble delete motion reads as a visible pop burst', () => {
+test('reminder bubble delegates delete motion to a platform burst layer', () => {
   assertSourceContract(source, {
     includes: [
-      /export const REMINDER_BUBBLE_BURST_MS = 320;/,
-      /const burstParticleTravel = Math\.max\(visualSize \* 0\.42, 34\);/,
+      /export type BubbleDeleteMotionPhase = 'bursting' \| 'restoring';/,
+      /import \{ ReminderBubbleBurst \} from '\.\/ReminderBubbleBurst';/,
+      /const surfaceRef = useRef<View>\(null\);/,
+      /deleteMotionPhase\?: BubbleDeleteMotionPhase;/,
+      /onDeleteMotionComplete\?: \(reminderId: string, phase: BubbleDeleteMotionPhase\) => void;/,
+      /collapsable=\{false\}/,
       /const bubbleSurfaceAnimatedStyle = useAnimatedStyle\(\(\) => \{/,
-      /const popSnap =\s*burstProgress\.value < 0\.35/,
       /opacity: entryProgress\.value,/,
       /styles\.bubbleSurface[\s\S]*bubbleSurfaceAnimatedStyle/,
-      /styles\.burstFlash/,
-      /styles\.burstCrack/,
-      /styles\.burstParticleFive/,
+      /<ReminderBubbleBurst/,
+      /surfaceRef=\{surfaceRef\}/,
+      /onMotionComplete=\{onDeleteMotionComplete\}/,
     ],
-    excludes: [/opacity: entryProgress\.value \* \(1 - burstProgress\.value\)/],
+    excludes: [/styles\.burstFlash/, /styles\.burstCrack/, /styles\.burstParticle/],
+  });
+});
+
+test('native reminder bubble burst uses a captured Skia membrane and physical timing', () => {
+  assertSourceIncludes(burstTypesSource, [
+    /export const REMINDER_BUBBLE_BURST_MS = 380;/,
+    /export const REMINDER_BUBBLE_RUPTURE_MS = 55;/,
+    /export const REMINDER_BUBBLE_RESTORE_MS = 220;/,
+  ]);
+  assertSourceContract(nativeBurstSource, {
+    includes: [
+      /makeImageFromView/,
+      /<Canvas/,
+      /invertClip/,
+      /createBubbleBurstGeometry/,
+      /useReducedMotion/,
+      /triggerBubbleBurstHaptic/,
+      /onMotionComplete\?\.\(reminderId, completedPhase\)/,
+    ],
+    excludes: [/burstCrack/, /burstFlash/, /setInterval/],
+  });
+});
+
+test('web reminder bubble burst stays on the lightweight fallback', () => {
+  assertSourceContract(webBurstSource, {
+    includes: [/ReminderBubbleBurstFallback/],
+    excludes: [/@shopify\/react-native-skia/, /canvaskit/],
   });
 });

@@ -52,3 +52,17 @@ test('reminder detail sheet can present a new reminder after stale closing state
     excludes: [/if \(!isPresentedRef\.current && !isClosingRef\.current\) \{/],
   });
 });
+
+test('reminder detail sheet starts deletion after the sheet actually dismisses', () => {
+  assertSourceContract(source, {
+    includes: [
+      /const pendingDeleteReminderRef = useRef<Reminder \| null>\(null\);/,
+      /const pendingDeleteReminder = pendingDeleteReminderRef\.current;/,
+      /pendingDeleteReminderRef\.current = null;/,
+      /void onDelete\(pendingDeleteReminder\)/,
+      /pendingDeleteReminderRef\.current = reminder;/,
+      /sheetRef\.current\?\.dismiss\(\);/,
+    ],
+    excludes: [/setTimeout\(\(\) => \{[\s\S]*void onDelete\(reminder\)/, /\}, 160\);/],
+  });
+});
