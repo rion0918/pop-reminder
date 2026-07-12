@@ -15,18 +15,18 @@ test('search result meta keeps the result count inside narrow widths', () => {
 
 test('search removes deleted reminders locally before a silent refresh', () => {
   assertSourceIncludes(source, [
-    /const refresh = useCallback\(async \(options\?: \{ silent\?: boolean \}\) => \{/,
-    /if \(!options\?\.silent\) \{[\s\S]*setLoading\(true\);[\s\S]*\}/,
-    /setReminders\(\(current\) => current\.filter\(\(item\) => item\.id !== reminder\.id\)\);/,
-    /await refresh\(\{ silent: true \}\);/,
+    /import \{ useRemindersQuery as useReminders \} from '..\/presentation\/useRemindersQuery';/,
+    /deleteReminder, updateReminderTitle/,
+    /const deleted = await deleteReminder\(reminder\.id\);/,
+    /setSelectedReminderId\(null\);/,
   ]);
 });
 
 test('search reflects edited titles without resetting the current result set', () => {
   assertSourceIncludes(source, [
-    /import \{ updateReminderTitle \} from '..\/services\/updateReminderTitleService';/,
+    /import \{ useRemindersQuery as useReminders \} from '..\/presentation\/useRemindersQuery';/,
     /const handleUpdateReminderTitle = useCallback\(/,
-    /setReminders\(\(current\) =>[\s\S]*current\.map\(\(item\) => \(item\.id === updatedReminder\.id \? updatedReminder : item\)\)/,
+    /const updatedReminder = await updateReminderTitle\(reminder\.id, title\);/,
     /onUpdateTitle=\{handleUpdateReminderTitle\}/,
   ]);
 });

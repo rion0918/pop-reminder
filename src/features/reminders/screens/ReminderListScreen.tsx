@@ -13,11 +13,9 @@ import {
 
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { palette } from '../../../constants/colors';
-import { useAppSettings } from '../../settings/hooks/useAppSettings';
+import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
-import { deleteReminder } from '../services/deleteReminderService';
-import { listActiveReminders } from '../services/reminderRepository';
-import { updateReminderTitle } from '../services/updateReminderTitleService';
+import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import type { Reminder } from '../types/reminder';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';
@@ -34,29 +32,11 @@ function handleBack(router: ReturnType<typeof useRouter>) {
 export function ReminderListScreen() {
   const router = useRouter();
   const { settings } = useAppSettings();
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { reminders, loading, error, refresh, deleteReminder, updateReminderTitle } =
+    useReminders();
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
   const selectedReminder = reminders.find((reminder) => reminder.id === selectedReminderId) ?? null;
-
-  const refresh = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    setError(null);
-
-    try {
-      const rows = await listActiveReminders();
-      setReminders(rows);
-    } catch (refreshError) {
-      console.warn('Failed to load reminder list', refreshError);
-      setError('リマインダーを読み込めませんでした');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -82,28 +62,26 @@ export function ReminderListScreen() {
         }
 
         setSelectedReminderId(null);
-        setReminders((current) => current.filter((item) => item.id !== reminder.id));
-        await refresh({ silent: true });
       } catch (deleteError) {
         console.warn('Failed to delete reminder from list', deleteError);
         Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
       }
     },
-    [refresh],
+    [deleteReminder],
   );
 
-  const handleUpdateReminderTitle = useCallback(async (reminder: Reminder, title: string) => {
-    const updatedReminder = await updateReminderTitle(reminder.id, title);
+  const handleUpdateReminderTitle = useCallback(
+    async (reminder: Reminder, title: string) => {
+      const updatedReminder = await updateReminderTitle(reminder.id, title);
 
-    if (!updatedReminder) {
-      throw new Error('Reminder was not found');
-    }
+      if (!updatedReminder) {
+        throw new Error('Reminder was not found');
+      }
 
-    setReminders((current) =>
-      current.map((item) => (item.id === updatedReminder.id ? updatedReminder : item)),
-    );
-    return updatedReminder;
-  }, []);
+      return updatedReminder;
+    },
+    [updateReminderTitle],
+  );
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>

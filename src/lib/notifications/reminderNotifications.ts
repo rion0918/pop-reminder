@@ -4,10 +4,14 @@ import { Platform } from 'react-native';
 import type {
   ReminderNotificationGateway,
   ReminderNotificationIds,
-  ReminderNotificationOptions,
-  ReminderNotificationTarget,
-} from '../../features/reminders/ports/reminderNotificationGateway';
-import type { Reminder } from '../../features/reminders/types/reminder';
+} from '../../features/reminders/application/ports';
+import type { Reminder } from '../../features/reminders/domain/reminder';
+
+type ReminderNotificationOptions = { soundEnabled?: boolean };
+type ReminderNotificationTarget = Pick<
+  Reminder,
+  'id' | 'title' | 'previousNotifyAt' | 'targetNotifyAt'
+>;
 
 export const REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts';
 export const SILENT_REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-silent';
@@ -266,7 +270,7 @@ export async function cancelAllScheduledNotifications() {
 }
 
 export const reminderNotificationGateway: ReminderNotificationGateway = {
-  scheduleReminderNotifications,
-  scheduleTestReminderNotifications,
-  cancelReminderNotifications,
+  schedule: scheduleReminderNotifications,
+  scheduleTest: scheduleTestReminderNotifications,
+  cancel: cancelReminderNotifications,
 };

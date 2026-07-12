@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { isSameDay, isTomorrow, startOfDay } from 'date-fns';
 import {
   ActivityIndicator,
   Alert,
@@ -15,17 +14,14 @@ import {
 
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { palette } from '../../../constants/colors';
-import { useAppSettings } from '../../settings/hooks/useAppSettings';
-import { deleteReminder } from '../services/deleteReminderService';
-import { listActiveReminders } from '../services/reminderRepository';
-import { updateReminderTitle } from '../services/updateReminderTitleService';
+import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
+import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import type { Reminder } from '../types/reminder';
+import { filterReminders, type SearchFilter } from '../domain/reminderFilter';
 import { ReminderBubbleBoard } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 
 const appIcon = require('../../../../assets/app-icon.png');
-
-type SearchFilter = 'all' | 'today' | 'tomorrow' | 'week';
 
 const filters: { key: SearchFilter; label: string }[] = [
   { key: 'all', label: 'すべて' },
@@ -33,14 +29,6 @@ const filters: { key: SearchFilter; label: string }[] = [
   { key: 'tomorrow', label: '明日' },
   { key: 'week', label: '7日以内' },
 ];
-
-function isWithinNextWeek(value: string) {
-  const target = new Date(value).getTime();
-  const now = startOfDay(new Date()).getTime();
-  const weekLater = now + 7 * 24 * 60 * 60 * 1000;
-
-  return target >= now && target <= weekLater;
-}
 
 function handleBack(router: ReturnType<typeof useRouter>) {
   if (router.canGoBack()) {
@@ -51,53 +39,16 @@ function handleBack(router: ReturnType<typeof useRouter>) {
   router.replace('/');
 }
 
-function matchesFilter(reminder: Reminder, filter: SearchFilter) {
-  const target = new Date(reminder.targetAt);
-  const now = new Date();
-
-  if (filter === 'today') {
-    return isSameDay(target, now);
-  }
-
-  if (filter === 'tomorrow') {
-    return isTomorrow(target);
-  }
-
-  if (filter === 'week') {
-    return isWithinNextWeek(reminder.targetAt);
-  }
-
-  return true;
-}
-
 export function SearchScreen() {
   const router = useRouter();
   const { settings } = useAppSettings();
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { reminders, loading, error, refresh, deleteReminder, updateReminderTitle } =
+    useReminders();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<SearchFilter>('all');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
-  const normalizedQuery = query.trim().toLowerCase();
-
-  const refresh = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    setError(null);
-
-    try {
-      const rows = await listActiveReminders();
-      setReminders(rows);
-    } catch (refreshError) {
-      console.warn('Failed to search reminders', refreshError);
-      setError('リマインダーを読み込めませんでした');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
+  const selectedReminder = reminders.find((reminder) => reminder.id === selectedReminderId) ?? null;
 
   useFocusEffect(
     useCallback(() => {
@@ -106,16 +57,10 @@ export function SearchScreen() {
   );
 
   const filteredReminders = useMemo(
-    () =>
-      reminders.filter((reminder) => {
-        const matchesText =
-          normalizedQuery.length === 0 || reminder.title.toLowerCase().includes(normalizedQuery);
-
-        return matchesText && matchesFilter(reminder, filter);
-      }),
-    [filter, normalizedQuery, reminders],
+    () => filterReminders(reminders, query, filter),
+    [filter, query, reminders],
   );
-  const hasActiveCondition = normalizedQuery.length > 0 || filter !== 'all';
+  const hasActiveCondition = query.trim().length > 0 || filter !== 'all';
   const resultLabel = hasActiveCondition ? '見つかった泡' : '浮いている泡';
 
   const resetConditions = useCallback(() => {
@@ -132,32 +77,27 @@ export function SearchScreen() {
           throw new Error('Reminder was not found');
         }
 
-        setSelectedReminder(null);
-        setReminders((current) => current.filter((item) => item.id !== reminder.id));
-        await refresh({ silent: true });
+        setSelectedReminderId(null);
       } catch (deleteError) {
         console.warn('Failed to delete reminder from search', deleteError);
         Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
       }
     },
-    [refresh],
+    [deleteReminder],
   );
 
-  const handleUpdateReminderTitle = useCallback(async (reminder: Reminder, title: string) => {
-    const updatedReminder = await updateReminderTitle(reminder.id, title);
+  const handleUpdateReminderTitle = useCallback(
+    async (reminder: Reminder, title: string) => {
+      const updatedReminder = await updateReminderTitle(reminder.id, title);
 
-    if (!updatedReminder) {
-      throw new Error('Reminder was not found');
-    }
+      if (!updatedReminder) {
+        throw new Error('Reminder was not found');
+      }
 
-    setReminders((current) =>
-      current.map((item) => (item.id === updatedReminder.id ? updatedReminder : item)),
-    );
-    setSelectedReminder((current) =>
-      current?.id === updatedReminder.id ? updatedReminder : current,
-    );
-    return updatedReminder;
-  }, []);
+      return updatedReminder;
+    },
+    [updateReminderTitle],
+  );
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
@@ -321,7 +261,7 @@ export function SearchScreen() {
           <ReminderBubbleBoard
             reminders={filteredReminders}
             idleDisabled={Boolean(selectedReminder)}
-            onReminderPress={setSelectedReminder}
+            onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
           />
         </View>
       )}
@@ -329,7 +269,7 @@ export function SearchScreen() {
       <ReminderDetailSheet
         reminder={selectedReminder}
         onClose={(closedReminderId) =>
-          setSelectedReminder((current) => (current?.id === closedReminderId ? null : current))
+          setSelectedReminderId((current) => (current === closedReminderId ? null : current))
         }
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}

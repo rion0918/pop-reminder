@@ -35,6 +35,7 @@ import { DateChips } from './DateChips';
 
 type ReminderInputSheetProps = {
   defaultTargetTime?: string;
+  isSaving?: boolean;
   onSave?: (title: string) => Promise<void> | void;
 };
 
@@ -78,6 +79,7 @@ function getNextAvailableTimeForToday(targetDate: Date, now = new Date()) {
 
 export function ReminderInputSheet({
   defaultTargetTime = '08:00',
+  isSaving = false,
   onSave,
 }: ReminderInputSheetProps) {
   const safeAreaInsets = useSafeAreaInsets();
@@ -114,7 +116,6 @@ export function ReminderInputSheet({
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const time = useReminderUiStore(selectFormattedTime);
   const isTimeValid = useReminderUiStore(selectIsTimeValid);
-  const isSaving = useReminderUiStore((state) => state.isSaving);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const setTitle = useReminderUiStore((state) => state.setTitle);
   const resetTitle = useReminderUiStore((state) => state.resetTitle);

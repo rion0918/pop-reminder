@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
@@ -17,14 +17,11 @@ import type { BubbleDeleteMotionPhase } from '../components/ReminderBubble';
 import { ReminderBubbleBoard, type BubbleDeleteMotion } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
-import { useReminders } from '../hooks/useReminders';
-import { createReminder } from '../services/createReminderService';
-import { deleteReminder } from '../services/deleteReminderService';
-import { updateReminderTitle } from '../services/updateReminderTitleService';
+import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import { useNotificationDevStore } from '../stores/notificationDevStore';
 import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
 import type { Reminder } from '../types/reminder';
-import { useAppSettings } from '../../settings/hooks/useAppSettings';
+import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { bubbleDueColors, palette } from '../../../constants/colors';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
@@ -49,16 +46,25 @@ const dueLegendItems = [
 
 export function HomeScreen() {
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ action?: string; id?: string; intent?: string }>();
   const { width: windowWidth } = useWindowDimensions();
-  const { reminders, loading, error, refresh, upsertReminder, removeReminder } = useReminders();
+  const {
+    reminders,
+    loading,
+    error,
+    refresh,
+    removeReminder,
+    createReminder,
+    deleteReminder,
+    updateReminderTitle,
+    isCreating: isSaving,
+  } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const targetTime = useReminderUiStore(selectFormattedTime);
-  const isSaving = useReminderUiStore((state) => state.isSaving);
-  const setSaving = useReminderUiStore((state) => state.setSaving);
   const isNotificationTestModeEnabled = useNotificationDevStore(
     (state) => state.isNotificationTestModeEnabled,
   );
@@ -72,8 +78,8 @@ export function HomeScreen() {
   const isMountedRef = useRef(true);
   const settingsPressTimeoutRef = useRef<number | null>(null);
   const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
-  const selectedReminderId = useReminderUiStore((state) => state.selectedReminderId);
-  const setSelectedReminderId = useReminderUiStore((state) => state.setSelectedReminderId);
+  const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
+  const consumedIntentRef = useRef<string | null>(null);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
 
@@ -94,6 +100,21 @@ export function HomeScreen() {
   useEffect(() => {
     isSavingRef.current = isSaving;
   }, [isSaving]);
+
+  useEffect(() => {
+    if (!routeParams.intent || consumedIntentRef.current === routeParams.intent) return;
+    if (routeParams.action === 'view' && loading) return;
+
+    consumedIntentRef.current = routeParams.intent;
+    if (routeParams.action === 'add') {
+      openQuickAdd('08:00', { focusTitle: true });
+    } else if (routeParams.action === 'view' && routeParams.id) {
+      setSelectedReminderId(
+        reminders.some((reminder) => reminder.id === routeParams.id) ? routeParams.id : null,
+      );
+    }
+    router.setParams({ action: undefined, id: undefined, intent: undefined });
+  }, [loading, openQuickAdd, reminders, routeParams, router]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -157,10 +178,8 @@ export function HomeScreen() {
     }
 
     isSavingRef.current = true;
-    setSaving(true);
-
     try {
-      const reminder = await createReminder(
+      await createReminder(
         {
           title,
           dateOffset,
@@ -171,13 +190,11 @@ export function HomeScreen() {
           useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
         },
       );
-      upsertReminder(reminder);
     } catch (saveError) {
       console.warn('Failed to save reminder', saveError);
       Alert.alert('追加できませんでした', 'タイトルと時刻を確認してください。');
       throw saveError;
     } finally {
-      setSaving(false);
       isSavingRef.current = false;
     }
   };
@@ -241,7 +258,7 @@ export function HomeScreen() {
       try {
         setDeleteMotion({ reminderId: reminder.id, phase: 'bursting' });
         const [deleteResult] = await Promise.allSettled([
-          deleteReminder(reminder.id),
+          deleteReminder(reminder.id, { deferCache: true }),
           waitForDeleteMotion(reminder.id, 'bursting'),
         ]);
 
@@ -277,7 +294,7 @@ export function HomeScreen() {
         isReminderDeletionInProgressRef.current = false;
       }
     },
-    [refresh, removeReminder, setSelectedReminderId, waitForDeleteMotion],
+    [deleteReminder, refresh, removeReminder, waitForDeleteMotion],
   );
 
   const handleCloseReminderDetail = useCallback(
@@ -297,10 +314,9 @@ export function HomeScreen() {
         throw new Error('Reminder was not found');
       }
 
-      upsertReminder(updatedReminder);
       return updatedReminder;
     },
-    [upsertReminder],
+    [updateReminderTitle],
   );
 
   const isAddButtonDisabled = isSaving;
@@ -397,7 +413,7 @@ export function HomeScreen() {
         />
       </View>
 
-      <ReminderInputSheet defaultTargetTime="08:00" onSave={handleSave} />
+      <ReminderInputSheet defaultTargetTime="08:00" isSaving={isSaving} onSave={handleSave} />
 
       <ReminderDetailSheet
         reminder={selectedReminder}

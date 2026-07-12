@@ -18,8 +18,6 @@ type ReminderUiState = {
   customTargetDate: string | null;
   timeDigits: string;
   timeTouched: boolean;
-  isSaving: boolean;
-  selectedReminderId: string | null;
   openQuickAdd: (defaultTime?: string, options?: QuickAddOptions) => void;
   closeQuickAdd: () => void;
   setTitle: (title: string) => void;
@@ -28,8 +26,6 @@ type ReminderUiState = {
   setPresetTargetDate: (datePreset: 'weekend' | 'nextWeek', date: string) => void;
   setCustomTargetDate: (date: string | null) => void;
   setTargetTime: (time: string) => void;
-  setSaving: (isSaving: boolean) => void;
-  setSelectedReminderId: (id: string | null) => void;
   resetInput: (defaultTime?: string) => void;
 };
 
@@ -42,8 +38,6 @@ const initialState = {
   customTargetDate: null,
   timeDigits: '0800',
   timeTouched: false,
-  isSaving: false,
-  selectedReminderId: null as string | null,
 };
 
 export const useReminderUiStore = create<ReminderUiState>((set) => ({
@@ -65,11 +59,9 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
         customTargetDate: null,
         timeDigits: timeToDigits(defaultTime),
         timeTouched: false,
-        isSaving: false,
       };
     }),
-  closeQuickAdd: () =>
-    set({ isQuickAddOpen: false, shouldFocusTitleOnOpen: false, isSaving: false }),
+  closeQuickAdd: () => set({ isQuickAddOpen: false, shouldFocusTitleOnOpen: false }),
   setTitle: (title) => set({ title }),
   resetTitle: () => set({ title: '' }),
   setDateOffset: (dateOffset) =>
@@ -82,8 +74,6 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
   setCustomTargetDate: (customTargetDate) =>
     set({ customTargetDate, datePreset: customTargetDate ? 'custom' : 'tomorrow' }),
   setTargetTime: (time) => set({ timeDigits: timeToDigits(time), timeTouched: true }),
-  setSaving: (isSaving) => set({ isSaving }),
-  setSelectedReminderId: (selectedReminderId) => set({ selectedReminderId }),
   resetInput: (defaultTime = '08:00') =>
     set({
       title: '',
@@ -92,8 +82,6 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
       customTargetDate: null,
       timeDigits: timeToDigits(defaultTime),
       timeTouched: false,
-      isSaving: false,
-      selectedReminderId: null,
       shouldFocusTitleOnOpen: false,
     }),
 }));

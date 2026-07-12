@@ -1,26 +1,28 @@
 import { test } from 'node:test';
 
-import { assertSourceIncludes, readSource } from '../test-utils/sourceAssertions';
+import {
+  assertSourceContract,
+  assertSourceIncludes,
+  readSource,
+} from '../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, '../app/_layout.tsx');
+const homeSource = readSource(import.meta.url, '../features/reminders/screens/HomeScreen.tsx');
 
 test('widget deep links always land on home before opening add or detail UI', () => {
-  const addBlock = source.slice(
-    source.indexOf("parsed.queryParams?.action === 'add'"),
-    source.indexOf("parsed.queryParams?.action === 'view'"),
-  );
-  const viewBlock = source.slice(
-    source.indexOf("parsed.queryParams?.action === 'view'"),
-    source.indexOf('},', source.indexOf("parsed.queryParams?.action === 'view'")),
-  );
-
   assertSourceIncludes(source, [
     /import \{ Stack, useRouter \} from 'expo-router';/,
     /const router = useRouter\(\);/,
-    /\[openQuickAdd, router, setSelectedReminderId, ready\]/,
+    /pathname: '\/',/,
+    /action: intent\.action,/,
+    /id: intent\.action === 'view' \? intent\.id : undefined,/,
+    /createDeepLinkIntentBuffer/,
   ]);
-  assertSourceIncludes(addBlock, [
-    /router\.replace\('\/'\);[\s\S]*openQuickAdd\('08:00', \{ focusTitle: true \}\);/,
+  assertSourceIncludes(homeSource, [
+    /useLocalSearchParams/,
+    /openQuickAdd\('08:00', \{ focusTitle: true \}\);/,
+    /setSelectedReminderId\(/,
+    /router\.setParams\(\{ action: undefined, id: undefined, intent: undefined \}\);/,
   ]);
-  assertSourceIncludes(viewBlock, [/router\.replace\('\/'\);[\s\S]*setSelectedReminderId\(id\);/]);
+  assertSourceContract(source, { excludes: [/useReminderUiStore/, /setTimeout\(\(\) =>/] });
 });

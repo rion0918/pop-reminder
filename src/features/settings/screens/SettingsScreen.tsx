@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,15 +16,10 @@ import {
   View,
 } from 'react-native';
 
-import {
-  cancelAllScheduledNotifications,
-  getNotificationPermissionStatus,
-  requestNotificationPermissions,
-  scheduleTestReminderNotifications,
-} from '../../../lib/notifications/reminderNotifications';
 import { useNotificationDevStore } from '../../reminders/stores/notificationDevStore';
 import { SettingRow } from '../components/SettingRow';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
+import { useNotificationSettings } from '../presentation/useNotificationSettings';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
 import { TimeSelector } from '../../../shared/components/TimeSelector';
@@ -121,6 +116,12 @@ const termsDocument: LegalDocument = {
 export function SettingsScreen() {
   const router = useRouter();
   const { settings, loading, update } = useAppSettings();
+  const {
+    cancelAllScheduledNotifications,
+    getNotificationPermissionStatus,
+    requestNotificationPermissions,
+    scheduleTestReminderNotifications,
+  } = useNotificationSettings();
   const isNotificationTestModeEnabled = useNotificationDevStore(
     (state) => state.isNotificationTestModeEnabled,
   );
@@ -136,6 +137,12 @@ export function SettingsScreen() {
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   const backPressTimeoutRef = useRef<number | null>(null);
+  const refreshNotificationPermissionStatus = useCallback(async () => {
+    const permission = await getNotificationPermissionStatus();
+    setNotificationPermissionLabel(permission.label);
+    setIsNotificationPermissionGranted(permission.status === 'granted');
+    setCanAskNotificationPermissionAgain(permission.canAskAgain);
+  }, [getNotificationPermissionStatus]);
 
   useEffect(() => {
     if (!settings) {
@@ -147,7 +154,7 @@ export function SettingsScreen() {
 
   useEffect(() => {
     void refreshNotificationPermissionStatus();
-  }, []);
+  }, [refreshNotificationPermissionStatus]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -159,7 +166,7 @@ export function SettingsScreen() {
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [refreshNotificationPermissionStatus]);
 
   useEffect(() => {
     return () => {
@@ -168,13 +175,6 @@ export function SettingsScreen() {
       }
     };
   }, []);
-
-  const refreshNotificationPermissionStatus = async () => {
-    const permission = await getNotificationPermissionStatus();
-    setNotificationPermissionLabel(permission.label);
-    setIsNotificationPermissionGranted(permission.status === 'granted');
-    setCanAskNotificationPermissionAgain(permission.canAskAgain);
-  };
 
   const savePreviousTime = async (value: string) => {
     setPreviousTime(value);

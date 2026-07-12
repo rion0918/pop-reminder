@@ -1,145 +1,138 @@
 import '../../global.css';
 
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
+import { AppProviders } from '../bootstrap/AppProviders';
+import { appServices } from '../bootstrap/appServices';
+import { createDeepLinkIntentBuffer, type DeepLinkIntent } from '../bootstrap/deepLinkIntent';
+import { palette } from '../constants/colors';
 import { initializeDatabase } from '../db/client';
-import { cleanupExpiredReminders } from '../features/reminders/services/reminderCleanupService';
 import {
   configureAndroidNotificationChannels,
   configureNotificationHandler,
 } from '../lib/notifications/reminderNotifications';
-import { useReminderUiStore } from '../features/reminders/stores/reminderUiStore';
-import { palette } from '../constants/colors';
+
+type BootstrapState = 'loading' | 'ready' | 'error';
 
 export default function RootLayout() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [bootstrapState, setBootstrapState] = useState<BootstrapState>('loading');
+  const stateRef = useRef<BootstrapState>('loading');
+  const intentBufferRef = useRef(createDeepLinkIntentBuffer());
+  const intentSequenceRef = useRef(0);
+
+  const publishIntent = useCallback(
+    (intent: DeepLinkIntent) => {
+      intentSequenceRef.current += 1;
+      router.replace({
+        pathname: '/',
+        params: {
+          action: intent.action,
+          id: intent.action === 'view' ? intent.id : undefined,
+          intent: String(intentSequenceRef.current),
+        },
+      });
+    },
+    [router],
+  );
+
+  const receiveUrl = useCallback(
+    (url: string | null) => {
+      if (!url || !intentBufferRef.current.receive(url) || stateRef.current !== 'ready') return;
+      const intent = intentBufferRef.current.consume();
+      if (intent) publishIntent(intent);
+    },
+    [publishIntent],
+  );
+
+  const prepare = useCallback(async () => {
+    stateRef.current = 'loading';
+    setBootstrapState('loading');
+    try {
+      await initializeDatabase();
+      await appServices.reminders.cleanup();
+      stateRef.current = 'ready';
+      setBootstrapState('ready');
+      const pendingIntent = intentBufferRef.current.consume();
+      if (pendingIntent) publishIntent(pendingIntent);
+    } catch (error) {
+      console.warn('Failed to prepare app data', error);
+      stateRef.current = 'error';
+      setBootstrapState('error');
+    }
+  }, [publishIntent]);
 
   useEffect(() => {
-    let mounted = true;
-
     configureNotificationHandler();
-
-    configureAndroidNotificationChannels().catch((error) => {
+    void configureAndroidNotificationChannels().catch((error) => {
       console.warn('Failed to configure notification channels', error);
     });
 
-    initializeDatabase()
-      .then(() => cleanupExpiredReminders())
-      .catch((error) => {
-        console.warn('Failed to prepare app data', error);
-      })
-      .finally(() => {
-        if (mounted) {
-          setReady(true);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
-  const setSelectedReminderId = useReminderUiStore((state) => state.setSelectedReminderId);
-
-  const handleDeepLink = useCallback(
-    (url: string | null) => {
-      if (!url || !ready) {
-        return;
-      }
-
-      const parsed = Linking.parse(url);
-
-      if (parsed.queryParams?.action === 'add') {
-        router.replace('/');
-        openQuickAdd('08:00', { focusTitle: true });
-      } else if (
-        parsed.queryParams?.action === 'view' &&
-        typeof parsed.queryParams.id === 'string'
-      ) {
-        const id = parsed.queryParams.id;
-        router.replace('/');
-        // Delay slightly to ensure home screen is loaded
-        setTimeout(() => {
-          setSelectedReminderId(id);
-        }, 600);
-      }
-    },
-    [openQuickAdd, router, setSelectedReminderId, ready],
-  );
-
-  useEffect(() => {
-    if (!ready) {
-      return;
-    }
-
-    // Handle the URL that opened the app
-    Linking.getInitialURL()
-      .then(handleDeepLink)
+    const subscription = Linking.addEventListener('url', (event) => receiveUrl(event.url));
+    void Linking.getInitialURL()
+      .then(receiveUrl)
       .catch(() => {});
+    void prepare();
+    return () => subscription.remove();
+  }, [prepare, receiveUrl]);
 
-    // Handle URLs while the app is already open
-    const subscription = Linking.addEventListener('url', (event) => {
-      handleDeepLink(event.url);
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [handleDeepLink, ready]);
-
-  if (!ready) {
+  if (bootstrapState !== 'ready') {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={palette.skyDeep} />
+        {bootstrapState === 'loading' ? (
+          <ActivityIndicator color={palette.skyDeep} />
+        ) : (
+          <>
+            <Text style={styles.errorTitle}>起動できませんでした</Text>
+            <Text style={styles.errorBody}>データベースを準備できませんでした。</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void prepare()}
+              style={styles.retry}
+            >
+              <Text style={styles.retryLabel}>もう一度試す</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <BottomSheetModalProvider>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: palette.sky },
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen
-            name="settings"
-            options={{
-              animation: 'fade',
-            }}
-          />
-          <Stack.Screen
-            name="reminders-list"
-            options={{
-              animation: 'fade',
-            }}
-          />
-        </Stack>
-      </BottomSheetModalProvider>
-    </GestureHandlerRootView>
+    <AppProviders>
+      <GestureHandlerRootView style={styles.root}>
+        <BottomSheetModalProvider>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.sky } }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="settings" options={{ animation: 'fade' }} />
+            <Stack.Screen name="reminders-list" options={{ animation: 'fade' }} />
+          </Stack>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </AppProviders>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
     backgroundColor: palette.sky,
   },
+  errorTitle: { color: palette.ink, fontSize: 18, fontWeight: '800' },
+  errorBody: { color: palette.muted, marginTop: 8, textAlign: 'center' },
+  retry: { marginTop: 20, borderRadius: 20, backgroundColor: palette.ink, padding: 12 },
+  retryLabel: { color: palette.white, fontWeight: '800' },
 });

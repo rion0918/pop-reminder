@@ -114,7 +114,7 @@ test('home refreshes app settings when returning to focus', () => {
 test('home removes deleted reminders locally before the silent database refresh', () => {
   assertSourceContract(source, {
     includes: [
-      /const \{ reminders, loading, error, refresh, upsertReminder, removeReminder \} = useReminders\(\);/,
+      /removeReminder,/,
       /removeReminder\(reminder\.id\);[\s\S]*void refresh\(\{ silent: true \}\);/,
     ],
     excludes: [/await refresh\(\);/],
@@ -123,10 +123,9 @@ test('home removes deleted reminders locally before the silent database refresh'
 
 test('home reflects an edited reminder title without waiting for a refresh', () => {
   assertSourceIncludes(source, [
-    /import \{ updateReminderTitle \} from '..\/services\/updateReminderTitleService';/,
+    /updateReminderTitle,/,
     /const handleUpdateReminderTitle = useCallback\(/,
     /const updatedReminder = await updateReminderTitle\(reminder\.id, title\);/,
-    /upsertReminder\(updatedReminder\);/,
     /onUpdateTitle=\{handleUpdateReminderTitle\}/,
   ]);
 });
@@ -139,7 +138,7 @@ test('home waits for the reported bubble motion instead of a fixed timer', () =>
       /waitForDeleteMotion/,
       /handleDeleteMotionComplete/,
       /Promise\.allSettled\(\[/,
-      /deleteReminder\(reminder\.id\)/,
+      /deleteReminder\(reminder\.id, \{ deferCache: true \}\)/,
       /waitForDeleteMotion\(reminder\.id, 'bursting'\)/,
       /onDeleteMotionComplete=\{handleDeleteMotionComplete\}/,
     ],

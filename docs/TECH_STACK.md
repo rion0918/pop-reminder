@@ -20,19 +20,20 @@
 
 ## 2. 状態管理・ドメイン処理 (State & Domain)
 
-| 技術 / ライブラリ | バージョン | 用途・説明                                                        |
-| :---------------- | :--------- | :---------------------------------------------------------------- |
-| **Zustand**       | `^5.0.5`   | Quick Add、選択中のリマインダー、開発用通知設定などの UI 状態管理 |
-| **Zod**           | `^3.25.64` | リマインダー入力のトリミング、文字数、日付・時刻のスキーマ検証    |
-| **date-fns**      | `^4.1.0`   | 日付計算、期限判定、表示用の日付フォーマット                      |
+| 技術 / ライブラリ  | バージョン | 用途・説明                                                     |
+| :----------------- | :--------- | :------------------------------------------------------------- |
+| **TanStack Query** | `^5.0.0`   | SQLite を取得元とする読み込み・mutation・画面間キャッシュ同期  |
+| **Zustand**        | `^5.0.5`   | Quick Add の入力途中と開発用通知設定などの UI 状態管理         |
+| **Zod**            | `^3.25.64` | リマインダー入力のトリミング、文字数、日付・時刻のスキーマ検証 |
+| **date-fns**       | `^4.1.0`   | 日付計算、期限判定、表示用の日付フォーマット                   |
 
-画面から直接 DB や通知実装を呼び出さず、`features/reminders/services/` と `ports/` の境界を介して利用します。Repository 実装も `services/` 配下に置いています。
+SQLite を唯一の永続的な真実とし、TanStack Query のキャッシュは永続化しません。画面は `presentation/` の Query Hook を使い、`application/` の Port とユースケースを経由します。SQLite、通知、Widget の具体実装は `infrastructure/` と `bootstrap/` で接続します。
 
 ---
 
 ## 3. データベース・永続化 (Database & Persistence)
 
-ローカルデータは SQLite に保存し、Drizzle のスキーマと型をアプリケーションコードで共有します。専用のマイグレーションパッケージは使わず、`src/db/client.ts` の起動時初期化でテーブル作成と必要な互換 ALTER を実行します。
+ローカルデータは SQLite に保存します。Drizzle の行型は infrastructure 内で domain 型へ明示的に変換します。専用のマイグレーションパッケージは使わず、`src/db/migrations.ts` が `PRAGMA user_version` に基づく順次・冪等な migration を実行します。Widget 互換性のため journal mode は `DELETE` を維持します。
 
 | 技術 / ライブラリ    | バージョン | 用途・説明                                            |
 | :------------------- | :--------- | :---------------------------------------------------- |
@@ -121,13 +122,14 @@ pnpm run mvh:verify
 
 ```text
 src/
-├── app/               # Expo Router の画面エントリ、起動処理、Deep Link 受け口
+├── app/               # Expo Router の画面エントリ
 ├── app-tests/         # アプリ設定、ルーティング、ハーネスの回帰テスト
+├── bootstrap/         # Adapter、QueryClient、起動処理、Deep Link intent の組み立て
 ├── constants/         # カラーなどの共通デザイントークン
 ├── db/                # SQLite / Drizzle のスキーマ、DB クライアント、初期化
 ├── features/
-│   ├── reminders/     # リマインダー画面、Hooks、Stores、Services、Components、型
-│   └── settings/      # 設定画面、Hooks、永続化サービス、型
+│   ├── reminders/     # domain、application、infrastructure、presentation、画面、UI
+│   └── settings/      # domain、application、infrastructure、presentation、画面、UI
 ├── lib/
 │   └── notifications/ # Expo Notifications の権限、チャンネル、予約、キャンセル
 ├── shared/            # 共通 UI コンポーネントとユーティリティ
