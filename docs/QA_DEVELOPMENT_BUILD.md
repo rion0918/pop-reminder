@@ -205,6 +205,10 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] 「キャンセル」を押すと削除されず、Sheet は開いたまま（または閉じない）
 - [ ] 「削除する」を押すと、泡が薄膜破裂アニメーション（380ms）後に消える
 - [ ] 削除後、Bubble Board から該当リマインダーが消え、残りが詰めて表示される
+- [ ] Android: 標準サイズの泡で破片・水滴が泡の外側まで見え、380ms後に泡が消える
+- [ ] Android: 横長の泡（長いタイトル）でも破片・水滴が外側まで見え、削除処理が待ち続けない
+- [ ] Android: 削除失敗を発生させた場合、泡が復元アニメーション（220ms）後に戻り、失敗がエラーとして返る
+- [ ] Android: 削除中に同じ泡を連続タップしても、削除・破裂アニメーションが二重実行されない
 
 **期待される結果**
 
@@ -250,6 +254,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] リマインダー削除時の薄膜破裂アニメーション（380ms）がカクつかない
 - [ ] 泡が7個以上ある場合、オーバーフロー泡（`+N ほか`）が正しく表示される
 - [ ] `useReducedMotion` が有効な端末では、アニメーションが抑制される
+- [ ] Android: `useReducedMotion` が有効な端末では破片・水滴を描画せず、削除完了通知と削除処理が即時に進む
 
 **期待される結果**
 
