@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   BottomSheetBackdrop,
@@ -110,6 +110,7 @@ export function ReminderDetailSheet({
   const shouldDiscardTitleEditRef = useRef(false);
   const isTitleSaveRequestedRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteConfirmationVisible, setIsDeleteConfirmationVisible] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isTitleSaving, setIsTitleSaving] = useState(false);
   const [draftTitle, setDraftTitle] = useState(reminder?.title ?? '');
@@ -183,6 +184,7 @@ export function ReminderDetailSheet({
     pendingDeleteReminderRef.current = null;
 
     discardTitleEdit();
+    setIsDeleteConfirmationVisible(false);
 
     isPresentedRef.current = false;
     if (!pendingDeleteReminder) {
@@ -310,128 +312,171 @@ export function ReminderDetailSheet({
 
     discardTitleEdit();
     isDeleteRequestedRef.current = true;
-    Alert.alert(
-      'このシャボン玉を消しますか？',
-      '予約しているお知らせも一緒に消えます。',
-      [
-        {
-          text: 'キャンセル',
-          style: 'cancel',
-          onPress: () => {
-            isDeleteRequestedRef.current = false;
-          },
-        },
-        {
-          text: '削除する',
-          style: 'destructive',
-          onPress: () => {
-            isDeletingRef.current = true;
-            setIsDeleting(true);
-            pendingDeleteReminderRef.current = reminder;
-            closingReminderIdRef.current = displayedReminderIdRef.current;
-            isClosingRef.current = true;
-            sheetRef.current?.dismiss();
-          },
-        },
-      ],
-      {
-        onDismiss: () => {
-          if (!isDeletingRef.current) {
-            isDeleteRequestedRef.current = false;
-          }
-        },
-      },
-    );
+    setIsDeleteConfirmationVisible(true);
   }, [discardTitleEdit, isDeleting, reminder]);
 
+  const handleCancelDelete = useCallback(() => {
+    setIsDeleteConfirmationVisible(false);
+    isDeleteRequestedRef.current = false;
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!reminder || isDeleting || !isDeleteRequestedRef.current) {
+      return;
+    }
+
+    setIsDeleteConfirmationVisible(false);
+    isDeletingRef.current = true;
+    setIsDeleting(true);
+    pendingDeleteReminderRef.current = reminder;
+    closingReminderIdRef.current = displayedReminderIdRef.current;
+    isClosingRef.current = true;
+    sheetRef.current?.dismiss();
+  }, [isDeleting, reminder]);
+
   return (
-    <BottomSheetModal
-      name="reminder-detail"
-      ref={sheetRef}
-      stackBehavior="replace"
-      enableDismissOnClose
-      enableDynamicSizing
-      enablePanDownToClose
-      maxDynamicContentSize={detailMaxDynamicContentSize}
-      onAnimate={handleSheetAnimate}
-      onDismiss={handleDismiss}
-      topInset={sheetTopInset}
-      bottomInset={safeAreaInsets.bottom}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={styles.handle}
-      backgroundStyle={styles.sheetBackground}
-    >
-      <BottomSheetScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: detailContentBottomPadding }]}
-        keyboardShouldPersistTaps="handled"
+    <>
+      <BottomSheetModal
+        name="reminder-detail"
+        ref={sheetRef}
+        stackBehavior="replace"
+        enableDismissOnClose
+        enableDynamicSizing
+        enablePanDownToClose
+        maxDynamicContentSize={detailMaxDynamicContentSize}
+        onAnimate={handleSheetAnimate}
+        onDismiss={handleDismiss}
+        topInset={sheetTopInset}
+        bottomInset={safeAreaInsets.bottom}
+        backdropComponent={renderBackdrop}
+        handleIndicatorStyle={styles.handle}
+        backgroundStyle={styles.sheetBackground}
       >
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.kicker}>ふわっと思い出す予定</Text>
-            {isTitleEditing ? (
-              <BottomSheetTextInput
-                ref={titleInputRef}
-                accessibilityLabel="リマインダーのタイトル"
-                value={draftTitle}
-                onChangeText={setDraftTitle}
-                onBlur={handleTitleBlur}
-                onSubmitEditing={() => titleInputRef.current?.blur()}
-                blurOnSubmit={false}
-                returnKeyType="done"
-                style={styles.titleInput}
-              />
-            ) : (
+        <BottomSheetScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: detailContentBottomPadding }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <View style={styles.headerCopy}>
+              <Text style={styles.kicker}>ふわっと思い出す予定</Text>
+              {isTitleEditing ? (
+                <BottomSheetTextInput
+                  ref={titleInputRef}
+                  accessibilityLabel="リマインダーのタイトル"
+                  value={draftTitle}
+                  onChangeText={setDraftTitle}
+                  onBlur={handleTitleBlur}
+                  onSubmitEditing={() => titleInputRef.current?.blur()}
+                  blurOnSubmit={false}
+                  returnKeyType="done"
+                  style={styles.titleInput}
+                />
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="タイトルを編集"
+                  accessibilityState={{ disabled: !reminder || isTitleSaving }}
+                  disabled={!reminder || isTitleSaving}
+                  onPress={handleTitlePress}
+                  style={({ pressed }) => [
+                    styles.titlePressable,
+                    pressed && !isTitleSaving ? styles.titlePressablePressed : null,
+                  ]}
+                >
+                  <Text numberOfLines={2} ellipsizeMode="tail" style={styles.title}>
+                    {reminder?.title ?? ''}
+                  </Text>
+                </Pressable>
+              )}
+              {titleNotice ? <Text style={styles.titleNotice}>{titleNotice}</Text> : null}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="詳細を閉じる"
+              onPress={handleClosePress}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={20} color={palette.ink} />
+            </Pressable>
+          </View>
+
+          {reminder ? <NotificationTimeline reminder={reminder} /> : null}
+
+          <View style={styles.deleteActionSpacer}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="このシャボン玉を削除する"
+              accessibilityState={{ disabled: !reminder || isDeleting }}
+              onPress={handleDeletePress}
+              disabled={!reminder || isDeleting}
+              style={({ pressed }) => [
+                styles.deleteAction,
+                pressed && !isDeleting ? styles.deleteActionPressed : null,
+                !reminder || isDeleting ? styles.deleteActionDisabled : null,
+              ]}
+            >
+              <View style={styles.deleteActionContent}>
+                <Ionicons name="trash-outline" size={18} color={palette.peachDeep} />
+                <Text style={styles.deleteActionText}>削除する</Text>
+              </View>
+            </Pressable>
+          </View>
+        </BottomSheetScrollView>
+      </BottomSheetModal>
+
+      <Modal
+        visible={isDeleteConfirmationVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelDelete}
+      >
+        <View style={styles.deleteConfirmOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="削除確認を閉じる"
+            onPress={handleCancelDelete}
+            style={styles.deleteConfirmBackdrop}
+          />
+          <View accessibilityViewIsModal style={styles.deleteConfirmCard}>
+            <View style={styles.deleteConfirmHeader}>
+              <View style={styles.deleteConfirmBubble}>
+                <Ionicons name="ellipse-outline" size={22} color={palette.lavenderDeep} />
+              </View>
+              <View style={styles.deleteConfirmCopy}>
+                <Text style={styles.deleteConfirmTitle}>この泡を手放しますか？</Text>
+                <Text style={styles.deleteConfirmBody}>
+                  予約したお知らせも、いっしょに消えます。
+                </Text>
+              </View>
+            </View>
+            <View style={styles.deleteConfirmActions}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="タイトルを編集"
-                accessibilityState={{ disabled: !reminder || isTitleSaving }}
-                disabled={!reminder || isTitleSaving}
-                onPress={handleTitlePress}
+                accessibilityLabel="削除をやめる"
+                onPress={handleCancelDelete}
                 style={({ pressed }) => [
-                  styles.titlePressable,
-                  pressed && !isTitleSaving ? styles.titlePressablePressed : null,
+                  styles.deleteConfirmCancel,
+                  pressed ? styles.deleteConfirmActionPressed : null,
                 ]}
               >
-                <Text numberOfLines={2} ellipsizeMode="tail" style={styles.title}>
-                  {reminder?.title ?? ''}
-                </Text>
+                <Text style={styles.deleteConfirmCancelText}>残しておく</Text>
               </Pressable>
-            )}
-            {titleNotice ? <Text style={styles.titleNotice}>{titleNotice}</Text> : null}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="詳細を閉じる"
-            onPress={handleClosePress}
-            style={styles.closeButton}
-          >
-            <Ionicons name="close" size={20} color={palette.ink} />
-          </Pressable>
-        </View>
-
-        {reminder ? <NotificationTimeline reminder={reminder} /> : null}
-
-        <View style={styles.deleteActionSpacer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="このシャボン玉を削除する"
-            accessibilityState={{ disabled: !reminder || isDeleting }}
-            onPress={handleDeletePress}
-            disabled={!reminder || isDeleting}
-            style={({ pressed }) => [
-              styles.deleteAction,
-              pressed && !isDeleting ? styles.deleteActionPressed : null,
-              !reminder || isDeleting ? styles.deleteActionDisabled : null,
-            ]}
-          >
-            <View style={styles.deleteActionContent}>
-              <Ionicons name="trash-outline" size={18} color={palette.peachDeep} />
-              <Text style={styles.deleteActionText}>削除する</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="このシャボン玉を削除する"
+                onPress={handleConfirmDelete}
+                style={({ pressed }) => [
+                  styles.deleteConfirmDestructive,
+                  pressed ? styles.deleteConfirmActionPressed : null,
+                ]}
+              >
+                <Text style={styles.deleteConfirmDestructiveText}>手放す</Text>
+              </Pressable>
             </View>
-          </Pressable>
+          </View>
         </View>
-      </BottomSheetScrollView>
-    </BottomSheetModal>
+      </Modal>
+    </>
   );
 }
 
@@ -621,5 +666,99 @@ const styles = StyleSheet.create({
   },
   deleteActionDisabled: {
     opacity: 0.42,
+  },
+  deleteConfirmOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  deleteConfirmBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(38,49,81,0.36)',
+  },
+  deleteConfirmCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 28,
+    padding: 20,
+    backgroundColor: 'rgba(247,251,255,0.98)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
+    shadowColor: palette.shadow,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    elevation: 8,
+  },
+  deleteConfirmHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  deleteConfirmBubble: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.lavender,
+  },
+  deleteConfirmCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  deleteConfirmTitle: {
+    color: palette.ink,
+    fontSize: 19,
+    lineHeight: 25,
+    fontWeight: '900',
+  },
+  deleteConfirmBody: {
+    marginTop: 5,
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  deleteConfirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 20,
+  },
+  deleteConfirmCancel: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+  },
+  deleteConfirmDestructive: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(240,168,77,0.42)',
+    backgroundColor: 'rgba(255,241,216,0.9)',
+  },
+  deleteConfirmCancelText: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  deleteConfirmDestructiveText: {
+    color: palette.peachDeep,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  deleteConfirmActionPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
   },
 });

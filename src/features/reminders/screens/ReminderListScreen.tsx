@@ -37,8 +37,9 @@ export function ReminderListScreen() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
+  const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
+  const selectedReminder = reminders.find((reminder) => reminder.id === selectedReminderId) ?? null;
 
   const refresh = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -80,7 +81,7 @@ export function ReminderListScreen() {
           throw new Error('Reminder was not found');
         }
 
-        setSelectedReminder(null);
+        setSelectedReminderId(null);
         setReminders((current) => current.filter((item) => item.id !== reminder.id));
         await refresh({ silent: true });
       } catch (deleteError) {
@@ -100,9 +101,6 @@ export function ReminderListScreen() {
 
     setReminders((current) =>
       current.map((item) => (item.id === updatedReminder.id ? updatedReminder : item)),
-    );
-    setSelectedReminder((current) =>
-      current?.id === updatedReminder.id ? updatedReminder : current,
     );
     return updatedReminder;
   }, []);
@@ -200,7 +198,7 @@ export function ReminderListScreen() {
                 key={reminder.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${reminder.title}の詳細を開く`}
-                onPress={() => setSelectedReminder(reminder)}
+                onPress={() => setSelectedReminderId(reminder.id)}
                 className="mb-[10px] min-h-[72px] flex-row items-center gap-[12px] rounded-[24px] border border-[rgba(255,255,255,0.92)] bg-[rgba(255,255,255,0.82)] px-[14px]"
                 style={({ pressed }) => [
                   styles.softShadow,
@@ -240,7 +238,7 @@ export function ReminderListScreen() {
       <ReminderDetailSheet
         reminder={selectedReminder}
         onClose={(closedReminderId) =>
-          setSelectedReminder((current) => (current?.id === closedReminderId ? null : current))
+          setSelectedReminderId((current) => (current === closedReminderId ? null : current))
         }
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}
