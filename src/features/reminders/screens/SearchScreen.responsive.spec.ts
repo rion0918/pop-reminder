@@ -21,3 +21,12 @@ test('search removes deleted reminders locally before a silent refresh', () => {
     /await refresh\(\{ silent: true \}\);/,
   ]);
 });
+
+test('search reflects edited titles without resetting the current result set', () => {
+  assertSourceIncludes(source, [
+    /import \{ updateReminderTitle \} from '..\/services\/updateReminderTitleService';/,
+    /const handleUpdateReminderTitle = useCallback\(/,
+    /setReminders\(\(current\) =>[\s\S]*current\.map\(\(item\) => \(item\.id === updatedReminder\.id \? updatedReminder : item\)\)/,
+    /onUpdateTitle=\{handleUpdateReminderTitle\}/,
+  ]);
+});

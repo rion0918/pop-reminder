@@ -121,6 +121,16 @@ test('home removes deleted reminders locally before the silent database refresh'
   });
 });
 
+test('home reflects an edited reminder title without waiting for a refresh', () => {
+  assertSourceIncludes(source, [
+    /import \{ updateReminderTitle \} from '..\/services\/updateReminderTitleService';/,
+    /const handleUpdateReminderTitle = useCallback\(/,
+    /const updatedReminder = await updateReminderTitle\(reminder\.id, title\);/,
+    /upsertReminder\(updatedReminder\);/,
+    /onUpdateTitle=\{handleUpdateReminderTitle\}/,
+  ]);
+});
+
 test('home waits for the reported bubble motion instead of a fixed timer', () => {
   assertSourceContract(source, {
     includes: [
@@ -161,14 +171,23 @@ test('android hardware back closes reminder sheets before leaving home', () => {
     /Platform/,
     /const selectedReminderRef = useRef<Reminder \| null>\(null\);/,
     /selectedReminderRef\.current = selectedReminder;/,
+    /const isReminderDeletionInProgressRef = useRef\(false\);/,
     /const closeQuickAdd = useReminderUiStore\(\(state\) => state\.closeQuickAdd\);/,
     /Platform\.OS !== ['"]android['"]/,
     /BackHandler\.addEventListener\(['"]hardwareBackPress['"]/,
+    /if \(isReminderDeletionInProgressRef\.current\) \{\s*return true;\s*\}/,
     /if \(selectedReminderRef\.current\) \{/,
     /setSelectedReminderId\(null\);/,
     /if \(isQuickAddOpenRef\.current\) \{/,
     /closeQuickAdd\(\);/,
     /subscription\.remove\(\);/,
+  ]);
+});
+
+test('home keeps Android back handling active until reminder deletion settles', () => {
+  assertSourceIncludes(source, [
+    /isReminderDeletionInProgressRef\.current = true;/,
+    /finally \{\s*isReminderDeletionInProgressRef\.current = false;\s*\}/,
   ]);
 });
 

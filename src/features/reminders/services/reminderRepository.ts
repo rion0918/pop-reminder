@@ -73,6 +73,18 @@ export async function updateReminderNotificationIds(
   return getReminderById(id);
 }
 
+export async function updateReminderTitleById(id: string, title: string): Promise<Reminder | null> {
+  await db
+    .update(reminders)
+    .set({
+      title,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(reminders.id, id));
+
+  return getReminderById(id);
+}
+
 export async function markReminderExpired(id: string) {
   await db
     .update(reminders)

@@ -14,3 +14,12 @@ test('reminder list summary keeps count inside narrow Android widths', () => {
     /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
   ]);
 });
+
+test('reminder list reflects edited titles without leaving the list', () => {
+  assertSourceIncludes(source, [
+    /import \{ updateReminderTitle \} from '..\/services\/updateReminderTitleService';/,
+    /const handleUpdateReminderTitle = useCallback\(/,
+    /setReminders\(\(current\) =>[\s\S]*current\.map\(\(item\) => \(item\.id === updatedReminder\.id \? updatedReminder : item\)\)/,
+    /onUpdateTitle=\{handleUpdateReminderTitle\}/,
+  ]);
+});

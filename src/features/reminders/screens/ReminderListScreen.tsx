@@ -17,6 +17,7 @@ import { useAppSettings } from '../../settings/hooks/useAppSettings';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { deleteReminder } from '../services/deleteReminderService';
 import { listActiveReminders } from '../services/reminderRepository';
+import { updateReminderTitle } from '../services/updateReminderTitleService';
 import type { Reminder } from '../types/reminder';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';
@@ -89,6 +90,22 @@ export function ReminderListScreen() {
     },
     [refresh],
   );
+
+  const handleUpdateReminderTitle = useCallback(async (reminder: Reminder, title: string) => {
+    const updatedReminder = await updateReminderTitle(reminder.id, title);
+
+    if (!updatedReminder) {
+      throw new Error('Reminder was not found');
+    }
+
+    setReminders((current) =>
+      current.map((item) => (item.id === updatedReminder.id ? updatedReminder : item)),
+    );
+    setSelectedReminder((current) =>
+      current?.id === updatedReminder.id ? updatedReminder : current,
+    );
+    return updatedReminder;
+  }, []);
 
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
@@ -226,6 +243,7 @@ export function ReminderListScreen() {
           setSelectedReminder((current) => (current?.id === closedReminderId ? null : current))
         }
         onDelete={handleDeleteReminder}
+        onUpdateTitle={handleUpdateReminderTitle}
       />
     </AppScreen>
   );

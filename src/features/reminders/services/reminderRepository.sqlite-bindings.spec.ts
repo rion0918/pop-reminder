@@ -18,6 +18,10 @@ const updateNotificationIdsSource =
   source.match(
     /export async function updateReminderNotificationIds[\s\S]*?export async function markReminderExpired/,
   )?.[0] ?? '';
+const updateTitleSource =
+  source.match(
+    /export async function updateReminderTitleById[\s\S]*?export async function markReminderExpired/,
+  )?.[0] ?? '';
 
 test('initial reminder insert avoids binding null notification ids through expo sqlite', () => {
   assert.notEqual(insertReminderSource, '');
@@ -41,6 +45,17 @@ test('notification id update skips sqlite writes when both ids are null', () => 
   assertSourceIncludes(updateNotificationIdsSource, [
     /notificationIds\.previousNotificationId === null/,
     /notificationIds\.targetNotificationId === null/,
+    /return getReminderById\(id\);/,
+  ]);
+});
+
+test('title update writes only the title and updated timestamp', () => {
+  assert.notEqual(updateTitleSource, '');
+  assertSourceIncludes(updateTitleSource, [
+    /export async function updateReminderTitleById\(id: string, title: string\)/,
+    /title,/,
+    /updatedAt: new Date\(\)\.toISOString\(\)/,
+    /\.where\(eq\(reminders\.id, id\)\);/,
     /return getReminderById\(id\);/,
   ]);
 });

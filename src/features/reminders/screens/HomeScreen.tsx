@@ -20,6 +20,7 @@ import { ReminderInputSheet } from '../components/ReminderInputSheet';
 import { useReminders } from '../hooks/useReminders';
 import { createReminder } from '../services/createReminderService';
 import { deleteReminder } from '../services/deleteReminderService';
+import { updateReminderTitle } from '../services/updateReminderTitleService';
 import { useNotificationDevStore } from '../stores/notificationDevStore';
 import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
 import type { Reminder } from '../types/reminder';
@@ -67,6 +68,7 @@ export function HomeScreen() {
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
   const deleteMotionWaiterRef = useRef<DeleteMotionWaiter | null>(null);
+  const isReminderDeletionInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
   const settingsPressTimeoutRef = useRef<number | null>(null);
   const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
@@ -126,6 +128,10 @@ export function HomeScreen() {
       }
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (isReminderDeletionInProgressRef.current) {
+          return true;
+        }
+
         if (selectedReminderRef.current) {
           setSelectedReminderId(null);
           return true;
@@ -230,40 +236,46 @@ export function HomeScreen() {
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
-      setDeleteMotion({ reminderId: reminder.id, phase: 'bursting' });
-      const [deleteResult] = await Promise.allSettled([
-        deleteReminder(reminder.id),
-        waitForDeleteMotion(reminder.id, 'bursting'),
-      ]);
+      isReminderDeletionInProgressRef.current = true;
 
-      if (!isMountedRef.current) {
-        return;
-      }
-
-      const deleteError =
-        deleteResult.status === 'rejected'
-          ? deleteResult.reason
-          : deleteResult.value
-            ? null
-            : new Error('Reminder was not found');
-
-      if (deleteError) {
-        setDeleteMotion({ reminderId: reminder.id, phase: 'restoring' });
-        await waitForDeleteMotion(reminder.id, 'restoring');
+      try {
+        setDeleteMotion({ reminderId: reminder.id, phase: 'bursting' });
+        const [deleteResult] = await Promise.allSettled([
+          deleteReminder(reminder.id),
+          waitForDeleteMotion(reminder.id, 'bursting'),
+        ]);
 
         if (!isMountedRef.current) {
           return;
         }
 
-        setDeleteMotion(null);
-        console.warn('Failed to delete reminder', deleteError);
-        throw deleteError;
-      }
+        const deleteError =
+          deleteResult.status === 'rejected'
+            ? deleteResult.reason
+            : deleteResult.value
+              ? null
+              : new Error('Reminder was not found');
 
-      setSelectedReminderId(null);
-      removeReminder(reminder.id);
-      setDeleteMotion(null);
-      void refresh({ silent: true });
+        if (deleteError) {
+          setDeleteMotion({ reminderId: reminder.id, phase: 'restoring' });
+          await waitForDeleteMotion(reminder.id, 'restoring');
+
+          if (!isMountedRef.current) {
+            return;
+          }
+
+          setDeleteMotion(null);
+          console.warn('Failed to delete reminder', deleteError);
+          throw deleteError;
+        }
+
+        setSelectedReminderId(null);
+        removeReminder(reminder.id);
+        setDeleteMotion(null);
+        void refresh({ silent: true });
+      } finally {
+        isReminderDeletionInProgressRef.current = false;
+      }
     },
     [refresh, removeReminder, setSelectedReminderId, waitForDeleteMotion],
   );
@@ -275,6 +287,20 @@ export function HomeScreen() {
       }
     },
     [setSelectedReminderId],
+  );
+
+  const handleUpdateReminderTitle = useCallback(
+    async (reminder: Reminder, title: string) => {
+      const updatedReminder = await updateReminderTitle(reminder.id, title);
+
+      if (!updatedReminder) {
+        throw new Error('Reminder was not found');
+      }
+
+      upsertReminder(updatedReminder);
+      return updatedReminder;
+    },
+    [upsertReminder],
   );
 
   const isAddButtonDisabled = isSaving;
@@ -377,6 +403,7 @@ export function HomeScreen() {
         reminder={selectedReminder}
         onClose={handleCloseReminderDetail}
         onDelete={handleDeleteReminder}
+        onUpdateTitle={handleUpdateReminderTitle}
       />
 
       <View

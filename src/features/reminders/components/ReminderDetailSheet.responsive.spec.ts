@@ -19,10 +19,60 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
       /bottomInset=\{safeAreaInsets\.bottom\}/,
       /contentContainerStyle=\{\[styles\.content, \{ paddingBottom: detailContentBottomPadding \}\]\}/,
       /keyboardShouldPersistTaps="handled"/,
-      /<View style=\{styles\.deleteButtonSpacer\}>[\s\S]*<PrimaryButton[\s\S]*style=\{styles\.deleteButton\}[\s\S]*<\/View>/,
-      /deleteButtonSpacer: \{[\s\S]*marginTop: 26,/,
+      /<View style=\{styles\.deleteActionSpacer\}>[\s\S]*accessibilityLabel="このシャボン玉を削除する"[\s\S]*<View style=\{styles\.deleteActionContent\}>[\s\S]*name="trash-outline"[\s\S]*<Text style=\{styles\.deleteActionText\}>削除する<\/Text>[\s\S]*<\/View>[\s\S]*<\/View>/,
+      /deleteActionSpacer: \{[\s\S]*marginTop: 28,/,
+      /deleteActionSpacer: \{[\s\S]*alignItems: 'flex-end',/,
+      /deleteAction: \{[\s\S]*minWidth: 132,[\s\S]*minHeight: 52,[\s\S]*borderRadius: 18,/,
+      /deleteActionContent: \{[\s\S]*flexDirection: 'row',/,
+      /deleteActionPressed: \{[\s\S]*transform: \[\{ scale: 0\.98 \}\],[\s\S]*backgroundColor: '#FFE4B8',/,
     ],
-    excludes: [/snapPoints=\{snapPoints\}/, /const snapPoints = useMemo/, /\['48%', '68%'\]/],
+    excludes: [
+      /snapPoints=\{snapPoints\}/,
+      /const snapPoints = useMemo/,
+      /\['48%', '68%'\]/,
+      /<PrimaryButton/,
+      /backgroundColor: palette\.peachDeep/,
+      /width: '100%'/,
+    ],
+  });
+});
+
+test('reminder detail sheet presents notification timing as an accessible timeline', () => {
+  assertSourceContract(source, {
+    includes: [
+      />ふわっと思い出す予定<\/Text>/,
+      /numberOfLines=\{2\}/,
+      /まず、前日にお知らせ/,
+      /当日にもう一度お知らせ/,
+      /formatReminderDetailDate/,
+      /formatReminderDetailTime/,
+      /formatReminderDetailAccessibilityDateTime/,
+      /accessibilityLabel=\{`前日のお知らせ、\$\{previousAccessibilityDateTime\}`\}/,
+      /accessibilityLabel=\{`当日のお知らせ、\$\{targetAccessibilityDateTime\}`\}/,
+      /<View style=\{styles\.timelineLine\} \/>/,
+      /name="notifications-outline"/,
+      /name="notifications"/,
+      /closeButton: \{[\s\S]*width: 44,[\s\S]*height: 44,[\s\S]*borderRadius: 22,/,
+    ],
+    excludes: [/function DetailRow/, />お知らせ予定<\/Text>/],
+  });
+});
+
+test('reminder detail sheet edits and saves the title when its field loses focus', () => {
+  assertSourceContract(source, {
+    includes: [
+      /BottomSheetTextInput/,
+      /onUpdateTitle: \(reminder: Reminder, title: string\) => Promise<Reminder>;/,
+      /isTitleEditing \? \(/,
+      /accessibilityLabel="タイトルを編集"/,
+      /accessibilityLabel="リマインダーのタイトル"/,
+      /onBlur=\{handleTitleBlur\}/,
+      /onSubmitEditing=\{\(\) => titleInputRef\.current\?\.blur\(\)\}/,
+      /reminderTitleSchema\.safeParse\(normalizedTitle\)/,
+      /requestAnimationFrame\(\(\) => \{/,
+      /discardTitleEdit\(\);/,
+      /onAnimate=\{handleSheetAnimate\}/,
+    ],
   });
 });
 
