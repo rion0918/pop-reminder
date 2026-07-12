@@ -1,98 +1,141 @@
 # 技術スタック (Technology Stack)
 
-`pop-reminder` プロジェクトで使用されている主要な技術、ライブラリ、および開発環境の構成ドキュメントです。
+`pop-reminder` は、Expo / React Native / Expo Router を基盤にした Android・iOS・Web 対応のリマインダーアプリです。SQLite によるローカル永続化、ローカル通知、Android ホーム画面 Widget、プラットフォーム別のアニメーションを使用しています。
+
+バージョンは、特記がない限り `package.json` の宣言値に基づきます。
 
 ---
 
 ## 1. コア・プラットフォーム (Core Platform)
 
-クロスプラットフォーム（主に Android / iOS）のモバイルアプリケーション開発基盤として **Expo** を採用しています。
-
-| 技術 / ライブラリ | バージョン | 用途・説明                             |
-| :---------------- | :--------- | :------------------------------------- |
-| **Expo SDK**      | `~54.0.35` | アプリケーションのベースフレームワーク |
-| **React Native**  | `0.81.5`   | ネイティブ UI レンダリング基盤         |
-| **React**         | `19.1.0`   | コンポーネント指向 UI ライブラリ       |
-| **TypeScript**    | `~5.9.3`   | 型安全な開発のための言語基盤           |
-
----
-
-## 2. 状態管理・ルーティング (State & Routing)
-
-| 技術 / ライブラリ | バージョン | 用途・説明                                               |
-| :---------------- | :--------- | :------------------------------------------------------- |
-| **Expo Router**   | `~6.0.24`  | ファイルベースのルーティング (App Router 移行スタイル)   |
-| **Zustand**       | `^5.0.5`   | グローバル状態管理 (軽量・直感的な Hooks ベースのストア) |
+| 技術 / ライブラリ | バージョン | 用途・説明                                                               |
+| :---------------- | :--------- | :----------------------------------------------------------------------- |
+| **Expo SDK**      | `~54.0.35` | アプリケーションの基盤、ネイティブ機能とビルド設定                       |
+| **React Native**  | `0.81.5`   | Android / iOS のネイティブ UI レンダリング                               |
+| **React**         | `19.1.0`   | コンポーネント指向 UI ライブラリ                                         |
+| **TypeScript**    | `~5.9.3`   | 型安全なアプリケーションコード                                           |
+| **Expo Router**   | `~6.0.24`  | `src/app/` を起点にしたファイルベースルーティング。typed routes を有効化 |
 
 ---
 
-## 3. データベース & 永続化 (Database & Persistence)
+## 2. 状態管理・ドメイン処理 (State & Domain)
 
-ローカルデータの永続化には SQLite を用い、型安全なクエリとマイグレーションのために Drizzle ORM を組み合わせています。
+| 技術 / ライブラリ | バージョン | 用途・説明                                                        |
+| :---------------- | :--------- | :---------------------------------------------------------------- |
+| **Zustand**       | `^5.0.5`   | Quick Add、選択中のリマインダー、開発用通知設定などの UI 状態管理 |
+| **Zod**           | `^3.25.64` | リマインダー入力のトリミング、文字数、日付・時刻のスキーマ検証    |
+| **date-fns**      | `^4.1.0`   | 日付計算、期限判定、表示用の日付フォーマット                      |
 
-| 技術 / ライブラリ | バージョン | 用途・説明                                       |
-| :---------------- | :--------- | :----------------------------------------------- |
-| **expo-sqlite**   | `~16.0.10` | SQLite データベースへのネイティブアクセス        |
-| **Drizzle ORM**   | `^0.44.2`  | TypeScript ファーストの軽量な ORM / スキーマ定義 |
+画面から直接 DB や通知実装を呼び出さず、`features/reminders/services/` と `ports/` の境界を介して利用します。Repository 実装も `services/` 配下に置いています。
 
 ---
 
-## 4. UI・インタラクション (UI & Interaction)
+## 3. データベース・永続化 (Database & Persistence)
 
-iOS/Android に適したアニメーションとジェスチャー、およびモダンな UI コンポーネントを使用しています。
+ローカルデータは SQLite に保存し、Drizzle のスキーマと型をアプリケーションコードで共有します。専用のマイグレーションパッケージは使わず、`src/db/client.ts` の起動時初期化でテーブル作成と必要な互換 ALTER を実行します。
 
-| 技術 / ライブラリ                | バージョン | 用途・説明                                 |
-| :------------------------------- | :--------- | :----------------------------------------- |
-| **react-native-reanimated**      | `~4.1.7`   | パフォーマンスに優れた宣言的アニメーション |
-| **react-native-gesture-handler** | `~2.28.0`  | ネイティブタッチ・ジェスチャー処理         |
-| **@gorhom/bottom-sheet**         | `^5.1.4`   | インタラクティブなボトムシート UI          |
-| **expo-linear-gradient**         | `~15.0.8`  | グラデーション背景などのビジュアル表現     |
+| 技術 / ライブラリ    | バージョン | 用途・説明                                            |
+| :------------------- | :--------- | :---------------------------------------------------- |
+| **expo-sqlite**      | `~16.0.10` | SQLite へのネイティブアクセス                         |
+| **Drizzle ORM**      | `^0.44.2`  | SQLite のテーブル定義、型推論、CRUD クエリ            |
+| **expo-file-system** | `~19.0.23` | SQLite ファイル保存先（アプリの Document 配下）の取得 |
+
+主なテーブルは `reminders` と `app_settings` です。Widget は通常のアプリ画面とは別の SQLite 接続を使ってスナップショットを取得します。
+
+---
+
+## 4. UI・スタイリング・インタラクション (UI & Interaction)
+
+| 技術 / ライブラリ                          | バージョン | 用途・説明                                                     |
+| :----------------------------------------- | :--------- | :------------------------------------------------------------- |
+| **NativeWind**                             | `^4`       | Tailwind クラスによる React Native のスタイリング              |
+| **tailwindcss**                            | `^3.4.17`  | アプリ共通のカラー・余白・タイポグラフィトークン               |
+| **react-native-css-interop**               | `0.2.6`    | NativeWind の React Native 連携                                |
+| **react-native-reanimated**                | `~4.1.7`   | UI アニメーション、ワークレットベースのモーション              |
+| **react-native-worklets**                  | `^0.5.1`   | Reanimated 4 のワークレット実行基盤                            |
+| **react-native-gesture-handler**           | `~2.28.0`  | ネイティブのタッチ・ジェスチャー処理                           |
+| **@gorhom/bottom-sheet**                   | `^5.1.4`   | リマインダー追加・詳細・設定操作の Bottom Sheet                |
+| **react-native-safe-area-context**         | `5.6.2`    | ノッチ、ステータスバー、ナビゲーションバーを考慮したレイアウト |
+| **expo-linear-gradient**                   | `~15.0.8`  | 泡や画面背景のグラデーション                                   |
+| **@shopify/react-native-skia**             | `2.2.12`   | iOS の泡破裂表現、膜のキャプチャ、穴・水滴の描画               |
+| **@expo/vector-icons**                     | `^15.1.1`  | 追加、設定、検索などのアイコン                                 |
+| **@react-native-community/datetimepicker** | `8.4.4`    | Android / iOS の日付・時刻選択                                 |
+
+泡の破裂表現はプラットフォームごとに実装を切り替えます。
+
+- iOS: `ReminderBubbleBurst.native.tsx` の Skia 表現
+- Android: `ReminderBubbleBurst.android.tsx` の Reanimated フォールバック。Skia のビューキャプチャには依存しない
+- Web: `ReminderBubbleBurst.web.tsx` の軽量な Reanimated 表現
 
 ---
 
 ## 5. ネイティブ統合・付加機能 (Native Features)
 
-| 技術 / ライブラリ               | バージョン | 用途・説明                                       |
-| :------------------------------ | :--------- | :----------------------------------------------- |
-| **expo-notifications**          | `~0.32.17` | ローカル通知のスケジュール、チャンネル、権限管理 |
-| **react-native-android-widget** | `^0.20.3`  | Android のホーム画面 Widget の作成・更新処理     |
-| **expo-linking**                | `~8.0.12`  | Widget や通知からの Deep Link のハンドリング     |
+| 技術 / ライブラリ               | バージョン | 用途・説明                                                       |
+| :------------------------------ | :--------- | :--------------------------------------------------------------- |
+| **expo-notifications**          | `~0.32.17` | ローカル通知の予約・キャンセル、Android 通知チャンネル、権限管理 |
+| **react-native-android-widget** | `^0.20.3`  | Android ホーム画面 Widget の描画・更新・Widget タスク処理        |
+| **expo-linking**                | `~8.0.12`  | 通知・Widget の Deep Link を Expo Router に接続                  |
+| **expo-haptics**                | `~15.0.8`  | 泡の破裂時の Android / iOS ハプティクス                          |
+| **expo-font**                   | `~14.0.12` | アプリ内フォントの読み込み                                       |
+| **expo-status-bar**             | `~3.0.9`   | ステータスバー表示の制御                                         |
+
+`expo-notifications` と `react-native-android-widget` はネイティブ依存を含むため、通知や Widget の実機確認には Expo Go ではなく Development Build を使用します。`app.json` の config plugin でネイティブ設定を管理しています。
 
 ---
 
-## 6. 開発環境・ビルドツール (Development & Tooling)
+## 6. 開発環境・ビルド・品質管理 (Development & Tooling)
 
-| 技術 / ライブラリ                   | 用途・説明                                                                    |
-| :---------------------------------- | :---------------------------------------------------------------------------- |
-| **pnpm** (`v10.8.1`)                | 高速かつディスク容量を節約するパッケージマネージャー                          |
-| **Nix** (`flake.nix`)               | プロジェクト全体の開発ツール依存関係（Node.jsなど）のバージョン固定・環境再現 |
-| **EAS (Expo Application Services)** | クラウドビルドおよびストア配布・リリース管理 (`eas.json`)                     |
-| **ESLint** & **eslint-config-expo** | コードの静的解析と品質維持                                                    |
-| **Prettier**                        | コードの自動整形 (フォーマッタ)                                               |
+| 技術 / ライブラリ               | バージョン / 構成    | 用途・説明                                         |
+| :------------------------------ | :------------------- | :------------------------------------------------- |
+| **Node.js**                     | Nix の `nodejs_24`   | 開発シェルでの Node.js バージョン固定              |
+| **pnpm**                        | `10.8.1`             | パッケージ管理とスクリプト実行                     |
+| **Expo Dev Client**             | `~6.0.21`            | ネイティブ依存を含む Development Build の実行      |
+| **EAS**                         | `eas.json`           | Android / iOS のクラウドビルド、配布、リリース管理 |
+| **Biome**                       | `^2.5.2`             | 高速なフォーマット・Lint・カスタムルール検証       |
+| **ESLint / eslint-config-expo** | `^9.0.0` / `~10.0.0` | Expo 向け静的解析                                  |
+| **Prettier**                    | `^3.9.4`             | ドキュメント・設定・コードの整形                   |
+| **Lefthook**                    | `^2.1.9`             | pre-commit の保護ファイル、Biome、テスト実行       |
+| **MVH**                         | `scripts/mvh-*`      | 保護ファイルガード、構造化フィードバック、統合検証 |
+
+Metro と Babel は Expo をベースに、NativeWind と Reanimated の設定を追加しています。保護されたハーネス設定を含む標準検証コマンドは次のとおりです。
+
+```bash
+pnpm run mvh:verify
+```
+
+このコマンドは、Prettier、保護ファイルガード、Biome、テスト、TypeScript 型チェック、Expo ESLint を順に実行します。
 
 ---
 
 ## 7. テスト (Testing)
 
 - **テストランナー**: Node.js 標準テストランナー (`node --import tsx --test`)
-- **テスト構成**: `tsx` を使用して TypeScript のテストファイルを直接実行。主に `src/app-tests/` でのルーティングテストや、Widget の回帰テスト (`PopReminderWidget.bubble-ui.test.js`) などを実装。
+- **テスト対象**: `config.release.test.js` と `src/**/*.spec.ts` / `src/**/*.spec.tsx`
+- **テスト方針**: DB バインディング、通知、Widget 同期、画面ソース契約、レスポンシブレイアウト、プラットフォーム別実装、泡破裂ジオメトリを決定論的に検証
+- **アーキテクチャ境界**: `src/test-utils/sourceAssertions.ts` による実装契約テストと、Biome のカスタムルールを併用
 
 ---
 
 ## 8. ディレクトリ構造と機能マッピング
 
-技術スタックは、以下のリポジトリ構成に基づいてレイヤー化されています。
-
 ```text
 src/
-├── app/               # Expo Router のエントリ、画面遷移、Deep Link
-├── app-tests/         # ルーティングや境界条件の回帰テスト
-├── db/                # SQLite/Drizzle のスキーマ定義、DBクライアント、初期化処理
+├── app/               # Expo Router の画面エントリ、起動処理、Deep Link 受け口
+├── app-tests/         # アプリ設定、ルーティング、ハーネスの回帰テスト
+├── constants/         # カラーなどの共通デザイントークン
+├── db/                # SQLite / Drizzle のスキーマ、DB クライアント、初期化
 ├── features/
-│   ├── reminders/     # リマインダー機能 (画面、Hooks、Stores、Services、型定義)
-│   └── settings/      # 設定機能 (画面、設定永続化、関連サービス)
+│   ├── reminders/     # リマインダー画面、Hooks、Stores、Services、Components、型
+│   └── settings/      # 設定画面、Hooks、永続化サービス、型
 ├── lib/
-│   └── notifications/ # Expo Notifications のスケジュール、チャンネル、権限
-├── shared/            # 共通で利用する UI コンポーネントおよびユーティリティ
-└── widget/            # Android Widget (react-native-android-widget) の UI と更新
+│   └── notifications/ # Expo Notifications の権限、チャンネル、予約、キャンセル
+├── shared/            # 共通 UI コンポーネントとユーティリティ
+├── test-utils/        # ソース契約などのテストヘルパー
+└── widget/            # Android Widget UI、DB スナップショット、更新処理、Task Handler
+
+assets/                # アプリアイコン、スプラッシュ、通知アイコン
+android/               # Android ネイティブプロジェクト
+ios/                   # iOS ネイティブプロジェクト
+docs/                  # QA、リリース、ストア、プライバシー、ADR
 ```
