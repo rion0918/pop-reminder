@@ -13,36 +13,38 @@ export type WidgetRect = {
   bottom: number;
 };
 
-export type WidgetBubbleLayout = WidgetRect;
-
-export type WidgetReminderBubbleLayout = WidgetBubbleLayout & {
+export type WidgetListRowLayout = WidgetRect & {
   reminderId: string;
 };
 
-export type WidgetDisplayMode = 'compact' | 'list' | 'two-column';
+export type WidgetDisplayMode = 'compact' | 'list' | 'expanded';
 
 export type WidgetLayoutPlan = {
   mode: WidgetDisplayMode;
   visibleReminderCount: number;
   visibleReminderIds: string[];
-  reminderBubbles: WidgetReminderBubbleLayout[];
-  bubbleSlots: WidgetBubbleLayout[];
-  overflowCount: number;
-  overflowBubble?: WidgetBubbleLayout;
-  contentBounds: WidgetRect;
+  header: WidgetRect;
+  listBounds: WidgetRect;
+  listRows: WidgetListRowLayout[];
   addButton: WidgetRect;
 };
 
 export const WIDGET_SURFACE_PADDING = 12;
-export const WIDGET_HEADER_HEIGHT = 44;
-export const WIDGET_PLUS_TOUCH_WIDTH = 84;
 export const WIDGET_PLUS_TOUCH_HEIGHT = 44;
-export const WIDGET_PRIORITY_BUBBLE_MIN_HEIGHT = 72;
-export const WIDGET_PRIORITY_BUBBLE_MAX_HEIGHT = 144;
-export const WIDGET_MAX_VISIBLE_REMINDERS = 5;
+export const WIDGET_MAX_VISIBLE_REMINDERS = 8;
+export const WIDGET_LIST_ROW_MIN_HEIGHT = 39;
 
-const WIDGET_HEADER_GAP = 8;
-const WIDGET_BUBBLE_GAP = 10;
+const WIDGET_COMPACT_SURFACE_PADDING = 8;
+const WIDGET_HEADER_HEIGHT = 26;
+const WIDGET_COMPACT_HEADER_HEIGHT = 22;
+const WIDGET_HEADER_GAP = 6;
+const WIDGET_COMPACT_HEADER_GAP = 4;
+const WIDGET_LIST_GAP = 4;
+const WIDGET_COMPACT_LIST_GAP = 4;
+const WIDGET_ADD_BUTTON_GAP = 8;
+const WIDGET_COMPACT_ADD_BUTTON_GAP = 6;
+const WIDGET_ADD_BUTTON_MIN_WIDTH = 180;
+const WIDGET_ADD_BUTTON_MAX_WIDTH = 300;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -59,105 +61,44 @@ function makeRect(left: number, top: number, width: number, height: number): Wid
   };
 }
 
-function makeBubble(left: number, top: number, size: number) {
-  return makeRect(left, top, size, size);
-}
-
 export function getWidgetDisplayMode(widgetWidth: number, widgetHeight: number): WidgetDisplayMode {
-  if (widgetWidth >= 360 && widgetHeight >= 280) {
-    return 'two-column';
+  if (widgetWidth >= 340 && widgetHeight >= 300) {
+    return 'expanded';
   }
 
-  if (widgetWidth >= 320 && widgetHeight >= 220) {
+  if (widgetWidth >= 300 && widgetHeight >= 250) {
     return 'list';
   }
 
   return 'compact';
 }
 
-function getBubbleCapacity(mode: WidgetDisplayMode) {
-  if (mode === 'compact') {
-    return 2;
-  }
-
-  if (mode === 'list') {
-    return 3;
-  }
-
-  return WIDGET_MAX_VISIBLE_REMINDERS;
+function getVisibleCapacity(listHeight: number, rowGap: number) {
+  return clamp(
+    Math.floor((listHeight + rowGap) / (WIDGET_LIST_ROW_MIN_HEIGHT + rowGap)),
+    1,
+    WIDGET_MAX_VISIBLE_REMINDERS,
+  );
 }
 
-function getPriorityBubbleSize(mode: WidgetDisplayMode, contentBounds: WidgetRect) {
-  if (mode === 'compact') {
-    return Math.round(clamp(contentBounds.height * 0.74, 72, 76));
+function getListRows(
+  reminderIds: string[],
+  listBounds: WidgetRect,
+  rowGap: number,
+): WidgetListRowLayout[] {
+  if (reminderIds.length === 0) {
+    return [];
   }
 
-  if (mode === 'list') {
-    return Math.round(clamp(contentBounds.width * 0.32, 96, 104));
-  }
-
-  return Math.round(
-    clamp(
-      Math.min(contentBounds.width * 0.38, contentBounds.height * 0.7),
-      128,
-      WIDGET_PRIORITY_BUBBLE_MAX_HEIGHT,
+  return reminderIds.map((reminderId, index) => ({
+    ...makeRect(
+      listBounds.left,
+      listBounds.top + index * (WIDGET_LIST_ROW_MIN_HEIGHT + rowGap),
+      listBounds.width,
+      WIDGET_LIST_ROW_MIN_HEIGHT,
     ),
-  );
-}
-
-function getBubbleSlots(mode: WidgetDisplayMode, contentBounds: WidgetRect): WidgetBubbleLayout[] {
-  const prioritySize = getPriorityBubbleSize(mode, contentBounds);
-  const priorityTop = contentBounds.top + Math.floor((contentBounds.height - prioritySize) / 2);
-  const priority = makeBubble(contentBounds.left, priorityTop, prioritySize);
-
-  if (mode === 'compact') {
-    const secondarySize = Math.min(
-      64,
-      contentBounds.height,
-      Math.max(0, contentBounds.width - prioritySize - WIDGET_BUBBLE_GAP * 2),
-    );
-
-    return [
-      priority,
-      makeBubble(
-        contentBounds.right - secondarySize,
-        contentBounds.bottom - secondarySize,
-        secondarySize,
-      ),
-    ];
-  }
-
-  if (mode === 'list') {
-    const secondarySize = Math.min(
-      64,
-      Math.floor((contentBounds.height - WIDGET_BUBBLE_GAP) / 2),
-      Math.max(0, contentBounds.width - prioritySize - WIDGET_BUBBLE_GAP * 2),
-    );
-    const secondaryLeft = contentBounds.right - secondarySize;
-
-    return [
-      priority,
-      makeBubble(secondaryLeft, contentBounds.top, secondarySize),
-      makeBubble(secondaryLeft, contentBounds.bottom - secondarySize, secondarySize),
-    ];
-  }
-
-  const secondaryLeft = priority.right + WIDGET_BUBBLE_GAP;
-  const secondarySize = Math.min(
-    96,
-    Math.floor((contentBounds.right - secondaryLeft - WIDGET_BUBBLE_GAP) / 2),
-    Math.floor((contentBounds.height - WIDGET_BUBBLE_GAP) / 2),
-  );
-  const secondaryRight = contentBounds.right - secondarySize;
-  const secondaryBottom = contentBounds.bottom - secondarySize;
-
-  return [
-    priority,
-    makeBubble(secondaryLeft, contentBounds.top, secondarySize),
-    makeBubble(secondaryRight, contentBounds.top, secondarySize),
-    makeBubble(secondaryLeft, secondaryBottom, secondarySize),
-    makeBubble(secondaryRight, secondaryBottom, secondarySize),
-  ];
+    reminderId,
+  }));
 }
 
 export function getWidgetLayoutPlan(
@@ -166,39 +107,47 @@ export function getWidgetLayoutPlan(
   widgetHeight: number,
 ): WidgetLayoutPlan {
   const mode = getWidgetDisplayMode(widgetWidth, widgetHeight);
-  const contentTop = WIDGET_SURFACE_PADDING + WIDGET_HEADER_HEIGHT + WIDGET_HEADER_GAP;
-  const contentBounds = makeRect(
-    WIDGET_SURFACE_PADDING,
-    contentTop,
-    Math.max(0, widgetWidth - WIDGET_SURFACE_PADDING * 2),
-    Math.max(0, widgetHeight - contentTop - WIDGET_SURFACE_PADDING),
+  const isCompact = mode === 'compact';
+  const surfacePadding = isCompact ? WIDGET_COMPACT_SURFACE_PADDING : WIDGET_SURFACE_PADDING;
+  const headerHeight = isCompact ? WIDGET_COMPACT_HEADER_HEIGHT : WIDGET_HEADER_HEIGHT;
+  const headerGap = isCompact ? WIDGET_COMPACT_HEADER_GAP : WIDGET_HEADER_GAP;
+  const rowGap = isCompact ? WIDGET_COMPACT_LIST_GAP : WIDGET_LIST_GAP;
+  const addButtonGap = isCompact ? WIDGET_COMPACT_ADD_BUTTON_GAP : WIDGET_ADD_BUTTON_GAP;
+  const header = makeRect(
+    surfacePadding,
+    surfacePadding,
+    Math.max(0, widgetWidth - surfacePadding * 2),
+    headerHeight,
+  );
+  const addButtonWidth = clamp(
+    Math.round(widgetWidth * 0.82),
+    WIDGET_ADD_BUTTON_MIN_WIDTH,
+    Math.min(WIDGET_ADD_BUTTON_MAX_WIDTH, widgetWidth - surfacePadding * 2),
   );
   const addButton = makeRect(
-    widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH,
-    WIDGET_SURFACE_PADDING,
-    WIDGET_PLUS_TOUCH_WIDTH,
+    Math.round((widgetWidth - addButtonWidth) / 2),
+    widgetHeight - surfacePadding - WIDGET_PLUS_TOUCH_HEIGHT,
+    addButtonWidth,
     WIDGET_PLUS_TOUCH_HEIGHT,
   );
-  const bubbleSlots = getBubbleSlots(mode, contentBounds);
-  const capacity = getBubbleCapacity(mode);
-  const visibleReminderCount =
-    reminders.length > capacity ? Math.max(1, capacity - 1) : Math.min(reminders.length, capacity);
-  const visibleReminders = reminders.slice(0, visibleReminderCount);
+  const listTop = header.bottom + headerGap;
+  const listBounds = makeRect(
+    surfacePadding,
+    listTop,
+    Math.max(0, widgetWidth - surfacePadding * 2),
+    Math.max(0, addButton.top - addButtonGap - listTop),
+  );
+  const capacity = getVisibleCapacity(listBounds.height, rowGap);
+  const visibleReminders = reminders.slice(0, capacity);
   const visibleReminderIds = visibleReminders.map((reminder) => reminder.id);
-  const overflowCount = Math.max(0, reminders.length - visibleReminderCount);
 
   return {
     mode,
-    visibleReminderCount,
+    visibleReminderCount: visibleReminders.length,
     visibleReminderIds,
-    reminderBubbles: visibleReminderIds.map((reminderId, index) => ({
-      ...bubbleSlots[index],
-      reminderId,
-    })),
-    bubbleSlots,
-    overflowCount,
-    overflowBubble: overflowCount > 0 ? bubbleSlots[visibleReminderCount] : undefined,
-    contentBounds,
+    header,
+    listBounds,
+    listRows: getListRows(visibleReminderIds, listBounds, rowGap),
     addButton,
   };
 }
