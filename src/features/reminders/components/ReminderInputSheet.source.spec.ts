@@ -45,11 +45,15 @@ test('widget quick add waits for the sheet to open before focusing the title inp
   assert.equal(source.includes('requestAnimationFrame'), false);
 });
 
-test('quick add sheet uses platform keyboard-safe behavior', () => {
-  assertSourceIncludes(source, [
-    /keyboardBehavior=\{Platform\.OS === 'android' \? 'fillParent' : 'interactive'\}/,
-    /android_keyboardInputMode="adjustResize"/,
-  ]);
+test('quick add sheet stays compact above the keyboard on every platform', () => {
+  assertSourceContract(source, {
+    includes: [/keyboardBehavior="interactive"/, /android_keyboardInputMode="adjustPan"/],
+    excludes: [
+      /keyboardBehavior=\{Platform\.OS/,
+      /'fillParent'/,
+      /android_keyboardInputMode="adjustResize"/,
+    ],
+  });
 });
 
 test('quick add sheet keeps compact dynamic sizing while bounding the resized safe area', () => {

@@ -406,9 +406,9 @@ export function ReminderInputSheet({
         maxDynamicContentSize={quickAddMaxDynamicContentSize}
         onChange={handleSheetChange}
         onDismiss={handleDismiss}
-        keyboardBehavior={Platform.OS === 'android' ? 'fillParent' : 'interactive'}
+        keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
+        android_keyboardInputMode="adjustPan"
         topInset={sheetTopInset}
         bottomInset={safeAreaInsets.bottom}
         backdropComponent={renderBackdrop}
