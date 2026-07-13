@@ -59,7 +59,8 @@
               "description": "リマインダーのシャボン玉を表示＆すばやく追加",
               "minWidth": "250dp",
               "minHeight": "180dp",
-              "resizeMode": "horizontal|vertical"
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
             }
           ]
         }

@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
@@ -9,6 +10,7 @@ import {
 const source = readSource(import.meta.url, './PopReminderWidget.tsx');
 const layoutSource = readSource(import.meta.url, './widgetBubbleLayout.ts');
 const colorsSource = readSource(import.meta.url, './widgetColors.ts');
+const appConfigSource = readSource(import.meta.url, '../../app.json');
 const updateSource = readSource(import.meta.url, './widgetUpdateService.tsx');
 const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx');
 
@@ -52,8 +54,39 @@ test('android widget keeps the shared bubble visuals and header actions', () => 
     excludes: [/function truncateTitle/, /const displayTitle = truncateTitle/],
   });
   assertSourceIncludes(colorsSource, [
-    /cloudSurfaceBackground: 'rgba\(247,251,255,0\.94\)'/,
+    /cloudSurfaceBackground: '#A8D1F0'/,
+    /cloudSurfaceOverlay: 'rgba\(247,251,255,0\.42\)'/,
     /plusButtonBackground: palette\.ink/,
+  ]);
+});
+
+test('android widget uses local time-based sky assets behind the glass layer', () => {
+  assertSourceContract(source, {
+    includes: [
+      /ImageWidget/,
+      /import \{ getWidgetSkyPeriod(?:, type WidgetSkyPeriod)? \} from '\.\/widgetSky';/,
+      /const widgetSkyAssets(?:\s*:\s*Record<WidgetSkyPeriod, ImageRequireSource>)? = \{/,
+      /morning: require\('\.\.\/\.\.\/assets\/widget-sky-morning\.png'\)/,
+      /day: require\('\.\.\/\.\.\/assets\/widget-sky-day\.png'\)/,
+      /sunset: require\('\.\.\/\.\.\/assets\/widget-sky-sunset\.png'\)/,
+      /night: require\('\.\.\/\.\.\/assets\/widget-sky-night\.png'\)/,
+      /image=\{getWidgetSkyAsset\(\)\}/,
+      /imageWidth=\{widgetWidth\}/,
+      /imageHeight=\{widgetHeight\}/,
+      /svg=\{makeFrostedGlassSurfaceSvg\(widgetWidth, widgetHeight\)\}/,
+    ],
+  });
+
+  const skyAssetBlock = source.slice(
+    source.indexOf('const widgetSkyAssets'),
+    source.indexOf('function makeBubbleSvg'),
+  );
+  assert.equal(/https?:\/\//.test(skyAssetBlock), false);
+});
+
+test('widget sky changes are refreshed by the native periodic widget update', () => {
+  assertSourceIncludes(appConfigSource, [
+    /"name": "PopReminderWidget"[\s\S]*"updatePeriodMillis": 1800000/,
   ]);
 });
 

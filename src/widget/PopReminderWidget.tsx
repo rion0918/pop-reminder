@@ -1,10 +1,12 @@
 import {
   FlexWidget,
+  ImageWidget,
   OverlapWidget,
   SvgWidget,
   TextWidget,
   type ColorProp,
 } from 'react-native-android-widget';
+import type { ImageRequireSource } from 'react-native';
 
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
 import {
@@ -17,6 +19,7 @@ import {
   type WidgetDueColor,
   widgetTheme,
 } from './widgetColors';
+import { getWidgetSkyPeriod, type WidgetSkyPeriod } from './widgetSky';
 import {
   getWidgetLayoutPlan,
   WIDGET_HEADER_HEIGHT,
@@ -46,6 +49,17 @@ type SvgPaint = {
 
 const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
+
+const widgetSkyAssets: Record<WidgetSkyPeriod, ImageRequireSource> = {
+  morning: require('../../assets/widget-sky-morning.png'),
+  day: require('../../assets/widget-sky-day.png'),
+  sunset: require('../../assets/widget-sky-sunset.png'),
+  night: require('../../assets/widget-sky-night.png'),
+};
+
+function getWidgetSkyAsset(currentDate = new Date()) {
+  return widgetSkyAssets[getWidgetSkyPeriod(currentDate)];
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -158,7 +172,7 @@ function makeBubbleSvg(id: string, width: number, height: number, color: WidgetD
 }
 
 function makeFrostedGlassSurfaceSvg(width: number, height: number) {
-  const surface = colorToSvgPaint(widgetTheme.cloudSurfaceBackground);
+  const surface = colorToSvgPaint(widgetTheme.cloudSurfaceOverlay);
   const refractionA = colorToSvgPaint(widgetTheme.glassRefractionA);
   const refractionB = colorToSvgPaint(widgetTheme.glassRefractionB);
   const refractionC = colorToSvgPaint(widgetTheme.glassRefractionC);
@@ -451,6 +465,16 @@ export function PopReminderWidget({
         overflow: 'hidden',
       }}
     >
+      <ImageWidget
+        image={getWidgetSkyAsset()}
+        imageWidth={widgetWidth}
+        imageHeight={widgetHeight}
+        radius={24}
+        style={{
+          width: 'match_parent',
+          height: 'match_parent',
+        }}
+      />
       <SvgWidget
         svg={makeFrostedGlassSurfaceSvg(widgetWidth, widgetHeight)}
         style={{
