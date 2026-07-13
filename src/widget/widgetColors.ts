@@ -28,17 +28,20 @@ export function getWidgetDueColor(
 }
 
 export const widgetTheme = {
-  headerText: 'rgba(255,255,255,0.90)',
-  mutedText: 'rgba(255,255,255,0.72)',
-  cloudSurfaceBackground: 'rgba(247,251,255,0.46)',
-  cloudSurfaceBorder: 'rgba(255,255,255,0.62)',
+  headerBackground: palette.ink,
+  headerText: palette.white,
+  primaryText: palette.ink,
+  secondaryText: 'rgba(38,49,81,0.84)',
+  cloudSurfaceBackground: 'rgba(247,251,255,0.94)',
+  cloudSurfaceBorder: 'rgba(38,49,81,0.14)',
   cloudMistHighlight: 'rgba(255,255,255,0.44)',
-  cloudMistShade: 'rgba(38,49,81,0.16)',
+  cloudMistShade: 'rgba(38,49,81,0.08)',
   glassRefractionA: 'rgba(223,243,255,0.42)',
   glassRefractionB: 'rgba(237,230,255,0.36)',
   glassRefractionC: 'rgba(255,241,216,0.32)',
-  glassInnerShadow: 'rgba(38,49,81,0.18)',
+  glassInnerShadow: 'rgba(38,49,81,0.12)',
   glassEdgeHighlight: 'rgba(255,255,255,0.78)',
-  plusIconText: palette.white,
-  textHalo: 'rgba(38,49,81,0.58)',
+  plusButtonBackground: palette.ink,
+  plusButtonText: palette.white,
+  textHalo: 'rgba(255,255,255,0.72)',
 } as const;

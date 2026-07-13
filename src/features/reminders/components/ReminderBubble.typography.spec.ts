@@ -7,6 +7,7 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './ReminderBubble.tsx');
+const visualsSource = readSource(import.meta.url, '../utils/reminderBubbleVisuals.ts');
 const nativeBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.native.tsx');
 const webBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.web.tsx');
 const burstTypesSource = readSource(import.meta.url, './ReminderBubbleBurst.types.ts');
@@ -15,9 +16,16 @@ const colorsSource = readSource(import.meta.url, '../../../constants/colors.ts')
 test('reminder bubble typography is derived from bubble size and title length', () => {
   assertSourceContract(source, {
     includes: [
-      /type BubbleTypography = \{/,
-      /function getBubbleTypography\(\s*width: number,\s*height: number,\s*titleVisualLength: number,\s*\): BubbleTypography/,
-      /const typography = getBubbleTypography\(bubbleWidth, bubbleHeight, titleVisualLength\);/,
+      /getReminderBubbleTypography/,
+      /getReminderTitleVisualLength/,
+      /const typography = getReminderBubbleTypography\(\s*bubbleWidth,\s*bubbleHeight,\s*titleVisualLength,?\s*\);/,
+    ],
+    excludes: [/function getBubbleTypography/, /function getTitleVisualLength/],
+  });
+  assertSourceContract(visualsSource, {
+    includes: [
+      /export type ReminderBubbleTypography = \{/,
+      /export function getReminderBubbleTypography/,
       /titleVisualLength <= 8/,
       /titleAdjustsFontSizeToFit: !isShortTitle/,
       /titleMinFontScale: isShortTitle \? 1 : isLongTitle \? 0\.72 : 0\.9/,
@@ -27,16 +35,16 @@ test('reminder bubble typography is derived from bubble size and title length', 
 });
 
 test('long reminder bubble titles avoid tail ellipsis', () => {
-  assertSourceContract(source, {
+  assertSourceContract(visualsSource, {
     includes: [
       /const isLongTitle = titleVisualLength > 24;/,
       /titleLineCount = isShortTitle \? 1 : isMediumTitle \? 2 : isLongTitle \? 4 : 3;/,
       /titleEllipsizeMode: 'clip'/,
-      /ellipsizeMode=\{typography.titleEllipsizeMode\}/,
     ],
-    excludes: [
-      /<Text\n {12}adjustsFontSizeToFit=\{typography\.titleAdjustsFontSizeToFit\}\n {12}ellipsizeMode="tail"/,
-    ],
+  });
+  assertSourceContract(source, {
+    includes: [/ellipsizeMode=\{typography.titleEllipsizeMode\}/],
+    excludes: [/ellipsizeMode="tail"[\s\S]*reminder\.title/],
   });
 });
 
@@ -46,11 +54,11 @@ test('reminder bubble can render as a wide bubble for long text', () => {
     /height\?: number;/,
     /const bubbleWidth = width \?\? size;/,
     /const bubbleHeight = height \?\? size;/,
-    /function getBubbleTypography\(\s*width: number,\s*height: number,\s*titleVisualLength: number,\s*\): BubbleTypography/,
-    /const textMeasure = Math\.min\(height, width \/ 1\.45\);/,
+    /getReminderBubbleTypography/,
     /width: bubbleWidth,/,
     /height: bubbleHeight,/,
   ]);
+  assertSourceIncludes(visualsSource, [/const textMeasure = Math\.min\(height, width \/ 1\.45\);/]);
 });
 
 test('reminder bubble uses shared home visual tokens for iOS-like Android rendering', () => {

@@ -2,27 +2,24 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  getWidgetBubbleCapacity,
-  getWidgetBubbleLayouts,
-  WIDGET_DUE_LEGEND_HEIGHT,
+  getWidgetLayoutPlan,
   WIDGET_PLUS_TOUCH_HEIGHT,
   WIDGET_PLUS_TOUCH_WIDTH,
+  WIDGET_PRIORITY_BUBBLE_MAX_HEIGHT,
+  WIDGET_PRIORITY_BUBBLE_MIN_HEIGHT,
   WIDGET_SURFACE_PADDING,
   type WidgetBubbleLayout,
   type WidgetLayoutReminder,
 } from './widgetBubbleLayout';
 
 const reminderTitles = [
-  '水やり',
-  'long reminder title',
-  '買い物',
+  '最短期限',
+  '次の予定',
+  '明日の予定',
+  '英語の長い reminder title',
+  '買い物をする',
   '薬',
-  'meeting',
   '書類提出',
-  '予約',
-  'long long long title',
-  '散歩',
-  'email follow up',
 ];
 
 function makeReminders(count = reminderTitles.length): WidgetLayoutReminder[] {
@@ -33,117 +30,120 @@ function makeReminders(count = reminderTitles.length): WidgetLayoutReminder[] {
   }));
 }
 
-function getLayoutMetrics(
-  layouts: WidgetBubbleLayout[],
-  widgetWidth: number,
-  widgetHeight: number,
+function assertInside(
+  rect: { left: number; top: number; right: number; bottom: number },
+  bounds: { left: number; top: number; right: number; bottom: number },
 ) {
-  const minLeft = Math.min(...layouts.map((layout) => layout.left));
-  const maxRight = Math.max(...layouts.map((layout) => layout.left + layout.width));
-  const minTop = Math.min(...layouts.map((layout) => layout.top));
-  const maxBottom = Math.max(...layouts.map((layout) => layout.top + layout.height));
-  const centerBandCount = layouts.filter((layout) => {
-    const centerX = (layout.left + layout.width / 2) / widgetWidth;
-    const centerY = (layout.top + layout.height / 2) / widgetHeight;
-
-    return centerX >= 0.35 && centerX <= 0.65 && centerY >= 0.28 && centerY <= 0.72;
-  }).length;
-  const centerDistances = layouts.flatMap((layout, index) => {
-    const centerX = layout.left + layout.width / 2;
-    const centerY = layout.top + layout.height / 2;
-
-    return layouts.slice(index + 1).map((otherLayout) => {
-      const otherCenterX = otherLayout.left + otherLayout.width / 2;
-      const otherCenterY = otherLayout.top + otherLayout.height / 2;
-
-      return Math.hypot(centerX - otherCenterX, centerY - otherCenterY);
-    });
-  });
-
-  return {
-    horizontalCoverage: (maxRight - minLeft) / widgetWidth,
-    verticalCoverage:
-      (maxBottom - minTop) / (widgetHeight - WIDGET_DUE_LEGEND_HEIGHT - WIDGET_SURFACE_PADDING),
-    centerBandCount,
-    minCenterDistance: Math.min(...centerDistances),
-  };
+  assert.ok(rect.left >= bounds.left, `left ${rect.left} < ${bounds.left}`);
+  assert.ok(rect.top >= bounds.top, `top ${rect.top} < ${bounds.top}`);
+  assert.ok(rect.right <= bounds.right, `right ${rect.right} > ${bounds.right}`);
+  assert.ok(rect.bottom <= bounds.bottom, `bottom ${rect.bottom} > ${bounds.bottom}`);
 }
 
-function assertDistributedLayout(
-  widgetWidth: number,
-  widgetHeight: number,
-  minCenterDistance: number,
-) {
-  const layouts = getWidgetBubbleLayouts(makeReminders(), widgetWidth, widgetHeight);
-  const metrics = getLayoutMetrics(layouts, widgetWidth, widgetHeight);
+function assertBubblesDoNotOverlap(bubbles: WidgetBubbleLayout[]) {
+  for (let index = 0; index < bubbles.length; index += 1) {
+    const first = bubbles[index];
+    const firstCenterX = first.left + first.width / 2;
+    const firstCenterY = first.top + first.height / 2;
 
-  assert.equal(layouts.length, 10);
-  assert.ok(
-    metrics.horizontalCoverage >= 0.85,
-    `expected horizontal coverage >= 0.85, got ${metrics.horizontalCoverage}`,
-  );
-  assert.ok(
-    metrics.verticalCoverage >= 0.8,
-    `expected vertical coverage >= 0.8, got ${metrics.verticalCoverage}`,
-  );
-  assert.ok(
-    metrics.centerBandCount <= 2,
-    `expected at most 2 central bubbles, got ${metrics.centerBandCount}`,
-  );
-  assert.ok(
-    metrics.minCenterDistance >= minCenterDistance,
-    `expected min center distance >= ${minCenterDistance}, got ${metrics.minCenterDistance}`,
-  );
-}
+    for (const second of bubbles.slice(index + 1)) {
+      const secondCenterX = second.left + second.width / 2;
+      const secondCenterY = second.top + second.height / 2;
+      const distance = Math.hypot(firstCenterX - secondCenterX, firstCenterY - secondCenterY);
 
-function rectanglesIntersect(
-  first: { left: number; top: number; right: number; bottom: number },
-  second: { left: number; top: number; right: number; bottom: number },
-) {
-  return (
-    first.left < second.right &&
-    first.right > second.left &&
-    first.top < second.bottom &&
-    first.bottom > second.top
-  );
-}
-
-test('android widget capacity shows ten reminders on practical widget sizes', () => {
-  assert.equal(getWidgetBubbleCapacity(250, 180), 3);
-  assert.equal(getWidgetBubbleCapacity(320, 220), 5);
-  assert.equal(getWidgetBubbleCapacity(360, 280), 10);
-  assert.equal(getWidgetBubbleCapacity(480, 320), 10);
-});
-
-test('android widget layout spreads ten reminders across medium and large surfaces', () => {
-  assertDistributedLayout(360, 280, 32);
-  assertDistributedLayout(480, 320, 48);
-});
-
-test('android widget layout keeps ten reminders clear of the add button and legend', () => {
-  const widgetWidth = 250;
-  const widgetHeight = 180;
-  const layouts = getWidgetBubbleLayouts(makeReminders(10), widgetWidth, widgetHeight);
-  const addButtonRect = {
-    left: widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH,
-    top: WIDGET_SURFACE_PADDING,
-    right: widgetWidth - WIDGET_SURFACE_PADDING,
-    bottom: WIDGET_SURFACE_PADDING + WIDGET_PLUS_TOUCH_HEIGHT,
-  };
-  const legendTop = widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT;
-
-  for (const layout of layouts) {
-    const bubbleRect = {
-      left: layout.left,
-      top: layout.top,
-      right: layout.left + layout.width,
-      bottom: layout.top + layout.height,
-    };
-
-    assert.ok(bubbleRect.left >= WIDGET_SURFACE_PADDING);
-    assert.ok(bubbleRect.right <= widgetWidth - WIDGET_SURFACE_PADDING);
-    assert.ok(bubbleRect.top >= WIDGET_SURFACE_PADDING);
-    assert.ok(bubbleRect.bottom <= legendTop);
-    assert.equal(rectanglesIntersect(bubbleRect, addButtonRect), false);
+      assert.ok(
+        distance >= first.width / 2 + second.width / 2,
+        `bubble ${index} overlaps another bubble`,
+      );
+    }
   }
+}
+
+test('android widget chooses deterministic bubble-only capacities by size', () => {
+  const cases = [
+    { width: 250, height: 180, mode: 'compact', visible: 2, bubbleSize: 76 },
+    { width: 320, height: 220, mode: 'list', visible: 3, bubbleSize: 96 },
+    { width: 360, height: 280, mode: 'two-column', visible: 5, bubbleSize: 128 },
+    { width: 480, height: 320, mode: 'two-column', visible: 5, bubbleSize: 144 },
+  ] as const;
+
+  for (const expected of cases) {
+    const plan = getWidgetLayoutPlan(
+      makeReminders(expected.visible),
+      expected.width,
+      expected.height,
+    );
+
+    assert.equal(plan.mode, expected.mode);
+    assert.equal(plan.visibleReminderCount, expected.visible);
+    assert.equal(plan.reminderBubbles.length, expected.visible);
+    assert.equal(plan.overflowBubble, undefined);
+    assert.equal(plan.reminderBubbles[0].width, expected.bubbleSize);
+    assert.equal(plan.reminderBubbles[0].height, expected.bubbleSize);
+  }
+});
+
+test('android widget keeps all reminder layouts circular and in DB order', () => {
+  const plan = getWidgetLayoutPlan(makeReminders(5), 360, 280);
+
+  assert.deepEqual(
+    plan.reminderBubbles.map((bubble) => bubble.reminderId),
+    ['reminder-1', 'reminder-2', 'reminder-3', 'reminder-4', 'reminder-5'],
+  );
+  assert.ok(plan.reminderBubbles[0].height >= WIDGET_PRIORITY_BUBBLE_MIN_HEIGHT);
+  assert.ok(plan.reminderBubbles[0].height <= WIDGET_PRIORITY_BUBBLE_MAX_HEIGHT);
+  for (const bubble of plan.reminderBubbles) {
+    assert.equal(bubble.width, bubble.height);
+  }
+});
+
+test('android widget reserves its final circular slot for an overflow bubble', () => {
+  const cases = [
+    { width: 250, height: 180, visible: 1, overflow: 6 },
+    { width: 320, height: 220, visible: 2, overflow: 5 },
+    { width: 360, height: 280, visible: 4, overflow: 3 },
+  ] as const;
+
+  for (const expected of cases) {
+    const plan = getWidgetLayoutPlan(makeReminders(7), expected.width, expected.height);
+
+    assert.equal(plan.visibleReminderCount, expected.visible);
+    assert.equal(plan.overflowCount, expected.overflow);
+    assert.ok(plan.overflowBubble);
+    assert.equal(plan.overflowBubble.width, plan.overflowBubble.height);
+    assert.equal(plan.reminderBubbles.length + 1, plan.bubbleSlots.length);
+  }
+});
+
+test('android widget keeps bubble-only content inside the surface without overlap', () => {
+  for (const { width, height } of [
+    { width: 250, height: 180 },
+    { width: 320, height: 220 },
+    { width: 360, height: 280 },
+    { width: 480, height: 320 },
+  ]) {
+    const plan = getWidgetLayoutPlan(makeReminders(7), width, height);
+    const surfaceBounds = { left: 0, top: 0, right: width, bottom: height };
+    const renderedBubbles = [
+      ...plan.reminderBubbles,
+      ...(plan.overflowBubble ? [plan.overflowBubble] : []),
+    ];
+
+    for (const bubble of renderedBubbles) {
+      assertInside(bubble, plan.contentBounds);
+      assert.equal(bubble.width, bubble.height);
+    }
+    assertBubblesDoNotOverlap(renderedBubbles);
+    assertInside(plan.addButton, surfaceBounds);
+    assert.ok(plan.addButton.width >= WIDGET_PLUS_TOUCH_WIDTH);
+    assert.ok(plan.addButton.height >= WIDGET_PLUS_TOUCH_HEIGHT);
+    assert.equal(plan.addButton.left, width - WIDGET_SURFACE_PADDING - plan.addButton.width);
+  }
+});
+
+test('android widget bubble layout is stable when the same size and DB order are rendered again', () => {
+  const first = getWidgetLayoutPlan(makeReminders(), 480, 320);
+  const second = getWidgetLayoutPlan(makeReminders(), 480, 320);
+
+  assert.deepEqual(second, first);
 });

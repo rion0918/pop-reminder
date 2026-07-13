@@ -4,357 +4,201 @@ export type WidgetLayoutReminder = {
   targetAt?: string;
 };
 
-export type WidgetBubbleDimensions = {
+export type WidgetRect = {
+  left: number;
+  top: number;
   width: number;
   height: number;
-};
-
-export type WidgetBubbleLayout = WidgetBubbleDimensions & {
-  left: number;
-  top: number;
-  zIndex: number;
-};
-
-type WidgetLayoutSlot = {
-  x: number;
-  y: number;
-};
-
-type PlacedWidgetBubble = {
-  size: number;
-  centerX: number;
-  centerY: number;
-};
-
-type WidgetBubbleCandidate = WidgetBubbleDimensions & {
-  left: number;
-  top: number;
-  centerX: number;
-  centerY: number;
-  score: number;
-};
-
-type WidgetRect = {
-  left: number;
-  top: number;
   right: number;
   bottom: number;
 };
 
-export const WIDGET_SURFACE_PADDING = 12;
-export const WIDGET_PLUS_TOUCH_WIDTH = 44;
-export const WIDGET_PLUS_TOUCH_HEIGHT = 40;
-export const WIDGET_MAX_VISIBLE_BUBBLES = 10;
-export const WIDGET_DUE_LEGEND_HEIGHT = 42;
+export type WidgetBubbleLayout = WidgetRect;
 
-const WIDGET_LAYOUT_CANDIDATE_SLOTS: WidgetLayoutSlot[] = [
-  { x: 0.14, y: 0.16 },
-  { x: 0.82, y: 0.18 },
-  { x: 0.18, y: 0.5 },
-  { x: 0.84, y: 0.5 },
-  { x: 0.38, y: 0.3 },
-  { x: 0.28, y: 0.86 },
-  { x: 0.7, y: 0.84 },
-  { x: 0.52, y: 0.66 },
-  { x: 0.5, y: 0.12 },
-  { x: 0.92, y: 0.36 },
-  { x: 0.08, y: 0.78 },
-  { x: 0.62, y: 0.32 },
-  { x: 0.9, y: 0.68 },
-  { x: 0.36, y: 0.62 },
-] as const;
+export type WidgetReminderBubbleLayout = WidgetBubbleLayout & {
+  reminderId: string;
+};
+
+export type WidgetDisplayMode = 'compact' | 'list' | 'two-column';
+
+export type WidgetLayoutPlan = {
+  mode: WidgetDisplayMode;
+  visibleReminderCount: number;
+  visibleReminderIds: string[];
+  reminderBubbles: WidgetReminderBubbleLayout[];
+  bubbleSlots: WidgetBubbleLayout[];
+  overflowCount: number;
+  overflowBubble?: WidgetBubbleLayout;
+  contentBounds: WidgetRect;
+  addButton: WidgetRect;
+};
+
+export const WIDGET_SURFACE_PADDING = 12;
+export const WIDGET_HEADER_HEIGHT = 44;
+export const WIDGET_PLUS_TOUCH_WIDTH = 84;
+export const WIDGET_PLUS_TOUCH_HEIGHT = 44;
+export const WIDGET_PRIORITY_BUBBLE_MIN_HEIGHT = 72;
+export const WIDGET_PRIORITY_BUBBLE_MAX_HEIGHT = 144;
+export const WIDGET_MAX_VISIBLE_REMINDERS = 5;
+
+const WIDGET_HEADER_GAP = 8;
+const WIDGET_BUBBLE_GAP = 10;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function hashString(value: string) {
-  let hash = 2166136261;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
-}
-
-function unitFromHash(seed: number, salt: number) {
-  let hash = seed ^ Math.imul(salt + 1, 0x9e3779b9);
-  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d);
-  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b);
-  return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
-}
-
-function getEdgePadding() {
-  return WIDGET_SURFACE_PADDING + 4;
-}
-
-function getLegendReserve() {
-  return WIDGET_DUE_LEGEND_HEIGHT + WIDGET_SURFACE_PADDING;
-}
-
-function getAddButtonRect(widgetWidth: number): WidgetRect {
+function makeRect(left: number, top: number, width: number, height: number): WidgetRect {
   return {
-    left: widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH,
-    top: WIDGET_SURFACE_PADDING,
-    right: widgetWidth - WIDGET_SURFACE_PADDING,
-    bottom: WIDGET_SURFACE_PADDING + WIDGET_PLUS_TOUCH_HEIGHT,
-  };
-}
-
-function rectsIntersect(first: WidgetRect, second: WidgetRect) {
-  return (
-    first.left < second.right &&
-    first.right > second.left &&
-    first.top < second.bottom &&
-    first.bottom > second.top
-  );
-}
-
-function getTitleVisualLength(title: string) {
-  return Array.from(title.trim()).reduce((length, character) => {
-    if (character.trim().length === 0) {
-      return length + 0.35;
-    }
-
-    return length + (character.charCodeAt(0) <= 0x007f ? 0.62 : 1);
-  }, 0);
-}
-
-export function getWidgetTitleVisualLength(title: string) {
-  return getTitleVisualLength(title);
-}
-
-export function getWidgetBubbleDimensions(
-  reminder: WidgetLayoutReminder,
-  index: number,
-  visibleCount: number,
-  widgetWidth: number,
-  widgetHeight: number,
-): WidgetBubbleDimensions {
-  const titleVisualLength = getTitleVisualLength(reminder.title);
-  const areaMeasure = Math.sqrt(widgetWidth * widgetHeight);
-  const densityScale =
-    visibleCount >= 9 ? 0.72 : visibleCount <= 2 ? 1.06 : visibleCount <= 4 ? 1 : 0.9;
-  const baseHeight = clamp(
-    Math.min(widgetHeight * 0.38, widgetWidth * 0.3, areaMeasure * 0.42) * densityScale,
-    56,
-    98,
-  );
-  const indexScale = index === 0 ? 1 : index === 1 ? 0.96 : index === 2 ? 0.92 : 0.86;
-  const titleScale = titleVisualLength >= 24 ? 1.08 : titleVisualLength >= 16 ? 1.02 : 1;
-  const height = Math.round(clamp(baseHeight * indexScale * titleScale, 54, 100));
-  const aspectRatio = titleVisualLength >= 24 ? 1.34 : titleVisualLength >= 16 ? 1.18 : 1;
-  const maxWidth = clamp(
-    widgetWidth * (visibleCount >= 9 ? 0.28 : visibleCount <= 3 ? 0.38 : 0.32),
-    58,
-    128,
-  );
-  const width = Math.round(clamp(height * aspectRatio, 54, maxWidth));
-
-  return {
+    left,
+    top,
     width,
     height,
+    right: left + width,
+    bottom: top + height,
   };
 }
 
-export function getWidgetBubbleCapacity(widgetWidth: number, widgetHeight: number) {
-  const area = widgetWidth * widgetHeight;
+function makeBubble(left: number, top: number, size: number) {
+  return makeRect(left, top, size, size);
+}
 
-  if (area < 38000) {
+export function getWidgetDisplayMode(widgetWidth: number, widgetHeight: number): WidgetDisplayMode {
+  if (widgetWidth >= 360 && widgetHeight >= 280) {
+    return 'two-column';
+  }
+
+  if (widgetWidth >= 320 && widgetHeight >= 220) {
+    return 'list';
+  }
+
+  return 'compact';
+}
+
+function getBubbleCapacity(mode: WidgetDisplayMode) {
+  if (mode === 'compact') {
     return 2;
   }
 
-  if (area < 62000) {
+  if (mode === 'list') {
     return 3;
   }
 
-  if (area < 90000) {
-    return 5;
+  return WIDGET_MAX_VISIBLE_REMINDERS;
+}
+
+function getPriorityBubbleSize(mode: WidgetDisplayMode, contentBounds: WidgetRect) {
+  if (mode === 'compact') {
+    return Math.round(clamp(contentBounds.height * 0.74, 72, 76));
   }
 
-  return WIDGET_MAX_VISIBLE_BUBBLES;
-}
+  if (mode === 'list') {
+    return Math.round(clamp(contentBounds.width * 0.32, 96, 104));
+  }
 
-function getPreferredSlotDistance(slotIndex: number, preferredSlotIndex: number) {
-  const directDistance = Math.abs(slotIndex - preferredSlotIndex);
-
-  return Math.min(directDistance, WIDGET_LAYOUT_CANDIDATE_SLOTS.length - directDistance);
-}
-
-function getCenterBandPenalty(
-  candidate: WidgetBubbleCandidate,
-  widgetWidth: number,
-  widgetHeight: number,
-) {
-  const centerXRatio = candidate.centerX / widgetWidth;
-  const centerYRatio = candidate.centerY / widgetHeight;
-
-  return centerXRatio >= 0.35 &&
-    centerXRatio <= 0.65 &&
-    centerYRatio >= 0.28 &&
-    centerYRatio <= 0.72
-    ? 140
-    : 0;
-}
-
-function getOverlapPenalty(candidate: WidgetBubbleCandidate, placedBubbles: PlacedWidgetBubble[]) {
-  const candidateSize = Math.max(candidate.width, candidate.height);
-
-  return placedBubbles.reduce((penalty, placedBubble) => {
-    const distance = Math.hypot(
-      candidate.centerX - placedBubble.centerX,
-      candidate.centerY - placedBubble.centerY,
-    );
-    const radiusSum = (candidateSize + placedBubble.size) / 2;
-    const overlap = Math.max(0, radiusSum - distance);
-    const minComfortableDistance = Math.min(candidateSize, placedBubble.size) * 0.72;
-    const closeness = Math.max(0, minComfortableDistance - distance);
-
-    return penalty + overlap * 240 + closeness * 80 + (overlap > 8 ? 5000 : 0);
-  }, 0);
-}
-
-function makeCandidateLayout(
-  slot: WidgetLayoutSlot,
-  slotIndex: number,
-  seed: number,
-  dimensions: WidgetBubbleDimensions,
-  widgetWidth: number,
-  widgetHeight: number,
-): WidgetBubbleCandidate {
-  const edgePadding = getEdgePadding();
-  const legendReserve = getLegendReserve();
-  const maxLeft = Math.max(edgePadding, widgetWidth - edgePadding - dimensions.width);
-  const maxTop = Math.max(
-    edgePadding,
-    widgetHeight - edgePadding - legendReserve - dimensions.height,
+  return Math.round(
+    clamp(
+      Math.min(contentBounds.width * 0.38, contentBounds.height * 0.7),
+      128,
+      WIDGET_PRIORITY_BUBBLE_MAX_HEIGHT,
+    ),
   );
-  const jitterRangeX = clamp(widgetWidth * 0.11, 18, 44);
-  const jitterRangeY = clamp(widgetHeight * 0.09, 14, 34);
-  const jitterX = (unitFromHash(seed, slotIndex + 20) - 0.5) * jitterRangeX;
-  const jitterY = (unitFromHash(seed, slotIndex + 60) - 0.5) * jitterRangeY;
-  const layoutWidth = widgetWidth;
-  const layoutHeight = Math.max(0, widgetHeight - legendReserve);
-  const left = clamp(slot.x * layoutWidth - dimensions.width / 2 + jitterX, edgePadding, maxLeft);
-  const top = clamp(slot.y * layoutHeight - dimensions.height / 2 + jitterY, edgePadding, maxTop);
-
-  return {
-    ...dimensions,
-    left,
-    top,
-    centerX: left + dimensions.width / 2,
-    centerY: top + dimensions.height / 2,
-    score: 0,
-  };
 }
 
-function makeWidgetBubbleLayout(
-  reminder: WidgetLayoutReminder,
-  index: number,
-  visibleCount: number,
-  widgetWidth: number,
-  widgetHeight: number,
-  placedBubbles: PlacedWidgetBubble[],
-): WidgetBubbleLayout {
-  const dimensions = getWidgetBubbleDimensions(
-    reminder,
-    index,
-    visibleCount,
-    widgetWidth,
-    widgetHeight,
-  );
-  const seed = hashString(`${reminder.id}-${index}-${visibleCount}`);
-  const preferredSlotIndex = (index * 3) % WIDGET_LAYOUT_CANDIDATE_SLOTS.length;
-  const addButtonRect = getAddButtonRect(widgetWidth);
-  const bestCandidate = WIDGET_LAYOUT_CANDIDATE_SLOTS.reduce<WidgetBubbleCandidate | null>(
-    (best, slot, slotIndex) => {
-      const candidate = makeCandidateLayout(
-        slot,
-        slotIndex,
-        seed,
-        dimensions,
-        widgetWidth,
-        widgetHeight,
-      );
-      const candidateRect = {
-        left: candidate.left,
-        top: candidate.top,
-        right: candidate.left + candidate.width,
-        bottom: candidate.top + candidate.height,
-      };
-      const addButtonPenalty = rectsIntersect(candidateRect, addButtonRect) ? 100000 : 0;
-      const score =
-        getPreferredSlotDistance(slotIndex, preferredSlotIndex) * 22 +
-        unitFromHash(seed, slotIndex + 5) * 12 +
-        getOverlapPenalty(candidate, placedBubbles) +
-        getCenterBandPenalty(candidate, widgetWidth, widgetHeight) +
-        addButtonPenalty;
-      const scoredCandidate = {
-        ...candidate,
-        score,
-      };
+function getBubbleSlots(mode: WidgetDisplayMode, contentBounds: WidgetRect): WidgetBubbleLayout[] {
+  const prioritySize = getPriorityBubbleSize(mode, contentBounds);
+  const priorityTop = contentBounds.top + Math.floor((contentBounds.height - prioritySize) / 2);
+  const priority = makeBubble(contentBounds.left, priorityTop, prioritySize);
 
-      if (!best || scoredCandidate.score < best.score) {
-        return scoredCandidate;
-      }
-
-      return best;
-    },
-    null,
-  );
-  const layout =
-    bestCandidate ??
-    makeCandidateLayout(
-      WIDGET_LAYOUT_CANDIDATE_SLOTS[0],
-      0,
-      seed,
-      dimensions,
-      widgetWidth,
-      widgetHeight,
+  if (mode === 'compact') {
+    const secondarySize = Math.min(
+      64,
+      contentBounds.height,
+      Math.max(0, contentBounds.width - prioritySize - WIDGET_BUBBLE_GAP * 2),
     );
 
-  placedBubbles.push({
-    size: Math.max(layout.width, layout.height),
-    centerX: layout.centerX,
-    centerY: layout.centerY,
-  });
+    return [
+      priority,
+      makeBubble(
+        contentBounds.right - secondarySize,
+        contentBounds.bottom - secondarySize,
+        secondarySize,
+      ),
+    ];
+  }
 
-  return {
-    width: layout.width,
-    height: layout.height,
-    left: Math.round(layout.left),
-    top: Math.round(layout.top),
-    zIndex: WIDGET_MAX_VISIBLE_BUBBLES - index,
-  };
+  if (mode === 'list') {
+    const secondarySize = Math.min(
+      64,
+      Math.floor((contentBounds.height - WIDGET_BUBBLE_GAP) / 2),
+      Math.max(0, contentBounds.width - prioritySize - WIDGET_BUBBLE_GAP * 2),
+    );
+    const secondaryLeft = contentBounds.right - secondarySize;
+
+    return [
+      priority,
+      makeBubble(secondaryLeft, contentBounds.top, secondarySize),
+      makeBubble(secondaryLeft, contentBounds.bottom - secondarySize, secondarySize),
+    ];
+  }
+
+  const secondaryLeft = priority.right + WIDGET_BUBBLE_GAP;
+  const secondarySize = Math.min(
+    96,
+    Math.floor((contentBounds.right - secondaryLeft - WIDGET_BUBBLE_GAP) / 2),
+    Math.floor((contentBounds.height - WIDGET_BUBBLE_GAP) / 2),
+  );
+  const secondaryRight = contentBounds.right - secondarySize;
+  const secondaryBottom = contentBounds.bottom - secondarySize;
+
+  return [
+    priority,
+    makeBubble(secondaryLeft, contentBounds.top, secondarySize),
+    makeBubble(secondaryRight, contentBounds.top, secondarySize),
+    makeBubble(secondaryLeft, secondaryBottom, secondarySize),
+    makeBubble(secondaryRight, secondaryBottom, secondarySize),
+  ];
 }
 
-export function getWidgetBubbleLayout(
-  reminder: WidgetLayoutReminder,
-  index: number,
-  visibleCount: number,
-  widgetWidth: number,
-  widgetHeight: number,
-): WidgetBubbleLayout {
-  return makeWidgetBubbleLayout(reminder, index, visibleCount, widgetWidth, widgetHeight, []);
-}
-
-export function getWidgetBubbleLayouts(
+export function getWidgetLayoutPlan(
   reminders: WidgetLayoutReminder[],
   widgetWidth: number,
   widgetHeight: number,
-): WidgetBubbleLayout[] {
-  const placedBubbles: PlacedWidgetBubble[] = [];
-
-  return reminders.map((reminder, index) =>
-    makeWidgetBubbleLayout(
-      reminder,
-      index,
-      reminders.length,
-      widgetWidth,
-      widgetHeight,
-      placedBubbles,
-    ),
+): WidgetLayoutPlan {
+  const mode = getWidgetDisplayMode(widgetWidth, widgetHeight);
+  const contentTop = WIDGET_SURFACE_PADDING + WIDGET_HEADER_HEIGHT + WIDGET_HEADER_GAP;
+  const contentBounds = makeRect(
+    WIDGET_SURFACE_PADDING,
+    contentTop,
+    Math.max(0, widgetWidth - WIDGET_SURFACE_PADDING * 2),
+    Math.max(0, widgetHeight - contentTop - WIDGET_SURFACE_PADDING),
   );
+  const addButton = makeRect(
+    widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH,
+    WIDGET_SURFACE_PADDING,
+    WIDGET_PLUS_TOUCH_WIDTH,
+    WIDGET_PLUS_TOUCH_HEIGHT,
+  );
+  const bubbleSlots = getBubbleSlots(mode, contentBounds);
+  const capacity = getBubbleCapacity(mode);
+  const visibleReminderCount =
+    reminders.length > capacity ? Math.max(1, capacity - 1) : Math.min(reminders.length, capacity);
+  const visibleReminders = reminders.slice(0, visibleReminderCount);
+  const visibleReminderIds = visibleReminders.map((reminder) => reminder.id);
+  const overflowCount = Math.max(0, reminders.length - visibleReminderCount);
+
+  return {
+    mode,
+    visibleReminderCount,
+    visibleReminderIds,
+    reminderBubbles: visibleReminderIds.map((reminderId, index) => ({
+      ...bubbleSlots[index],
+      reminderId,
+    })),
+    bubbleSlots,
+    overflowCount,
+    overflowBubble: overflowCount > 0 ? bubbleSlots[visibleReminderCount] : undefined,
+    contentBounds,
+    addButton,
+  };
 }

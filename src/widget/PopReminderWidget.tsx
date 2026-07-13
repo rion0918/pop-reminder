@@ -7,7 +7,10 @@ import {
 } from 'react-native-android-widget';
 
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
-import { bubbleDueColors } from '../constants/colors';
+import {
+  getReminderBubbleTypography,
+  getReminderTitleVisualLength,
+} from '../features/reminders/utils/reminderBubbleVisuals';
 import {
   getWidgetDueColor,
   homeVisualTokens,
@@ -15,14 +18,13 @@ import {
   widgetTheme,
 } from './widgetColors';
 import {
-  getWidgetBubbleCapacity,
-  getWidgetBubbleLayouts,
-  getWidgetTitleVisualLength,
-  WIDGET_DUE_LEGEND_HEIGHT,
+  getWidgetLayoutPlan,
+  WIDGET_HEADER_HEIGHT,
   WIDGET_PLUS_TOUCH_HEIGHT,
   WIDGET_PLUS_TOUCH_WIDTH,
   WIDGET_SURFACE_PADDING,
   type WidgetBubbleLayout,
+  type WidgetLayoutPlan,
 } from './widgetBubbleLayout';
 
 type WidgetReminder = {
@@ -42,60 +44,11 @@ type SvgPaint = {
   opacity: number;
 };
 
-type WidgetBubbleTypography = {
-  titleFontSize: number;
-  titleLineCount: number;
-  titleAdjustsFontSizeToFit: boolean;
-  timeFontSize: number;
-  timeMarginTop: number;
-  bubblePadding: number;
-};
-
-type WidgetIdleMotionConfig = {
-  delay: number;
-  duration: number;
-  amplitudeX: number;
-  amplitudeY: number;
-  rotateDeg: number;
-};
-
-type WidgetMotionFrame = {
-  translateX: number;
-  translateY: number;
-  rotation: number;
-};
-
 const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
-const WIDGET_DUE_LEGEND_BUBBLE_SIZE = 14;
-
-const WIDGET_DUE_LEGEND_ITEMS = [
-  { id: 'today', label: '今日', color: bubbleDueColors.today },
-  { id: 'tomorrow', label: '明日', color: bubbleDueColors.tomorrow },
-  { id: 'soon', label: '2-3日', color: bubbleDueColors.soon },
-  { id: 'later', label: '4日+', color: bubbleDueColors.later },
-] as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-function hashString(value: string) {
-  let hash = 2166136261;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
-}
-
-function unitFromHash(seed: number, salt: number) {
-  let hash = seed ^ Math.imul(salt + 1, 0x9e3779b9);
-  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d);
-  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b);
-  return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
 }
 
 function escapeXml(value: string) {
@@ -161,67 +114,6 @@ function svgStroke(color: string, opacityScale = 1) {
   return `stroke="${paint.hex}" stroke-opacity="${opacity.toFixed(3)}"`;
 }
 
-function getWidgetBubbleTypography(
-  width: number,
-  height: number,
-  titleVisualLength: number,
-): WidgetBubbleTypography {
-  const isShortTitle = titleVisualLength <= 8;
-  const isMediumTitle = titleVisualLength <= 16;
-  const isLongTitle = titleVisualLength > 24;
-  const textMeasure = Math.min(height, width / 1.45);
-  const titleLineCount = isShortTitle ? 1 : isMediumTitle ? 2 : isLongTitle ? 4 : 3;
-  const titleFontSize = isShortTitle
-    ? clamp(textMeasure * 0.17, 13, 20)
-    : isMediumTitle
-      ? clamp(textMeasure * 0.135, 12, 17)
-      : isLongTitle
-        ? clamp(textMeasure * 0.086, 9, 12)
-        : clamp(textMeasure * 0.112, 10, 15);
-  const timeFontSize = isShortTitle
-    ? clamp(textMeasure * 0.102, 10, 13)
-    : isLongTitle
-      ? clamp(textMeasure * 0.074, 8, 10)
-      : clamp(textMeasure * 0.088, 9, 11);
-  const baseBubblePadding = clamp(textMeasure * 0.13, 8, 16);
-
-  return {
-    titleFontSize: Math.round(titleFontSize),
-    titleLineCount,
-    titleAdjustsFontSizeToFit: !isShortTitle,
-    timeFontSize: Math.round(timeFontSize),
-    timeMarginTop: isShortTitle ? Math.round(clamp(textMeasure * 0.04, 3, 6)) : isLongTitle ? 1 : 3,
-    bubblePadding: Math.round(
-      isShortTitle ? baseBubblePadding : Math.max(7, baseBubblePadding - (isLongTitle ? 4 : 2)),
-    ),
-  };
-}
-
-function makeWidgetIdleMotionConfig(id: string, index: number): WidgetIdleMotionConfig {
-  const seed = hashString(`${id}-${index}`);
-
-  return {
-    delay: Math.round(unitFromHash(seed, 1) * 1200),
-    duration: Math.round(4600 + unitFromHash(seed, 2) * 2600),
-    amplitudeX: unitFromHash(seed, 3) * 2.4,
-    amplitudeY: 2.2 + unitFromHash(seed, 4) * 2.2,
-    rotateDeg: 1 + unitFromHash(seed, 5) * 1.4,
-  };
-}
-
-function getWidgetMotionFrame(id: string, index: number, renderedAtMs: number): WidgetMotionFrame {
-  const motion = makeWidgetIdleMotionConfig(id, index);
-  const elapsed = renderedAtMs - motion.delay;
-  const wrappedElapsed = ((elapsed % motion.duration) + motion.duration) % motion.duration;
-  const phase = wrappedElapsed / motion.duration;
-
-  return {
-    translateX: Math.round(Math.sin(phase * Math.PI * 2) * motion.amplitudeX),
-    translateY: Math.round(Math.cos(phase * Math.PI * 2) * motion.amplitudeY),
-    rotation: Math.round(Math.sin(phase * Math.PI * 2) * motion.rotateDeg),
-  };
-}
-
 function makeBubbleSvg(id: string, width: number, height: number, color: WidgetDueColor) {
   const svgId = escapeXml(id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24) || 'bubble');
   const gradientMist = colorToSvgPaint(color.gradient[2]);
@@ -232,10 +124,9 @@ function makeBubbleSvg(id: string, width: number, height: number, color: WidgetD
   const highlightLarge = svgFill('rgba(255,255,255,0.7)');
   const highlightSmall = svgFill('rgba(255,255,255,0.62)');
   const tintMist = svgFill(color.background, homeVisualTokens.bubbleTintMistOpacity);
-  const stretch = width === height ? 'xMidYMid meet' : 'none';
 
   return `
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 100 100" preserveAspectRatio="${stretch}">
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 100 100" preserveAspectRatio="none">
   <defs>
     <linearGradient id="${svgId}-surface" x1="16%" y1="8%" x2="86%" y2="96%">
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.78"/>
@@ -268,8 +159,6 @@ function makeBubbleSvg(id: string, width: number, height: number, color: WidgetD
 
 function makeFrostedGlassSurfaceSvg(width: number, height: number) {
   const surface = colorToSvgPaint(widgetTheme.cloudSurfaceBackground);
-  const highlight = colorToSvgPaint(widgetTheme.cloudMistHighlight);
-  const shade = colorToSvgPaint(widgetTheme.cloudMistShade);
   const refractionA = colorToSvgPaint(widgetTheme.glassRefractionA);
   const refractionB = colorToSvgPaint(widgetTheme.glassRefractionB);
   const refractionC = colorToSvgPaint(widgetTheme.glassRefractionC);
@@ -278,176 +167,92 @@ function makeFrostedGlassSurfaceSvg(width: number, height: number) {
 
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
-  <defs>
-    <linearGradient id="glassVeilGradient" x1="8%" y1="0%" x2="92%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 1.28).toFixed(3)}"/>
-      <stop offset="42%" stop-color="${surface.hex}" stop-opacity="${surface.opacity.toFixed(3)}"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="${(highlight.opacity * 0.72).toFixed(3)}"/>
-    </linearGradient>
-    <radialGradient id="glassRefractionAGradient" cx="18%" cy="14%" r="70%">
-      <stop offset="0%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 1.24).toFixed(3)}"/>
-      <stop offset="58%" stop-color="${refractionA.hex}" stop-opacity="${(refractionA.opacity * 0.62).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${refractionA.hex}" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glassRefractionBGradient" cx="78%" cy="30%" r="72%">
-      <stop offset="0%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 1.18).toFixed(3)}"/>
-      <stop offset="56%" stop-color="${refractionB.hex}" stop-opacity="${(refractionB.opacity * 0.58).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${refractionB.hex}" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glassRefractionCGradient" cx="52%" cy="96%" r="66%">
-      <stop offset="0%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 1.14).toFixed(3)}"/>
-      <stop offset="62%" stop-color="${refractionC.hex}" stop-opacity="${(refractionC.opacity * 0.5).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${refractionC.hex}" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glassShadowGradient" cx="14%" cy="96%" r="68%">
-      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.42).toFixed(3)}"/>
-      <stop offset="50%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.56).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="glassLeftDepthGradient" x1="0%" y1="12%" x2="46%" y2="88%">
-      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 1.04).toFixed(3)}"/>
-      <stop offset="46%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.22).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="glassBottomDepthGradient" x1="0%" y1="72%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${shade.hex}" stop-opacity="0"/>
-      <stop offset="72%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.42).toFixed(3)}"/>
-      <stop offset="100%" stop-color="${shade.hex}" stop-opacity="${(shade.opacity * 0.9).toFixed(3)}"/>
-    </linearGradient>
-  </defs>
-  <rect id="glassVeil" x="0" y="0" width="${width}" height="${height}" fill="url(#glassVeilGradient)"/>
-  <ellipse id="glassRefractionA" cx="${width * 0.16}" cy="${height * 0.2}" rx="${width * 0.62}" ry="${height * 0.5}" fill="url(#glassRefractionAGradient)"/>
-  <ellipse id="glassRefractionB" cx="${width * 0.82}" cy="${height * 0.34}" rx="${width * 0.58}" ry="${height * 0.52}" fill="url(#glassRefractionBGradient)"/>
-  <ellipse id="glassRefractionC" cx="${width * 0.48}" cy="${height * 1.02}" rx="${width * 0.7}" ry="${height * 0.38}" fill="url(#glassRefractionCGradient)"/>
-  <ellipse id="glassRefractionD" cx="${width * 0.28}" cy="${height * 0.76}" rx="${width * 0.5}" ry="${height * 0.32}" fill="url(#glassRefractionBGradient)" opacity="0.62"/>
-  <ellipse id="glassSoftShade" cx="${width * 0.12}" cy="${height * 0.98}" rx="${width * 0.56}" ry="${height * 0.42}" fill="url(#glassShadowGradient)"/>
-  <rect id="glassLeftDepth" x="0" y="0" width="${width * 0.5}" height="${height}" fill="url(#glassLeftDepthGradient)"/>
-  <rect id="glassBottomDepth" x="0" y="${height * 0.58}" width="${width}" height="${height * 0.42}" fill="url(#glassBottomDepthGradient)"/>
-  <g id="glassFrostGrain" opacity="0.34">
-    <circle cx="${width * 0.18}" cy="${height * 0.18}" r="1.1" fill="#ffffff" fill-opacity="0.62"/>
-    <circle cx="${width * 0.42}" cy="${height * 0.28}" r="0.9" fill="#ffffff" fill-opacity="0.42"/>
-    <circle cx="${width * 0.68}" cy="${height * 0.2}" r="1" fill="#ffffff" fill-opacity="0.46"/>
-    <circle cx="${width * 0.78}" cy="${height * 0.62}" r="1.2" fill="#ffffff" fill-opacity="0.34"/>
-    <path d="M${width * 0.24} ${height * 0.48} h ${Math.max(8, width * 0.08)}" stroke="#ffffff" stroke-opacity="0.28" stroke-width="0.7" stroke-linecap="round"/>
-    <path d="M${width * 0.54} ${height * 0.68} h ${Math.max(10, width * 0.1)}" stroke="#ffffff" stroke-opacity="0.22" stroke-width="0.8" stroke-linecap="round"/>
-    <path d="M${width * 0.12} ${height * 0.82} h ${Math.max(9, width * 0.09)}" stroke="#ffffff" stroke-opacity="0.24" stroke-width="0.7" stroke-linecap="round"/>
-  </g>
+  <rect id="glassVeil" x="0" y="0" width="${width}" height="${height}" fill="${surface.hex}" fill-opacity="${surface.opacity.toFixed(3)}"/>
+  <ellipse id="glassRefractionA" cx="${width * 0.16}" cy="${height * 0.2}" rx="${width * 0.62}" ry="${height * 0.5}" fill="${refractionA.hex}" fill-opacity="${(refractionA.opacity * 0.24).toFixed(3)}"/>
+  <ellipse id="glassRefractionB" cx="${width * 0.82}" cy="${height * 0.34}" rx="${width * 0.58}" ry="${height * 0.52}" fill="${refractionB.hex}" fill-opacity="${(refractionB.opacity * 0.2).toFixed(3)}"/>
+  <ellipse id="glassRefractionC" cx="${width * 0.48}" cy="${height * 1.02}" rx="${width * 0.7}" ry="${height * 0.38}" fill="${refractionC.hex}" fill-opacity="${(refractionC.opacity * 0.18).toFixed(3)}"/>
   <rect id="glassInnerShadow" x="1.2" y="1.2" width="${Math.max(0, width - 2.4)}" height="${Math.max(0, height - 2.4)}" rx="23" ry="23" fill="none" stroke="${innerShadow.hex}" stroke-opacity="${innerShadow.opacity.toFixed(3)}" stroke-width="1.4"/>
   <path id="glassTopEdge" d="M18 1.4 H ${Math.max(18, width - 18)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${edgeHighlight.opacity.toFixed(3)}" stroke-width="2.4" stroke-linecap="round"/>
-  <path id="glassBottomEdge" d="M18 ${Math.max(0, height - 1.4)} H ${Math.max(18, width - 18)}" fill="none" stroke="${edgeHighlight.hex}" stroke-opacity="${(edgeHighlight.opacity * 0.76).toFixed(3)}" stroke-width="1.8" stroke-linecap="round"/>
 </svg>`;
 }
 
-function makeLegendBubbleSvg(id: string, color: WidgetDueColor) {
-  const svgId = `legend-${id}`;
-  const gradientMist = colorToSvgPaint(color.gradient[2]);
-  const tintMist = svgFill(color.background, 0.9);
-  const outerRing = svgStroke('rgba(255,255,255,0.72)');
-  const colorRing = svgStroke(color.border, 0.78);
-
-  return `
-<svg xmlns="http://www.w3.org/2000/svg" width="${WIDGET_DUE_LEGEND_BUBBLE_SIZE}" height="${WIDGET_DUE_LEGEND_BUBBLE_SIZE}" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="${svgId}-surface" x1="12%" y1="8%" x2="88%" y2="96%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.82"/>
-      <stop offset="58%" stop-color="${gradientMist.hex}" stop-opacity="${gradientMist.opacity.toFixed(3)}"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.12"/>
-    </linearGradient>
-  </defs>
-  <circle cx="50" cy="50" r="48" fill="url(#${svgId}-surface)"/>
-  <circle cx="50" cy="50" r="36" ${tintMist}/>
-  <circle cx="50" cy="50" r="47" fill="none" ${outerRing} stroke-width="6"/>
-  <path d="M76 23 C90 43 86 72 62 86" fill="none" ${colorRing} stroke-width="8" stroke-linecap="round"/>
-  <ellipse cx="34" cy="25" rx="16" ry="8" ${svgFill('rgba(255,255,255,0.72)')} transform="rotate(-28 34 25)"/>
-</svg>`;
-}
-
-function WidgetDueLegend({
-  widgetWidth,
-  widgetHeight,
-}: {
-  widgetWidth: number;
-  widgetHeight: number;
-}) {
-  const legendWidth = Math.max(0, widgetWidth - WIDGET_SURFACE_PADDING * 2);
-
+function WidgetHeader() {
   return (
     <FlexWidget
       style={{
-        width: legendWidth,
-        height: WIDGET_DUE_LEGEND_HEIGHT,
+        width: 'match_parent',
+        height: WIDGET_HEADER_HEIGHT,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-around',
-        marginTop: Math.max(0, widgetHeight - WIDGET_SURFACE_PADDING - WIDGET_DUE_LEGEND_HEIGHT),
-        marginLeft: WIDGET_SURFACE_PADDING,
+        justifyContent: 'space-between',
+        paddingLeft: WIDGET_SURFACE_PADDING,
+        paddingRight: WIDGET_SURFACE_PADDING,
+        marginTop: WIDGET_SURFACE_PADDING,
       }}
     >
-      {WIDGET_DUE_LEGEND_ITEMS.map((item) => (
-        <FlexWidget
-          key={item.id}
+      <TextWidget
+        text="次の予定"
+        style={{
+          fontSize: 16,
+          fontWeight: '900',
+          color: widgetTheme.primaryText as ColorProp,
+          textShadowColor: widgetTheme.textHalo as ColorProp,
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 2,
+        }}
+        maxLines={1}
+        allowFontScaling={false}
+      />
+      <FlexWidget
+        style={{
+          width: WIDGET_PLUS_TOUCH_WIDTH,
+          height: WIDGET_PLUS_TOUCH_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 22,
+          backgroundColor: widgetTheme.plusButtonBackground as ColorProp,
+        }}
+        clickAction="OPEN_URI"
+        clickActionData={{ uri: 'popreminder://?action=add' }}
+      >
+        <TextWidget
+          text="＋ 追加"
           style={{
-            flex: 1,
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
+            fontSize: 14,
+            fontWeight: '900',
+            color: widgetTheme.plusButtonText as ColorProp,
+            textAlign: 'center',
           }}
-        >
-          <SvgWidget
-            svg={makeLegendBubbleSvg(item.id, item.color)}
-            style={{
-              width: WIDGET_DUE_LEGEND_BUBBLE_SIZE,
-              height: WIDGET_DUE_LEGEND_BUBBLE_SIZE,
-            }}
-          />
-          <TextWidget
-            text={item.label}
-            style={{
-              fontSize: 9,
-              fontWeight: '900',
-              color: widgetTheme.mutedText as ColorProp,
-              textAlign: 'center',
-              marginTop: 2,
-              textShadowColor: widgetTheme.textHalo as ColorProp,
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 5,
-            }}
-            maxLines={1}
-            allowFontScaling={false}
-          />
-        </FlexWidget>
-      ))}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+      </FlexWidget>
     </FlexWidget>
   );
 }
 
-function BubbleItem({
+function WidgetReminderBubble({
   reminder,
-  index,
   layout,
-  renderedAtMs,
 }: {
   reminder: WidgetReminder;
-  index: number;
   layout: WidgetBubbleLayout;
-  renderedAtMs: number;
 }) {
   const color = getWidgetDueColor(reminder.targetAt);
-  const titleVisualLength = getWidgetTitleVisualLength(reminder.title);
-  const typography = getWidgetBubbleTypography(layout.width, layout.height, titleVisualLength);
   const timeText = formatReminderBubbleDateTime(reminder.targetAt);
-  const motionFrame = getWidgetMotionFrame(reminder.id, index, renderedAtMs);
+  const titleVisualLength = getReminderTitleVisualLength(reminder.title);
+  const typography = getReminderBubbleTypography(layout.width, layout.height, titleVisualLength);
 
   return (
     <OverlapWidget
       style={{
         width: layout.width,
         height: layout.height,
-        borderRadius: Math.round(Math.min(layout.width, layout.height) / 2),
+        borderRadius: Math.round(layout.width / 2),
         overflow: 'hidden',
-        marginTop: layout.top + motionFrame.translateY,
-        marginLeft: layout.left + motionFrame.translateX,
-        rotation: motionFrame.rotation,
+        marginTop: layout.top,
+        marginLeft: layout.left,
       }}
       clickAction="OPEN_URI"
       clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
@@ -498,7 +303,6 @@ function BubbleItem({
             adjustsFontSizeToFit: true,
           }}
           maxLines={1}
-          truncate="END"
           allowFontScaling={false}
         />
       </FlexWidget>
@@ -506,71 +310,47 @@ function BubbleItem({
   );
 }
 
-function OverflowBubble({
-  count,
-  layout,
-  renderedAtMs,
-}: {
-  count: number;
-  layout: WidgetBubbleLayout;
-  renderedAtMs: number;
-}) {
-  const color = getWidgetDueColor(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const radius = Math.round(Math.min(layout.width, layout.height) / 2);
-  const motionFrame = getWidgetMotionFrame(`overflow-${count}`, count, renderedAtMs);
+function OverflowBubble({ count, layout }: { count: number; layout: WidgetBubbleLayout }) {
+  const color = getWidgetDueColor(new Date());
 
   return (
     <OverlapWidget
       style={{
         width: layout.width,
         height: layout.height,
-        borderRadius: radius,
+        borderRadius: Math.round(layout.width / 2),
+        marginTop: layout.top,
+        marginLeft: layout.left,
         overflow: 'hidden',
-        marginTop: layout.top + motionFrame.translateY,
-        marginLeft: layout.left + motionFrame.translateX,
-        rotation: motionFrame.rotation,
       }}
       clickAction="OPEN_APP"
     >
       <SvgWidget
         svg={makeBubbleSvg(`overflow-${count}`, layout.width, layout.height, color)}
-        style={{
-          width: 'match_parent',
-          height: 'match_parent',
-        }}
+        style={{ width: 'match_parent', height: 'match_parent' }}
       />
       <FlexWidget
         style={{
           width: 'match_parent',
           height: 'match_parent',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: 10,
+          padding: 8,
         }}
       >
         <TextWidget
           text={`+${count}`}
           style={{
-            fontSize: 18,
+            fontSize: Math.max(14, Math.round(layout.width * 0.24)),
             fontWeight: '900',
-            color: widgetTheme.headerText as ColorProp,
+            color: widgetTheme.primaryText as ColorProp,
             textAlign: 'center',
-            textShadowColor: 'rgba(255,255,255,0.58)' as ColorProp,
+            textShadowColor: 'rgba(255,255,255,0.62)' as ColorProp,
             textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: 8,
+            textShadowRadius: 7,
+            adjustsFontSizeToFit: true,
           }}
-          allowFontScaling={false}
-        />
-        <TextWidget
-          text="ほか"
-          style={{
-            fontSize: 10,
-            fontWeight: '800',
-            color: widgetTheme.mutedText as ColorProp,
-            textAlign: 'center',
-            marginTop: 1,
-          }}
+          maxLines={1}
           allowFontScaling={false}
         />
       </FlexWidget>
@@ -578,64 +358,77 @@ function OverflowBubble({
   );
 }
 
-function EmptyState({ renderedAtMs }: { renderedAtMs: number }) {
-  const color = getWidgetDueColor(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const motionFrame = getWidgetMotionFrame('empty-state', 0, renderedAtMs);
-
+function EmptyState({ contentBounds }: { contentBounds: WidgetLayoutPlan['contentBounds'] }) {
   return (
     <FlexWidget
       style={{
-        flex: 1,
+        width: contentBounds.width,
+        height: contentBounds.height,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 8,
+        padding: WIDGET_SURFACE_PADDING,
+        marginTop: contentBounds.top,
+        marginLeft: contentBounds.left,
       }}
     >
-      <OverlapWidget
+      <TextWidget
+        text="予定はありません"
         style={{
-          width: 118,
-          height: 92,
-          borderRadius: 46,
-          overflow: 'hidden',
-          marginTop: motionFrame.translateY,
-          marginLeft: motionFrame.translateX,
-          rotation: motionFrame.rotation,
+          fontSize: 16,
+          fontWeight: '900',
+          color: widgetTheme.primaryText as ColorProp,
+          textAlign: 'center',
         }}
-      >
-        <SvgWidget
-          svg={makeBubbleSvg('empty-state', 118, 92, color)}
-          style={{
-            width: 'match_parent',
-            height: 'match_parent',
-          }}
-        />
-        <FlexWidget
-          style={{
-            width: 'match_parent',
-            height: 'match_parent',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 14,
-          }}
-        >
-          <TextWidget
-            text="まだ泡はひとつも浮いていません"
-            style={{
-              fontSize: 11,
-              fontWeight: '800',
-              color: widgetTheme.headerText as ColorProp,
-              textAlign: 'center',
-              textShadowColor: 'rgba(255,255,255,0.58)' as ColorProp,
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 8,
-              adjustsFontSizeToFit: true,
-            }}
-            maxLines={3}
-            allowFontScaling={false}
-          />
-        </FlexWidget>
-      </OverlapWidget>
+        maxLines={1}
+        allowFontScaling={false}
+      />
+      <TextWidget
+        text="＋から泡を浮かべよう"
+        style={{
+          fontSize: 12,
+          fontWeight: '800',
+          color: widgetTheme.secondaryText as ColorProp,
+          textAlign: 'center',
+          marginTop: 4,
+        }}
+        maxLines={1}
+        allowFontScaling={false}
+      />
     </FlexWidget>
+  );
+}
+
+function ReminderContent({
+  reminders,
+  plan,
+}: {
+  reminders: WidgetReminder[];
+  plan: WidgetLayoutPlan;
+}) {
+  const remindersById = new Map(reminders.map((reminder) => [reminder.id, reminder]));
+
+  if (plan.reminderBubbles.length === 0) {
+    return <EmptyState contentBounds={plan.contentBounds} />;
+  }
+
+  return (
+    <OverlapWidget
+      style={{
+        width: 'match_parent',
+        height: 'match_parent',
+      }}
+    >
+      {plan.reminderBubbles.map((layout) => {
+        const reminder = remindersById.get(layout.reminderId);
+
+        return reminder ? (
+          <WidgetReminderBubble key={reminder.id} reminder={reminder} layout={layout} />
+        ) : null;
+      })}
+      {plan.overflowBubble ? (
+        <OverflowBubble count={plan.overflowCount} layout={plan.overflowBubble} />
+      ) : null}
+    </OverlapWidget>
   );
 }
 
@@ -644,32 +437,7 @@ export function PopReminderWidget({
   widgetWidth = WIDGET_DEFAULT_WIDTH,
   widgetHeight = WIDGET_DEFAULT_HEIGHT,
 }: PopReminderWidgetProps) {
-  const visibleCapacity = getWidgetBubbleCapacity(widgetWidth, widgetHeight);
-  const visibleReminderLimit =
-    reminders.length > visibleCapacity ? Math.max(1, visibleCapacity - 1) : visibleCapacity;
-  const visibleReminders = reminders.slice(0, visibleReminderLimit);
-  const overflowCount = Math.max(0, reminders.length - visibleReminderLimit);
-  const overflowReminder = {
-    id: `overflow-${overflowCount}`,
-    title: `+${overflowCount}`,
-    targetAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-  };
-  const layoutItems =
-    overflowCount > 0 ? [...visibleReminders, overflowReminder] : visibleReminders;
-  const bubbleLayouts = new Map(
-    getWidgetBubbleLayouts(layoutItems, widgetWidth, widgetHeight).map((layout, index) => [
-      layoutItems[index].id,
-      layout,
-    ]),
-  );
-  const visibleReminderItems = visibleReminders.flatMap((reminder, index) => {
-    const layout = bubbleLayouts.get(reminder.id);
-
-    return layout ? [{ reminder, index, layout }] : [];
-  });
-  const overflowLayout = bubbleLayouts.get(overflowReminder.id);
-  const hasBubbles = reminders.length > 0;
-  const renderedAtMs = Date.now();
+  const plan = getWidgetLayoutPlan(reminders, widgetWidth, widgetHeight);
 
   return (
     <OverlapWidget
@@ -690,61 +458,8 @@ export function PopReminderWidget({
           height: 'match_parent',
         }}
       />
-      {hasBubbles ? (
-        <OverlapWidget
-          style={{
-            width: 'match_parent',
-            height: 'match_parent',
-          }}
-        >
-          {visibleReminderItems.map(({ reminder, index, layout }) => (
-            <BubbleItem
-              key={reminder.id}
-              reminder={reminder}
-              index={index}
-              layout={layout}
-              renderedAtMs={renderedAtMs}
-            />
-          ))}
-          {overflowCount > 0 && overflowLayout ? (
-            <OverflowBubble
-              count={overflowCount}
-              layout={overflowLayout}
-              renderedAtMs={renderedAtMs}
-            />
-          ) : null}
-        </OverlapWidget>
-      ) : (
-        <EmptyState renderedAtMs={renderedAtMs} />
-      )}
-      <WidgetDueLegend widgetWidth={widgetWidth} widgetHeight={widgetHeight} />
-      <FlexWidget
-        style={{
-          width: WIDGET_PLUS_TOUCH_WIDTH,
-          height: WIDGET_PLUS_TOUCH_HEIGHT,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: WIDGET_SURFACE_PADDING,
-          marginLeft: Math.max(0, widgetWidth - WIDGET_SURFACE_PADDING - WIDGET_PLUS_TOUCH_WIDTH),
-        }}
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: 'popreminder://?action=add' }}
-      >
-        <TextWidget
-          text="+"
-          style={{
-            fontSize: 30,
-            fontWeight: '400',
-            color: widgetTheme.plusIconText as ColorProp,
-            textAlign: 'center',
-            textShadowColor: widgetTheme.textHalo as ColorProp,
-            textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: 7,
-          }}
-          allowFontScaling={false}
-        />
-      </FlexWidget>
+      <WidgetHeader />
+      <ReminderContent reminders={reminders} plan={plan} />
     </OverlapWidget>
   );
 }

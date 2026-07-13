@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
 import {
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -41,7 +42,6 @@ type ReminderInputSheetProps = {
 
 const sameDayTimePresets = ['08:00', '12:00', '18:00', '20:00'];
 const QUICK_ADD_BOTTOM_CLEARANCE = 24;
-const QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE = 320;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
   android: 'default',
@@ -90,15 +90,18 @@ export function ReminderInputSheet({
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
   const isSaveRequestedRef = useRef(false);
-  const focusTitleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleFocusRequestIdRef = useRef(0);
+  const pendingTitleFocusRequestIdRef = useRef<number | null>(null);
+  const isOpenRef = useRef(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
+  const [dismissalVersion, setDismissalVersion] = useState(0);
   const sheetTopInset = safeAreaInsets.top + 8;
   const quickAddMaxDynamicContentSize = useMemo(
     () =>
       Math.max(
-        QUICK_ADD_MIN_DYNAMIC_CONTENT_SIZE,
+        1,
         windowHeight - sheetTopInset - safeAreaInsets.bottom - QUICK_ADD_BOTTOM_CLEARANCE,
       ),
     [safeAreaInsets.bottom, sheetTopInset, windowHeight],
@@ -124,6 +127,7 @@ export function ReminderInputSheet({
   const setCustomTargetDate = useReminderUiStore((state) => state.setCustomTargetDate);
   const setTargetTime = useReminderUiStore((state) => state.setTargetTime);
   const resetInput = useReminderUiStore((state) => state.resetInput);
+  isOpenRef.current = isOpen;
 
   const datePickerValue = useMemo(() => {
     if (!customTargetDate) {
@@ -157,13 +161,9 @@ export function ReminderInputSheet({
     titleInputRef.current?.clear();
   }, []);
 
-  const clearFocusTitleTimeout = useCallback(() => {
-    if (focusTitleTimeoutRef.current === null) {
-      return;
-    }
-
-    clearTimeout(focusTitleTimeoutRef.current);
-    focusTitleTimeoutRef.current = null;
+  const invalidateTitleFocusRequest = useCallback(() => {
+    titleFocusRequestIdRef.current += 1;
+    pendingTitleFocusRequestIdRef.current = null;
   }, []);
 
   const renderBackdrop = useCallback(
@@ -173,11 +173,42 @@ export function ReminderInputSheet({
     [],
   );
 
+  const handleSheetChange = useCallback(
+    (index: number) => {
+      if (index < 0) {
+        invalidateTitleFocusRequest();
+        Keyboard.dismiss();
+        return;
+      }
+
+      const pendingRequestId = pendingTitleFocusRequestIdRef.current;
+      if (
+        pendingRequestId === null ||
+        pendingRequestId !== titleFocusRequestIdRef.current ||
+        isClosingRef.current ||
+        !isOpenRef.current
+      ) {
+        return;
+      }
+
+      pendingTitleFocusRequestIdRef.current = null;
+      titleInputRef.current?.focus();
+    },
+    [invalidateTitleFocusRequest],
+  );
+
   useEffect(() => {
     if (!isOpen) {
+      if (
+        isPresentedRef.current ||
+        isClosingRef.current ||
+        pendingTitleFocusRequestIdRef.current !== null
+      ) {
+        invalidateTitleFocusRequest();
+      }
       if (isPresentedRef.current) {
         isClosingRef.current = true;
-        clearFocusTitleTimeout();
+        Keyboard.dismiss();
         sheetRef.current?.dismiss();
         return;
       }
@@ -193,21 +224,15 @@ export function ReminderInputSheet({
       resetDraftTitle();
       setTitleNotice(null);
       resetInput(defaultTargetTime);
+      const focusRequestId = titleFocusRequestIdRef.current + 1;
+      titleFocusRequestIdRef.current = focusRequestId;
+      pendingTitleFocusRequestIdRef.current = shouldFocusTitleOnOpen ? focusRequestId : null;
       sheetRef.current?.present();
-      if (shouldFocusTitleOnOpen) {
-        clearFocusTitleTimeout();
-        focusTitleTimeoutRef.current = setTimeout(
-          () => {
-            titleInputRef.current?.focus();
-            focusTitleTimeoutRef.current = null;
-          },
-          Platform.OS === 'android' ? 180 : 80,
-        );
-      }
     }
   }, [
-    clearFocusTitleTimeout,
     defaultTargetTime,
+    dismissalVersion,
+    invalidateTitleFocusRequest,
     isOpen,
     resetDraftTitle,
     resetInput,
@@ -216,34 +241,56 @@ export function ReminderInputSheet({
 
   useEffect(() => {
     return () => {
-      clearFocusTitleTimeout();
+      invalidateTitleFocusRequest();
+      Keyboard.dismiss();
     };
-  }, [clearFocusTitleTimeout]);
+  }, [invalidateTitleFocusRequest]);
 
   const requestClose = useCallback(() => {
     isClosingRef.current = true;
-    clearFocusTitleTimeout();
+    invalidateTitleFocusRequest();
+    Keyboard.dismiss();
     closeQuickAdd();
     setIsDatePickerOpen(false);
     setIsTimePickerOpen(false);
     sheetRef.current?.dismiss();
-  }, [clearFocusTitleTimeout, closeQuickAdd]);
+  }, [closeQuickAdd, invalidateTitleFocusRequest]);
 
   const handleClosePress = useCallback(() => {
     requestClose();
   }, [requestClose]);
 
   const handleDismiss = useCallback(() => {
+    const shouldReopen = isClosingRef.current && isOpenRef.current;
+
     isClosingRef.current = false;
-    clearFocusTitleTimeout();
-    closeQuickAdd();
+    invalidateTitleFocusRequest();
+    Keyboard.dismiss();
     isPresentedRef.current = false;
     isSaveRequestedRef.current = false;
     setIsDatePickerOpen(false);
     setIsTimePickerOpen(false);
     resetDraftTitle();
     setTitleNotice(null);
-  }, [clearFocusTitleTimeout, closeQuickAdd, resetDraftTitle]);
+
+    if (shouldReopen) {
+      setDismissalVersion((version) => version + 1);
+    } else {
+      closeQuickAdd();
+    }
+  }, [closeQuickAdd, invalidateTitleFocusRequest, resetDraftTitle]);
+
+  const openDatePicker = useCallback(() => {
+    invalidateTitleFocusRequest();
+    Keyboard.dismiss();
+    setIsDatePickerOpen(true);
+  }, [invalidateTitleFocusRequest]);
+
+  const openTimePicker = useCallback(() => {
+    invalidateTitleFocusRequest();
+    Keyboard.dismiss();
+    setIsTimePickerOpen(true);
+  }, [invalidateTitleFocusRequest]);
 
   const handleSave = useCallback(async () => {
     if (isSaving || isSaveRequestedRef.current) {
@@ -357,10 +404,11 @@ export function ReminderInputSheet({
         enableDynamicSizing
         enablePanDownToClose
         maxDynamicContentSize={quickAddMaxDynamicContentSize}
+        onChange={handleSheetChange}
         onDismiss={handleDismiss}
-        keyboardBehavior="interactive"
+        keyboardBehavior={Platform.OS === 'android' ? 'fillParent' : 'interactive'}
         keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustPan"
+        android_keyboardInputMode="adjustResize"
         topInset={sheetTopInset}
         bottomInset={safeAreaInsets.bottom}
         backdropComponent={renderBackdrop}
@@ -408,13 +456,13 @@ export function ReminderInputSheet({
             customDate={customTargetDate}
             onChange={handleDateOffsetChange}
             onSelectPresetDate={handlePresetDateChange}
-            onSelectCustomDate={() => setIsDatePickerOpen(true)}
+            onSelectCustomDate={openDatePicker}
           />
 
           <TimeSelector
             value={time}
             onChange={handleTargetTimeChange}
-            onSelectCustomTime={() => setIsTimePickerOpen(true)}
+            onSelectCustomTime={openTimePicker}
             variant="compact"
             style={styles.timeSelector}
           />

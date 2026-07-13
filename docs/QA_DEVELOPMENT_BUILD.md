@@ -111,7 +111,8 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 **期待される結果**
 
 - `BottomSheetTextInput` 上で日本語 IME が問題なく動作
-- `keyboardBehavior="interactive"` でキーボード表示時に入力欄が隠れない
+- Android は `keyboardBehavior="fillParent"` + `android_keyboardInputMode="adjustResize"`、iOS/Web は `keyboardBehavior="interactive"` で、キーボード表示時も入力欄が隠れない
+- 日本語 IME の候補欄が表示されても、タイトル欄は Safe Area 内で見え、他の入力項目と追加ボタンには Sheet 内スクロールで到達できる
 
 ---
 
@@ -236,13 +237,30 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] 背景の Backdrop をタップすると Sheet が閉じる（`enablePanDownToClose` も有効）
 - [ ] Bubble タップで詳細 Sheet（`ReminderDetailSheet`）が開く
 - [ ] 詳細 Sheet もスワイプダウンで閉じられる
-- [ ] キーボード表示中に Sheet を閉じても、キーボードが追従して閉じる（`keyboardBehavior="interactive"`）
+- [ ] キーボード表示中に Sheet を閉じても、キーボードが追従して閉じる（Android: `fillParent`、iOS/Web: `interactive`）
 - [ ] Sheet 開閉中に素早く連打しても、状態の不整合（開かない/閉じない）が発生しない
 
 **期待される結果**
 
 - `@gorhom/bottom-sheet` のネイティブ動作が development build で正しく動作
 - `isPresentedRef` / `isClosingRef` による競合防止が機能している
+
+### 12.1 リマインド追加 Sheet のキーボード安全性
+
+- [ ] アプリ内の「+」から追加 Sheet を開いた場合、タイトル欄は自動フォーカスされず、手動タップでキーボードが表示される
+- [ ] Widget からのコールドスタートで追加 Sheet を開いた場合、Sheet の表示完了後にタイトル欄へ自動フォーカスされる
+- [ ] Widget からのウォーム起動でも、タイトル欄への自動フォーカスとキーボード表示が同じ結果になる
+- [ ] タイトル欄を手動タップした状態で閉じるボタン、Backdrop、下スワイプ、Android Back を行うと、Sheet とキーボードが閉じる
+- [ ] 表示中の素早い開閉・再表示・連打で、古いフォーカス要求によるキーボードの再表示が発生しない
+- [ ] 日付 Picker または時刻 Picker を開く前にキーボードが閉じ、Picker を閉じても古いタイトルフォーカスでキーボードが再表示されない
+- [ ] Android の日本語 IME 候補欄表示中に、タイトル欄がキーボードの背後へ入らない
+- [ ] キーボードの高さを変更した後も、Sheet が実際のリサイズ領域へ再配置される
+- [ ] Android の小画面端末で、タイトル欄が常に見え、日付・時刻入力と追加ボタンへ Sheet 内スクロールで到達できる
+
+**受け入れ条件**
+
+- Android は `fillParent + adjustResize`、iOS/Web は `interactive` で動作する
+- すべての追加経路と表示タイミングでタイトル欄がキーボード上にあり、追加ボタンまでスクロール可能で、Sheet を閉じた後にキーボードが再出現しない
 
 ---
 
@@ -271,6 +289,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] Bottom Sheet の高さが `snapPoints={['58%', '78%']}` で適切に収まる
 - [ ] ホームインジケーター/ナビゲーションバーと FAB（+ボタン）が被らない
 - [ ] キーボード表示時、入力欄がキーボードに隠れない
+- [ ] キーボード表示時、追加 Sheet はリサイズ後の利用可能領域を上限にし、収まらない内容は Sheet 内でスクロールできる
 
 **期待される結果**
 
@@ -295,6 +314,41 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - テーマ変更時に `AppScreen` の `theme` prop が即座に反映される
 
 ---
+
+### Android Widget（Development Build）
+
+Android Widget は Expo Go では確認せず、Widget 対応済みの Development Build をホーム画面へ追加して確認する。提供スクリーンショットのように情報量の多い壁紙でも、面の内側の文字・日時・操作が読み取れることを受け入れ条件とする。
+
+#### サイズと表示モード
+
+- [ ] 250×180dp: 最大2個の丸い泡だけが表示され、超過時は2個目が`+N`泡になる
+- [ ] 320×220dp: 最大3個の丸い泡だけが表示され、超過時は最後が`+N`泡になる
+- [ ] 360×280dp: 左右2カラムで最大5個の丸い泡だけが表示される
+- [ ] 480×320dp: 左右2カラムの丸い泡配置が安定し、最大5個が表示される
+- [ ] すべてのサイズで、追加ボタンのタップ領域が44dp以上あり、ヘッダーの同じ位置にある
+
+#### 壁紙・データ状態
+
+- [ ] 人物・線・文字が多い複雑な壁紙で、文字や日時の背後へ壁紙が透過して読みにくくならない
+- [ ] 明るい単色壁紙と暗い単色壁紙で、背景面・濃紺の追加ボタン・白文字のコントラストが保たれる
+- [ ] 予定0件で「予定はありません」「＋から泡を浮かべよう」が表示され、長文を低コントラストの空状態泡へ入れていない
+- [ ] 予定1件で、優先泡が250×180では76dp、320×220では96dp、360×280以上では128〜144dpを基準に表示される
+- [ ] 複数件で、DB取得順の先頭が最も大きな泡になり、後続も横長カードではなく丸い泡になる
+- [ ] 各リマインド泡に色だけでなく「今日」「明日」「明後日」または「M/d」と時刻が表示される
+- [ ] 表示上限を超えると丸い`+N`泡が表示され、Nが残件数と一致する
+
+#### 操作・更新・表示崩れ
+
+- [ ] 「＋ 追加」ボタンから `action=add` の既存導線で追加画面を開ける
+- [ ] 各リマインド泡をタップすると既存の `action=view&id=...` 詳細導線でアプリを開け、`+N`泡はアプリを開ける
+- [ ] 日本語の長いタイトルと英語の長いタイトルが最大行数内で省略・縮小され、領域外へはみ出さない
+- [ ] 予定の追加・削除・タイトル更新後に、泡の位置が再配置のたびに揺れず、同じサイズで安定している
+- [ ] リサイズ直後とアプリからのWidget更新後に、切れ・重なり・タップ領域のずれがない
+
+**期待される結果**
+
+- ほぼ不透明なフロスト面で、複雑・明暗どちらの壁紙でも文字と操作が明確に読める
+- Widget は確認・追加・詳細を開く役割に限定され、完了・削除操作は表示しない
 
 ### 16. development build と Expo Go で差が出た箇所
 

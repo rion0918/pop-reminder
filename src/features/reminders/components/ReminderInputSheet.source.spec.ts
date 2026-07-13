@@ -24,7 +24,7 @@ test('successful quick add does not focus the title input again', () => {
   assert.equal(saveSuccessBlock.includes('focus()'), false);
 });
 
-test('widget quick add focuses the title input when the sheet opens', () => {
+test('widget quick add waits for the sheet to open before focusing the title input', () => {
   const openBlock = source.slice(
     source.indexOf('if (!isPresentedRef.current && !isClosingRef.current) {'),
     source.indexOf('const requestClose = useCallback'),
@@ -32,27 +32,33 @@ test('widget quick add focuses the title input when the sheet opens', () => {
 
   assertSourceIncludes(source, [
     /const shouldFocusTitleOnOpen = useReminderUiStore\(\(state\) => state\.shouldFocusTitleOnOpen\);/,
+    /const titleFocusRequestIdRef = useRef\(0\);/,
+    /const pendingTitleFocusRequestIdRef = useRef<number \| null>\(null\);/,
+    /const handleSheetChange = useCallback\(\s*\(index: number\) => \{[\s\S]*pendingTitleFocusRequestIdRef\.current[\s\S]*titleInputRef\.current\?\.focus\(\);/,
+    /onChange=\{handleSheetChange\}/,
   ]);
   assertSourceIncludes(openBlock, [
-    /sheetRef\.current\?\.present\(\);[\s\S]*if \(shouldFocusTitleOnOpen\) \{[\s\S]*titleInputRef\.current\?\.focus\(\);/,
+    /const focusRequestId = titleFocusRequestIdRef\.current \+ 1;[\s\S]*pendingTitleFocusRequestIdRef\.current = shouldFocusTitleOnOpen \? focusRequestId : null;[\s\S]*sheetRef\.current\?\.present\(\);/,
+  ]);
+  assert.equal(openBlock.includes('titleInputRef.current?.focus()'), false);
+  assert.equal(source.includes('setTimeout'), false);
+  assert.equal(source.includes('requestAnimationFrame'), false);
+});
+
+test('quick add sheet uses platform keyboard-safe behavior', () => {
+  assertSourceIncludes(source, [
+    /keyboardBehavior=\{Platform\.OS === 'android' \? 'fillParent' : 'interactive'\}/,
+    /android_keyboardInputMode="adjustResize"/,
   ]);
 });
 
-test('quick add sheet uses the compact one-screen layout', () => {
+test('quick add sheet keeps compact dynamic sizing while bounding the resized safe area', () => {
   assertSourceContract(source, {
     includes: [
       /topInset=\{sheetTopInset\}/,
       /styles\.inputHeader/,
       /variant="compact"/,
       /styles\.actionRow/,
-    ],
-    excludes: [/styles\.sheetTitle/],
-  });
-});
-
-test('quick add sheet sizes to content instead of leaving keyboard gap', () => {
-  assertSourceContract(source, {
-    includes: [
       /BottomSheetScrollView/,
       /enableDynamicSizing/,
       /useWindowDimensions/,
@@ -62,8 +68,6 @@ test('quick add sheet sizes to content instead of leaving keyboard gap', () => {
       /18 \+ safeAreaInsets\.bottom/,
       /maxDynamicContentSize=\{quickAddMaxDynamicContentSize\}/,
       /bottomInset=\{safeAreaInsets\.bottom\}/,
-      /keyboardBehavior="interactive"/,
-      /android_keyboardInputMode="adjustPan"/,
       /contentContainerStyle=\{\[styles\.content, \{ paddingBottom: quickAddContentBottomPadding \}\]\}/,
       /keyboardShouldPersistTaps="handled"/,
     ],
@@ -72,15 +76,29 @@ test('quick add sheet sizes to content instead of leaving keyboard gap', () => {
       /KeyboardAwareScrollView/,
       /quickAddKeyboardBottomOffset/,
       /bottomOffset=\{/,
-      /QUICK_ADD_MAX_DYNAMIC_CONTENT_SIZE = 360/,
-      /keyboardBehavior=\{Platform\.OS === 'ios' \? 'interactive' : 'fillParent'\}/,
-      /android_keyboardInputMode="adjustResize"/,
-      /fillParent/,
       /contentContainerStyle=\{styles\.content\}/,
       /snapPoints=\{snapPoints\}/,
       /const snapPoints = useMemo/,
     ],
   });
+});
+
+test('pending focus is invalidated and keyboard is dismissed on every competing close path', () => {
+  assertSourceIncludes(source, [
+    /const invalidateTitleFocusRequest = useCallback\(\(\) => \{[\s\S]*titleFocusRequestIdRef\.current \+= 1;[\s\S]*pendingTitleFocusRequestIdRef\.current = null;/,
+    /const requestClose = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);/,
+    /const handleDismiss = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);/,
+    /return \(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);/,
+  ]);
+});
+
+test('date and time pickers dismiss the keyboard before opening', () => {
+  assertSourceIncludes(source, [
+    /const openDatePicker = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);[\s\S]*setIsDatePickerOpen\(true\);/,
+    /const openTimePicker = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);[\s\S]*setIsTimePickerOpen\(true\);/,
+    /onSelectCustomDate=\{openDatePicker\}/,
+    /onSelectCustomTime=\{openTimePicker\}/,
+  ]);
 });
 
 test('keyboard controller is not mounted around bottom sheet content', () => {
