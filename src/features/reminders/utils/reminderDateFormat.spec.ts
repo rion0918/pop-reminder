@@ -5,6 +5,7 @@ import {
   formatReminderDetailAccessibilityDateTime,
   formatReminderDetailDate,
   formatReminderDetailTime,
+  formatReminderInputDate,
   shouldShowPreviousNotification,
 } from './reminderDateFormat';
 
@@ -26,6 +27,12 @@ test('detail date includes the year when the reminder crosses into another year'
     formatReminderDetailAccessibilityDateTime(value, now),
     '2027年1月1日金曜日、20時30分',
   );
+});
+
+test('quick add summary date includes the Japanese weekday', () => {
+  const value = new Date(2026, 6, 15, 8, 0);
+
+  assert.equal(formatReminderInputDate(value), '2026/7/15（水）');
 });
 
 test('previous notification is shown only while it is still upcoming', () => {

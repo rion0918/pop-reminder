@@ -9,6 +9,10 @@ export function formatReminderDate(value: Date | string) {
   return format(toDate(value), 'yyyy/M/d');
 }
 
+export function formatReminderInputDate(value: Date | string) {
+  return format(toDate(value), 'yyyy/M/d（EEE）', { locale: ja });
+}
+
 export function formatReminderDateTime(value: Date | string) {
   const date = toDate(value);
 

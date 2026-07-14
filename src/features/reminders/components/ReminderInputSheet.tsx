@@ -31,7 +31,7 @@ import {
   selectFormattedTime,
   useReminderUiStore,
 } from '../stores/reminderUiStore';
-import { formatReminderDate } from '../utils/reminderDateFormat';
+import { formatReminderInputDate } from '../utils/reminderDateFormat';
 import { DateChips } from './DateChips';
 
 type ReminderInputSheetProps = {
@@ -146,7 +146,7 @@ export function ReminderInputSheet({
   }, [customTargetDate, dateOffset]);
 
   const selectedDateLabel = useMemo(
-    () => formatReminderDate(selectedTargetDate),
+    () => formatReminderInputDate(selectedTargetDate),
     [selectedTargetDate],
   );
 
