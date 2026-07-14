@@ -24,9 +24,23 @@ import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
 import { TimeSelector } from '../../../shared/components/TimeSelector';
 import { type AppTheme, appThemes, palette, themeOptions } from '../../../constants/colors';
+import {
+  isValidQuickAddPresetTimes,
+  QUICK_ADD_PRESET_VALIDATION_MESSAGE,
+  type QuickAddPresetTimes,
+} from '../domain/appSettings';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const BACK_BUTTON_FEEDBACK_MS = 120;
+
+type QuickAddPresetKey = keyof QuickAddPresetTimes;
+
+const quickAddPresetRows: { key: QuickAddPresetKey; label: string }[] = [
+  { key: 'defaultTargetTime', label: '朝' },
+  { key: 'noonTargetTime', label: '昼' },
+  { key: 'eveningTargetTime', label: '夕' },
+  { key: 'nightTargetTime', label: '夜' },
+];
 
 const themeLabels: Record<AppTheme, string> = {
   sky: 'Dawn',
@@ -131,6 +145,10 @@ export function SettingsScreen() {
   const [previousTime, setPreviousTime] = useState('20:00');
   const [isPreviousTimeSelectorOpen, setIsPreviousTimeSelectorOpen] = useState(false);
   const [isPreviousTimePickerOpen, setIsPreviousTimePickerOpen] = useState(false);
+  const [isQuickAddPresetSectionOpen, setIsQuickAddPresetSectionOpen] = useState(false);
+  const [quickAddPresetPickerKey, setQuickAddPresetPickerKey] = useState<QuickAddPresetKey | null>(
+    null,
+  );
   const [notificationPermissionLabel, setNotificationPermissionLabel] = useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] = useState(false);
   const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] = useState(true);
@@ -179,6 +197,36 @@ export function SettingsScreen() {
   const savePreviousTime = async (value: string) => {
     setPreviousTime(value);
     await update({ previousNotifyTime: value });
+  };
+
+  const quickAddPresets = settings
+    ? [
+        { label: '朝', time: settings.defaultTargetTime },
+        { label: '昼', time: settings.noonTargetTime },
+        { label: '夕', time: settings.eveningTargetTime },
+        { label: '夜', time: settings.nightTargetTime },
+      ]
+    : [];
+
+  const saveQuickAddPresetTime = async (key: QuickAddPresetKey, value: string) => {
+    if (!settings) {
+      return;
+    }
+
+    const nextPresetTimes: QuickAddPresetTimes = {
+      defaultTargetTime: settings.defaultTargetTime,
+      noonTargetTime: settings.noonTargetTime,
+      eveningTargetTime: settings.eveningTargetTime,
+      nightTargetTime: settings.nightTargetTime,
+      [key]: value,
+    };
+
+    if (!isValidQuickAddPresetTimes(nextPresetTimes)) {
+      Alert.alert('時刻を保存できませんでした', QUICK_ADD_PRESET_VALIDATION_MESSAGE);
+      return;
+    }
+
+    await update({ [key]: value });
   };
 
   const saveTheme = async (theme: AppTheme) => {
@@ -245,6 +293,10 @@ export function SettingsScreen() {
     void savePreviousTime(value);
   };
 
+  const quickAddPresetPicker = quickAddPresetPickerKey
+    ? (quickAddPresetRows.find((preset) => preset.key === quickAddPresetPickerKey) ?? null)
+    : null;
+
   return (
     <AppScreen theme={settings?.theme ?? 'sky'}>
       <View className="h-[52px] flex-row items-center justify-between">
@@ -310,6 +362,7 @@ export function SettingsScreen() {
                     void savePreviousTime(value);
                   }}
                   onSelectCustomTime={() => setIsPreviousTimePickerOpen(true)}
+                  presets={quickAddPresets}
                 />
               </View>
             ) : null}
@@ -397,6 +450,58 @@ export function SettingsScreen() {
                 thumbColor={settings.autoDeleteEnabled ? palette.mintDeep : palette.white}
               />
             </SettingRow>
+          </View>
+
+          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="クイック追加の時刻設定を開閉"
+              accessibilityState={{ expanded: isQuickAddPresetSectionOpen }}
+              onPress={() => setIsQuickAddPresetSectionOpen((current) => !current)}
+              className="min-h-[64px] flex-row items-center gap-[12px] py-[10px]"
+            >
+              <View className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[17px] bg-[#F2F7FE]">
+                <Ionicons name="time-outline" size={20} color={palette.muted} />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text
+                  className="text-[14px] font-extrabold leading-[19px] text-app-ink"
+                  style={styles.noFontPadding}
+                >
+                  クイック追加の時刻
+                </Text>
+                <Text className="mt-[3px] text-[11px] font-semibold leading-[16px] text-app-muted">
+                  朝・昼・夕・夜の候補を設定
+                </Text>
+              </View>
+              <Ionicons
+                name={isQuickAddPresetSectionOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={palette.muted}
+              />
+            </Pressable>
+            {isQuickAddPresetSectionOpen
+              ? quickAddPresetRows.map((preset, index) => (
+                  <View key={preset.key}>
+                    <SettingRow icon="time-outline" title={preset.label}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${preset.label}の時刻を変更`}
+                        onPress={() => setQuickAddPresetPickerKey(preset.key)}
+                        className="h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border border-app-line bg-[#F6FAFF]"
+                        style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+                      >
+                        <Text className="text-[15px] font-extrabold text-app-ink">
+                          {settings[preset.key]}
+                        </Text>
+                      </Pressable>
+                    </SettingRow>
+                    {index < quickAddPresetRows.length - 1 ? (
+                      <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
+                    ) : null}
+                  </View>
+                ))
+              : null}
           </View>
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[14px]">
@@ -560,6 +665,18 @@ export function SettingsScreen() {
         hint="選んだ時刻に前日のお知らせが届きます"
         onChange={handleTimePickerChange}
         onClose={() => setIsPreviousTimePickerOpen(false)}
+      />
+      <TimePickerModal
+        visible={quickAddPresetPicker !== null}
+        value={quickAddPresetPicker && settings ? settings[quickAddPresetPicker.key] : '08:00'}
+        title={quickAddPresetPicker ? `${quickAddPresetPicker.label}の時刻を選択` : undefined}
+        hint="この時刻をクイック追加の候補として保存します"
+        onChange={(value) => {
+          if (quickAddPresetPicker) {
+            void saveQuickAddPresetTime(quickAddPresetPicker.key, value);
+          }
+        }}
+        onClose={() => setQuickAddPresetPickerKey(null)}
       />
       <LegalDocumentModal document={legalDocument} onClose={() => setLegalDocument(null)} />
     </AppScreen>

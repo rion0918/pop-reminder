@@ -4,7 +4,7 @@ export type MigrationDatabase = {
   getAllAsync<T>(sql: string): Promise<T[]>;
 };
 
-const CURRENT_DATABASE_VERSION = 2;
+const CURRENT_DATABASE_VERSION = 3;
 
 export async function runDatabaseMigrations(database: MigrationDatabase) {
   const result = await database.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -52,6 +52,29 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
       `);
     }
     await database.execAsync(`PRAGMA user_version = 2;`);
+    version = 2;
+  }
+
+  if (version < 3) {
+    const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(app_settings)');
+    const newColumns = [
+      ['noon_target_time', "TEXT NOT NULL DEFAULT '12:00'"] as const,
+      ['evening_target_time', "TEXT NOT NULL DEFAULT '18:00'"] as const,
+      ['night_target_time', "TEXT NOT NULL DEFAULT '20:00'"] as const,
+    ];
+
+    for (const [name, definition] of newColumns) {
+      if (columns.some((column) => column.name === name)) {
+        continue;
+      }
+
+      await database.execAsync(`
+        ALTER TABLE app_settings
+        ADD COLUMN ${name} ${definition};
+      `);
+    }
+    await database.execAsync(`PRAGMA user_version = 3;`);
+    version = 3;
   }
 
   await database.execAsync(`
@@ -59,9 +82,12 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
       id,
       previous_notify_time,
       default_target_time,
+      noon_target_time,
+      evening_target_time,
+      night_target_time,
       auto_delete_enabled,
       notification_sound_enabled,
       theme
-    ) VALUES ('default', '20:00', '08:00', 1, 1, 'sky');
+    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 'sky');
   `);
 }

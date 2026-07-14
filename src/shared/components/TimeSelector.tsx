@@ -3,31 +3,22 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 
 import { palette } from '../../constants/colors';
+import { DEFAULT_TIME_PRESETS, type TimePreset } from '../utils/timePresets';
 
-type TimePreset = {
-  label: string;
-  time: string;
-};
-
-type TimeSelectorProps = {
+export type TimeSelectorProps = {
   value: string;
   onChange: (value: string) => void;
   onSelectCustomTime: () => void;
+  presets?: TimePreset[];
   variant?: 'regular' | 'compact';
   style?: StyleProp<ViewStyle>;
 };
-
-const presets: TimePreset[] = [
-  { label: '朝', time: '08:00' },
-  { label: '昼', time: '12:00' },
-  { label: '夕', time: '18:00' },
-  { label: '夜', time: '20:00' },
-];
 
 export function TimeSelector({
   value,
   onChange,
   onSelectCustomTime,
+  presets = DEFAULT_TIME_PRESETS,
   variant = 'regular',
   style,
 }: TimeSelectorProps) {

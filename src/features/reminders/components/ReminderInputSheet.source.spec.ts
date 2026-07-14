@@ -128,6 +128,17 @@ test('compact custom time chip shows the selected time after picking one', () =>
   ]);
 });
 
+test('quick add accepts configured presets for display and today correction', () => {
+  assertSourceContract(source, {
+    includes: [
+      /presets\?: TimePreset\[\]/,
+      /getNextAvailableTimeForToday\([^\n]*presets/,
+      /<TimeSelector[\s\S]*presets=\{presets\}/,
+    ],
+    excludes: [/function getNextAvailableTimeForToday/],
+  });
+});
+
 test('custom date picker uses platform native display styles', () => {
   assertSourceIncludes(source, [
     /import \{[\s\S]*Modal,[\s\S]*Platform,[\s\S]*Pressable,[\s\S]*StyleSheet,[\s\S]*Text,[\s\S]*View,[\s\S]*useWindowDimensions,[\s\S]*\} from 'react-native';/,

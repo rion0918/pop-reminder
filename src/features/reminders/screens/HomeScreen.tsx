@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -23,6 +23,7 @@ import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiSto
 import type { Reminder } from '../types/reminder';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
+import { DEFAULT_TIME_PRESETS } from '../../../shared/utils/timePresets';
 import { bubbleDueColors, palette } from '../../../constants/colors';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 
@@ -69,6 +70,18 @@ export function HomeScreen() {
     (state) => state.isNotificationTestModeEnabled,
   );
   const { settings, refresh: refreshSettings } = useAppSettings();
+  const quickAddPresets = useMemo(
+    () =>
+      settings
+        ? [
+            { label: '朝', time: settings.defaultTargetTime },
+            { label: '昼', time: settings.noonTargetTime },
+            { label: '夕', time: settings.eveningTargetTime },
+            { label: '夜', time: settings.nightTargetTime },
+          ]
+        : DEFAULT_TIME_PRESETS,
+    [settings],
+  );
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
@@ -107,14 +120,14 @@ export function HomeScreen() {
 
     consumedIntentRef.current = routeParams.intent;
     if (routeParams.action === 'add') {
-      openQuickAdd('08:00', { focusTitle: true });
+      openQuickAdd(quickAddPresets[0].time, { focusTitle: true });
     } else if (routeParams.action === 'view' && routeParams.id) {
       setSelectedReminderId(
         reminders.some((reminder) => reminder.id === routeParams.id) ? routeParams.id : null,
       );
     }
     router.setParams({ action: undefined, id: undefined, intent: undefined });
-  }, [loading, openQuickAdd, reminders, routeParams, router]);
+  }, [loading, openQuickAdd, quickAddPresets, reminders, routeParams, router]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -205,8 +218,8 @@ export function HomeScreen() {
     }
 
     isQuickAddOpenRef.current = true;
-    openQuickAdd('08:00');
-  }, [isSaving, openQuickAdd]);
+    openQuickAdd(quickAddPresets[0].time);
+  }, [isSaving, openQuickAdd, quickAddPresets]);
 
   const handleOpenReminderList = useCallback(() => {
     router.push('/reminders-list');
@@ -413,7 +426,12 @@ export function HomeScreen() {
         />
       </View>
 
-      <ReminderInputSheet defaultTargetTime="08:00" isSaving={isSaving} onSave={handleSave} />
+      <ReminderInputSheet
+        defaultTargetTime={quickAddPresets[0].time}
+        presets={quickAddPresets}
+        isSaving={isSaving}
+        onSave={handleSave}
+      />
 
       <ReminderDetailSheet
         reminder={selectedReminder}

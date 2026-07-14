@@ -31,6 +31,23 @@ test('settings exposes notification permission controls outside the dev-only sec
   ]);
 });
 
+test('settings exposes four independently editable quick-add preset times', () => {
+  assertSourceIncludes(source, [
+    /クイック追加の時刻/,
+    /defaultTargetTime/,
+    /noonTargetTime/,
+    /eveningTargetTime/,
+    /nightTargetTime/,
+    /TimePickerModal/,
+    /QUICK_ADD_PRESET_VALIDATION_MESSAGE/,
+    /isQuickAddPresetSectionOpen/,
+    /accessibilityState=\{\{ expanded: isQuickAddPresetSectionOpen \}\}/,
+    /setIsQuickAddPresetSectionOpen\(\(current\) => !current\)/,
+    /isQuickAddPresetSectionOpen \?/,
+    /const \[isQuickAddPresetSectionOpen, setIsQuickAddPresetSectionOpen\] = useState\(false\);/,
+  ]);
+});
+
 test('settings legal copy supports both Google Play and App Store release pages', () => {
   assertSourceContract(source, {
     includes: [/Google PlayやApp Storeなどの配布ページ/],

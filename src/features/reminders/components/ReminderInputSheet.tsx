@@ -13,7 +13,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { addDays, addMinutes, format, isSameDay, set, startOfDay } from 'date-fns';
+import { addDays, format, set, startOfDay } from 'date-fns';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
 import { TimeSelector } from '../../../shared/components/TimeSelector';
+import { DEFAULT_TIME_PRESETS, type TimePreset } from '../../../shared/utils/timePresets';
 import { palette } from '../../../constants/colors';
 import {
   selectIsTimeValid,
@@ -32,15 +33,16 @@ import {
   useReminderUiStore,
 } from '../stores/reminderUiStore';
 import { formatReminderInputDate } from '../utils/reminderDateFormat';
+import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { DateChips } from './DateChips';
 
-type ReminderInputSheetProps = {
+export type ReminderInputSheetProps = {
   defaultTargetTime?: string;
+  presets?: TimePreset[];
   isSaving?: boolean;
   onSave?: (title: string) => Promise<void> | void;
 };
 
-const sameDayTimePresets = ['08:00', '12:00', '18:00', '20:00'];
 const QUICK_ADD_BOTTOM_CLEARANCE = 24;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
@@ -59,26 +61,9 @@ function buildTargetDateTime(targetDate: Date, time: string) {
   });
 }
 
-function getNextAvailableTimeForToday(targetDate: Date, now = new Date()) {
-  if (!isSameDay(targetDate, now)) {
-    return null;
-  }
-
-  const nextPreset = sameDayTimePresets.find(
-    (preset) => buildTargetDateTime(targetDate, preset).getTime() > now.getTime(),
-  );
-
-  if (nextPreset) {
-    return nextPreset;
-  }
-
-  const nextTime = addMinutes(now, 5);
-
-  return isSameDay(nextTime, targetDate) ? format(nextTime, 'HH:mm') : null;
-}
-
 export function ReminderInputSheet({
   defaultTargetTime = '08:00',
+  presets = DEFAULT_TIME_PRESETS,
   isSaving = false,
   onSave,
 }: ReminderInputSheetProps) {
@@ -335,7 +320,7 @@ export function ReminderInputSheet({
       }
 
       const nextDate = selectedDate < minCustomDate ? minCustomDate : selectedDate;
-      const nextTime = getNextAvailableTimeForToday(nextDate);
+      const nextTime = getNextAvailableTimeForToday(nextDate, presets);
 
       if (nextTime && buildTargetDateTime(nextDate, time).getTime() <= Date.now()) {
         setTargetTime(nextTime);
@@ -347,13 +332,13 @@ export function ReminderInputSheet({
         setIsDatePickerOpen(false);
       }
     },
-    [minCustomDate, setCustomTargetDate, setTargetTime, time],
+    [minCustomDate, presets, setCustomTargetDate, setTargetTime, time],
   );
 
   const handleDateOffsetChange = useCallback(
     (nextDateOffset: typeof dateOffset) => {
       const nextDate = addDays(new Date(), nextDateOffset);
-      const nextTime = getNextAvailableTimeForToday(nextDate);
+      const nextTime = getNextAvailableTimeForToday(nextDate, presets);
 
       if (nextTime && buildTargetDateTime(nextDate, time).getTime() <= Date.now()) {
         setTargetTime(nextTime);
@@ -361,13 +346,13 @@ export function ReminderInputSheet({
 
       setDateOffset(nextDateOffset);
     },
-    [setDateOffset, setTargetTime, time],
+    [presets, setDateOffset, setTargetTime, time],
   );
 
   const handlePresetDateChange = useCallback(
     (nextPreset: Parameters<typeof setPresetTargetDate>[0], nextDateText: string) => {
       const nextDate = new Date(`${nextDateText}T00:00:00`);
-      const nextTime = getNextAvailableTimeForToday(nextDate);
+      const nextTime = getNextAvailableTimeForToday(nextDate, presets);
 
       if (nextTime && buildTargetDateTime(nextDate, time).getTime() <= Date.now()) {
         setTargetTime(nextTime);
@@ -375,7 +360,7 @@ export function ReminderInputSheet({
 
       setPresetTargetDate(nextPreset, nextDateText);
     },
-    [setPresetTargetDate, setTargetTime, time],
+    [presets, setPresetTargetDate, setTargetTime, time],
   );
 
   const handleTargetTimeChange = useCallback(
@@ -383,7 +368,7 @@ export function ReminderInputSheet({
       const targetDateTime = buildTargetDateTime(selectedTargetDate, nextTime);
 
       if (targetDateTime.getTime() <= Date.now()) {
-        const fallbackTime = getNextAvailableTimeForToday(selectedTargetDate);
+        const fallbackTime = getNextAvailableTimeForToday(selectedTargetDate, presets);
 
         setTargetTime(fallbackTime ?? nextTime);
         return;
@@ -391,7 +376,7 @@ export function ReminderInputSheet({
 
       setTargetTime(nextTime);
     },
-    [selectedTargetDate, setTargetTime],
+    [presets, selectedTargetDate, setTargetTime],
   );
 
   return (
@@ -463,6 +448,7 @@ export function ReminderInputSheet({
             value={time}
             onChange={handleTargetTimeChange}
             onSelectCustomTime={openTimePicker}
+            presets={presets}
             variant="compact"
             style={styles.timeSelector}
           />

@@ -111,6 +111,18 @@ test('home refreshes app settings when returning to focus', () => {
   ]);
 });
 
+test('home passes configured quick-add presets and uses morning as the initial time', () => {
+  assertSourceIncludes(source, [
+    /const quickAddPresets = useMemo\(/,
+    /settings\.defaultTargetTime/,
+    /settings\.noonTargetTime/,
+    /settings\.eveningTargetTime/,
+    /settings\.nightTargetTime/,
+    /openQuickAdd\(quickAddPresets\[0\]\.time/,
+    /<ReminderInputSheet[\s\S]*presets=\{quickAddPresets\}/,
+  ]);
+});
+
 test('home removes deleted reminders locally before the silent database refresh', () => {
   assertSourceContract(source, {
     includes: [
