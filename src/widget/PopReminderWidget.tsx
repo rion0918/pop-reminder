@@ -229,43 +229,88 @@ function ReminderListRow({
   );
 }
 
-function EmptyState({ listBounds }: { listBounds: WidgetLayoutPlan['listBounds'] }) {
+function EmptyState({
+  listBounds,
+  addButton,
+}: {
+  listBounds: WidgetLayoutPlan['listBounds'];
+  addButton: WidgetLayoutPlan['addButton'];
+}) {
   return (
-    <FlexWidget
-      style={{
-        width: listBounds.width,
-        height: listBounds.height,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 8,
-        marginTop: listBounds.top,
-        marginLeft: listBounds.left,
-      }}
-    >
-      <TextWidget
-        text="予定はありません"
+    <OverlapWidget style={{ width: 'match_parent', height: 'match_parent' }}>
+      <FlexWidget
         style={{
-          fontSize: 14,
-          fontWeight: '800',
-          color: widgetTheme.primaryText as ColorProp,
-          textAlign: 'center',
+          width: listBounds.width,
+          height: listBounds.height,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 8,
+          paddingBottom: 24,
+          marginTop: listBounds.top,
+          marginLeft: listBounds.left,
         }}
-        maxLines={1}
-        allowFontScaling={false}
-      />
-      <TextWidget
-        text="＋ 追加から予定を登録"
+      >
+        <TextWidget
+          text="まだ泡はひとつも浮いていません"
+          style={{
+            fontSize: 14,
+            fontWeight: '800',
+            color: widgetTheme.primaryText as ColorProp,
+            textAlign: 'center',
+            adjustsFontSizeToFit: true,
+          }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+        <TextWidget
+          text="忘れたくないこと、右下からふわっとどうぞ"
+          style={{
+            width: listBounds.width,
+            fontSize: 10,
+            fontWeight: '700',
+            color: widgetTheme.secondaryText as ColorProp,
+            textAlign: 'center',
+            marginTop: 4,
+            adjustsFontSizeToFit: true,
+          }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+      </FlexWidget>
+      <FlexWidget
         style={{
-          fontSize: 10,
-          fontWeight: '700',
-          color: widgetTheme.secondaryText as ColorProp,
-          textAlign: 'center',
-          marginTop: 2,
+          width: addButton.width,
+          height: 28,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: addButton.top - 28,
+          marginLeft: addButton.left,
         }}
-        maxLines={1}
-        allowFontScaling={false}
-      />
-    </FlexWidget>
+      >
+        <TextWidget
+          text="右下から"
+          style={{
+            fontSize: 8,
+            fontWeight: '700',
+            color: widgetTheme.secondaryText as ColorProp,
+            textAlign: 'center',
+          }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+        <TextWidget
+          text="↓"
+          style={{
+            fontSize: 10,
+            fontWeight: '800',
+            color: widgetTheme.secondaryText as ColorProp,
+            textAlign: 'center',
+          }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+      </FlexWidget>
+    </OverlapWidget>
   );
 }
 
@@ -279,7 +324,7 @@ function ReminderContent({
   const remindersById = new Map(reminders.map((reminder) => [reminder.id, reminder]));
 
   if (plan.listRows.length === 0) {
-    return <EmptyState listBounds={plan.listBounds} />;
+    return <EmptyState listBounds={plan.listBounds} addButton={plan.addButton} />;
   }
 
   return (

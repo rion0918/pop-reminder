@@ -220,9 +220,16 @@ test('widget refresh paths keep the actual widget size, snapshot, and contracts'
   });
 });
 
-test('widget source keeps a bubble-free empty state', () => {
+test('widget empty state matches the app copy and points to the add button', () => {
   assertSourceContract(source, {
-    includes: [/text="予定はありません"/, /text="＋ 追加から予定を登録"/],
-    excludes: [/泡/],
+    includes: [
+      /text="まだ泡はひとつも浮いていません"/,
+      /text="忘れたくないこと、右下からふわっとどうぞ"/,
+      /text="右下から"/,
+      /text="↓"/,
+      /marginTop: addButton\.top - 28/,
+      /marginLeft: addButton\.left/,
+      /<EmptyState listBounds=\{plan\.listBounds\} addButton=\{plan\.addButton\} \/>/,
+    ],
   });
 });
