@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -36,18 +37,19 @@ const appIcon = require('../../../../assets/app-icon.png');
 const BACK_BUTTON_FEEDBACK_MS = 120;
 
 type QuickAddPresetKey = keyof QuickAddPresetTimes;
+type QuickAddPresetIcon = ComponentProps<typeof Ionicons>['name'];
 
-const quickAddPresetRows: { key: QuickAddPresetKey; label: string }[] = [
-  { key: 'defaultTargetTime', label: '朝' },
-  { key: 'noonTargetTime', label: '昼' },
-  { key: 'eveningTargetTime', label: '夕' },
-  { key: 'nightTargetTime', label: '夜' },
+const quickAddPresetRows: { key: QuickAddPresetKey; label: string; icon: QuickAddPresetIcon }[] = [
+  { key: 'defaultTargetTime', label: '朝', icon: 'partly-sunny-outline' },
+  { key: 'noonTargetTime', label: '昼', icon: 'sunny-outline' },
+  { key: 'eveningTargetTime', label: '夕', icon: 'cloudy-night-outline' },
+  { key: 'nightTargetTime', label: '夜', icon: 'moon-outline' },
 ];
 
 const themeLabels: Record<AppTheme, string> = {
-  sky: 'Dawn',
-  lavender: 'Dream',
-  mint: 'Breeze',
+  sky: 'ドーン',
+  lavender: 'ドリーム',
+  mint: 'ブリーズ',
 };
 
 type LegalSection = {
@@ -562,7 +564,7 @@ export function SettingsScreen() {
             {isQuickAddPresetSectionOpen
               ? quickAddPresetRows.map((preset, index) => (
                   <View key={preset.key}>
-                    <SettingRow icon="time-outline" title={preset.label}>
+                    <SettingRow icon={preset.icon} title={preset.label}>
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel={`${preset.label}の時刻を変更`}

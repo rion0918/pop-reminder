@@ -98,7 +98,7 @@ test('android widget shows only the nearest eight reminders in DB order', () => 
   );
 });
 
-test('android widget keeps rows, header, and centered add button inside the surface', () => {
+test('android widget keeps rows, header, and a circular right-aligned add button inside the surface', () => {
   for (const { width, height } of [
     { width: 250, height: 180 },
     { width: 320, height: 220 },
@@ -117,8 +117,8 @@ test('android widget keeps rows, header, and centered add button inside the surf
     assertInside(plan.addButton, surfaceBounds);
     assertRowsDoNotOverlap(plan.listRows);
     assert.equal(plan.addButton.height, WIDGET_PLUS_TOUCH_HEIGHT);
-    assert.ok(plan.addButton.width >= 180);
-    assert.ok(Math.abs(plan.addButton.left + plan.addButton.width / 2 - width / 2) <= 0.5);
+    assert.equal(plan.addButton.width, WIDGET_PLUS_TOUCH_HEIGHT);
+    assert.equal(plan.addButton.right, width - plan.header.left);
 
     for (const row of plan.listRows) {
       assertInside(row, plan.listBounds);

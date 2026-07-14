@@ -43,8 +43,6 @@ const WIDGET_LIST_GAP = 4;
 const WIDGET_COMPACT_LIST_GAP = 4;
 const WIDGET_ADD_BUTTON_GAP = 8;
 const WIDGET_COMPACT_ADD_BUTTON_GAP = 6;
-const WIDGET_ADD_BUTTON_MIN_WIDTH = 180;
-const WIDGET_ADD_BUTTON_MAX_WIDTH = 300;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -119,15 +117,10 @@ export function getWidgetLayoutPlan(
     Math.max(0, widgetWidth - surfacePadding * 2),
     headerHeight,
   );
-  const addButtonWidth = clamp(
-    Math.round(widgetWidth * 0.82),
-    WIDGET_ADD_BUTTON_MIN_WIDTH,
-    Math.min(WIDGET_ADD_BUTTON_MAX_WIDTH, widgetWidth - surfacePadding * 2),
-  );
   const addButton = makeRect(
-    Math.round((widgetWidth - addButtonWidth) / 2),
+    widgetWidth - surfacePadding - WIDGET_PLUS_TOUCH_HEIGHT,
     widgetHeight - surfacePadding - WIDGET_PLUS_TOUCH_HEIGHT,
-    addButtonWidth,
+    WIDGET_PLUS_TOUCH_HEIGHT,
     WIDGET_PLUS_TOUCH_HEIGHT,
   );
   const listTop = header.bottom + headerGap;

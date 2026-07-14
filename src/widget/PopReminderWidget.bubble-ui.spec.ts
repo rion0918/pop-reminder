@@ -19,6 +19,15 @@ const updateSource = readSource(import.meta.url, './widgetUpdateService.tsx');
 const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx');
 
 test('android widget renders reminders as rounded glass list rows', () => {
+  const reminderListRowSource = source.slice(
+    source.indexOf('function ReminderListRow'),
+    source.indexOf('function EmptyState'),
+  );
+  const overlapOpeningTag = reminderListRowSource.slice(
+    reminderListRowSource.indexOf('<OverlapWidget'),
+    reminderListRowSource.indexOf('>', reminderListRowSource.indexOf('<OverlapWidget')) + 1,
+  );
+
   assertSourceContract(source, {
     includes: [
       /function ReminderListRow/,
@@ -39,6 +48,11 @@ test('android widget renders reminders as rounded glass list rows', () => {
       /text=\{`\+\$\{count\}`\}/,
     ],
   });
+  assert.doesNotMatch(overlapOpeningTag, /clickAction/);
+  assert.match(
+    reminderListRowSource,
+    /backgroundColor: widgetTheme\.cardSurface as ColorProp,[\s\S]*?clickAction="OPEN_URI"[\s\S]*?action=view&id=\$\{reminder\.id\}/,
+  );
 });
 
 test('android widget reuses the app deadline color contract for its status dots', () => {
@@ -64,13 +78,28 @@ test('android widget aligns each notification date at the right edge of its card
   assert.equal(/marginTop: mode === 'compact' \? 0 : 1/.test(reminderListRowSource), false);
 });
 
+test('android widget exposes a per-reminder trash control on the right', () => {
+  const reminderListRowSource = source.slice(
+    source.indexOf('function ReminderListRow'),
+    source.indexOf('function EmptyState'),
+  );
+
+  assertSourceIncludes(reminderListRowSource, [
+    /text="🗑"/,
+    /accessibilityLabel=\{`「\$\{reminder\.title\}」を削除`\}/,
+    /clickAction=\{WIDGET_DELETE_REMINDER_ACTION\}/,
+    /clickActionData=\{\{ id: reminder\.id \}\}/,
+  ]);
+});
+
 test('android widget keeps the selected app-name header and bottom add action', () => {
   assertSourceContract(source, {
     includes: [
       /function WidgetHeader/,
       /text="ポップ・リマインダー"/,
       /function AddReminderButton/,
-      /text="＋ 追加"/,
+      /text="＋"/,
+      /accessibilityLabel="リマインダーを追加"/,
       /backgroundGradient: widgetTheme\.plusButtonGradient/,
       /popreminder:\/\/\?action=add/,
       /plan\.addButton/,
@@ -85,6 +114,31 @@ test('android widget keeps the selected app-name header and bottom add action', 
     /plusButtonGradient: \{/,
     /from: '#9ED8FF'/,
     /to: '#C4E8FF'/,
+  ]);
+});
+
+test('android widget clips native click feedback to rounded controls', () => {
+  const nativeClickableLayoutSource = readSource(
+    import.meta.url,
+    '../../android/app/src/main/res/layout/rn_widget_clickable.xml',
+  );
+  const nativeClickableRippleSource = readSource(
+    import.meta.url,
+    '../../android/app/src/main/res/drawable/widget_clickable_ripple.xml',
+  );
+
+  assertSourceContract(nativeClickableLayoutSource, {
+    includes: [
+      /android:id="@\+id\/rn_widget_clickable_positioner"/,
+      /android:id="@\+id\/rn_widget_clickable_area"/,
+      /android:background="@drawable\/widget_clickable_ripple"/,
+    ],
+    excludes: [/selectableItemBackground/],
+  });
+  assertSourceIncludes(nativeClickableRippleSource, [
+    /<ripple/,
+    /<item android:id="@android:id\/mask">/,
+    /<corners android:radius="999dp"/,
   ]);
 });
 
@@ -154,12 +208,15 @@ test('widget refresh paths keep the actual widget size, snapshot, and contracts'
   ]);
   assertSourceIncludes(taskHandlerSource, [
     /import \{ getWidgetReminders \} from '\.\/widgetReminderSnapshot';/,
+    /import \{ appServices \} from '\.\.\/bootstrap\/appServices';/,
+    /WIDGET_DELETE_REMINDER_ACTION/,
+    /appServices\.reminders\.delete\(reminderId\)/,
   ]);
   assertSourceContract(updateSource, {
     excludes: [/expo-sqlite/, /expo-file-system/],
   });
   assertSourceContract(taskHandlerSource, {
-    excludes: [/function getActiveReminders/, /SELECT id, title, target_at/],
+    excludes: [/function getActiveReminders/, /SELECT id, title, target_at/, /action=delete/],
   });
 });
 

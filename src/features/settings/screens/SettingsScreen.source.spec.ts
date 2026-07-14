@@ -48,6 +48,16 @@ test('settings exposes four independently editable quick-add preset times', () =
   ]);
 });
 
+test('settings uses distinct time-of-day icons for quick-add preset times', () => {
+  assertSourceIncludes(source, [
+    /key: 'defaultTargetTime', label: '朝', icon: 'partly-sunny-outline'/,
+    /key: 'noonTargetTime', label: '昼', icon: 'sunny-outline'/,
+    /key: 'eveningTargetTime', label: '夕', icon: 'cloudy-night-outline'/,
+    /key: 'nightTargetTime', label: '夜', icon: 'moon-outline'/,
+    /<SettingRow icon=\{preset\.icon\} title=\{preset\.label\}/,
+  ]);
+});
+
 test('settings legal copy supports both Google Play and App Store release pages', () => {
   assertSourceContract(source, {
     includes: [/Google PlayやApp Storeなどの配布ページ/],
@@ -87,9 +97,9 @@ test('settings only reports a successful test notification after both notificati
 test('settings action controls stay inside compact Android widths', () => {
   assertSourceContract(source, {
     includes: [
-      /sky: 'Dawn'/,
-      /lavender: 'Dream'/,
-      /mint: 'Breeze'/,
+      /sky: 'ドーン'/,
+      /lavender: 'ドリーム'/,
+      /mint: 'ブリーズ'/,
       /テーマを選択/,
       /className="mb-\[12px\] flex-row items-center gap-\[12px\]"/,
       /className="rounded-\[24px\] border border-\[rgba\(220,233,247,0\.78\)\] bg-\[#F6FAFF\] p-\[4px\]"/,
@@ -117,9 +127,9 @@ test('settings action controls stay inside compact Android widths', () => {
       /そら/,
       /らべんだー/,
       /みんと/,
-      /sky: 'Sky'/,
-      /lavender: 'Lavender'/,
-      /mint: 'Mint'/,
+      /sky: 'Dawn'/,
+      /lavender: 'Dream'/,
+      /mint: 'Breeze'/,
     ],
   });
 });

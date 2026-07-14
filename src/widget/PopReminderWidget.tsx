@@ -35,6 +35,7 @@ const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
 const WIDGET_STATUS_DOT_SIZE = 12;
 const WIDGET_COMPACT_STATUS_DOT_SIZE = 10;
+export const WIDGET_DELETE_REMINDER_ACTION = 'DELETE_REMINDER';
 
 const widgetSkyAssets: Record<WidgetSkyPeriod, ImageRequireSource> = {
   morning: require('../../assets/widget-sky-morning.png'),
@@ -125,8 +126,6 @@ function ReminderListRow({
         marginTop: layout.top,
         marginLeft: layout.left,
       }}
-      clickAction="OPEN_URI"
-      clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
     >
       <FlexWidget
         style={{
@@ -150,6 +149,8 @@ function ReminderListRow({
           borderColor: widgetTheme.cardBorder as ColorProp,
           backgroundColor: widgetTheme.cardSurface as ColorProp,
         }}
+        clickAction="OPEN_URI"
+        clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
       >
         <FlexWidget
           style={{
@@ -193,6 +194,31 @@ function ReminderListRow({
               marginLeft: 8,
               textAlign: 'right',
               adjustsFontSizeToFit: true,
+            }}
+            maxLines={1}
+            allowFontScaling={false}
+          />
+        </FlexWidget>
+        <FlexWidget
+          style={{
+            width: 28,
+            height: 28,
+            marginLeft: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 14,
+            backgroundColor: 'rgba(255, 255, 255, 0.44)',
+          }}
+          clickAction={WIDGET_DELETE_REMINDER_ACTION}
+          clickActionData={{ id: reminder.id }}
+          accessibilityLabel={`「${reminder.title}」を削除`}
+        >
+          <TextWidget
+            text="🗑"
+            style={{
+              fontSize: 14,
+              textAlign: 'center',
+              color: widgetTheme.secondaryText as ColorProp,
             }}
             maxLines={1}
             allowFontScaling={false}
@@ -269,7 +295,7 @@ function ReminderContent({
   );
 }
 
-function AddReminderButton({ layout, mode }: { layout: WidgetRect; mode: WidgetDisplayMode }) {
+function AddReminderButton({ layout }: { layout: WidgetRect }) {
   return (
     <FlexWidget
       style={{
@@ -287,11 +313,12 @@ function AddReminderButton({ layout, mode }: { layout: WidgetRect; mode: WidgetD
       }}
       clickAction="OPEN_URI"
       clickActionData={{ uri: 'popreminder://?action=add' }}
+      accessibilityLabel="リマインダーを追加"
     >
       <TextWidget
-        text="＋ 追加"
+        text="＋"
         style={{
-          fontSize: mode === 'compact' ? 14 : 15,
+          fontSize: 22,
           fontWeight: '900',
           color: widgetTheme.plusButtonText as ColorProp,
           textAlign: 'center',
@@ -341,7 +368,7 @@ export function PopReminderWidget({
       />
       <WidgetHeader layout={plan.header} mode={plan.mode} />
       <ReminderContent reminders={reminders} plan={plan} />
-      <AddReminderButton layout={plan.addButton} mode={plan.mode} />
+      <AddReminderButton layout={plan.addButton} />
     </OverlapWidget>
   );
 }

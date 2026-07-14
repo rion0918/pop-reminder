@@ -1,6 +1,7 @@
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
-import { PopReminderWidget } from './PopReminderWidget';
+import { appServices } from '../bootstrap/appServices';
+import { PopReminderWidget, WIDGET_DELETE_REMINDER_ACTION } from './PopReminderWidget';
 import { getWidgetReminders } from './widgetReminderSnapshot';
 
 async function renderPopReminderWidget(props: WidgetTaskHandlerProps) {
@@ -14,6 +15,23 @@ async function renderPopReminderWidget(props: WidgetTaskHandlerProps) {
       widgetHeight={widgetInfo.height}
     />,
   );
+}
+
+async function handleWidgetClick(props: WidgetTaskHandlerProps) {
+  if (props.clickAction !== WIDGET_DELETE_REMINDER_ACTION) {
+    return;
+  }
+
+  const reminderId = props.clickActionData?.id;
+  if (typeof reminderId !== 'string' || reminderId.length === 0) {
+    return;
+  }
+
+  try {
+    await appServices.reminders.delete(reminderId);
+  } catch (error) {
+    console.warn('[Widget] Failed to delete reminder', error);
+  }
 }
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
@@ -31,8 +49,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       break;
     }
     case 'WIDGET_CLICK': {
-      // Click actions are handled via OPEN_URI / OPEN_APP in the widget components
-      // This handler is for custom click actions if needed in the future
+      await handleWidgetClick(props);
       await renderPopReminderWidget(props);
       break;
     }
