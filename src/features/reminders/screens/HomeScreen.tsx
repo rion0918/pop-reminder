@@ -26,6 +26,7 @@ import { AppScreen } from '../../../shared/components/AppScreen';
 import { DEFAULT_TIME_PRESETS } from '../../../shared/utils/timePresets';
 import { bubbleDueColors, palette } from '../../../constants/colors';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
+import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const SETTINGS_BUTTON_FEEDBACK_MS = 120;
@@ -82,6 +83,10 @@ export function HomeScreen() {
         : DEFAULT_TIME_PRESETS,
     [settings],
   );
+  const getQuickAddDefaultTime = useCallback(
+    () => getNextAvailableTimeForToday(new Date(), quickAddPresets) ?? quickAddPresets[0].time,
+    [quickAddPresets],
+  );
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
@@ -120,14 +125,14 @@ export function HomeScreen() {
 
     consumedIntentRef.current = routeParams.intent;
     if (routeParams.action === 'add') {
-      openQuickAdd(quickAddPresets[0].time, { focusTitle: true });
+      openQuickAdd(getQuickAddDefaultTime(), { focusTitle: true });
     } else if (routeParams.action === 'view' && routeParams.id) {
       setSelectedReminderId(
         reminders.some((reminder) => reminder.id === routeParams.id) ? routeParams.id : null,
       );
     }
     router.setParams({ action: undefined, id: undefined, intent: undefined });
-  }, [loading, openQuickAdd, quickAddPresets, reminders, routeParams, router]);
+  }, [getQuickAddDefaultTime, loading, openQuickAdd, reminders, routeParams, router]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -237,8 +242,8 @@ export function HomeScreen() {
     }
 
     isQuickAddOpenRef.current = true;
-    openQuickAdd(quickAddPresets[0].time);
-  }, [isSaving, openQuickAdd, quickAddPresets]);
+    openQuickAdd(getQuickAddDefaultTime());
+  }, [getQuickAddDefaultTime, isSaving, openQuickAdd]);
 
   const handleOpenReminderList = useCallback(() => {
     router.push('/reminders-list');
@@ -446,7 +451,7 @@ export function HomeScreen() {
       </View>
 
       <ReminderInputSheet
-        defaultTargetTime={quickAddPresets[0].time}
+        defaultTargetTime={getQuickAddDefaultTime()}
         presets={quickAddPresets}
         isSaving={isSaving}
         onSave={handleSave}

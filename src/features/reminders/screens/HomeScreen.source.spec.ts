@@ -111,16 +111,20 @@ test('home refreshes app settings when returning to focus', () => {
   ]);
 });
 
-test('home passes configured quick-add presets and uses morning as the initial time', () => {
+test('home picks the next future quick-add preset for the initial time', () => {
   assertSourceIncludes(source, [
     /const quickAddPresets = useMemo\(/,
     /settings\.defaultTargetTime/,
     /settings\.noonTargetTime/,
     /settings\.eveningTargetTime/,
     /settings\.nightTargetTime/,
-    /openQuickAdd\(quickAddPresets\[0\]\.time/,
-    /<ReminderInputSheet[\s\S]*presets=\{quickAddPresets\}/,
+    /getNextAvailableTimeForToday\(new Date\(\), quickAddPresets\)/,
+    /openQuickAdd\(getQuickAddDefaultTime\(\)/,
+    /<ReminderInputSheet[\s\S]*defaultTargetTime=\{getQuickAddDefaultTime\(\)\}[\s\S]*presets=\{quickAddPresets\}/,
   ]);
+  assertSourceContract(source, {
+    excludes: [/openQuickAdd\(quickAddPresets\[0\]\.time/],
+  });
 });
 
 test('home warns when a reminder is saved without a target notification', () => {
