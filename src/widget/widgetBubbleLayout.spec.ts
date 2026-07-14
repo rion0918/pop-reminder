@@ -99,6 +99,8 @@ test('android widget shows only the nearest eight reminders in DB order', () => 
 });
 
 test('android widget keeps rows, header, and a circular right-aligned add button inside the surface', () => {
+  assert.equal(WIDGET_PLUS_TOUCH_HEIGHT, 44);
+
   for (const { width, height } of [
     { width: 250, height: 180 },
     { width: 320, height: 220 },

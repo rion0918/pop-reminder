@@ -33,6 +33,33 @@ export type ReminderNotificationScheduleOptions = {
   permissionMode?: 'request' | 'check-only';
 };
 
+export type ReminderSingleNotificationScheduleResult =
+  | {
+      status: 'scheduled';
+      notificationId: string;
+    }
+  | {
+      status: 'skipped';
+      reason: 'time-passed';
+      notificationId: null;
+    }
+  | {
+      status: 'not-scheduled';
+      reason:
+        'notification-permission-denied' | 'exact-alarm-permission-required' | 'scheduling-failed';
+      notificationId: null;
+    };
+
+export type ReminderTargetScheduleUpdate = Pick<
+  Reminder,
+  'targetAt' | 'targetNotifyAt' | 'targetNotificationId'
+>;
+
+export type ReminderPreviousScheduleUpdate = Pick<
+  Reminder,
+  'previousNotifyAt' | 'previousNotificationId'
+>;
+
 export type ReminderRepository = {
   listActive(now?: Date): Promise<Reminder[]>;
   listExpired(now?: Date): Promise<Reminder[]>;
@@ -40,6 +67,11 @@ export type ReminderRepository = {
   insert(draft: CreateReminderDraft): Promise<Reminder>;
   updateNotificationIds(id: string, ids: ReminderNotificationIds): Promise<Reminder | null>;
   updateTitle(id: string, title: string): Promise<Reminder | null>;
+  updateTargetSchedule(id: string, update: ReminderTargetScheduleUpdate): Promise<Reminder | null>;
+  updatePreviousSchedule(
+    id: string,
+    update: ReminderPreviousScheduleUpdate,
+  ): Promise<Reminder | null>;
   markExpired(id: string): Promise<void>;
   deleteMany(ids: string[]): Promise<void>;
   deleteById(id: string): Promise<void>;
@@ -54,11 +86,21 @@ export type ReminderNotificationGateway = {
     reminder: Reminder,
     options: ReminderNotificationScheduleOptions,
   ): Promise<ReminderNotificationScheduleResult>;
+  scheduleTarget(
+    reminder: Reminder,
+    options: ReminderNotificationScheduleOptions,
+  ): Promise<ReminderSingleNotificationScheduleResult>;
+  schedulePrevious(
+    reminder: Reminder,
+    options: ReminderNotificationScheduleOptions,
+  ): Promise<ReminderSingleNotificationScheduleResult>;
   cancel(reminder: Reminder): Promise<void>;
+  cancelOne(notificationId: string | null): Promise<void>;
 };
 
 export type ReminderSettingsGateway = {
   get(): Promise<AppSettings>;
+  updatePreviousNotifyTime(previousNotifyTime: string): Promise<AppSettings>;
 };
 
 export type WidgetSyncGateway = {

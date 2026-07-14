@@ -31,7 +31,8 @@ test('all reminder screens share the active reminders query cache', () => {
 
 test('app focus and target time both trigger SQLite reconciliation', () => {
   assertSourceIncludes(providersSource, [
-    /focusManager\.setFocused\(state === 'active'\)/,
+    /const isActive = state === 'active'/,
+    /focusManager\.setFocused\(isActive\)/,
     /Platform\.OS === 'web'/,
   ]);
   assertSourceIncludes(querySource, [
@@ -48,4 +49,13 @@ test('Zustand owns only the quick-add draft and development settings', () => {
     includes: [/isQuickAddOpen/, /title: string/, /dateOffset/, /timeDigits/],
     excludes: [/isSaving/, /selectedReminderId/],
   });
+});
+
+test('target time updates flow through the shared query cache on every reminder screen', () => {
+  assertSourceIncludes(querySource, [
+    /const updateTargetTimeMutation = useMutation/,
+    /services\.reminders\.updateTargetTime/,
+    /updateReminderTargetTime:/,
+  ]);
+  assertSourceIncludes(screensSource, [/updateReminderTargetTime/, /onUpdateTargetTime=/]);
 });

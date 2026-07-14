@@ -16,11 +16,18 @@ export function useAppSettingsQuery() {
     mutationFn: services.settings.update,
     onSuccess: (settings) => queryClient.setQueryData(currentSettingsQueryKey, settings),
   });
+  const previousNotifyTimeMutation = useMutation({
+    mutationFn: (previousNotifyTime: string) =>
+      services.reminders.updatePreviousNotifyTime(previousNotifyTime),
+    onSuccess: (result) => queryClient.setQueryData(currentSettingsQueryKey, result.settings),
+  });
 
   return {
     settings: query.data ?? null,
     loading: query.isLoading,
     refresh: query.refetch,
     update: mutation.mutateAsync,
+    updatePreviousNotifyTime: previousNotifyTimeMutation.mutateAsync,
+    isUpdatingPreviousNotifyTime: previousNotifyTimeMutation.isPending,
   };
 }

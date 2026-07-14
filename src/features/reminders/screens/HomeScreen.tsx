@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Alert,
   BackHandler,
@@ -24,7 +25,7 @@ import type { Reminder } from '../types/reminder';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { DEFAULT_TIME_PRESETS } from '../../../shared/utils/timePresets';
-import { bubbleDueColors, palette } from '../../../constants/colors';
+import { addButtonVisualTokens, bubbleDueColors, palette } from '../../../constants/colors';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 
@@ -59,6 +60,7 @@ export function HomeScreen() {
     createReminder,
     deleteReminder,
     updateReminderTitle,
+    updateReminderTargetTime,
     isCreating: isSaving,
   } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
@@ -356,6 +358,19 @@ export function HomeScreen() {
     [updateReminderTitle],
   );
 
+  const handleUpdateReminderTargetTime = useCallback(
+    async (reminder: Reminder, targetTime: string) => {
+      const result = await updateReminderTargetTime(reminder.id, targetTime);
+
+      if (!result) {
+        throw new Error('Reminder was not found');
+      }
+
+      return result;
+    },
+    [updateReminderTargetTime],
+  );
+
   const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled = isSaving;
   const nextReminderLabel = reminders[0]
@@ -462,6 +477,7 @@ export function HomeScreen() {
         onClose={handleCloseReminderDetail}
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}
+        onUpdateTargetTime={handleUpdateReminderTargetTime}
       />
 
       <View
@@ -502,14 +518,21 @@ export function HomeScreen() {
           disabled={isAddButtonDisabled}
           hitSlop={8}
           onPress={handlePressAdd}
-          className="h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[32px] border-[2px] border-app-white bg-app-ink"
+          className="h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[32px]"
           style={({ pressed }) => [
             styles.addButton,
             pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
             isAddButtonDisabled ? styles.addButtonDisabled : null,
           ]}
         >
-          <Ionicons name="add" size={30} color={palette.white} />
+          <LinearGradient
+            colors={[addButtonVisualTokens.gradientFrom, addButtonVisualTokens.gradientTo]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.addButtonSurface}
+          >
+            <Ionicons name="add" size={30} color={addButtonVisualTokens.text} />
+          </LinearGradient>
         </Pressable>
       </View>
     </AppScreen>
@@ -578,11 +601,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   addButton: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: addButtonVisualTokens.border,
     shadowColor: palette.ink,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.24,
     shadowRadius: 18,
     elevation: 6,
+  },
+  addButtonSurface: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 32,
   },
   addButtonDisabled: {
     opacity: 0.5,

@@ -6,6 +6,7 @@ import type {
   ReminderNotificationFailureReason,
   ReminderNotificationScheduleOptions,
   ReminderNotificationScheduleResult,
+  ReminderSingleNotificationScheduleResult,
 } from '../../features/reminders/application/ports';
 import type { Reminder } from '../../features/reminders/domain/reminder';
 import { getExactAlarmPermissionStatus } from './exactAlarmPermission';
@@ -178,7 +179,9 @@ function notScheduled(
 
 async function getSchedulingBlockReason(
   permissionMode: ReminderNotificationScheduleOptions['permissionMode'] = 'request',
-): Promise<ReminderNotificationFailureReason | null> {
+): Promise<
+  Extract<ReminderSingleNotificationScheduleResult, { status: 'not-scheduled' }>['reason'] | null
+> {
   const permission =
     permissionMode === 'check-only'
       ? await Notifications.getPermissionsAsync()
@@ -194,6 +197,74 @@ async function getSchedulingBlockReason(
   }
 
   return null;
+}
+
+function singleNotificationNotScheduled(
+  reason: Extract<ReminderSingleNotificationScheduleResult, { status: 'not-scheduled' }>['reason'],
+): ReminderSingleNotificationScheduleResult {
+  return { status: 'not-scheduled', reason, notificationId: null };
+}
+
+export async function scheduleTargetReminderNotification(
+  reminder: ReminderNotificationTarget,
+  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+): Promise<ReminderSingleNotificationScheduleResult> {
+  const targetDate = new Date(reminder.targetNotifyAt);
+  if (targetDate.getTime() <= Date.now()) {
+    return { status: 'skipped', reason: 'time-passed', notificationId: null };
+  }
+
+  const blockReason = await getSchedulingBlockReason(options.permissionMode);
+  if (blockReason) {
+    return singleNotificationNotScheduled(blockReason);
+  }
+
+  try {
+    const notificationId = await scheduleIfFuture({
+      title: 'ポップ・リマインダー',
+      body: `「${reminder.title}」の時間をお知らせします`,
+      date: targetDate,
+      reminderId: reminder.id,
+      soundEnabled: options.soundEnabled,
+    });
+    return notificationId
+      ? { status: 'scheduled', notificationId }
+      : { status: 'skipped', reason: 'time-passed', notificationId: null };
+  } catch (error) {
+    console.warn('Failed to schedule target notification', error);
+    return singleNotificationNotScheduled('scheduling-failed');
+  }
+}
+
+export async function schedulePreviousReminderNotification(
+  reminder: ReminderNotificationTarget,
+  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+): Promise<ReminderSingleNotificationScheduleResult> {
+  const previousDate = new Date(reminder.previousNotifyAt);
+  if (previousDate.getTime() <= Date.now()) {
+    return { status: 'skipped', reason: 'time-passed', notificationId: null };
+  }
+
+  const blockReason = await getSchedulingBlockReason(options.permissionMode);
+  if (blockReason) {
+    return singleNotificationNotScheduled(blockReason);
+  }
+
+  try {
+    const notificationId = await scheduleIfFuture({
+      title: '前日のお知らせ',
+      body: `明日の「${reminder.title}」をふわっと残しています`,
+      date: previousDate,
+      reminderId: reminder.id,
+      soundEnabled: options.soundEnabled,
+    });
+    return notificationId
+      ? { status: 'scheduled', notificationId }
+      : { status: 'skipped', reason: 'time-passed', notificationId: null };
+  } catch (error) {
+    console.warn('Failed to schedule previous notification', error);
+    return singleNotificationNotScheduled('scheduling-failed');
+  }
 }
 
 export async function scheduleReminderNotifications(
@@ -308,13 +379,17 @@ export async function scheduleTestReminderNotifications(
 export async function cancelReminderNotifications(reminder: Reminder) {
   const ids = [reminder.previousNotificationId, reminder.targetNotificationId].filter(Boolean);
 
-  await Promise.all(
-    ids.map((id) =>
-      Notifications.cancelScheduledNotificationAsync(id as string).catch((error) => {
-        console.warn('Failed to cancel notification', error);
-      }),
-    ),
-  );
+  await Promise.all(ids.map((id) => cancelScheduledReminderNotification(id as string)));
+}
+
+export async function cancelScheduledReminderNotification(notificationId: string | null) {
+  if (!notificationId) {
+    return;
+  }
+
+  await Notifications.cancelScheduledNotificationAsync(notificationId).catch((error) => {
+    console.warn('Failed to cancel notification', error);
+  });
 }
 
 export async function cancelAllScheduledNotifications() {
@@ -324,5 +399,8 @@ export async function cancelAllScheduledNotifications() {
 export const reminderNotificationGateway: ReminderNotificationGateway = {
   schedule: scheduleReminderNotifications,
   scheduleTest: scheduleTestReminderNotifications,
+  scheduleTarget: scheduleTargetReminderNotification,
+  schedulePrevious: schedulePreviousReminderNotification,
   cancel: cancelReminderNotifications,
+  cancelOne: cancelScheduledReminderNotification,
 };

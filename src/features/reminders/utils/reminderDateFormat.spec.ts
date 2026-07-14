@@ -5,11 +5,23 @@ import {
   formatReminderDetailAccessibilityDateTime,
   formatReminderDetailDate,
   formatReminderDetailTime,
+  formatReminderBubbleDateTime,
   formatReminderInputDate,
   shouldShowPreviousNotification,
 } from './reminderDateFormat';
 
 const now = new Date(2026, 6, 12, 10, 0);
+
+test('widget date labels include weekdays after the day after tomorrow', () => {
+  assert.equal(formatReminderBubbleDateTime(new Date(2026, 6, 12, 18, 0), now), '今日 18:00');
+  assert.equal(formatReminderBubbleDateTime(new Date(2026, 6, 13, 18, 0), now), '明日 18:00');
+  assert.equal(formatReminderBubbleDateTime(new Date(2026, 6, 14, 18, 0), now), '明後日 18:00');
+  assert.equal(formatReminderBubbleDateTime(new Date(2026, 6, 15, 18, 0), now), '7/15（水） 18:00');
+  assert.equal(
+    formatReminderBubbleDateTime(new Date(2027, 0, 1, 18, 0), now),
+    '2027/1/1（金） 18:00',
+  );
+});
 
 test('detail date separates a Japanese calendar date, weekday, and time', () => {
   const value = new Date(2026, 6, 13, 8, 0);

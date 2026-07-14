@@ -13,3 +13,13 @@ test('time picker uses platform native display styles', () => {
     /display=\{timePickerDisplay\}/,
   ]);
 });
+
+test('time picker commits once from its local draft', () => {
+  assertSourceIncludes(source, [
+    /onConfirm: \(value: string\) => void;/,
+    /const \[draftTime, setDraftTime\] = useState\(value\);/,
+    /setDraftTime\(format\(selectedTime, 'HH:mm'\)\);/,
+    /onConfirm\(draftTime\);/,
+    /label="この時刻にする"/,
+  ]);
+});

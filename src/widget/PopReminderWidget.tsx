@@ -35,6 +35,7 @@ const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
 const WIDGET_STATUS_DOT_SIZE = 12;
 const WIDGET_COMPACT_STATUS_DOT_SIZE = 10;
+const WIDGET_FONT_FAMILY = 'sans-serif-rounded';
 export const WIDGET_DELETE_REMINDER_ACTION = 'DELETE_REMINDER';
 
 const widgetSkyAssets: Record<WidgetSkyPeriod, ImageRequireSource> = {
@@ -89,8 +90,9 @@ function WidgetHeader({ layout, mode }: { layout: WidgetRect; mode: WidgetDispla
       <TextWidget
         text="ポップ・リマインダー"
         style={{
+          fontFamily: WIDGET_FONT_FAMILY,
           fontSize: typography.headerFontSize,
-          fontWeight: '800',
+          fontWeight: '900',
           color: widgetTheme.primaryText as ColorProp,
           textShadowColor: widgetTheme.textHalo as ColorProp,
           textShadowOffset: { width: 0, height: 1 },
@@ -174,8 +176,9 @@ function ReminderListRow({
             <TextWidget
               text={reminder.title}
               style={{
+                fontFamily: WIDGET_FONT_FAMILY,
                 fontSize: typography.titleFontSize,
-                fontWeight: '800',
+                fontWeight: '900',
                 color: widgetTheme.primaryText as ColorProp,
                 adjustsFontSizeToFit: true,
               }}
@@ -188,8 +191,9 @@ function ReminderListRow({
             text={timeText}
             style={{
               width: typography.timeWidth,
+              fontFamily: WIDGET_FONT_FAMILY,
               fontSize: typography.timeFontSize,
-              fontWeight: '700',
+              fontWeight: '800',
               color: widgetTheme.secondaryText as ColorProp,
               marginLeft: 8,
               textAlign: 'right',
@@ -229,13 +233,7 @@ function ReminderListRow({
   );
 }
 
-function EmptyState({
-  listBounds,
-  addButton,
-}: {
-  listBounds: WidgetLayoutPlan['listBounds'];
-  addButton: WidgetLayoutPlan['addButton'];
-}) {
+function EmptyState({ listBounds }: { listBounds: WidgetLayoutPlan['listBounds'] }) {
   return (
     <OverlapWidget style={{ width: 'match_parent', height: 'match_parent' }}>
       <FlexWidget
@@ -253,8 +251,9 @@ function EmptyState({
         <TextWidget
           text="まだ泡はひとつも浮いていません"
           style={{
+            fontFamily: WIDGET_FONT_FAMILY,
             fontSize: 14,
-            fontWeight: '800',
+            fontWeight: '900',
             color: widgetTheme.primaryText as ColorProp,
             textAlign: 'center',
             adjustsFontSizeToFit: true,
@@ -266,45 +265,13 @@ function EmptyState({
           text="忘れたくないこと、右下からふわっとどうぞ"
           style={{
             width: listBounds.width,
-            fontSize: 10,
-            fontWeight: '700',
-            color: widgetTheme.secondaryText as ColorProp,
-            textAlign: 'center',
-            marginTop: 4,
-            adjustsFontSizeToFit: true,
-          }}
-          maxLines={1}
-          allowFontScaling={false}
-        />
-      </FlexWidget>
-      <FlexWidget
-        style={{
-          width: addButton.width,
-          height: 28,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: addButton.top - 28,
-          marginLeft: addButton.left,
-        }}
-      >
-        <TextWidget
-          text="右下から"
-          style={{
-            fontSize: 8,
-            fontWeight: '700',
-            color: widgetTheme.secondaryText as ColorProp,
-            textAlign: 'center',
-          }}
-          maxLines={1}
-          allowFontScaling={false}
-        />
-        <TextWidget
-          text="↓"
-          style={{
+            fontFamily: WIDGET_FONT_FAMILY,
             fontSize: 10,
             fontWeight: '800',
             color: widgetTheme.secondaryText as ColorProp,
             textAlign: 'center',
+            marginTop: 4,
+            adjustsFontSizeToFit: true,
           }}
           maxLines={1}
           allowFontScaling={false}
@@ -324,7 +291,7 @@ function ReminderContent({
   const remindersById = new Map(reminders.map((reminder) => [reminder.id, reminder]));
 
   if (plan.listRows.length === 0) {
-    return <EmptyState listBounds={plan.listBounds} addButton={plan.addButton} />;
+    return <EmptyState listBounds={plan.listBounds} />;
   }
 
   return (
@@ -363,13 +330,11 @@ function AddReminderButton({ layout }: { layout: WidgetRect }) {
       <TextWidget
         text="＋"
         style={{
+          fontFamily: WIDGET_FONT_FAMILY,
           fontSize: 22,
           fontWeight: '900',
           color: widgetTheme.plusButtonText as ColorProp,
           textAlign: 'center',
-          textShadowColor: widgetTheme.textHalo as ColorProp,
-          textShadowOffset: { width: 0, height: 1 },
-          textShadowRadius: 2,
         }}
         maxLines={1}
         allowFontScaling={false}

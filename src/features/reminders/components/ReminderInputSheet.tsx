@@ -534,7 +534,7 @@ export function ReminderInputSheet({
         visible={isTimePickerOpen}
         value={time}
         hint="選んだ時刻に当日のお知らせが届きます"
-        onChange={handleTargetTimeChange}
+        onConfirm={handleTargetTimeChange}
         onClose={() => setIsTimePickerOpen(false)}
       />
     </>

@@ -23,7 +23,13 @@ export function AppProviders({ children }: PropsWithChildren) {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const subscription = AppState.addEventListener('change', (state) => {
-      focusManager.setFocused(state === 'active');
+      const isActive = state === 'active';
+      focusManager.setFocused(isActive);
+      if (isActive) {
+        void appServices.reminders.retryPendingNotifications().catch((error) => {
+          console.warn('Failed to retry pending reminder notifications after app resume', error);
+        });
+      }
     });
     return () => subscription.remove();
   }, []);

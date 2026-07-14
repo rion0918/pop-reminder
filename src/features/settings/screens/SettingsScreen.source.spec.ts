@@ -48,6 +48,17 @@ test('settings exposes four independently editable quick-add preset times', () =
   ]);
 });
 
+test('settings applies the shared previous time to existing reminders with observable feedback', () => {
+  assertSourceIncludes(source, [
+    /updatePreviousNotifyTime/,
+    /isUpdatingPreviousNotifyTime/,
+    /すべての泡に共通/,
+    /result\.skippedPastCount/,
+    /result\.failedReminderCount/,
+    /disabled=\{isUpdatingPreviousNotifyTime\}/,
+  ]);
+});
+
 test('settings uses distinct time-of-day icons for quick-add preset times', () => {
   assertSourceIncludes(source, [
     /key: 'defaultTargetTime', label: '朝', icon: 'partly-sunny-outline'/,

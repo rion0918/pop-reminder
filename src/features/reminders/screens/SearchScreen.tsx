@@ -42,8 +42,15 @@ function handleBack(router: ReturnType<typeof useRouter>) {
 export function SearchScreen() {
   const router = useRouter();
   const { settings } = useAppSettings();
-  const { reminders, loading, error, refresh, deleteReminder, updateReminderTitle } =
-    useReminders();
+  const {
+    reminders,
+    loading,
+    error,
+    refresh,
+    deleteReminder,
+    updateReminderTitle,
+    updateReminderTargetTime,
+  } = useReminders();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<SearchFilter>('all');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -97,6 +104,19 @@ export function SearchScreen() {
       return updatedReminder;
     },
     [updateReminderTitle],
+  );
+
+  const handleUpdateReminderTargetTime = useCallback(
+    async (reminder: Reminder, targetTime: string) => {
+      const result = await updateReminderTargetTime(reminder.id, targetTime);
+
+      if (!result) {
+        throw new Error('Reminder was not found');
+      }
+
+      return result;
+    },
+    [updateReminderTargetTime],
   );
 
   return (
@@ -273,6 +293,7 @@ export function SearchScreen() {
         }
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}
+        onUpdateTargetTime={handleUpdateReminderTargetTime}
       />
     </AppScreen>
   );

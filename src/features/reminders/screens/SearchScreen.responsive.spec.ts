@@ -16,7 +16,8 @@ test('search result meta keeps the result count inside narrow widths', () => {
 test('search removes deleted reminders locally before a silent refresh', () => {
   assertSourceIncludes(source, [
     /import \{ useRemindersQuery as useReminders \} from '..\/presentation\/useRemindersQuery';/,
-    /deleteReminder, updateReminderTitle/,
+    /deleteReminder,/,
+    /updateReminderTitle,/,
     /const deleted = await deleteReminder\(reminder\.id\);/,
     /setSelectedReminderId\(null\);/,
   ]);

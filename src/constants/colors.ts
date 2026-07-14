@@ -19,6 +19,13 @@ export const palette = {
   shadow: '#7DB5E8',
 };
 
+export const addButtonVisualTokens = {
+  gradientFrom: '#F8FBFF',
+  gradientTo: '#D8E8F7',
+  border: 'rgba(255,255,255,0.96)',
+  text: '#50658F',
+} as const;
+
 export const appThemes: Record<
   AppTheme,
   {

@@ -18,7 +18,8 @@ test('reminder list summary keeps count inside narrow Android widths', () => {
 test('reminder list reflects edited titles without leaving the list', () => {
   assertSourceIncludes(source, [
     /import \{ useRemindersQuery as useReminders \} from '..\/presentation\/useRemindersQuery';/,
-    /deleteReminder, updateReminderTitle/,
+    /deleteReminder,/,
+    /updateReminderTitle,/,
     /const \[selectedReminderId, setSelectedReminderId\] = useState<string \| null>\(null\);/,
     /const selectedReminder = reminders\.find\(\(reminder\) => reminder\.id === selectedReminderId\) \?\? null;/,
     /const handleUpdateReminderTitle = useCallback\(/,

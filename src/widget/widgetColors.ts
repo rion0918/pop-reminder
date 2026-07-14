@@ -1,4 +1,4 @@
-import { palette } from '../constants/colors';
+import { addButtonVisualTokens, palette } from '../constants/colors';
 
 export const widgetTheme = {
   primaryText: palette.ink,
@@ -10,11 +10,11 @@ export const widgetTheme = {
   cardBorder: 'rgba(255,255,255,0.78)',
   cardShadow: 'rgba(38,49,81,0.10)',
   plusButtonGradient: {
-    from: '#9ED8FF',
-    to: '#C4E8FF',
-    orientation: 'TL_BR',
+    from: addButtonVisualTokens.gradientFrom,
+    to: addButtonVisualTokens.gradientTo,
+    orientation: 'TOP_BOTTOM',
   },
-  plusButtonBorder: 'rgba(255,255,255,0.84)',
-  plusButtonText: palette.ink,
+  plusButtonBorder: addButtonVisualTokens.border,
+  plusButtonText: addButtonVisualTokens.text,
   textHalo: 'rgba(255,255,255,0.72)',
 } as const;

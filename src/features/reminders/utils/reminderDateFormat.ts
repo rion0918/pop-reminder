@@ -1,4 +1,4 @@
-import { addDays, format, isSameDay, isSameYear, isTomorrow } from 'date-fns';
+import { addDays, format, isSameDay, isSameYear } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 function toDate(value: Date | string) {
@@ -42,16 +42,15 @@ export function shouldShowPreviousNotification(value: Date | string, now = new D
   return toDate(value).getTime() > now.getTime();
 }
 
-export function formatReminderBubbleDateTime(value: Date | string) {
+export function formatReminderBubbleDateTime(value: Date | string, now = new Date()) {
   const target = toDate(value);
-  const now = new Date();
   const time = format(target, 'HH:mm');
 
   if (isSameDay(target, now)) {
     return `今日 ${time}`;
   }
 
-  if (isTomorrow(target)) {
+  if (isSameDay(target, addDays(now, 1))) {
     return `明日 ${time}`;
   }
 
@@ -59,7 +58,7 @@ export function formatReminderBubbleDateTime(value: Date | string) {
     return `明後日 ${time}`;
   }
 
-  const dateFormat = target.getFullYear() === now.getFullYear() ? 'M/d' : 'yyyy/M/d';
+  const dateFormat = target.getFullYear() === now.getFullYear() ? 'M/d（EEE）' : 'yyyy/M/d（EEE）';
 
-  return `${format(target, dateFormat)} ${time}`;
+  return `${format(target, dateFormat, { locale: ja })} ${time}`;
 }

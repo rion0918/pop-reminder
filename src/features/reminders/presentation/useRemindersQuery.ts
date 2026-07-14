@@ -72,6 +72,14 @@ export function useRemindersQuery() {
       void reconcile();
     },
   });
+  const updateTargetTimeMutation = useMutation({
+    mutationFn: ({ id, targetTime }: { id: string; targetTime: string }) =>
+      services.reminders.updateTargetTime(id, targetTime),
+    onSuccess: (result) => {
+      if (result) upsertReminder(result.reminder);
+      void reconcile();
+    },
+  });
 
   const reconcileExpiredReminders = useCallback(async () => {
     await services.reminders.cleanup();
@@ -121,6 +129,8 @@ export function useRemindersQuery() {
       deleteMutation.mutateAsync({ id, ...options }),
     updateReminderTitle: (id: string, title: string) =>
       updateTitleMutation.mutateAsync({ id, title }),
+    updateReminderTargetTime: (id: string, targetTime: string) =>
+      updateTargetTimeMutation.mutateAsync({ id, targetTime }),
     isCreating: createMutation.isPending,
   };
 }

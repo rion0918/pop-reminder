@@ -42,3 +42,14 @@ test('target notification is scheduled before the optional previous notification
   assert.equal(targetIndex >= 0, true);
   assert.equal(previousIndex > targetIndex, true);
 });
+
+test('notification gateway can replace target and previous notifications independently', () => {
+  assertSourceIncludes(source, [
+    /scheduleTargetReminderNotification/,
+    /schedulePreviousReminderNotification/,
+    /cancelScheduledReminderNotification/,
+    /scheduleTarget: scheduleTargetReminderNotification/,
+    /schedulePrevious: schedulePreviousReminderNotification/,
+    /cancelOne: cancelScheduledReminderNotification/,
+  ]);
+});

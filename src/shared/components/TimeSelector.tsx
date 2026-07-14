@@ -11,6 +11,7 @@ export type TimeSelectorProps = {
   onSelectCustomTime: () => void;
   presets?: TimePreset[];
   variant?: 'regular' | 'compact';
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -20,6 +21,7 @@ export function TimeSelector({
   onSelectCustomTime,
   presets = DEFAULT_TIME_PRESETS,
   variant = 'regular',
+  disabled = false,
   style,
 }: TimeSelectorProps) {
   const isPresetTime = presets.some((preset) => preset.time === value);
@@ -36,7 +38,8 @@ export function TimeSelector({
       <Pressable
         key={preset.time}
         accessibilityRole="button"
-        accessibilityState={{ selected: active }}
+        accessibilityState={{ selected: active, disabled }}
+        disabled={disabled}
         onPress={() => onChange(preset.time)}
         className={presetChipClassName}
         style={({ pressed }) => [pressed ? styles.pressedChip : null]}
@@ -64,7 +67,8 @@ export function TimeSelector({
           {presets.map(renderPresetChip)}
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ selected: !isPresetTime }}
+            accessibilityState={{ selected: !isPresetTime, disabled }}
+            disabled={disabled}
             onPress={onSelectCustomTime}
             className={`min-h-[42px] min-w-0 flex-1 flex-row items-center justify-center gap-[4px] rounded-[14px] border px-[3px] py-[5px] ${
               !isPresetTime
@@ -94,7 +98,8 @@ export function TimeSelector({
           <View className="flex-row gap-[8px]">{presets.map(renderPresetChip)}</View>
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ selected: !isPresetTime }}
+            accessibilityState={{ selected: !isPresetTime, disabled }}
+            disabled={disabled}
             onPress={onSelectCustomTime}
             className={`min-h-[42px] w-full min-w-0 flex-row items-center justify-center gap-[6px] rounded-[16px] border px-[14px] py-[7px] ${
               !isPresetTime

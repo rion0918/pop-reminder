@@ -27,7 +27,11 @@ const widgetGateway = {
 export const appServices = {
   reminders: createReminderUseCases({
     reminders: sqliteReminderRepository,
-    settings: { get: sqliteSettingsRepository.get },
+    settings: {
+      get: sqliteSettingsRepository.get,
+      updatePreviousNotifyTime: (previousNotifyTime: string) =>
+        sqliteSettingsRepository.update({ previousNotifyTime }),
+    },
     notifications: reminderNotificationGateway,
     widget: widgetGateway,
   }),

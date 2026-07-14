@@ -32,8 +32,15 @@ function handleBack(router: ReturnType<typeof useRouter>) {
 export function ReminderListScreen() {
   const router = useRouter();
   const { settings } = useAppSettings();
-  const { reminders, loading, error, refresh, deleteReminder, updateReminderTitle } =
-    useReminders();
+  const {
+    reminders,
+    loading,
+    error,
+    refresh,
+    deleteReminder,
+    updateReminderTitle,
+    updateReminderTargetTime,
+  } = useReminders();
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
   const selectedReminder = reminders.find((reminder) => reminder.id === selectedReminderId) ?? null;
@@ -81,6 +88,19 @@ export function ReminderListScreen() {
       return updatedReminder;
     },
     [updateReminderTitle],
+  );
+
+  const handleUpdateReminderTargetTime = useCallback(
+    async (reminder: Reminder, targetTime: string) => {
+      const result = await updateReminderTargetTime(reminder.id, targetTime);
+
+      if (!result) {
+        throw new Error('Reminder was not found');
+      }
+
+      return result;
+    },
+    [updateReminderTargetTime],
   );
 
   return (
@@ -220,6 +240,7 @@ export function ReminderListScreen() {
         }
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}
+        onUpdateTargetTime={handleUpdateReminderTargetTime}
       />
     </AppScreen>
   );

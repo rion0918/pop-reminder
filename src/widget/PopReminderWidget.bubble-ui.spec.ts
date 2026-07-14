@@ -112,9 +112,42 @@ test('android widget keeps the selected app-name header and bottom add action', 
     /cardBorder: 'rgba\(255,255,255,0\.78\)'/,
     /cardShadow: 'rgba\(38,49,81,0\.10\)'/,
     /plusButtonGradient: \{/,
-    /from: '#9ED8FF'/,
-    /to: '#C4E8FF'/,
+    /from: addButtonVisualTokens\.gradientFrom/,
+    /to: addButtonVisualTokens\.gradientTo/,
+    /orientation: 'TOP_BOTTOM'/,
+    /plusButtonBorder: addButtonVisualTokens\.border/,
+    /plusButtonText: addButtonVisualTokens\.text/,
   ]);
+});
+
+test('android widget uses rounded heavy type without a redundant bottom-right guide', () => {
+  assertSourceContract(source, {
+    includes: [
+      /const WIDGET_FONT_FAMILY = 'sans-serif-rounded'/,
+      /fontFamily: WIDGET_FONT_FAMILY/,
+      /text="ポップ・リマインダー"[\s\S]*?fontWeight: '900'/,
+      /text=\{reminder\.title\}[\s\S]*?fontWeight: '900'/,
+      /text=\{timeText\}[\s\S]*?fontWeight: '800'/,
+      /text="＋"[\s\S]*?fontSize: 22/,
+    ],
+    excludes: [/text="右下から"/, /text="↓"/],
+  });
+});
+
+test('android widget add button keeps a restrained pearl finish without embossed text', () => {
+  const addButtonSource = source.slice(
+    source.indexOf('function AddReminderButton'),
+    source.indexOf('export function PopReminderWidget'),
+  );
+
+  assertSourceContract(addButtonSource, {
+    includes: [
+      /backgroundGradient: widgetTheme\.plusButtonGradient/,
+      /borderColor: widgetTheme\.plusButtonBorder as ColorProp/,
+      /color: widgetTheme\.plusButtonText as ColorProp/,
+    ],
+    excludes: [/textShadowColor/, /textShadowOffset/, /textShadowRadius/],
+  });
 });
 
 test('android widget clips native click feedback to rounded controls', () => {
@@ -220,16 +253,13 @@ test('widget refresh paths keep the actual widget size, snapshot, and contracts'
   });
 });
 
-test('widget empty state matches the app copy and points to the add button', () => {
+test('widget empty state matches the app copy without extra add-button guidance', () => {
   assertSourceContract(source, {
     includes: [
       /text="まだ泡はひとつも浮いていません"/,
       /text="忘れたくないこと、右下からふわっとどうぞ"/,
-      /text="右下から"/,
-      /text="↓"/,
-      /marginTop: addButton\.top - 28/,
-      /marginLeft: addButton\.left/,
-      /<EmptyState listBounds=\{plan\.listBounds\} addButton=\{plan\.addButton\} \/>/,
+      /<EmptyState listBounds=\{plan\.listBounds\} \/>/,
     ],
+    excludes: [/text="右下から"/, /text="↓"/],
   });
 });

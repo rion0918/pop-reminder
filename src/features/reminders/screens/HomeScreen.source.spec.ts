@@ -64,16 +64,18 @@ test('home add button stays a compact floating action button', () => {
       /className="[^"]*items-center[^"]*"/,
       /className="[^"]*justify-center[^"]*"/,
       /className="[^"]*rounded-\[32px\][^"]*"/,
-      /className="[^"]*border-\[2px\][^"]*"/,
-      /className="[^"]*border-app-white[^"]*"/,
-      /className="[^"]*bg-app-ink[^"]*"/,
+      /<LinearGradient[\s\S]*colors=\{\[addButtonVisualTokens\.gradientFrom, addButtonVisualTokens\.gradientTo\]\}/,
+      /styles\.addButtonSurface/,
       /styles\.addButton/,
-      /<Ionicons name="add" size=\{30\} color=\{palette\.white\} \/>/,
+      /<Ionicons name="add" size=\{30\} color=\{addButtonVisualTokens\.text\} \/>/,
     ],
-    excludes: [/>追加<\/Text>/],
+    excludes: [/>追加<\/Text>/, /bg-app-ink/, /border-\[2px\]/],
   });
   assertSourceContract(addButtonStyleBlock, {
     includes: [
+      /borderWidth: 1/,
+      /borderColor: addButtonVisualTokens\.border/,
+      /overflow: 'hidden'/,
       /shadowColor: palette\.ink/,
       /shadowOffset: \{ width: 0, height: 12 \}/,
       /shadowOpacity: 0\.24/,
@@ -87,6 +89,12 @@ test('home add button stays a compact floating action button', () => {
       /backgroundColor: palette\.skyDeep/,
     ],
   });
+
+  assertSourceIncludes(source, [
+    /addButtonSurface: \{[\s\S]*borderRadius: 32/,
+    /addButtonVisualTokens\.gradientFrom/,
+    /addButtonVisualTokens\.gradientTo/,
+  ]);
 });
 
 test('settings button gives immediate pressed feedback', () => {

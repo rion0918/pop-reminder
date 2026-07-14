@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -19,7 +19,7 @@ type TimePickerModalProps = {
   value: string;
   title?: string;
   hint?: string;
-  onChange: (value: string) => void;
+  onConfirm: (value: string) => void;
   onClose: () => void;
 };
 
@@ -28,16 +28,22 @@ export function TimePickerModal({
   value,
   title = '時刻を選択',
   hint = '選んだ時刻にお知らせが届きます',
-  onChange,
+  onConfirm,
   onClose,
 }: TimePickerModalProps) {
+  const [draftTime, setDraftTime] = useState(value);
+
+  useEffect(() => {
+    setDraftTime(value);
+  }, [value, visible]);
+
   const pickerValue = useMemo(() => {
-    const [hoursText, minutesText] = value.split(':');
+    const [hoursText, minutesText] = draftTime.split(':');
     const date = new Date();
 
     date.setHours(Number(hoursText), Number(minutesText), 0, 0);
     return date;
-  }, [value]);
+  }, [draftTime]);
 
   const handleChange = useCallback(
     (event: DateTimePickerEvent, selectedTime?: Date) => {
@@ -50,14 +56,23 @@ export function TimePickerModal({
         return;
       }
 
-      onChange(format(selectedTime, 'HH:mm'));
+      const nextTime = format(selectedTime, 'HH:mm');
 
       if (Platform.OS === 'android') {
+        onConfirm(nextTime);
         onClose();
+        return;
       }
+
+      setDraftTime(format(selectedTime, 'HH:mm'));
     },
-    [onChange, onClose],
+    [onClose, onConfirm],
   );
+
+  const handleConfirm = useCallback(() => {
+    onConfirm(draftTime);
+    onClose();
+  }, [draftTime, onClose, onConfirm]);
 
   if (!visible) {
     return null;
@@ -105,7 +120,7 @@ export function TimePickerModal({
           <PrimaryButton
             label="この時刻にする"
             icon="time-outline"
-            onPress={onClose}
+            onPress={handleConfirm}
             style={styles.pickerButton}
           />
         </View>

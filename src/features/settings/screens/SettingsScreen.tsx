@@ -134,7 +134,8 @@ const termsDocument: LegalDocument = {
 export function SettingsScreen() {
   const router = useRouter();
   const reminderServices = useAppServices().reminders;
-  const { settings, loading, update } = useAppSettings();
+  const { settings, loading, update, updatePreviousNotifyTime, isUpdatingPreviousNotifyTime } =
+    useAppSettings();
   const {
     cancelAllScheduledNotifications,
     getExactAlarmPermissionStatus,
@@ -166,6 +167,7 @@ export function SettingsScreen() {
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   const backPressTimeoutRef = useRef<number | null>(null);
+  const isPreviousTimeUpdateRequestedRef = useRef(false);
   const refreshNotificationPermissionStatus = useCallback(async () => {
     const permission = await getNotificationPermissionStatus();
     setNotificationPermissionLabel(permission.label);
@@ -203,18 +205,13 @@ export function SettingsScreen() {
       if (nextAppState === 'active') {
         void refreshNotificationPermissionStatus();
         void refreshExactAlarmPermissionStatus();
-        void retryPendingReminderNotifications();
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [
-    refreshExactAlarmPermissionStatus,
-    refreshNotificationPermissionStatus,
-    retryPendingReminderNotifications,
-  ]);
+  }, [refreshExactAlarmPermissionStatus, refreshNotificationPermissionStatus]);
 
   useEffect(() => {
     return () => {
@@ -225,8 +222,42 @@ export function SettingsScreen() {
   }, []);
 
   const savePreviousTime = async (value: string) => {
+    if (
+      isUpdatingPreviousNotifyTime ||
+      isPreviousTimeUpdateRequestedRef.current ||
+      value === previousTime
+    ) {
+      return;
+    }
+
+    const currentValue = previousTime;
+    isPreviousTimeUpdateRequestedRef.current = true;
     setPreviousTime(value);
-    await update({ previousNotifyTime: value });
+    try {
+      const result = await updatePreviousNotifyTime(value);
+      setPreviousTime(result.settings.previousNotifyTime);
+
+      const messages: string[] = [];
+      if (result.skippedPastCount > 0) {
+        messages.push(
+          `${result.skippedPastCount}件は新しい時刻を過ぎているため、前日通知を見送りました。`,
+        );
+      }
+      if (result.failedReminderCount > 0) {
+        messages.push(
+          `${result.failedReminderCount}件の前日通知を予約できませんでした。次回起動時に再試行します。`,
+        );
+      }
+      if (messages.length > 0) {
+        Alert.alert('前日のお知らせ時刻を変更しました', messages.join('\n'));
+      }
+    } catch (error) {
+      console.warn('Failed to update shared previous notification time', error);
+      setPreviousTime(currentValue);
+      Alert.alert('時刻を変更できませんでした', '時間をおいてもう一度お試しください。');
+    } finally {
+      isPreviousTimeUpdateRequestedRef.current = false;
+    }
   };
 
   const quickAddPresets = settings
@@ -334,6 +365,9 @@ export function SettingsScreen() {
   };
 
   const togglePreviousTimeSelector = () => {
+    if (isUpdatingPreviousNotifyTime) {
+      return;
+    }
     setIsPreviousTimeSelectorOpen((current) => !current);
   };
 
@@ -380,12 +414,15 @@ export function SettingsScreen() {
             <SettingRow
               icon="notifications-outline"
               title="前日のお知らせ時刻"
+              caption="すべての泡に共通"
               onPress={togglePreviousTimeSelector}
             >
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="前日のお知らせ時刻を変更"
+                accessibilityState={{ disabled: isUpdatingPreviousNotifyTime }}
                 onPress={togglePreviousTimeSelector}
+                disabled={isUpdatingPreviousNotifyTime}
                 className={`h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border ${
                   isPreviousTimeSelectorOpen
                     ? 'border-app-lavender-deep bg-app-lavender-deep'
@@ -393,19 +430,24 @@ export function SettingsScreen() {
                 }`}
                 style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
               >
-                <Text
-                  className={`text-[15px] font-extrabold ${
-                    isPreviousTimeSelectorOpen ? 'text-app-white' : 'text-app-ink'
-                  }`}
-                >
-                  {previousTime}
-                </Text>
+                {isUpdatingPreviousNotifyTime ? (
+                  <ActivityIndicator size="small" color={palette.lavenderDeep} />
+                ) : (
+                  <Text
+                    className={`text-[15px] font-extrabold ${
+                      isPreviousTimeSelectorOpen ? 'text-app-white' : 'text-app-ink'
+                    }`}
+                  >
+                    {previousTime}
+                  </Text>
+                )}
               </Pressable>
             </SettingRow>
             {isPreviousTimeSelectorOpen ? (
               <View className="px-[16px] pb-[12px]">
                 <TimeSelector
                   value={previousTime}
+                  disabled={isUpdatingPreviousNotifyTime}
                   onChange={(value) => {
                     void savePreviousTime(value);
                   }}
@@ -744,7 +786,7 @@ export function SettingsScreen() {
         visible={isPreviousTimePickerOpen}
         value={previousTime}
         hint="選んだ時刻に前日のお知らせが届きます"
-        onChange={handleTimePickerChange}
+        onConfirm={handleTimePickerChange}
         onClose={() => setIsPreviousTimePickerOpen(false)}
       />
       <TimePickerModal
@@ -752,7 +794,7 @@ export function SettingsScreen() {
         value={quickAddPresetPicker && settings ? settings[quickAddPresetPicker.key] : '08:00'}
         title={quickAddPresetPicker ? `${quickAddPresetPicker.label}の時刻を選択` : undefined}
         hint="この時刻をクイック追加の候補として保存します"
-        onChange={(value) => {
+        onConfirm={(value) => {
           if (quickAddPresetPicker) {
             void saveQuickAddPresetTime(quickAddPresetPicker.key, value);
           }

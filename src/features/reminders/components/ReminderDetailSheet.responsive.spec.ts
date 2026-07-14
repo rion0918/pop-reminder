@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { assertSourceContract, readSource } from '../../../test-utils/sourceAssertions';
@@ -20,11 +21,11 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
       /contentContainerStyle=\{\[styles\.content, \{ paddingBottom: detailContentBottomPadding \}\]\}/,
       /keyboardShouldPersistTaps="handled"/,
       /<View style=\{styles\.deleteActionSpacer\}>[\s\S]*accessibilityLabel="このシャボン玉を削除する"[\s\S]*<View style=\{styles\.deleteActionContent\}>[\s\S]*name="trash-outline"[\s\S]*<Text style=\{styles\.deleteActionText\}>削除する<\/Text>[\s\S]*<\/View>[\s\S]*<\/View>/,
-      /deleteActionSpacer: \{[\s\S]*marginTop: 28,/,
-      /deleteActionSpacer: \{[\s\S]*alignItems: 'flex-end',/,
-      /deleteAction: \{[\s\S]*minWidth: 132,[\s\S]*minHeight: 52,[\s\S]*borderRadius: 18,/,
+      /deleteActionSpacer: \{[\s\S]*marginTop: 34,/,
+      /deleteActionSpacer: \{[\s\S]*alignItems: 'center',[\s\S]*borderTopWidth: 1,/,
+      /deleteAction: \{[\s\S]*minWidth: 124,[\s\S]*minHeight: 44,[\s\S]*borderRadius: 16,/,
       /deleteActionContent: \{[\s\S]*flexDirection: 'row',/,
-      /deleteActionPressed: \{[\s\S]*transform: \[\{ scale: 0\.98 \}\],[\s\S]*backgroundColor: '#FFE4B8',/,
+      /deleteActionPressed: \{[\s\S]*transform: \[\{ scale: 0\.98 \}\],[\s\S]*backgroundColor: 'rgba\(255,228,184,0\.46\)',/,
     ],
     excludes: [
       /snapPoints=\{snapPoints\}/,
@@ -36,7 +37,14 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
   });
 });
 
-test('reminder detail sheet presents notification timing as an accessible timeline', () => {
+test('reminder detail sheet presents the editable target before the shared previous notification', () => {
+  const targetLabelIndex = source.indexOf('当日にもう一度お知らせ');
+  const previousLabelIndex = source.indexOf('まず、前日にお知らせ');
+
+  assert.notEqual(targetLabelIndex, -1);
+  assert.notEqual(previousLabelIndex, -1);
+  assert.ok(targetLabelIndex < previousLabelIndex);
+
   assertSourceContract(source, {
     includes: [
       />ふわっと思い出す予定<\/Text>/,
@@ -47,13 +55,44 @@ test('reminder detail sheet presents notification timing as an accessible timeli
       /formatReminderDetailTime/,
       /formatReminderDetailAccessibilityDateTime/,
       /accessibilityLabel=\{`前日のお知らせ、\$\{previousAccessibilityDateTime\}`\}/,
-      /accessibilityLabel=\{`当日のお知らせ、\$\{targetAccessibilityDateTime\}`\}/,
-      /<View style=\{styles\.timelineLine\} \/>/,
+      /accessibilityLabel="当日のお知らせ時刻を編集"/,
+      /accessibilityHint=\{targetAccessibilityDateTime\}/,
+      /ImageBackground/,
+      /reminder-detail-bubbles\.png/,
+      /styles\.targetScheduleCard/,
+      /styles\.targetTimeHint/,
+      /styles\.scheduleDivider/,
+      /styles\.previousScheduleRow/,
       /name="notifications-outline"/,
-      /name="notifications"/,
-      /closeButton: \{[\s\S]*width: 44,[\s\S]*height: 44,[\s\S]*borderRadius: 22,/,
+      /closeButton: \{[\s\S]*width: 48,[\s\S]*height: 48,[\s\S]*borderRadius: 24,/,
     ],
-    excludes: [/function DetailRow/, />お知らせ予定<\/Text>/],
+    excludes: [
+      /function DetailRow/,
+      />お知らせ予定<\/Text>/,
+      /name="notifications"/,
+      /styles\.timelineCard/,
+      /styles\.timelineLine/,
+    ],
+  });
+});
+
+test('reminder detail sheet edits only the target time and labels the shared previous time', () => {
+  assertSourceContract(source, {
+    includes: [
+      /すべての泡に共通/,
+      /accessibilityLabel="当日のお知らせ時刻を編集"/,
+      /onUpdateTargetTime:/,
+      /const handleTargetTimeConfirm = useCallback/,
+      /<TimePickerModal/,
+      /onConfirm=\{handleTargetTimeConfirm\}/,
+      /過去の時刻には変更できません/,
+      /時刻は変更しましたが、通知を予約できませんでした/,
+    ],
+    excludes: [
+      /accessibilityLabel="前日のお知らせ時刻を編集"/,
+      /name="create-outline"/,
+      /targetEditIcon/,
+    ],
   });
 });
 
@@ -61,17 +100,26 @@ test('reminder detail sheet edits and saves the title when its field loses focus
   assertSourceContract(source, {
     includes: [
       /BottomSheetTextInput/,
+      /const draftTitleRef = useRef\(reminder\?\.title \?\? ''\);/,
       /onUpdateTitle: \(reminder: Reminder, title: string\) => Promise<Reminder>;/,
       /isTitleEditing \? \(/,
       /accessibilityLabel="タイトルを編集"/,
       /accessibilityLabel="リマインダーのタイトル"/,
+      /defaultValue=\{draftTitleRef\.current\}/,
+      /onChangeText=\{\(text\) => \{\s*draftTitleRef\.current = text;\s*\}\}/,
+      /keyboardType="default"/,
+      /autoCorrect/,
+      /spellCheck=\{false\}/,
+      /autoCapitalize="none"/,
       /onBlur=\{handleTitleBlur\}/,
       /onSubmitEditing=\{\(\) => titleInputRef\.current\?\.blur\(\)\}/,
+      /const normalizedTitle = draftTitleRef\.current\.trim\(\);/,
       /reminderTitleSchema\.safeParse\(normalizedTitle\)/,
       /requestAnimationFrame\(\(\) => \{/,
       /discardTitleEdit\(\);/,
       /onAnimate=\{handleSheetAnimate\}/,
     ],
+    excludes: [/value=\{draftTitle\}/, /onChangeText=\{setDraftTitle\}/],
   });
 });
 
