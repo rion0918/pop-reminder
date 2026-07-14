@@ -19,6 +19,25 @@ const reminder: Reminder = {
   updatedAt: '2026-07-12T00:00:00.000Z',
 };
 
+const scheduledNotification = {
+  status: 'scheduled' as const,
+  ids: { previousNotificationId: 'previous', targetNotificationId: 'target' },
+};
+
+function notScheduledNotification(
+  reason:
+    | 'notification-permission-denied'
+    | 'exact-alarm-permission-required'
+    | 'target-time-passed'
+    | 'scheduling-failed',
+) {
+  return {
+    status: 'not-scheduled' as const,
+    reason,
+    ids: { previousNotificationId: null, targetNotificationId: null },
+  };
+}
+
 function makeDependencies(events: string[]): ReminderApplicationDependencies {
   let current: Reminder | null = reminder;
 
@@ -70,11 +89,14 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
     notifications: {
       schedule: async () => {
         events.push('schedule');
-        return { previousNotificationId: 'previous', targetNotificationId: 'target' };
+        return scheduledNotification;
       },
       scheduleTest: async () => ({
-        previousNotificationId: 'test-previous',
-        targetNotificationId: 'test-target',
+        status: 'scheduled',
+        ids: {
+          previousNotificationId: 'test-previous',
+          targetNotificationId: 'test-target',
+        },
       }),
       cancel: async () => {
         events.push('cancel');
@@ -96,11 +118,49 @@ test('create persists before notification scheduling and widget sync', async () 
     { now: new Date('2026-07-12T09:00:00+09:00') },
   );
 
-  assert.equal(result.title, 'Pay rent');
+  assert.equal(result.reminder.title, 'Pay rent');
+  assert.deepEqual(result.notification, scheduledNotification);
   assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
 });
 
-test('create returns the persisted reminder when notification scheduling fails', async () => {
+test('create returns the persisted reminder and reason when notification permission is denied', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule');
+    return notScheduledNotification('notification-permission-denied');
+  };
+  const result = await createReminderUseCases(dependencies).create(
+    { title: 'Pay rent', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.equal(result.reminder.id, reminder.id);
+  assert.equal(result.reminder.targetNotificationId, null);
+  assert.equal(result.notification.status, 'not-scheduled');
+  assert.equal(result.notification.reason, 'notification-permission-denied');
+  assert.deepEqual(events, ['insert', 'schedule', 'widget']);
+});
+
+test('create reports that Android exact alarm permission is required without losing the reminder', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule');
+    return notScheduledNotification('exact-alarm-permission-required');
+  };
+  const result = await createReminderUseCases(dependencies).create(
+    { title: 'Pay rent', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.equal(result.reminder.id, reminder.id);
+  assert.equal(result.notification.status, 'not-scheduled');
+  assert.equal(result.notification.reason, 'exact-alarm-permission-required');
+  assert.deepEqual(events, ['insert', 'schedule', 'widget']);
+});
+
+test('create converts an unexpected notification scheduling exception into an observable result', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
   dependencies.notifications.schedule = async () => {
@@ -112,8 +172,31 @@ test('create returns the persisted reminder when notification scheduling fails',
     { now: new Date('2026-07-12T09:00:00+09:00') },
   );
 
-  assert.equal(result.id, reminder.id);
+  assert.equal(result.reminder.id, reminder.id);
+  assert.equal(result.notification.status, 'not-scheduled');
+  assert.equal(result.notification.reason, 'scheduling-failed');
   assert.deepEqual(events, ['insert', 'schedule', 'widget']);
+});
+
+test('create persists target notification id when only the previous notification fails', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule');
+    return {
+      status: 'partial',
+      reason: 'previous-scheduling-failed',
+      ids: { previousNotificationId: null, targetNotificationId: 'target' },
+    };
+  };
+  const result = await createReminderUseCases(dependencies).create(
+    { title: 'Pay rent', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.equal(result.reminder.targetNotificationId, 'target');
+  assert.equal(result.notification.status, 'partial');
+  assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
 });
 
 test('create rejects invalid runtime schedule input before reading adapters', async () => {
@@ -157,6 +240,40 @@ test('title update returns persisted update when replacement scheduling fails', 
   const result = await createReminderUseCases(dependencies).updateTitle(reminder.id, ' New title ');
   assert.equal(result?.title, 'New title');
   assert.deepEqual(events, ['update-title', 'schedule', 'widget']);
+});
+
+test('retryPendingNotifications only schedules active reminders without a target notification id', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const alreadyScheduled: Reminder = {
+    ...reminder,
+    id: 'reminder-2',
+    targetNotificationId: 'existing-target',
+  };
+  dependencies.reminders.listActive = async () => [reminder, alreadyScheduled];
+  dependencies.notifications.schedule = async (candidate, options) => {
+    events.push(`schedule:${candidate.id}:${options.permissionMode}`);
+    return scheduledNotification;
+  };
+
+  const result = await createReminderUseCases(dependencies).retryPendingNotifications();
+
+  assert.deepEqual(result, { scheduled: 1, remaining: 0 });
+  assert.deepEqual(events, ['schedule:reminder-1:check-only', 'notification-ids']);
+});
+
+test('retryPendingNotifications leaves blocked reminders pending', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule');
+    return notScheduledNotification('exact-alarm-permission-required');
+  };
+
+  const result = await createReminderUseCases(dependencies).retryPendingNotifications();
+
+  assert.deepEqual(result, { scheduled: 0, remaining: 1 });
+  assert.deepEqual(events, ['schedule']);
 });
 
 test('cleanup cancels expired reminders before deleting them', async () => {

@@ -6,6 +6,33 @@ export type ReminderNotificationIds = Pick<
   'previousNotificationId' | 'targetNotificationId'
 >;
 
+export type ReminderNotificationFailureReason =
+  | 'notification-permission-denied'
+  | 'exact-alarm-permission-required'
+  | 'target-time-passed'
+  | 'scheduling-failed';
+
+export type ReminderNotificationScheduleResult =
+  | {
+      status: 'scheduled';
+      ids: ReminderNotificationIds;
+    }
+  | {
+      status: 'partial';
+      reason: 'previous-scheduling-failed';
+      ids: ReminderNotificationIds;
+    }
+  | {
+      status: 'not-scheduled';
+      reason: ReminderNotificationFailureReason;
+      ids: ReminderNotificationIds;
+    };
+
+export type ReminderNotificationScheduleOptions = {
+  soundEnabled: boolean;
+  permissionMode?: 'request' | 'check-only';
+};
+
 export type ReminderRepository = {
   listActive(now?: Date): Promise<Reminder[]>;
   listExpired(now?: Date): Promise<Reminder[]>;
@@ -21,12 +48,12 @@ export type ReminderRepository = {
 export type ReminderNotificationGateway = {
   schedule(
     reminder: Reminder,
-    options: { soundEnabled: boolean },
-  ): Promise<ReminderNotificationIds>;
+    options: ReminderNotificationScheduleOptions,
+  ): Promise<ReminderNotificationScheduleResult>;
   scheduleTest(
     reminder: Reminder,
-    options: { soundEnabled: boolean },
-  ): Promise<ReminderNotificationIds>;
+    options: ReminderNotificationScheduleOptions,
+  ): Promise<ReminderNotificationScheduleResult>;
   cancel(reminder: Reminder): Promise<void>;
 };
 

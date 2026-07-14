@@ -52,8 +52,8 @@ export function useRemindersQuery() {
       input: Parameters<typeof services.reminders.create>[0];
       options?: Parameters<typeof services.reminders.create>[1];
     }) => services.reminders.create(input, options),
-    onSuccess: (reminder) => {
-      upsertReminder(reminder);
+    onSuccess: (result) => {
+      upsertReminder(result.reminder);
       void reconcile();
     },
   });

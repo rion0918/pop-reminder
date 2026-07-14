@@ -8,6 +8,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
 } from 'react-native';
 
 import { useNotificationDevStore } from '../../reminders/stores/notificationDevStore';
+import { useAppServices } from '../../../bootstrap/AppProviders';
 import { SettingRow } from '../components/SettingRow';
 import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
 import { useNotificationSettings } from '../presentation/useNotificationSettings';
@@ -129,10 +131,13 @@ const termsDocument: LegalDocument = {
 
 export function SettingsScreen() {
   const router = useRouter();
+  const reminderServices = useAppServices().reminders;
   const { settings, loading, update } = useAppSettings();
   const {
     cancelAllScheduledNotifications,
+    getExactAlarmPermissionStatus,
     getNotificationPermissionStatus,
+    openExactAlarmSettings,
     requestNotificationPermissions,
     scheduleTestReminderNotifications,
   } = useNotificationSettings();
@@ -152,6 +157,10 @@ export function SettingsScreen() {
   const [notificationPermissionLabel, setNotificationPermissionLabel] = useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] = useState(false);
   const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] = useState(true);
+  const [exactAlarmPermissionStatus, setExactAlarmPermissionStatus] = useState<
+    'granted' | 'denied' | 'not-required'
+  >('not-required');
+  const [exactAlarmPermissionLabel, setExactAlarmPermissionLabel] = useState('確認が必要');
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
   const backPressTimeoutRef = useRef<number | null>(null);
@@ -161,6 +170,18 @@ export function SettingsScreen() {
     setIsNotificationPermissionGranted(permission.status === 'granted');
     setCanAskNotificationPermissionAgain(permission.canAskAgain);
   }, [getNotificationPermissionStatus]);
+  const refreshExactAlarmPermissionStatus = useCallback(async () => {
+    const permission = await getExactAlarmPermissionStatus();
+    setExactAlarmPermissionStatus(permission.status);
+    setExactAlarmPermissionLabel(permission.label);
+  }, [getExactAlarmPermissionStatus]);
+  const retryPendingReminderNotifications = useCallback(async () => {
+    try {
+      await reminderServices.retryPendingNotifications();
+    } catch (error) {
+      console.warn('Failed to retry pending reminder notifications', error);
+    }
+  }, [reminderServices]);
 
   useEffect(() => {
     if (!settings) {
@@ -172,19 +193,26 @@ export function SettingsScreen() {
 
   useEffect(() => {
     void refreshNotificationPermissionStatus();
-  }, [refreshNotificationPermissionStatus]);
+    void refreshExactAlarmPermissionStatus();
+  }, [refreshExactAlarmPermissionStatus, refreshNotificationPermissionStatus]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         void refreshNotificationPermissionStatus();
+        void refreshExactAlarmPermissionStatus();
+        void retryPendingReminderNotifications();
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [refreshNotificationPermissionStatus]);
+  }, [
+    refreshExactAlarmPermissionStatus,
+    refreshNotificationPermissionStatus,
+    retryPendingReminderNotifications,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -236,6 +264,7 @@ export function SettingsScreen() {
   const handleRequestNotificationPermission = async () => {
     await requestNotificationPermissions();
     await refreshNotificationPermissionStatus();
+    await retryPendingReminderNotifications();
   };
 
   const handleOpenAppSettings = async () => {
@@ -247,14 +276,31 @@ export function SettingsScreen() {
     }
   };
 
+  const handleOpenExactAlarmSettings = async () => {
+    try {
+      await openExactAlarmSettings();
+    } catch (error) {
+      console.warn('Failed to open exact alarm settings', error);
+      Alert.alert(
+        '設定を開けませんでした',
+        '端末の設定から「アラームとリマインダー」を確認してください。',
+      );
+    }
+  };
+
   const handleSendTestNotification = async () => {
     try {
       const now = new Date().toISOString();
-      await scheduleTestReminderNotifications({
+      const result = await scheduleTestReminderNotifications({
         id: `dev_test_${Date.now()}`,
         title: '開発テスト',
       });
-      Alert.alert('予約しました', `10秒後と20秒後にテスト通知を送ります。\n${now}`);
+      if (result.status === 'scheduled') {
+        Alert.alert('予約しました', `10秒後と20秒後にテスト通知を送ります。\n${now}`);
+        return;
+      }
+
+      Alert.alert('予約できませんでした', '通知権限や正確な時刻の通知設定を確認してください。');
     } catch (error) {
       console.warn('Failed to schedule test notification', error);
       Alert.alert('予約できませんでした', '通知権限や端末設定を確認してください。');
@@ -433,6 +479,39 @@ export function SettingsScreen() {
             ) : (
               <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             )}
+            {Platform.OS === 'android' && exactAlarmPermissionStatus !== 'not-required' ? (
+              <>
+                <SettingRow
+                  icon="alarm-outline"
+                  title="正確な時刻の通知"
+                  caption="Android 12以降の特別な許可です"
+                >
+                  <Text className="text-[13px] font-extrabold text-app-muted">
+                    {exactAlarmPermissionLabel}
+                  </Text>
+                </SettingRow>
+                {exactAlarmPermissionStatus !== 'granted' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="正確な時刻の通知を許可"
+                    onPress={handleOpenExactAlarmSettings}
+                    className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
+                  >
+                    <Ionicons name="alarm-outline" size={18} color={palette.white} />
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.72}
+                      className="shrink text-[14px] font-extrabold text-app-white"
+                      style={styles.noFontPadding}
+                    >
+                      正確な通知を許可
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
+              </>
+            ) : null}
             <SettingRow
               icon="sparkles-outline"
               title="自動消滅"

@@ -57,6 +57,11 @@ export default function RootLayout() {
     try {
       await initializeDatabase();
       await appServices.reminders.cleanup();
+      try {
+        await appServices.reminders.retryPendingNotifications();
+      } catch (error) {
+        console.warn('Failed to retry pending reminder notifications', error);
+      }
       stateRef.current = 'ready';
       setBootstrapState('ready');
       const pendingIntent = intentBufferRef.current.consume();

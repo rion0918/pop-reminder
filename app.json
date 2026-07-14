@@ -25,6 +25,7 @@
     "android": {
       "package": "com.rion0918.popreminder",
       "versionCode": 1,
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"],
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

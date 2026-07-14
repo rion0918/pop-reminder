@@ -123,6 +123,15 @@ test('home passes configured quick-add presets and uses morning as the initial t
   ]);
 });
 
+test('home warns when a reminder is saved without a target notification', () => {
+  assertSourceIncludes(source, [
+    /result\.notification\.status/,
+    /リマインダーは保存しましたが、通知を予約できませんでした/,
+    /設定を確認/,
+    /router\.push\('\/settings'\)/,
+  ]);
+});
+
 test('home removes deleted reminders locally before the silent database refresh', () => {
   assertSourceContract(source, {
     includes: [

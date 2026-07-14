@@ -192,7 +192,7 @@ export function HomeScreen() {
 
     isSavingRef.current = true;
     try {
-      await createReminder(
+      const result = await createReminder(
         {
           title,
           dateOffset,
@@ -203,6 +203,25 @@ export function HomeScreen() {
           useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
         },
       );
+
+      if (result.notification.status === 'not-scheduled') {
+        const failureMessage = {
+          'notification-permission-denied': '端末の通知権限が許可されていません。',
+          'exact-alarm-permission-required': '正確な時刻に通知するための許可が必要です。',
+          'target-time-passed': '保存中に指定時刻を過ぎたため、通知を予約できませんでした。',
+          'scheduling-failed': '端末で通知を予約できませんでした。',
+        }[result.notification.reason];
+
+        Alert.alert('リマインダーは保存しましたが、通知を予約できませんでした', failureMessage, [
+          { text: 'あとで', style: 'cancel' },
+          { text: '設定を確認', onPress: () => router.push('/settings') },
+        ]);
+      } else if (result.notification.status === 'partial') {
+        Alert.alert(
+          '前日通知を予約できませんでした',
+          '当日の通知は予約されています。端末の通知設定を確認してください。',
+        );
+      }
     } catch (saveError) {
       console.warn('Failed to save reminder', saveError);
       Alert.alert('追加できませんでした', 'タイトルと時刻を確認してください。');

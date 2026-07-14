@@ -65,6 +65,25 @@ test('settings refreshes notification permission after returning from OS setting
   ]);
 });
 
+test('settings exposes Android exact alarm permission and retries pending reminders on return', () => {
+  assertSourceIncludes(source, [
+    /正確な時刻の通知/,
+    /exactAlarmPermissionStatus/,
+    /getExactAlarmPermissionStatus/,
+    /openExactAlarmSettings/,
+    /retryPendingNotifications/,
+    /nextAppState === 'active'/,
+  ]);
+});
+
+test('settings only reports a successful test notification after both notifications are scheduled', () => {
+  assertSourceIncludes(source, [
+    /const result = await scheduleTestReminderNotifications/,
+    /result\.status === 'scheduled'/,
+    /予約できませんでした/,
+  ]);
+});
+
 test('settings action controls stay inside compact Android widths', () => {
   assertSourceContract(source, {
     includes: [

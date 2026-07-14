@@ -3,11 +3,13 @@ import { Platform } from 'react-native';
 
 import type {
   ReminderNotificationGateway,
-  ReminderNotificationIds,
+  ReminderNotificationFailureReason,
+  ReminderNotificationScheduleOptions,
+  ReminderNotificationScheduleResult,
 } from '../../features/reminders/application/ports';
 import type { Reminder } from '../../features/reminders/domain/reminder';
+import { getExactAlarmPermissionStatus } from './exactAlarmPermission';
 
-type ReminderNotificationOptions = { soundEnabled?: boolean };
 type ReminderNotificationTarget = Pick<
   Reminder,
   'id' | 'title' | 'previousNotifyAt' | 'targetNotifyAt'
@@ -161,96 +163,146 @@ async function scheduleIfFuture({
   });
 }
 
-async function scheduleIfFutureSafely(input: ScheduleNotificationInput) {
-  try {
-    return await scheduleIfFuture(input);
-  } catch (error) {
-    console.warn('Failed to schedule notification', error);
-    return null;
-  }
+function notScheduled(
+  reason: ReminderNotificationFailureReason,
+): ReminderNotificationScheduleResult {
+  return {
+    status: 'not-scheduled',
+    reason,
+    ids: {
+      previousNotificationId: null,
+      targetNotificationId: null,
+    },
+  };
 }
 
-async function hasNotificationPermission() {
-  const permission = await requestNotificationPermissions();
+async function getSchedulingBlockReason(
+  permissionMode: ReminderNotificationScheduleOptions['permissionMode'] = 'request',
+): Promise<ReminderNotificationFailureReason | null> {
+  const permission =
+    permissionMode === 'check-only'
+      ? await Notifications.getPermissionsAsync()
+      : await requestNotificationPermissions();
 
-  return permission.status === 'granted';
+  if (permission.status !== 'granted') {
+    return 'notification-permission-denied';
+  }
+
+  const exactAlarmPermission = await getExactAlarmPermissionStatus();
+  if (exactAlarmPermission.status === 'denied') {
+    return 'exact-alarm-permission-required';
+  }
+
+  return null;
 }
 
 export async function scheduleReminderNotifications(
   reminder: ReminderNotificationTarget,
-  options?: ReminderNotificationOptions,
-): Promise<ReminderNotificationIds> {
-  const hasPermission = await hasNotificationPermission();
+  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+): Promise<ReminderNotificationScheduleResult> {
+  const targetDate = new Date(reminder.targetNotifyAt);
+  if (targetDate.getTime() <= Date.now()) {
+    return notScheduled('target-time-passed');
+  }
 
-  if (!hasPermission) {
+  const blockReason = await getSchedulingBlockReason(options.permissionMode);
+  if (blockReason) {
+    return notScheduled(blockReason);
+  }
+
+  let targetNotificationId: string | null;
+  try {
+    targetNotificationId = await scheduleIfFuture({
+      title: 'ポップ・リマインダー',
+      body: `「${reminder.title}」の時間をお知らせします`,
+      date: targetDate,
+      reminderId: reminder.id,
+      soundEnabled: options.soundEnabled,
+    });
+  } catch (error) {
+    console.warn('Failed to schedule target notification', error);
+    return notScheduled('scheduling-failed');
+  }
+
+  if (!targetNotificationId) {
+    return notScheduled('target-time-passed');
+  }
+
+  let previousNotificationId: string | null;
+  try {
+    previousNotificationId = await scheduleIfFuture({
+      title: '前日のお知らせ',
+      body: `明日の「${reminder.title}」をふわっと残しています`,
+      date: new Date(reminder.previousNotifyAt),
+      reminderId: reminder.id,
+      soundEnabled: options.soundEnabled,
+    });
+  } catch (error) {
+    console.warn('Failed to schedule previous notification', error);
     return {
-      previousNotificationId: null,
-      targetNotificationId: null,
+      status: 'partial',
+      reason: 'previous-scheduling-failed',
+      ids: { previousNotificationId: null, targetNotificationId },
     };
   }
 
-  const previousNotificationId = await scheduleIfFutureSafely({
-    title: '前日のお知らせ',
-    body: `明日の「${reminder.title}」をふわっと残しています`,
-    date: new Date(reminder.previousNotifyAt),
-    reminderId: reminder.id,
-    soundEnabled: options?.soundEnabled,
-  });
-
-  const targetNotificationId = await scheduleIfFutureSafely({
-    title: 'ポップ・リマインダー',
-    body: `「${reminder.title}」の時間をお知らせします`,
-    date: new Date(reminder.targetNotifyAt),
-    reminderId: reminder.id,
-    soundEnabled: options?.soundEnabled,
-  });
-
   return {
-    previousNotificationId,
-    targetNotificationId,
+    status: 'scheduled',
+    ids: { previousNotificationId, targetNotificationId },
   };
 }
 
 export async function scheduleTestReminderNotifications(
   reminder: Pick<Reminder, 'id' | 'title'>,
-  options?: ReminderNotificationOptions,
-): Promise<ReminderNotificationIds> {
+  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+): Promise<ReminderNotificationScheduleResult> {
   if (!__DEV__) {
-    return {
-      previousNotificationId: null,
-      targetNotificationId: null,
-    };
+    return notScheduled('scheduling-failed');
   }
 
-  const hasPermission = await hasNotificationPermission();
-
-  if (!hasPermission) {
-    return {
-      previousNotificationId: null,
-      targetNotificationId: null,
-    };
+  const blockReason = await getSchedulingBlockReason(options.permissionMode);
+  if (blockReason) {
+    return notScheduled(blockReason);
   }
 
-  const previousNotificationId = await scheduleIfFutureSafely({
-    title: '通知テスト 前日',
-    body: `「${reminder.title}」の前日通知テストです`,
-    seconds: 10,
-    reminderId: reminder.id,
-    soundEnabled: options?.soundEnabled,
-  });
+  let targetNotificationId: string | null;
+  try {
+    targetNotificationId = await scheduleIfFuture({
+      title: '通知テスト 当日',
+      body: `「${reminder.title}」の当日通知テストです`,
+      seconds: 20,
+      reminderId: reminder.id,
+      soundEnabled: options.soundEnabled,
+    });
+  } catch (error) {
+    console.warn('Failed to schedule target test notification', error);
+    return notScheduled('scheduling-failed');
+  }
 
-  const targetNotificationId = await scheduleIfFutureSafely({
-    title: '通知テスト 当日',
-    body: `「${reminder.title}」の当日通知テストです`,
-    seconds: 20,
-    reminderId: reminder.id,
-    soundEnabled: options?.soundEnabled,
-  });
+  if (!targetNotificationId) {
+    return notScheduled('scheduling-failed');
+  }
 
-  return {
-    previousNotificationId,
-    targetNotificationId,
-  };
+  try {
+    const previousNotificationId = await scheduleIfFuture({
+      title: '通知テスト 前日',
+      body: `「${reminder.title}」の前日通知テストです`,
+      seconds: 10,
+      reminderId: reminder.id,
+      soundEnabled: options.soundEnabled,
+    });
+    return {
+      status: 'scheduled',
+      ids: { previousNotificationId, targetNotificationId },
+    };
+  } catch (error) {
+    console.warn('Failed to schedule previous test notification', error);
+    return {
+      status: 'partial',
+      reason: 'previous-scheduling-failed',
+      ids: { previousNotificationId: null, targetNotificationId },
+    };
+  }
 }
 
 export async function cancelReminderNotifications(reminder: Reminder) {

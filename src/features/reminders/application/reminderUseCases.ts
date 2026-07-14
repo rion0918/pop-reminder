@@ -1,6 +1,6 @@
-import { normalizeReminderTitle } from '../domain/reminder';
+import { normalizeReminderTitle, type Reminder } from '../domain/reminder';
 import { buildReminderSchedule, validateReminderScheduleInput } from '../domain/reminderSchedule';
-import type { ReminderApplicationDependencies } from './ports';
+import type { ReminderApplicationDependencies, ReminderNotificationScheduleResult } from './ports';
 
 export type CreateReminderInput = {
   title: string;
@@ -14,13 +14,30 @@ type CreateReminderOptions = {
   now?: Date;
 };
 
+export type CreateReminderResult = {
+  reminder: Reminder;
+  notification: ReminderNotificationScheduleResult;
+};
+
+const schedulingFailedResult: ReminderNotificationScheduleResult = {
+  status: 'not-scheduled',
+  reason: 'scheduling-failed',
+  ids: {
+    previousNotificationId: null,
+    targetNotificationId: null,
+  },
+};
+
 export function createReminderUseCases(dependencies: ReminderApplicationDependencies) {
   const { reminders, notifications, settings, widget } = dependencies;
 
   return {
     listActive: (now?: Date) => reminders.listActive(now),
 
-    async create(input: CreateReminderInput, options?: CreateReminderOptions) {
+    async create(
+      input: CreateReminderInput,
+      options?: CreateReminderOptions,
+    ): Promise<CreateReminderResult> {
       const title = normalizeReminderTitle(input.title);
       validateReminderScheduleInput({ ...input, previousNotifyTime: '00:00', now: options?.now });
       const currentSettings = await settings.get();
@@ -39,22 +56,71 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
         expiresAt: schedule.expiresAt.toISOString(),
       });
 
+      let notification = schedulingFailedResult;
+      let persistedReminder = reminder;
+
       try {
-        const notificationIds = options?.useTestNotifications
+        notification = options?.useTestNotifications
           ? await notifications.scheduleTest(reminder, {
               soundEnabled: currentSettings.notificationSoundEnabled,
             })
           : await notifications.schedule(reminder, {
               soundEnabled: currentSettings.notificationSoundEnabled,
             });
-        const updated = await reminders.updateNotificationIds(reminder.id, notificationIds);
-        await widget.sync();
-        return updated ?? reminder;
+
+        if (
+          notification.ids.previousNotificationId !== null ||
+          notification.ids.targetNotificationId !== null
+        ) {
+          persistedReminder =
+            (await reminders.updateNotificationIds(reminder.id, notification.ids)) ?? reminder;
+        }
       } catch (error) {
         console.warn('Failed to schedule reminder notifications', error);
-        await widget.sync();
-        return reminder;
       }
+
+      await widget.sync();
+      return { reminder: persistedReminder, notification };
+    },
+
+    async retryPendingNotifications() {
+      const activeReminders = await reminders.listActive();
+      const pendingReminders = activeReminders.filter(
+        (reminder) => reminder.targetNotificationId === null,
+      );
+      if (pendingReminders.length === 0) {
+        return { scheduled: 0, remaining: 0 };
+      }
+
+      const currentSettings = await settings.get();
+      let scheduled = 0;
+
+      for (const reminder of pendingReminders) {
+        try {
+          const notification = await notifications.schedule(reminder, {
+            soundEnabled: currentSettings.notificationSoundEnabled,
+            permissionMode: 'check-only',
+          });
+          if (notification.ids.targetNotificationId === null) {
+            continue;
+          }
+
+          if (reminder.previousNotificationId !== null) {
+            await notifications.cancel(reminder);
+          }
+          const updated = await reminders.updateNotificationIds(reminder.id, notification.ids);
+          if (updated) {
+            scheduled += 1;
+          }
+        } catch (error) {
+          console.warn('Failed to retry reminder notifications', error);
+        }
+      }
+
+      return {
+        scheduled,
+        remaining: pendingReminders.length - scheduled,
+      };
     },
 
     async delete(id: string) {
@@ -77,17 +143,17 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
 
       try {
         const currentSettings = await settings.get();
-        const notificationIds = await notifications.schedule(updatedReminder, {
+        const notification = await notifications.schedule(updatedReminder, {
           soundEnabled: currentSettings.notificationSoundEnabled,
         });
         const hasReplacement =
-          notificationIds.previousNotificationId !== null ||
-          notificationIds.targetNotificationId !== null;
+          notification.ids.previousNotificationId !== null ||
+          notification.ids.targetNotificationId !== null;
 
         if (hasReplacement) {
           await notifications.cancel(reminder);
           return (
-            (await reminders.updateNotificationIds(updatedReminder.id, notificationIds)) ??
+            (await reminders.updateNotificationIds(updatedReminder.id, notification.ids)) ??
             updatedReminder
           );
         }
