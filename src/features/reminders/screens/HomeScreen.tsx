@@ -6,6 +6,7 @@ import {
   Alert,
   BackHandler,
   Image,
+  ImageBackground,
   Platform,
   Pressable,
   StyleSheet,
@@ -26,10 +27,14 @@ import { useAppSettingsQuery as useAppSettings } from '../../settings/presentati
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { DEFAULT_TIME_PRESETS } from '../../../shared/utils/timePresets';
 import { addButtonVisualTokens, bubbleDueColors, palette } from '../../../constants/colors';
-import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
+import {
+  formatReminderBubbleDateTime,
+  formatReminderDetailAccessibilityDateTime,
+} from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 
 const appIcon = require('../../../../assets/app-icon.png');
+const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
 const SETTINGS_BUTTON_FEEDBACK_MS = 120;
 type DeleteMotionWaiter = {
   key: string;
@@ -373,10 +378,13 @@ export function HomeScreen() {
 
   const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled = isSaving;
-  const nextReminderLabel = reminders[0]
-    ? formatReminderBubbleDateTime(reminders[0].targetAt)
-    : '完璧！';
-  const nextReminderTitle = reminders[0]?.title ?? '忘れたくないことはありません';
+  const nextReminder = reminders[0] ?? null;
+  const nextReminderLabel = nextReminder
+    ? formatReminderBubbleDateTime(nextReminder.targetAt)
+    : null;
+  const nextReminderAccessibilityLabel = nextReminder
+    ? `次のリマインド、${nextReminder.title}、${formatReminderDetailAccessibilityDateTime(nextReminder.targetAt)}`
+    : undefined;
   const isCompactPhoneWidth = windowWidth <= 360;
 
   return (
@@ -424,31 +432,40 @@ export function HomeScreen() {
         </View>
       </View>
 
-      <View className="mt-[18px] shrink-0 flex-row gap-[10px]">
-        <View
-          className="min-h-[54px] min-w-0 flex-1 flex-row items-center gap-[6px] rounded-[27px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.72)] px-[13px]"
-          style={styles.statusPillShadow}
-        >
-          <Ionicons name="time-outline" size={15} color={palette.lavenderDeep} />
-          <Text numberOfLines={1} className="text-[12px] font-extrabold text-app-muted">
-            次
-          </Text>
-          <View className="min-w-0 flex-1 flex-row items-center gap-[8px]">
-            <Text
-              numberOfLines={1}
-              className="min-w-0 flex-1 text-[14px] font-black leading-[18px] text-app-ink"
+      {nextReminder ? (
+        <View className="mt-[18px] shrink-0">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={nextReminderAccessibilityLabel}
+            accessibilityHint="詳細を開きます"
+            onPress={() => setSelectedReminderId(nextReminder.id)}
+            style={({ pressed }) => [
+              styles.nextReminderCard,
+              pressed ? styles.nextReminderCardPressed : null,
+            ]}
+          >
+            <ImageBackground
+              source={reminderDetailBubbles}
+              resizeMode="cover"
+              style={styles.nextReminderBackground}
+              imageStyle={styles.nextReminderBackgroundImage}
             >
-              {nextReminderTitle}
-            </Text>
-            <Text
-              numberOfLines={1}
-              className="text-[12px] font-extrabold leading-[16px] text-app-muted"
-            >
-              {nextReminderLabel}
-            </Text>
-          </View>
+              <View style={styles.nextReminderIcon}>
+                <Ionicons name="notifications-outline" size={19} color={palette.lavenderDeep} />
+              </View>
+              <View style={styles.nextReminderContent}>
+                <Text style={styles.nextReminderKicker}>次のリマインド</Text>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={styles.nextReminderTitle}>
+                  {nextReminder.title}
+                </Text>
+              </View>
+              <Text numberOfLines={1} style={styles.nextReminderDateTime}>
+                {nextReminderLabel}
+              </Text>
+            </ImageBackground>
+          </Pressable>
         </View>
-      </View>
+      ) : null}
 
       <View className="mb-[104px] mt-[14px] flex-1 overflow-visible">
         <ReminderBubbleBoard
@@ -563,11 +580,64 @@ const styles = StyleSheet.create({
     opacity: 0.82,
     transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
-  statusPillShadow: {
-    shadowColor: palette.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+  nextReminderCard: {
+    minHeight: 68,
+    overflow: 'hidden',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(211,213,251,0.72)',
+    backgroundColor: palette.lavender,
+  },
+  nextReminderCardPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
+  },
+  nextReminderBackground: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+  },
+  nextReminderBackgroundImage: {
+    borderRadius: 23,
+  },
+  nextReminderIcon: {
+    width: 40,
+    height: 40,
+    flexShrink: 0,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.84)',
+    backgroundColor: 'rgba(255,255,255,0.68)',
+  },
+  nextReminderContent: {
+    minWidth: 0,
+    flex: 1,
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  nextReminderKicker: {
+    color: palette.lavenderDeep,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '800',
+  },
+  nextReminderTitle: {
+    color: palette.ink,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  nextReminderDateTime: {
+    flexShrink: 0,
+    marginLeft: 10,
+    color: palette.lavenderDeep,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    textAlign: 'right',
   },
   bottomControls: {
     position: 'absolute',

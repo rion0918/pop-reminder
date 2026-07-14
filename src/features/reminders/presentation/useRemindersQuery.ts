@@ -60,7 +60,11 @@ export function useRemindersQuery() {
   const deleteMutation = useMutation({
     mutationFn: ({ id }: { id: string; deferCache?: boolean }) => services.reminders.delete(id),
     onSuccess: (deleted, { id, deferCache }) => {
-      if (deleted && !deferCache) removeReminder(id);
+      if (deferCache) {
+        return;
+      }
+
+      if (deleted) removeReminder(id);
       void reconcile();
     },
   });

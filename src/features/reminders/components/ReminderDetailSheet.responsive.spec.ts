@@ -164,25 +164,26 @@ test('reminder detail sheet starts deletion after the sheet actually dismisses',
   });
 });
 
-test('reminder detail sheet confirms deletion in a custom bubble card', () => {
+test('reminder detail sheet starts deletion directly from the delete action', () => {
   assertSourceContract(source, {
     includes: [
-      /Modal/,
-      /const \[isDeleteConfirmationVisible, setIsDeleteConfirmationVisible\] = useState\(false\);/,
-      /setIsDeleteConfirmationVisible\(true\);/,
-      /const handleCancelDelete = useCallback\(/,
-      /const handleConfirmDelete = useCallback\(/,
-      /<Modal[\s\S]*visible=\{isDeleteConfirmationVisible\}[\s\S]*onRequestClose=\{handleCancelDelete\}/,
-      /accessibilityLabel="削除確認を閉じる"/,
-      />\s*この泡を手放しますか？\s*<\/Text>/,
-      />\s*予約したお知らせも、いっしょに消えます。\s*<\/Text>/,
-      />\s*残しておく\s*<\/Text>/,
+      /const handleDeletePress = useCallback\(/,
+      /isDeleteRequestedRef\.current = true;/,
+      /setIsDeleting\(true\);/,
+      /pendingDeleteReminderRef\.current = reminder;/,
+      /closingReminderIdRef\.current = displayedReminderIdRef\.current;/,
+      /sheetRef\.current\?\.dismiss\(\);/,
       /accessibilityLabel="このシャボン玉を削除する"/,
-      />\s*手放す\s*<\/Text>/,
-      /deleteConfirmCard: \{[\s\S]*borderRadius: 28,/,
-      /deleteConfirmActions: \{[\s\S]*justifyContent: 'flex-end',/,
-      /deleteConfirmActionPressed: \{[\s\S]*transform: \[\{ scale: 0\.98 \}\]/,
+      /onPress=\{handleDeletePress\}/,
     ],
-    excludes: [/Alert\.alert\(\s*'このシャボン玉を消しますか？'/],
+    excludes: [
+      /<Modal/,
+      /isDeleteConfirmationVisible/,
+      /handleCancelDelete/,
+      /handleConfirmDelete/,
+      /この泡を手放しますか？/,
+      /残しておく/,
+      /deleteConfirmCard/,
+    ],
   });
 });

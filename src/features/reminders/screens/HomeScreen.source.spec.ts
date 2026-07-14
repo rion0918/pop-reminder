@@ -22,7 +22,7 @@ test('home add button is visually disabled only while saving', () => {
 test('home keeps non-deleted reminder bubbles floating during burst delete work', () => {
   const idleDisabledBlock = source.slice(
     source.indexOf('const isBubbleIdleDisabled ='),
-    source.indexOf('const nextReminderLabel ='),
+    source.indexOf('const nextReminder ='),
   );
 
   assert.equal(idleDisabledBlock.includes('Boolean(burstingReminderId)'), false);
@@ -34,6 +34,53 @@ test('home keeps non-deleted reminder bubbles floating during burst delete work'
 
 test('opening quick add keeps reminder bubble positions pinned', () => {
   assertSourceIncludes(source, [/<ReminderBubbleBoard/, /freezeLayout=\{isQuickAddOpen\}/]);
+});
+
+test('home presents the next reminder as a compact bubble card that opens its detail', () => {
+  const nextReminderStart = source.indexOf('{nextReminder ? (');
+  const nextReminderBlock = source.slice(
+    nextReminderStart,
+    source.indexOf('<View className="mb-[104px]', nextReminderStart),
+  );
+  const nextReminderStyles = source.slice(
+    source.indexOf('nextReminderCard: {'),
+    source.indexOf('bottomControls: {'),
+  );
+
+  assertSourceIncludes(source, [
+    /const reminderDetailBubbles = require\(['"]\.\.\/\.\.\/\.\.\/\.\.\/assets\/reminder-detail-bubbles\.png['"]\);/,
+    /const nextReminder = reminders\[0\] \?\? null;/,
+    /const nextReminderLabel = nextReminder[\s\S]*formatReminderBubbleDateTime\(nextReminder\.targetAt\)/,
+    /const nextReminderAccessibilityLabel = nextReminder[\s\S]*formatReminderDetailAccessibilityDateTime\(nextReminder\.targetAt\)/,
+  ]);
+  assertSourceContract(nextReminderBlock, {
+    includes: [
+      /<Pressable/,
+      /accessibilityRole="button"/,
+      /accessibilityLabel=\{nextReminderAccessibilityLabel\}/,
+      /accessibilityHint="詳細を開きます"/,
+      /onPress=\{\(\) => setSelectedReminderId\(nextReminder\.id\)\}/,
+      /styles\.nextReminderCard/,
+      /styles\.nextReminderCardPressed/,
+      /<ImageBackground/,
+      /source=\{reminderDetailBubbles\}/,
+      /resizeMode="cover"/,
+      /name="notifications-outline"/,
+      />次のリマインド<\/Text>/,
+      /numberOfLines=\{1\}[\s\S]*ellipsizeMode="tail"[\s\S]*\{nextReminder\.title\}/,
+      /numberOfLines=\{1\}[\s\S]*\{nextReminderLabel\}/,
+    ],
+    excludes: [/完璧！/, /忘れたくないことはありません/, /name="time-outline"/],
+  });
+  assertSourceIncludes(nextReminderStyles, [
+    /nextReminderCard: \{[\s\S]*minHeight: 68,[\s\S]*borderRadius: 24,[\s\S]*borderWidth: 1/,
+    /nextReminderIcon: \{[\s\S]*width: 40,[\s\S]*height: 40,[\s\S]*borderRadius: 20/,
+    /nextReminderContent: \{[\s\S]*minWidth: 0,[\s\S]*flex: 1/,
+    /nextReminderKicker: \{[\s\S]*fontSize: 11/,
+    /nextReminderTitle: \{[\s\S]*fontSize: 15/,
+    /nextReminderDateTime: \{[\s\S]*flexShrink: 0,[\s\S]*fontSize: 12/,
+    /nextReminderCardPressed: \{[\s\S]*opacity: 0\.88,[\s\S]*transform: \[\{ scale: 0\.99 \}\]/,
+  ]);
 });
 
 test('home add button gives immediate pressed feedback', () => {

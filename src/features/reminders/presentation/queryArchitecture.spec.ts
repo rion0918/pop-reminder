@@ -59,3 +59,17 @@ test('target time updates flow through the shared query cache on every reminder 
   ]);
   assertSourceIncludes(screensSource, [/updateReminderTargetTime/, /onUpdateTargetTime=/]);
 });
+
+test('deferred deletes keep the active query stable until the owner finishes its motion', () => {
+  const deleteMutationSource = querySource.slice(
+    querySource.indexOf('const deleteMutation ='),
+    querySource.indexOf('const updateTitleMutation ='),
+  );
+
+  assertSourceContract(deleteMutationSource, {
+    includes: [
+      /onSuccess: \(deleted, \{ id, deferCache \}\) => \{[\s\S]*if \(deferCache\) \{\s*return;\s*\}[\s\S]*if \(deleted\) removeReminder\(id\);[\s\S]*void reconcile\(\);/,
+    ],
+    excludes: [/if \(deleted && !deferCache\) removeReminder\(id\);/],
+  });
+});

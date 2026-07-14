@@ -3,7 +3,6 @@ import type { ComponentProps, ElementRef } from 'react';
 import {
   Alert,
   ImageBackground,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -153,7 +152,6 @@ export function ReminderDetailSheet({
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
   const isDeleteRequestedRef = useRef(false);
-  const isDeletingRef = useRef(false);
   const displayedReminderIdRef = useRef<string | null>(null);
   const closingReminderIdRef = useRef<string | null>(null);
   const latestReminderIdRef = useRef<string | null>(null);
@@ -163,7 +161,6 @@ export function ReminderDetailSheet({
   const isTitleSaveRequestedRef = useRef(false);
   const targetTimeEditSessionRef = useRef(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isDeleteConfirmationVisible, setIsDeleteConfirmationVisible] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isTitleSaving, setIsTitleSaving] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
@@ -241,7 +238,6 @@ export function ReminderDetailSheet({
 
     discardTitleEdit();
     discardTargetTimeEdit();
-    setIsDeleteConfirmationVisible(false);
 
     isPresentedRef.current = false;
     if (!pendingDeleteReminder) {
@@ -261,7 +257,6 @@ export function ReminderDetailSheet({
           Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
         })
         .finally(() => {
-          isDeletingRef.current = false;
           isDeleteRequestedRef.current = false;
           setIsDeleting(false);
         });
@@ -431,27 +426,12 @@ export function ReminderDetailSheet({
     discardTitleEdit();
     discardTargetTimeEdit();
     isDeleteRequestedRef.current = true;
-    setIsDeleteConfirmationVisible(true);
-  }, [discardTargetTimeEdit, discardTitleEdit, isDeleting, isTargetTimeSaving, reminder]);
-
-  const handleCancelDelete = useCallback(() => {
-    setIsDeleteConfirmationVisible(false);
-    isDeleteRequestedRef.current = false;
-  }, []);
-
-  const handleConfirmDelete = useCallback(() => {
-    if (!reminder || isDeleting || !isDeleteRequestedRef.current) {
-      return;
-    }
-
-    setIsDeleteConfirmationVisible(false);
-    isDeletingRef.current = true;
     setIsDeleting(true);
     pendingDeleteReminderRef.current = reminder;
     closingReminderIdRef.current = displayedReminderIdRef.current;
     isClosingRef.current = true;
     sheetRef.current?.dismiss();
-  }, [isDeleting, reminder]);
+  }, [discardTargetTimeEdit, discardTitleEdit, isDeleting, isTargetTimeSaving, reminder]);
 
   return (
     <>
@@ -569,59 +549,6 @@ export function ReminderDetailSheet({
         onConfirm={handleTargetTimeConfirm}
         onClose={() => setIsTargetTimePickerOpen(false)}
       />
-
-      <Modal
-        visible={isDeleteConfirmationVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCancelDelete}
-      >
-        <View style={styles.deleteConfirmOverlay}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="削除確認を閉じる"
-            onPress={handleCancelDelete}
-            style={styles.deleteConfirmBackdrop}
-          />
-          <View accessibilityViewIsModal style={styles.deleteConfirmCard}>
-            <View style={styles.deleteConfirmHeader}>
-              <View style={styles.deleteConfirmBubble}>
-                <Ionicons name="ellipse-outline" size={22} color={palette.lavenderDeep} />
-              </View>
-              <View style={styles.deleteConfirmCopy}>
-                <Text style={styles.deleteConfirmTitle}>この泡を手放しますか？</Text>
-                <Text style={styles.deleteConfirmBody}>
-                  予約したお知らせも、いっしょに消えます。
-                </Text>
-              </View>
-            </View>
-            <View style={styles.deleteConfirmActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="削除をやめる"
-                onPress={handleCancelDelete}
-                style={({ pressed }) => [
-                  styles.deleteConfirmCancel,
-                  pressed ? styles.deleteConfirmActionPressed : null,
-                ]}
-              >
-                <Text style={styles.deleteConfirmCancelText}>残しておく</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="このシャボン玉を削除する"
-                onPress={handleConfirmDelete}
-                style={({ pressed }) => [
-                  styles.deleteConfirmDestructive,
-                  pressed ? styles.deleteConfirmActionPressed : null,
-                ]}
-              >
-                <Text style={styles.deleteConfirmDestructiveText}>手放す</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }
@@ -879,99 +806,5 @@ const styles = StyleSheet.create({
   },
   deleteActionDisabled: {
     opacity: 0.42,
-  },
-  deleteConfirmOverlay: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  deleteConfirmBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(38,49,81,0.36)',
-  },
-  deleteConfirmCard: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 28,
-    padding: 20,
-    backgroundColor: 'rgba(247,251,255,0.98)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-    shadowColor: palette.shadow,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.22,
-    shadowRadius: 28,
-    elevation: 8,
-  },
-  deleteConfirmHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  deleteConfirmBubble: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.lavender,
-  },
-  deleteConfirmCopy: {
-    minWidth: 0,
-    flex: 1,
-  },
-  deleteConfirmTitle: {
-    color: palette.ink,
-    fontSize: 19,
-    lineHeight: 25,
-    fontWeight: '900',
-  },
-  deleteConfirmBody: {
-    marginTop: 5,
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  deleteConfirmActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 20,
-  },
-  deleteConfirmCancel: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.white,
-  },
-  deleteConfirmDestructive: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(240,168,77,0.42)',
-    backgroundColor: 'rgba(255,241,216,0.9)',
-  },
-  deleteConfirmCancelText: {
-    color: palette.ink,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  deleteConfirmDestructiveText: {
-    color: palette.peachDeep,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  deleteConfirmActionPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.98 }],
   },
 });
