@@ -73,6 +73,11 @@ export function useRemindersQuery() {
     },
   });
 
+  const reconcileExpiredReminders = useCallback(async () => {
+    await services.reminders.cleanup();
+    await refetch();
+  }, [refetch, services.reminders]);
+
   useEffect(() => {
     const nextTarget = (reminders ?? []).reduce<number | null>((next, reminder) => {
       const target = new Date(reminder.targetNotifyAt).getTime();
@@ -89,7 +94,7 @@ export function useRemindersQuery() {
           if (remainingMs > MAX_REFRESH_TIMER_MS) {
             scheduleRefresh();
           } else {
-            void refetch();
+            void reconcileExpiredReminders();
           }
         },
         Math.min(remainingMs, MAX_REFRESH_TIMER_MS),
@@ -97,7 +102,7 @@ export function useRemindersQuery() {
     };
     scheduleRefresh();
     return () => clearTimeout(timer);
-  }, [refetch, reminders]);
+  }, [reconcileExpiredReminders, reminders]);
 
   const refresh = useCallback((_options?: { silent?: boolean }) => refetch(), [refetch]);
 

@@ -66,13 +66,18 @@ export function TimeSelector({
             accessibilityRole="button"
             accessibilityState={{ selected: !isPresetTime }}
             onPress={onSelectCustomTime}
-            className={`min-h-[42px] min-w-0 flex-1 items-center justify-center gap-[2px] rounded-[14px] border px-[3px] py-[5px] ${
+            className={`min-h-[42px] min-w-0 flex-1 flex-row items-center justify-center gap-[4px] rounded-[14px] border px-[3px] py-[5px] ${
               !isPresetTime
                 ? 'border-app-lavender-deep bg-app-lavender-deep'
                 : 'border-app-line bg-app-cloud'
             }`}
             style={({ pressed }) => [pressed ? styles.pressedChip : null]}
           >
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={!isPresetTime ? palette.white : palette.ink}
+            />
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}

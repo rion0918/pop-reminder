@@ -35,10 +35,11 @@ test('app focus and target time both trigger SQLite reconciliation', () => {
     /Platform\.OS === 'web'/,
   ]);
   assertSourceIncludes(querySource, [
+    /const reconcileExpiredReminders = useCallback\(async \(\) => \{[\s\S]*await services\.reminders\.cleanup\(\);[\s\S]*await refetch\(\);/,
     /const scheduleRefresh = \(\) => \{/,
     /Math\.min\(remainingMs, MAX_REFRESH_TIMER_MS\)/,
     /scheduleRefresh\(\);/,
-    /void refetch\(\);/,
+    /void reconcileExpiredReminders\(\);/,
   ]);
 });
 

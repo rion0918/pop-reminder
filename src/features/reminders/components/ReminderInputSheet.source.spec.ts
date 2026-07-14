@@ -121,6 +121,15 @@ test('custom date chip shows the selected date after picking one', () => {
 });
 
 test('compact custom time chip shows the selected time after picking one', () => {
+  const compactTimeSource = timeSelectorSource.slice(
+    timeSelectorSource.indexOf('{isCompact ? ('),
+    timeSelectorSource.indexOf(') : (') + 5,
+  );
+
+  assertSourceIncludes(compactTimeSource, [
+    /name="time-outline"/,
+    /color=\{!isPresetTime \? palette\.white : palette\.ink\}/,
+  ]);
   assertSourceIncludes(timeSelectorSource, [
     /const customTimeLabel = isCompact && !isPresetTime \? value : '時刻';/,
     /isCompact \? customTimeLabel : '時刻を選ぶ'/,

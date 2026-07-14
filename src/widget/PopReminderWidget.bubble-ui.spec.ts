@@ -11,6 +11,10 @@ const source = readSource(import.meta.url, './PopReminderWidget.tsx');
 const layoutSource = readSource(import.meta.url, './widgetBubbleLayout.ts');
 const colorsSource = readSource(import.meta.url, './widgetColors.ts');
 const appConfigSource = readSource(import.meta.url, '../../app.json');
+const nativeWidgetConfigSource = readSource(
+  import.meta.url,
+  '../../android/app/src/main/res/xml/widgetprovider_popreminderwidget.xml',
+);
 const updateSource = readSource(import.meta.url, './widgetUpdateService.tsx');
 const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx');
 
@@ -113,6 +117,7 @@ test('widget sky changes are refreshed by the native periodic widget update', ()
   assertSourceIncludes(appConfigSource, [
     /"name": "PopReminderWidget"[\s\S]*"updatePeriodMillis": 1800000/,
   ]);
+  assertSourceIncludes(nativeWidgetConfigSource, [/android:updatePeriodMillis="1800000"/]);
 });
 
 test('android widget layout source defines dense rows with a maximum of eight reminders', () => {

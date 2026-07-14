@@ -179,6 +179,7 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       } else {
         await Promise.all(expiredReminders.map((reminder) => reminders.markExpired(reminder.id)));
       }
+      await widget.sync();
       return expiredReminders.length;
     },
   };

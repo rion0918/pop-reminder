@@ -283,5 +283,5 @@ test('cleanup cancels expired reminders before deleting them', async () => {
   );
 
   assert.equal(result, 1);
-  assert.deepEqual(events, ['cancel', 'delete-many']);
+  assert.deepEqual(events, ['cancel', 'delete-many', 'widget']);
 });
