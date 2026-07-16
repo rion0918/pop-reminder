@@ -378,6 +378,7 @@ export function HomeScreen() {
 
   const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled = isSaving;
+  const isEmptyHome = !loading && !error && reminders.length === 0;
   const nextReminder = reminders[0] ?? null;
   const nextReminderLabel = nextReminder
     ? formatReminderBubbleDateTime(nextReminder.targetAt)
@@ -477,7 +478,9 @@ export function HomeScreen() {
         </View>
       ) : null}
 
-      <View className="mb-[104px] mt-[14px] flex-1 overflow-visible">
+      <View
+        style={[styles.bubbleBoardContainer, isEmptyHome ? styles.bubbleBoardContainerEmpty : null]}
+      >
         <ReminderBubbleBoard
           reminders={reminders}
           loading={loading}
@@ -489,6 +492,8 @@ export function HomeScreen() {
           onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
           onDeleteMotionComplete={handleDeleteMotionComplete}
           onOverflowPress={handleOpenReminderList}
+          onEmptyPress={handlePressAdd}
+          emptyDisabled={isAddButtonDisabled}
         />
       </View>
 
@@ -507,61 +512,66 @@ export function HomeScreen() {
         onUpdateTargetTime={handleUpdateReminderTargetTime}
       />
 
-      <View
-        style={[styles.bottomControls, isCompactPhoneWidth ? styles.bottomControlsCompact : null]}
-      >
+      {!isEmptyHome ? (
         <View
-          accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
-          accessibilityRole="text"
-          className="min-h-[52px] flex-row items-center justify-around gap-[6px] rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.66)] px-[12px]"
-          style={[styles.dueLegend, isCompactPhoneWidth ? styles.dueLegendCompact : null]}
+          style={[styles.bottomControls, isCompactPhoneWidth ? styles.bottomControlsCompact : null]}
         >
-          {dueLegendItems.map((item) => (
-            <View key={item.label} className="min-w-0 flex-1 items-center justify-center gap-[3px]">
-              <View
-                className="h-[18px] w-[18px] rounded-[9px] border-[1.4px]"
-                style={[
-                  styles.dueLegendBubble,
-                  {
-                    backgroundColor: item.color.background,
-                    borderColor: item.color.border,
-                  },
-                ]}
-              />
-              <Text
-                numberOfLines={1}
-                className="text-center text-[10px] font-black leading-[12px] text-app-muted"
-              >
-                {item.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="リマインダーを追加"
-          accessibilityState={{ disabled: isAddButtonDisabled }}
-          disabled={isAddButtonDisabled}
-          hitSlop={8}
-          onPress={handlePressAdd}
-          className="h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[32px]"
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
-            isAddButtonDisabled ? styles.addButtonDisabled : null,
-          ]}
-        >
-          <LinearGradient
-            colors={[addButtonVisualTokens.gradientFrom, addButtonVisualTokens.gradientTo]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.addButtonSurface}
+          <View
+            accessibilityLabel="シャボン玉の色。今日、明日、2から3日後、4日以上先"
+            accessibilityRole="text"
+            className="min-h-[52px] flex-row items-center justify-around gap-[6px] rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.66)] px-[12px]"
+            style={[styles.dueLegend, isCompactPhoneWidth ? styles.dueLegendCompact : null]}
           >
-            <Ionicons name="add" size={30} color={addButtonVisualTokens.text} />
-          </LinearGradient>
-        </Pressable>
-      </View>
+            {dueLegendItems.map((item) => (
+              <View
+                key={item.label}
+                className="min-w-0 flex-1 items-center justify-center gap-[3px]"
+              >
+                <View
+                  className="h-[18px] w-[18px] rounded-[9px] border-[1.4px]"
+                  style={[
+                    styles.dueLegendBubble,
+                    {
+                      backgroundColor: item.color.background,
+                      borderColor: item.color.border,
+                    },
+                  ]}
+                />
+                <Text
+                  numberOfLines={1}
+                  className="text-center text-[10px] font-black leading-[12px] text-app-muted"
+                >
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="リマインダーを追加"
+            accessibilityState={{ disabled: isAddButtonDisabled }}
+            disabled={isAddButtonDisabled}
+            hitSlop={8}
+            onPress={handlePressAdd}
+            className="h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[32px]"
+            style={({ pressed }) => [
+              styles.addButton,
+              pressed && !isAddButtonDisabled ? styles.addButtonPressed : null,
+              isAddButtonDisabled ? styles.addButtonDisabled : null,
+            ]}
+          >
+            <LinearGradient
+              colors={[addButtonVisualTokens.gradientFrom, addButtonVisualTokens.gradientTo]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.addButtonSurface}
+            >
+              <Ionicons name="add" size={30} color={addButtonVisualTokens.text} />
+            </LinearGradient>
+          </Pressable>
+        </View>
+      ) : null}
     </AppScreen>
   );
 }
@@ -648,6 +658,15 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '800',
     textAlign: 'right',
+  },
+  bubbleBoardContainer: {
+    flex: 1,
+    marginTop: 14,
+    marginBottom: 104,
+    overflow: 'visible',
+  },
+  bubbleBoardContainerEmpty: {
+    marginBottom: 0,
   },
   bottomControls: {
     position: 'absolute',

@@ -36,6 +36,24 @@ test('home add button is visually disabled only while saving', () => {
   });
 });
 
+test('home replaces bottom controls with the add bubble only for a settled empty query', () => {
+  assertSourceIncludes(source, [
+    /const isEmptyHome = !loading && !error && reminders\.length === 0;/,
+    /styles\.bubbleBoardContainer,[\s\S]*isEmptyHome \? styles\.bubbleBoardContainerEmpty : null/,
+    /onEmptyPress=\{handlePressAdd\}/,
+    /emptyDisabled=\{isAddButtonDisabled\}/,
+    /\{!isEmptyHome \? \([\s\S]*styles\.bottomControls[\s\S]*\) : null\}/,
+    /bubbleBoardContainerEmpty: \{[\s\S]*marginBottom: 0/,
+  ]);
+});
+
+test('home keeps the selected theme background without a fixed atmospheric overlay', () => {
+  assertSourceContract(source, {
+    includes: [/<AppScreen theme=\{settings\?\.theme \?\? 'sky'\}>/, /ambientThree: \{/],
+    excludes: [/HOME_BACKGROUND_COLORS/, /ambientBubble:/, /ambientSparkle:/],
+  });
+});
+
 test('home keeps non-deleted reminder bubbles floating during burst delete work', () => {
   const idleDisabledBlock = source.slice(
     source.indexOf('const isBubbleIdleDisabled ='),

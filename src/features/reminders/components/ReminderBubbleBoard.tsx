@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import type { LayoutChangeEvent, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -16,6 +15,7 @@ import Animated, {
 import { palette } from '../../../constants/colors';
 import type { Reminder } from '../types/reminder';
 import { getMsUntilNextDay } from '../utils/reminderDueColor';
+import { EmptyReminderBubble } from './EmptyReminderBubble';
 import { ReminderBubble, type BubbleDeleteMotionPhase } from './ReminderBubble';
 
 export type BubbleDeleteMotion = {
@@ -34,6 +34,8 @@ type ReminderBubbleBoardProps = {
   onReminderPress?: (reminder: Reminder) => void;
   onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
   onOverflowPress?: () => void;
+  onEmptyPress?: () => void;
+  emptyDisabled?: boolean;
 };
 
 const MAX_VISIBLE_BUBBLES = 12;
@@ -41,6 +43,7 @@ const MIN_EDGE_CLEARANCE = 18;
 const LAYOUT_VERSION = 5;
 const MAX_SOFT_OVERLAP_RATIO = 0.12;
 const MAX_DENSE_SOFT_OVERLAP_RATIO = 0.16;
+const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 * 2 + 32;
 const BUBBLE_SIZE_BUCKETS = {
   large: { base: 160, min: 116 },
   medium: { base: 128, min: 98 },
@@ -585,6 +588,8 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   onReminderPress,
   onDeleteMotionComplete,
   onOverflowPress,
+  onEmptyPress,
+  emptyDisabled,
 }: ReminderBubbleBoardProps) {
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
@@ -776,6 +781,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   const { bubbleLayouts, overflowBubble } = boardLayout;
 
   const boardReady = boardSize.width > 0 && boardSize.height > 0;
+  const emptyBubbleSize = Math.round(
+    clamp(Math.min(boardSize.width * 0.82, boardSize.height * 0.48), 184, 286),
+  );
+  const emptySceneTopPadding = Math.max(
+    0,
+    Math.round((boardSize.height - emptyBubbleSize) / 2 - EMPTY_HEADLINE_BLOCK_HEIGHT),
+  );
+  const emptyInstructionGap = Math.round(clamp(boardSize.height * 0.09, 32, 68));
 
   if (loading) {
     return (
@@ -801,24 +814,17 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
 
   if (reminders.length === 0) {
     return (
-      <View onLayout={handleBoardLayout} style={[styles.board, styles.center]}>
-        <View style={styles.emptyScene}>
-          <View style={[styles.emptyMiniBubble, styles.emptyMiniOne]} />
-          <View style={[styles.emptyMiniBubble, styles.emptyMiniTwo]} />
-          <View style={[styles.emptyMiniBubble, styles.emptyMiniThree]} />
-          <View style={styles.emptyMessage}>
-            <Text style={styles.emptyTitle}>まだ泡はひとつも浮いていません</Text>
-            <Text style={styles.emptyText}>忘れたくないこと、右下からふわっとどうぞ</Text>
-          </View>
-          <View style={styles.emptyGuide}>
-            <Text style={styles.emptyGuideText}>右下から</Text>
-            <Ionicons
-              name="arrow-down-outline"
-              size={18}
-              color={palette.muted}
-              style={styles.emptyGuideIcon}
-            />
-          </View>
+      <View onLayout={handleBoardLayout} style={styles.board}>
+        <View style={[styles.emptyScene, { paddingTop: emptySceneTopPadding }]}>
+          <Text style={styles.emptyHeadline}>最初のリマインドを{`\n`}ふわっと残そう。</Text>
+          <EmptyReminderBubble
+            size={emptyBubbleSize}
+            disabled={emptyDisabled}
+            onPress={onEmptyPress}
+          />
+          <Text style={[styles.emptyInstruction, { marginTop: emptyInstructionGap }]}>
+            泡をタップして追加
+          </Text>
         </View>
       </View>
     );
@@ -906,68 +912,24 @@ const styles = StyleSheet.create({
   emptyScene: {
     flex: 1,
     alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 22,
+    paddingBottom: 18,
   },
-  emptyMessage: {
-    alignItems: 'center',
-    maxWidth: 292,
-    marginTop: -18,
+  emptyHeadline: {
+    alignSelf: 'flex-start',
+    marginBottom: 32,
+    color: palette.ink,
+    fontSize: 22,
+    lineHeight: 31,
+    fontWeight: '900',
   },
-  emptyGuide: {
-    position: 'absolute',
-    right: 18,
-    bottom: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    opacity: 0.86,
-  },
-  emptyGuideText: {
+  emptyInstruction: {
+    alignSelf: 'center',
     color: palette.muted,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 19,
     fontWeight: '800',
-  },
-  emptyGuideIcon: {
-    transform: [{ rotate: '-18deg' }],
-  },
-  emptyMiniBubble: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.56)',
-    shadowColor: '#A7B6E9',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.11,
-    shadowRadius: 18,
-    elevation: 1,
-  },
-  emptyMiniOne: {
-    top: '18%',
-    right: '20%',
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
-  emptyMiniTwo: {
-    top: '32%',
-    left: '18%',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(237,230,255,0.22)',
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  emptyMiniThree: {
-    left: '25%',
-    bottom: '26%',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(220,248,236,0.18)',
-    borderColor: 'rgba(255,255,255,0.52)',
+    textAlign: 'center',
   },
   moreBubble: {
     position: 'absolute',
