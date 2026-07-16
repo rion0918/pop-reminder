@@ -88,7 +88,7 @@ function WidgetHeader({ layout, mode }: { layout: WidgetRect; mode: WidgetDispla
       }}
     >
       <TextWidget
-        text="ポップ・リマインダー"
+        text="ふわっと。"
         style={{
           fontFamily: WIDGET_FONT_FAMILY,
           fontSize: typography.headerFontSize,

@@ -96,7 +96,7 @@ test('android widget keeps the selected app-name header and bottom add action', 
   assertSourceContract(source, {
     includes: [
       /function WidgetHeader/,
-      /text="ポップ・リマインダー"/,
+      /text="ふわっと。"/,
       /function AddReminderButton/,
       /text="＋"/,
       /accessibilityLabel="リマインダーを追加"/,
@@ -125,7 +125,7 @@ test('android widget uses rounded heavy type without a redundant bottom-right gu
     includes: [
       /const WIDGET_FONT_FAMILY = 'sans-serif-rounded'/,
       /fontFamily: WIDGET_FONT_FAMILY/,
-      /text="ポップ・リマインダー"[\s\S]*?fontWeight: '900'/,
+      /text="ふわっと。"[\s\S]*?fontWeight: '900'/,
       /text=\{reminder\.title\}[\s\S]*?fontWeight: '900'/,
       /text=\{timeText\}[\s\S]*?fontWeight: '800'/,
       /text="＋"[\s\S]*?fontSize: 22/,

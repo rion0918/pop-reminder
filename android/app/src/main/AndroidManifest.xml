@@ -34,7 +34,7 @@
         <data android:scheme="exp+pop-reminder"/>
       </intent-filter>
     </activity>
-    <receiver android:name=".widget.PopReminderWidget" android:exported="false" android:label="ポップ・リマインダー">
+    <receiver android:name=".widget.PopReminderWidget" android:exported="false" android:label="ふわっと。">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
         <action android:name="com.rion0918.popreminder.WIDGET_CLICK"/>

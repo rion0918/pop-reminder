@@ -2,7 +2,7 @@
 
 ## 概要
 
-EAS Build による development build（`.ipa` / `.apk`）を実機にインストールし、ポップ・リマインダー MVP の動作を確認するためのチェックリストです。
+EAS Build による development build（`.ipa` / `.apk`）を実機にインストールし、「ふわっと。」MVP の動作を確認するためのチェックリストです。
 
 ## テスト環境
 
@@ -39,7 +39,7 @@ eas build --profile development --platform android
 pnpm run start:dev-client
 ```
 
-4. 表示されたQRを、Expo Goではなくインストール済みの「ポップ・リマインダー」development buildで開く。
+4. 表示されたQRを、Expo Goではなくインストール済みの「ふわっと。」development buildで開く。
 
 Expo Goで確認したい場合は、development build用QRではなくExpo Goモードで起動します。
 
@@ -69,17 +69,19 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 
 ### 2. アプリ名・アイコン・スプラッシュ
 
-- [ ] ホーム画面のアプリ名が **「ポップ・リマインダー」** である（iOS/Android）
+- [ ] ホーム画面のアプリ名が **「ふわっと。」** である（iOS/Android）
+- [ ] ホーム画面にキャッチコピー **「忘れる前に、数秒だけ。」** が1行で表示される
 - [ ] アプリアイコンが `assets/app-icon.png` で設定された画像で表示される
 - [ ] iOS: ホーム画面アイコンが `assets/app-icon.png` 由来で表示されている
-- [ ] Android: アダプティブアイコンの背景色が `#EFF8FF` で反映されている
-- [ ] 起動時にスプラッシュ画像（`assets/splash.png`）が表示される
+- [ ] Android: アダプティブアイコンが透明前景と `assets/app-icon.png` の背景レイヤーで表示される
+- [ ] Android: 丸・角丸のランチャーマスクでも泡やハイライトが欠けない
+- [ ] 起動時にiOSは `assets/splash.png`、Androidは `assets/splash-icon.png` 由来の画像が表示される
 - [ ] スプラッシュの背景色が `#EFF8FF` で、`resizeMode: contain` で表示される
 
 **期待される結果**
 
 - アプリ名の文字化けや省略がない
-- アイコン・スプラッシュの解像度が実機で粗くならない
+- アイコン・スプラッシュの解像度が実機で粗くならず、旧時計アイコンが残っていない
 
 ---
 
@@ -387,7 +389,7 @@ Android Widget は Expo Go では確認せず、Widget 対応済みの Developme
 - [ ] 360×380dp: 直近6件が同じ高さ39dpのカードで表示される
 - [ ] 360×420dp: 直近7件が同じ高さ39dpのカードで表示される
 - [ ] 360×460dp以上: 直近8件が表示され、9件目以降はWidget内に表示されない
-- [ ] すべてのサイズで「ポップ・リマインダー」が左上、丸い「＋」ボタンが右下に表示される
+- [ ] すべてのサイズで「ふわっと。」が左上、丸い「＋」ボタンが右下に表示される
 - [ ] すべてのサイズで「＋」のタップ領域が44×44dpあり、リサイズ後も右側の余白からずれない
 
 #### 空の背景と時間帯
@@ -441,7 +443,7 @@ Android Widget は Expo Go では確認せず、Widget 対応済みの Developme
 
 | #   | 確認項目                    | development build                     | Expo Go                   | 差分あり/備考 |
 | --- | --------------------------- | ------------------------------------- | ------------------------- | ------------- |
-| 1   | アプリ名表示                | 「ポップ・リマインダー」              | 同左                      | □             |
+| 1   | アプリ名表示                | 「ふわっと。」                        | 同左                      | □             |
 | 2   | アイコン解像度              | ネイティブアセット                    | 同左                      | □             |
 | 3   | Android adaptive icon       | 透明foreground + `#EFF8FF` background | Expo Go対象外             | □             |
 | 4   | Android navigation bar      | `#EFF8FF` + dark icons                | Expo Go対象外             | □             |

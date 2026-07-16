@@ -408,11 +408,21 @@ export function HomeScreen() {
         <View className="min-w-0 flex-1 flex-row items-center gap-[12px]">
           <Image source={appIcon} className="h-[54px] w-[54px] rounded-[15px]" />
           <View className="min-w-0 flex-1">
-            <Text numberOfLines={1} className="text-[13px] font-bold text-app-muted">
-              ポップ・リマインダー
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
+              className="text-[30px] font-extrabold text-app-ink"
+            >
+              ふわっと。
             </Text>
-            <Text numberOfLines={1} className="mt-[4px] text-[30px] font-extrabold text-app-ink">
-              ふわっと残す
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
+              className="mt-[2px] text-[13px] font-bold text-app-muted"
+            >
+              忘れる前に、数秒だけ。
             </Text>
           </View>
         </View>

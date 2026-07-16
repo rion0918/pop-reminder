@@ -221,7 +221,7 @@ export async function scheduleTargetReminderNotification(
 
   try {
     const notificationId = await scheduleIfFuture({
-      title: 'ポップ・リマインダー',
+      title: 'ふわっと。',
       body: `「${reminder.title}」の時間をお知らせします`,
       date: targetDate,
       reminderId: reminder.id,
@@ -284,7 +284,7 @@ export async function scheduleReminderNotifications(
   let targetNotificationId: string | null;
   try {
     targetNotificationId = await scheduleIfFuture({
-      title: 'ポップ・リマインダー',
+      title: 'ふわっと。',
       body: `「${reminder.title}」の時間をお知らせします`,
       date: targetDate,
       reminderId: reminder.id,

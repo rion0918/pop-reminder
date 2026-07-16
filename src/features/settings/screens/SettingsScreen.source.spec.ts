@@ -71,8 +71,12 @@ test('settings uses distinct time-of-day icons for quick-add preset times', () =
 
 test('settings legal copy supports both Google Play and App Store release pages', () => {
   assertSourceContract(source, {
-    includes: [/Google PlayやApp Storeなどの配布ページ/],
-    excludes: [/App Storeの配布ページ/],
+    includes: [
+      /Google PlayやApp Storeなどの配布ページ/,
+      /body: '「ふわっと。」は/,
+      /updatedAt: '2026年7月14日'/,
+    ],
+    excludes: [/App Storeの配布ページ/, /ポップ・リマインダー/],
   });
 });
 

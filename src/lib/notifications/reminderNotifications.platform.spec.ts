@@ -5,6 +5,11 @@ import { assertSourceIncludes, readSource } from '../../test-utils/sourceAsserti
 
 const source = readSource(import.meta.url, './reminderNotifications.ts');
 
+test('scheduled notifications use the fuwatto display name', () => {
+  assert.equal(source.match(/title: 'ふわっと。'/g)?.length, 2);
+  assert.equal(source.includes("title: 'ポップ・リマインダー'"), false);
+});
+
 test('notification setup creates Android channels for audible and silent reminders', () => {
   assertSourceIncludes(source, [
     /REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts'/,

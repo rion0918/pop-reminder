@@ -9,6 +9,23 @@ import {
 
 const source = readSource(import.meta.url, './HomeScreen.tsx');
 
+test('home presents the fuwatto name and catchphrase as a responsive brand lockup', () => {
+  const brandLockup = source.slice(
+    source.indexOf('<Image source={appIcon}'),
+    source.indexOf('accessibilityLabel="設定を開く"'),
+  );
+
+  assertSourceContract(brandLockup, {
+    includes: [
+      />\s*ふわっと。\s*<\/Text>/,
+      />\s*忘れる前に、数秒だけ。\s*<\/Text>/,
+      /adjustsFontSizeToFit/,
+      /minimumFontScale=\{0\.72\}/,
+    ],
+    excludes: [/ポップ・リマインダー/, /ふわっと残す/],
+  });
+});
+
 test('home add button is visually disabled only while saving', () => {
   assertSourceContract(source, {
     includes: [

@@ -65,11 +65,11 @@ type LegalDocument = {
 
 const privacyPolicyDocument: LegalDocument = {
   title: 'プライバシーポリシー',
-  updatedAt: '2026年6月25日',
+  updatedAt: '2026年7月14日',
   sections: [
     {
       title: '1. 基本方針',
-      body: 'ポップ・リマインダーは、忘れたくないことを気軽に残すための個人開発アプリです。ユーザーのプライバシーを大切にし、必要以上の情報を取得しない方針で運営します。',
+      body: '「ふわっと。」は、忘れたくないことを気軽に残すための個人開発アプリです。ユーザーのプライバシーを大切にし、必要以上の情報を取得しない方針で運営します。',
     },
     {
       title: '2. 保存する情報',
@@ -97,7 +97,7 @@ const privacyPolicyDocument: LegalDocument = {
 const termsSections = [
   {
     title: '1. はじめに',
-    body: 'ポップ・リマインダーは、忘れたくないことを気軽に残すための個人開発アプリです。本アプリを利用することで、この利用規約に同意したものとします。',
+    body: '「ふわっと。」は、忘れたくないことを気軽に残すための個人開発アプリです。本アプリを利用することで、この利用規約に同意したものとします。',
   },
   {
     title: '2. ご利用について',
@@ -127,7 +127,7 @@ const termsSections = [
 
 const termsDocument: LegalDocument = {
   title: '利用規約',
-  updatedAt: '2026年6月25日',
+  updatedAt: '2026年7月14日',
   sections: termsSections,
 };
 

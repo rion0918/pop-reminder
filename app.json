@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "ポップ・リマインダー",
+    "name": "ふわっと。",
     "slug": "pop-reminder",
     "scheme": "popreminder",
     "version": "0.1.0",
-    "description": "忘れたくないことを、ふわっと泡にして残せるシンプルなリマインダーアプリです。",
+    "description": "忘れる前に、数秒だけ。ふわっと残せるシンプルなリマインダーアプリです。",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -29,6 +29,12 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/app-icon.png",
+        "backgroundColor": "#EFF8FF"
+      },
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
         "backgroundColor": "#EFF8FF"
       }
     },
@@ -56,7 +62,7 @@
           "widgets": [
             {
               "name": "PopReminderWidget",
-              "label": "ポップ・リマインダー",
+              "label": "ふわっと。",
               "description": "リマインダーのシャボン玉を表示＆すばやく追加",
               "minWidth": "250dp",
               "minHeight": "180dp",
