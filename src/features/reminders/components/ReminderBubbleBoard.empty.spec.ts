@@ -28,7 +28,7 @@ test('bubble board presents the selected empty-state copy with the add bubble ce
     /const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 \* 2 \+ 32;/,
     /const emptySceneTopPadding = Math\.max\(\s*0,\s*Math\.round\(\(boardSize\.height - emptyBubbleSize\) \/ 2 - EMPTY_HEADLINE_BLOCK_HEIGHT\),?\s*\);/,
     /const emptyInstructionGap = Math\.round\(\s*clamp\(boardSize\.height \* 0\.09, 32, 68\),?\s*\);/,
-    /最初のリマインドを\{`\\n`\}ふわっと残そう。/,
+    /忘れる前に\{`\\n`\}ふわっと残そう。/,
     /styles\.emptyScene, \{ paddingTop: emptySceneTopPadding \}/,
     /<EmptyReminderBubble[\s\S]*size=\{emptyBubbleSize\}[\s\S]*disabled=\{emptyDisabled\}[\s\S]*onPress=\{onEmptyPress\}/,
     /styles\.emptyInstruction, \{ marginTop: emptyInstructionGap \}/,

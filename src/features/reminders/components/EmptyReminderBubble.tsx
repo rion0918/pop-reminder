@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -6,11 +6,13 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
 import { EmptyReminderBubbleMembrane } from './EmptyReminderBubbleMembrane';
+import { makeReminderBubbleIdleMotionConfig } from './reminderBubbleIdleMotion';
 
 type EmptyReminderBubbleProps = {
   size: number;
@@ -22,7 +24,8 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function EmptyReminderBubble({ size, disabled = false, onPress }: EmptyReminderBubbleProps) {
   const reduceMotion = useReducedMotion();
-  const idleProgress = useSharedValue(0.5);
+  const idleMotion = useMemo(() => makeReminderBubbleIdleMotionConfig('empty-reminder', 0), []);
+  const idleProgress = useSharedValue(0);
   const pressProgress = useSharedValue(0);
   const isDisabled = disabled || !onPress;
 
@@ -30,22 +33,25 @@ export function EmptyReminderBubble({ size, disabled = false, onPress }: EmptyRe
     cancelAnimation(idleProgress);
 
     if (reduceMotion) {
-      idleProgress.value = 0.5;
+      idleProgress.value = 0;
       return;
     }
 
-    idleProgress.value = 0.5;
-    idleProgress.value = withRepeat(
-      withTiming(1, {
-        duration: 7200,
-        easing: Easing.inOut(Easing.quad),
-      }),
-      -1,
-      true,
+    idleProgress.value = 0;
+    idleProgress.value = withDelay(
+      idleMotion.delay,
+      withRepeat(
+        withTiming(1, {
+          duration: idleMotion.duration,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        -1,
+        true,
+      ),
     );
 
     return () => cancelAnimation(idleProgress);
-  }, [idleProgress, reduceMotion]);
+  }, [idleMotion.delay, idleMotion.duration, idleProgress, reduceMotion]);
 
   const handlePressIn = () => {
     if (isDisabled) return;
@@ -59,11 +65,15 @@ export function EmptyReminderBubble({ size, disabled = false, onPress }: EmptyRe
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: 1 - pressProgress.value * 0.1,
     transform: [
-      { translateY: reduceMotion ? 0 : idleProgress.value * 6 - 3 },
-      { translateX: reduceMotion ? 0 : idleProgress.value * 3 - 1.5 },
-      { rotate: reduceMotion ? '0deg' : `${idleProgress.value * 1.2 - 0.6}deg` },
-      { scaleX: reduceMotion ? 1 : 0.994 + idleProgress.value * 0.012 },
-      { scaleY: reduceMotion ? 1 : 1.006 - idleProgress.value * 0.012 },
+      {
+        translateX: Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.amplitudeX,
+      },
+      {
+        translateY: Math.cos(idleProgress.value * Math.PI * 2) * idleMotion.amplitudeY,
+      },
+      {
+        rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg}deg`,
+      },
       { scale: 1 - pressProgress.value * 0.03 },
     ],
   }));

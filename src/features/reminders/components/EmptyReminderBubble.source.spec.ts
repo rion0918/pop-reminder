@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { assertSourceContract, readSource } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './EmptyReminderBubble.tsx');
+const idleMotionSource = readSource(import.meta.url, './reminderBubbleIdleMotion.ts');
 const nativeMembraneSource = readSource(
   import.meta.url,
   './EmptyReminderBubbleMembrane.native.tsx',
@@ -35,21 +36,29 @@ test('empty reminder bubble exposes the whole membrane as the add action without
 test('empty reminder bubble floats gently and honors reduced motion', () => {
   assertSourceContract(source, {
     includes: [
+      /import \{ makeReminderBubbleIdleMotionConfig \} from '\.\/reminderBubbleIdleMotion';/,
       /useReducedMotion/,
-      /duration: 7200/,
+      /idleMotion = useMemo\(\(\) => makeReminderBubbleIdleMotionConfig\('empty-reminder', 0\), \[\]\)/,
+      /duration: idleMotion\.duration/,
       /withRepeat/,
-      /translateY: reduceMotion \? 0 :/,
-      /\* 6 - 3/,
-      /translateX: reduceMotion \? 0 :/,
-      /\* 3 - 1\.5/,
-      /rotate: reduceMotion \? '0deg' : `\$\{idleProgress\.value \* 1\.2 - 0\.6\}deg`/,
-      /scaleX: reduceMotion \? 1 : 0\.994 \+ idleProgress\.value \* 0\.012/,
-      /scaleY: reduceMotion \? 1 : 1\.006 - idleProgress\.value \* 0\.012/,
+      /translateY:\s*Math\.cos\(idleProgress\.value \* Math\.PI \* 2\) \* idleMotion\.amplitudeY/,
+      /translateX:\s*Math\.sin\(idleProgress\.value \* Math\.PI \* 2\) \* idleMotion\.amplitudeX/,
+      /rotate:\s*`\$\{Math\.sin\(idleProgress\.value \* Math\.PI \* 2\) \* idleMotion\.rotateDeg\}deg`/,
       /onPressIn=\{handlePressIn\}/,
       /onPressOut=\{handlePressOut\}/,
       /withTiming\(1, \{ duration: 120 \}\)/,
       /scale: 1 - pressProgress\.value \* 0\.03/,
       /opacity: 1 - pressProgress\.value \* 0\.1/,
+    ],
+  });
+  assertSourceContract(idleMotionSource, {
+    includes: [
+      /export type ReminderBubbleIdleMotionConfig = \{/,
+      /delay: Math\.round\(unitFromHash\(seed, 1\) \* 1200\)/,
+      /duration: Math\.round\(4600 \+ unitFromHash\(seed, 2\) \* 2600\)/,
+      /amplitudeX: unitFromHash\(seed, 3\) \* 2\.4/,
+      /amplitudeY: 2\.2 \+ unitFromHash\(seed, 4\) \* 2\.2/,
+      /rotateDeg: 0\.35 \+ unitFromHash\(seed, 5\) \* 0\.35/,
     ],
   });
 });

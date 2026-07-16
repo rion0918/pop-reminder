@@ -816,7 +816,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
     return (
       <View onLayout={handleBoardLayout} style={styles.board}>
         <View style={[styles.emptyScene, { paddingTop: emptySceneTopPadding }]}>
-          <Text style={styles.emptyHeadline}>最初のリマインドを{`\n`}ふわっと残そう。</Text>
+          <Text style={styles.emptyHeadline}>忘れる前に{`\n`}ふわっと残そう。</Text>
           <EmptyReminderBubble
             size={emptyBubbleSize}
             disabled={emptyDisabled}
