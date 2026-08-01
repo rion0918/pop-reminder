@@ -84,11 +84,32 @@ test('android widget exposes a per-reminder trash control on the right', () => {
     source.indexOf('function EmptyState'),
   );
 
+  assertSourceIncludes(source, [/const WIDGET_ROW_ACTION_SIZE = 36;/]);
   assertSourceIncludes(reminderListRowSource, [
+    /const cardHeight = layout\.height;/,
+    /width: WIDGET_ROW_ACTION_SIZE/,
+    /height: WIDGET_ROW_ACTION_SIZE/,
     /text="🗑"/,
     /accessibilityLabel=\{`「\$\{reminder\.title\}」を削除`\}/,
     /clickAction=\{WIDGET_DELETE_REMINDER_ACTION\}/,
     /clickActionData=\{\{ id: reminder\.id \}\}/,
+  ]);
+});
+
+test('android widget explains the total count and reminder row actions', () => {
+  const reminderListRowSource = source.slice(
+    source.indexOf('function ReminderListRow'),
+    source.indexOf('function EmptyState'),
+  );
+
+  assertSourceIncludes(source, [
+    /totalCount: number;/,
+    /justifyContent: 'space-between'/,
+    /text=\{`\$\{totalCount\}件`\}/,
+    /<WidgetHeader layout=\{plan\.header\} mode=\{plan\.mode\} totalCount=\{reminders\.length\} \/>/,
+  ]);
+  assertSourceIncludes(reminderListRowSource, [
+    /accessibilityLabel=\{`\$\{reminder\.title\}、\$\{timeText\}、詳細を開く`\}/,
   ]);
 });
 
@@ -227,7 +248,7 @@ test('android widget layout source defines dense rows with a maximum of eight re
       /getBubbleSlots/,
     ],
   });
-  assertSourceIncludes(source, [/paddingVertical: 2/]);
+  assertSourceIncludes(source, [/paddingVertical: 0/]);
 });
 
 test('widget refresh paths keep the actual widget size, snapshot, and contracts', () => {

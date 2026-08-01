@@ -35,6 +35,7 @@ const WIDGET_DEFAULT_WIDTH = 250;
 const WIDGET_DEFAULT_HEIGHT = 180;
 const WIDGET_STATUS_DOT_SIZE = 12;
 const WIDGET_COMPACT_STATUS_DOT_SIZE = 10;
+const WIDGET_ROW_ACTION_SIZE = 36;
 const WIDGET_FONT_FAMILY = 'sans-serif-rounded';
 export const WIDGET_DELETE_REMINDER_ACTION = 'DELETE_REMINDER';
 
@@ -73,7 +74,15 @@ function getWidgetTypography(mode: WidgetDisplayMode) {
   };
 }
 
-function WidgetHeader({ layout, mode }: { layout: WidgetRect; mode: WidgetDisplayMode }) {
+function WidgetHeader({
+  layout,
+  mode,
+  totalCount,
+}: {
+  layout: WidgetRect;
+  mode: WidgetDisplayMode;
+  totalCount: number;
+}) {
   const typography = getWidgetTypography(mode);
 
   return (
@@ -83,6 +92,7 @@ function WidgetHeader({ layout, mode }: { layout: WidgetRect; mode: WidgetDispla
         height: layout.height,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         marginTop: layout.top,
         marginLeft: layout.left,
       }}
@@ -97,6 +107,18 @@ function WidgetHeader({ layout, mode }: { layout: WidgetRect; mode: WidgetDispla
           textShadowColor: widgetTheme.textHalo as ColorProp,
           textShadowOffset: { width: 0, height: 1 },
           textShadowRadius: 2,
+        }}
+        maxLines={1}
+        allowFontScaling={false}
+      />
+      <TextWidget
+        text={`${totalCount}件`}
+        style={{
+          fontFamily: WIDGET_FONT_FAMILY,
+          fontSize: mode === 'compact' ? 10 : 11,
+          fontWeight: '800',
+          color: widgetTheme.secondaryText as ColorProp,
+          textAlign: 'right',
         }}
         maxLines={1}
         allowFontScaling={false}
@@ -117,7 +139,8 @@ function ReminderListRow({
   const color = getReminderDueColor(reminder.targetAt);
   const timeText = formatReminderBubbleDateTime(reminder.targetAt);
   const typography = getWidgetTypography(mode);
-  const cardHeight = Math.max(0, layout.height - 2);
+  const cardHeight = layout.height;
+  const shadowHeight = Math.max(0, cardHeight - 2);
   const cardRadius = Math.min(18, Math.round(cardHeight / 2));
 
   return (
@@ -132,7 +155,7 @@ function ReminderListRow({
       <FlexWidget
         style={{
           width: layout.width,
-          height: cardHeight,
+          height: shadowHeight,
           marginTop: 2,
           borderRadius: cardRadius,
           backgroundColor: widgetTheme.cardShadow as ColorProp,
@@ -145,7 +168,7 @@ function ReminderListRow({
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: typography.rowHorizontalPadding,
-          paddingVertical: 2,
+          paddingVertical: 0,
           borderRadius: cardRadius,
           borderWidth: 1,
           borderColor: widgetTheme.cardBorder as ColorProp,
@@ -153,6 +176,7 @@ function ReminderListRow({
         }}
         clickAction="OPEN_URI"
         clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
+        accessibilityLabel={`${reminder.title}、${timeText}、詳細を開く`}
       >
         <FlexWidget
           style={{
@@ -205,12 +229,12 @@ function ReminderListRow({
         </FlexWidget>
         <FlexWidget
           style={{
-            width: 28,
-            height: 28,
+            width: WIDGET_ROW_ACTION_SIZE,
+            height: WIDGET_ROW_ACTION_SIZE,
             marginLeft: 8,
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 14,
+            borderRadius: Math.round(WIDGET_ROW_ACTION_SIZE / 2),
             backgroundColor: 'rgba(255, 255, 255, 0.44)',
           }}
           clickAction={WIDGET_DELETE_REMINDER_ACTION}
@@ -376,7 +400,7 @@ export function PopReminderWidget({
           backgroundColor: widgetTheme.glassVeil as ColorProp,
         }}
       />
-      <WidgetHeader layout={plan.header} mode={plan.mode} />
+      <WidgetHeader layout={plan.header} mode={plan.mode} totalCount={reminders.length} />
       <ReminderContent reminders={reminders} plan={plan} />
       <AddReminderButton layout={plan.addButton} />
     </OverlapWidget>

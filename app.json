@@ -66,6 +66,9 @@
               "description": "リマインダーのシャボン玉を表示＆すばやく追加",
               "minWidth": "250dp",
               "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
+              "previewImage": "./assets/widget-preview.png",
               "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 1800000
             }

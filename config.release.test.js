@@ -67,6 +67,35 @@ test('public branding changes while technical identifiers stay compatible', () =
   assert.match(androidManifest, /android:label="ふわっと。"/);
 });
 
+test('Android widget picker uses a representative preview and a 4 by 3 target size', () => {
+  const widgetPlugin = appConfig.expo.plugins.find((plugin) => {
+    return Array.isArray(plugin) && plugin[0] === 'react-native-android-widget';
+  });
+  const widget = widgetPlugin?.[1].widgets[0];
+  const previewPath = join(__dirname, 'assets/widget-preview.png');
+  const nativePreviewPath = join(
+    __dirname,
+    'android/app/src/main/res/drawable/popreminderwidget_preview.png',
+  );
+  const nativeWidgetConfig = readFileSync(
+    join(__dirname, 'android/app/src/main/res/xml/widgetprovider_popreminderwidget.xml'),
+    'utf8',
+  );
+
+  assert.ok(widget);
+  assert.equal(widget.previewImage, './assets/widget-preview.png');
+  assert.equal(widget.targetCellWidth, 4);
+  assert.equal(widget.targetCellHeight, 3);
+  assert.equal(existsSync(previewPath), true);
+  assert.deepEqual(readPngDimensions(previewPath), { width: 750, height: 540 });
+  assert.equal(readPngColorType(previewPath), 6);
+  assert.equal(existsSync(nativePreviewPath), true);
+  assert.equal(readFileSha256(nativePreviewPath), readFileSha256(previewPath));
+  assert.match(nativeWidgetConfig, /android:targetCellWidth="4"/);
+  assert.match(nativeWidgetConfig, /android:targetCellHeight="3"/);
+  assert.match(nativeWidgetConfig, /android:previewImage="@drawable\/popreminderwidget_preview"/);
+});
+
 test('first App Store release stays scoped to iPhone devices', () => {
   assert.equal(appConfig.expo.ios.supportsTablet, false);
 });
