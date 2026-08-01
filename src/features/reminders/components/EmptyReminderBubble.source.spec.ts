@@ -46,8 +46,9 @@ test('empty reminder bubble floats gently and honors reduced motion', () => {
       /rotate:\s*`\$\{Math\.sin\(idleProgress\.value \* Math\.PI \* 2\) \* idleMotion\.rotateDeg\}deg`/,
       /onPressIn=\{handlePressIn\}/,
       /onPressOut=\{handlePressOut\}/,
-      /withTiming\(1, \{ duration: 120 \}\)/,
-      /scale: 1 - pressProgress\.value \* 0\.03/,
+      /reduceMotion\s*\? 1\s*:\s*withSpring\(1, REMINDER_BUBBLE_PRESS_SPRING\)/,
+      /reduceMotion\s*\? 0\s*:\s*withSpring\(0, REMINDER_BUBBLE_PRESS_SPRING\)/,
+      /REMINDER_BUBBLE_PRESS_SCALE/,
       /opacity: 1 - pressProgress\.value \* 0\.1/,
     ],
   });

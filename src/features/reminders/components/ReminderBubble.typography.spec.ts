@@ -128,3 +128,21 @@ test('web reminder bubble burst stays on the lightweight fallback', () => {
     excludes: [/@shopify\/react-native-skia/, /canvaskit/],
   });
 });
+
+test('reminder bubble gives immediate interruptible press feedback', () => {
+  assertSourceContract(source, {
+    includes: [
+      /withSpring/,
+      /const pressProgress = useSharedValue\(0\);/,
+      /const handlePressIn = \(\) => \{/,
+      /const handlePressOut = \(\) => \{/,
+      /reduceMotion\s*\? 1\s*:\s*withSpring\(1, REMINDER_BUBBLE_PRESS_SPRING\)/,
+      /reduceMotion\s*\? 0\s*:\s*withSpring\(0, REMINDER_BUBBLE_PRESS_SPRING\)/,
+      /accessibilityHint="詳細を開きます"/,
+      /onPressIn=\{handlePressIn\}/,
+      /onPressOut=\{handlePressOut\}/,
+      /REMINDER_BUBBLE_PRESS_SCALE/,
+    ],
+    excludes: [/setTimeout\([\s\S]*pressProgress/],
+  });
+});

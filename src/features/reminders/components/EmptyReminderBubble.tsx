@@ -8,11 +8,16 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { EmptyReminderBubbleMembrane } from './EmptyReminderBubbleMembrane';
 import { makeReminderBubbleIdleMotionConfig } from './reminderBubbleIdleMotion';
+import {
+  REMINDER_BUBBLE_PRESS_SCALE,
+  REMINDER_BUBBLE_PRESS_SPRING,
+} from './reminderBubblePressMotion';
 
 type EmptyReminderBubbleProps = {
   size: number;
@@ -55,11 +60,12 @@ export function EmptyReminderBubble({ size, disabled = false, onPress }: EmptyRe
 
   const handlePressIn = () => {
     if (isDisabled) return;
-    pressProgress.value = withTiming(1, { duration: 120 });
+
+    pressProgress.value = reduceMotion ? 1 : withSpring(1, REMINDER_BUBBLE_PRESS_SPRING);
   };
 
   const handlePressOut = () => {
-    pressProgress.value = withTiming(0, { duration: 160 });
+    pressProgress.value = reduceMotion ? 0 : withSpring(0, REMINDER_BUBBLE_PRESS_SPRING);
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -74,7 +80,9 @@ export function EmptyReminderBubble({ size, disabled = false, onPress }: EmptyRe
       {
         rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg}deg`,
       },
-      { scale: 1 - pressProgress.value * 0.03 },
+      {
+        scale: 1 - pressProgress.value * (1 - REMINDER_BUBBLE_PRESS_SCALE),
+      },
     ],
   }));
 

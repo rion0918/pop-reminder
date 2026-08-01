@@ -35,7 +35,6 @@ import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
-const SETTINGS_BUTTON_FEEDBACK_MS = 120;
 type DeleteMotionWaiter = {
   key: string;
   resolve: () => void;
@@ -101,8 +100,6 @@ export function HomeScreen() {
   const deleteMotionWaiterRef = useRef<DeleteMotionWaiter | null>(null);
   const isReminderDeletionInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
-  const settingsPressTimeoutRef = useRef<number | null>(null);
-  const [isSettingsButtonPressed, setIsSettingsButtonPressed] = useState(false);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const consumedIntentRef = useRef<string | null>(null);
 
@@ -148,10 +145,6 @@ export function HomeScreen() {
       isMountedRef.current = false;
       deleteMotionWaiterRef.current?.resolve();
       deleteMotionWaiterRef.current = null;
-
-      if (settingsPressTimeoutRef.current) {
-        clearTimeout(settingsPressTimeoutRef.current);
-      }
     };
   }, []);
 
@@ -257,16 +250,7 @@ export function HomeScreen() {
   }, [router]);
 
   const handlePressSettings = useCallback(() => {
-    if (settingsPressTimeoutRef.current) {
-      clearTimeout(settingsPressTimeoutRef.current);
-    }
-
-    setIsSettingsButtonPressed(true);
-    settingsPressTimeoutRef.current = setTimeout(() => {
-      setIsSettingsButtonPressed(false);
-      settingsPressTimeoutRef.current = null;
-      router.push('/settings');
-    }, SETTINGS_BUTTON_FEEDBACK_MS) as unknown as number;
+    router.push('/settings');
   }, [router]);
 
   const waitForDeleteMotion = useCallback(
@@ -434,9 +418,7 @@ export function HomeScreen() {
             hitSlop={8}
             onPress={handlePressSettings}
             className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
-            style={({ pressed }) => [
-              pressed || isSettingsButtonPressed ? styles.iconButtonPressed : null,
-            ]}
+            style={({ pressed }) => [pressed ? styles.iconButtonPressed : null]}
           >
             <Ionicons name="settings-outline" size={22} color={palette.ink} />
           </Pressable>

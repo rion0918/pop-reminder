@@ -179,18 +179,20 @@ test('home add button stays a compact floating action button', () => {
   ]);
 });
 
-test('settings button gives immediate pressed feedback', () => {
+test('settings button gives immediate pressed feedback without delaying navigation', () => {
   assertSourceContract(source, {
     includes: [
-      /SETTINGS_BUTTON_FEEDBACK_MS/,
-      /const \[isSettingsButtonPressed, setIsSettingsButtonPressed\] = useState\(false\);/,
-      /setTimeout\(\(\) => \{/,
-      /router\.push\(['"]\/settings['"]\);/,
-      /pressed \|\| isSettingsButtonPressed \? styles\.iconButtonPressed : null/,
+      /const handlePressSettings = useCallback\(\(\) => \{\s*router\.push\(['"]\/settings['"]\);\s*\}, \[router\]\);/,
+      /pressed \? styles\.iconButtonPressed : null/,
       /iconButtonPressed: \{/,
       /transform: \[\{ translateY: 1 \}, \{ scale: 0\.94 \}\]/,
     ],
-    excludes: [/<Link href="\/settings" asChild>/],
+    excludes: [
+      /<Link href="\/settings" asChild>/,
+      /SETTINGS_BUTTON_FEEDBACK_MS/,
+      /settingsPressTimeoutRef/,
+      /isSettingsButtonPressed/,
+    ],
   });
 });
 

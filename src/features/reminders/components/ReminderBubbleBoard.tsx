@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -17,6 +18,10 @@ import type { Reminder } from '../types/reminder';
 import { getMsUntilNextDay } from '../utils/reminderDueColor';
 import { EmptyReminderBubble } from './EmptyReminderBubble';
 import { ReminderBubble, type BubbleDeleteMotionPhase } from './ReminderBubble';
+import {
+  REMINDER_BUBBLE_PRESS_SCALE,
+  REMINDER_BUBBLE_PRESS_SPRING,
+} from './reminderBubblePressMotion';
 
 export type BubbleDeleteMotion = {
   reminderId: string;
@@ -510,6 +515,7 @@ const OverflowBubble = memo(function OverflowBubble({
 }: OverflowBubbleProps) {
   const reduceMotion = useReducedMotion();
   const idleProgress = useSharedValue(0);
+  const pressProgress = useSharedValue(0);
   const idleMotion = useMemo(() => makeOverflowIdleMotionConfig(`overflow-${count}`), [count]);
 
   useEffect(() => {
@@ -538,6 +544,16 @@ const OverflowBubble = memo(function OverflowBubble({
     };
   }, [idleMotion.delay, idleMotion.duration, idleProgress, reduceMotion]);
 
+  const handlePressIn = () => {
+    if (disabled) return;
+
+    pressProgress.value = reduceMotion ? 1 : withSpring(1, REMINDER_BUBBLE_PRESS_SPRING);
+  };
+
+  const handlePressOut = () => {
+    pressProgress.value = reduceMotion ? 0 : withSpring(0, REMINDER_BUBBLE_PRESS_SPRING);
+  };
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       {
@@ -549,6 +565,9 @@ const OverflowBubble = memo(function OverflowBubble({
       {
         rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg}deg`,
       },
+      {
+        scale: 1 - pressProgress.value * (1 - REMINDER_BUBBLE_PRESS_SCALE),
+      },
     ],
   }));
 
@@ -556,8 +575,12 @@ const OverflowBubble = memo(function OverflowBubble({
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={`ほか${count}件のリマインダーを一覧で開く`}
+      accessibilityHint="一覧を開きます"
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       style={[
         styles.moreBubble,
         disabled ? styles.moreBubbleDisabled : null,

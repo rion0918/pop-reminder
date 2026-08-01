@@ -14,6 +14,26 @@ const timeSelectorSource = readSource(
   import.meta.url,
   '../../../shared/components/TimeSelector.tsx',
 );
+const reminderSchemaSource = readSource(import.meta.url, '../schemas/reminderSchema.ts');
+
+test('quick add shows a live accessible title character count from the validation limit', () => {
+  assertSourceIncludes(reminderSchemaSource, [
+    /export const REMINDER_TITLE_MAX_LENGTH = 40;/,
+    /\.max\(REMINDER_TITLE_MAX_LENGTH, 'タイトルは40文字以内で保存できます'\)/,
+  ]);
+  assertSourceIncludes(source, [
+    /import \{ REMINDER_TITLE_MAX_LENGTH \} from '\.\.\/schemas\/reminderSchema';/,
+    /const \[titleLength, setTitleLength\] = useState\(0\);/,
+    /setTitleLength\(0\);/,
+    /draftTitleRef\.current = text;\s*setTitleLength\(text\.length\);/,
+    /const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;/,
+    /const titleCountAccessibilityLabel = isTitleOverLimit/,
+    /normalizedTitle\.length > REMINDER_TITLE_MAX_LENGTH/,
+    /accessibilityLabel=\{titleCountAccessibilityLabel\}/,
+    /styles\.titleCountText/,
+    /\{titleLength\} \/ \{REMINDER_TITLE_MAX_LENGTH\}/,
+  ]);
+});
 
 test('successful quick add does not focus the title input again', () => {
   const saveSuccessBlock = source.slice(

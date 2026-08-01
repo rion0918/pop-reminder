@@ -8,15 +8,17 @@ import {
 
 const source = readSource(import.meta.url, './SettingsScreen.tsx');
 
-test('settings back button shows feedback before navigating back', () => {
-  assertSourceIncludes(source, [
-    /BACK_BUTTON_FEEDBACK_MS/,
-    /const \[isBackButtonPressed, setIsBackButtonPressed\] = useState\(false\);/,
-    /setTimeout\(\(\) => \{/,
-    /pressed \|\| isBackButtonPressed \? styles\.iconButtonPressed : null/,
-    /iconButtonPressed: \{/,
-    /transform: \[\{ translateY: 1 \}, \{ scale: 0\.94 \}\]/,
-  ]);
+test('settings back button responds immediately without delaying navigation', () => {
+  assertSourceContract(source, {
+    includes: [
+      /const handleBackPress = \(\) => \{\s*if \(router\.canGoBack\(\)\) \{\s*router\.back\(\);/,
+      /router\.replace\(['"]\/['"]\);/,
+      /pressed \? styles\.iconButtonPressed : null/,
+      /iconButtonPressed: \{/,
+      /transform: \[\{ translateY: 1 \}, \{ scale: 0\.94 \}\]/,
+    ],
+    excludes: [/BACK_BUTTON_FEEDBACK_MS/, /backPressTimeoutRef/, /isBackButtonPressed/],
+  });
 });
 
 test('settings exposes notification permission controls outside the dev-only section', () => {

@@ -32,6 +32,7 @@ import {
   selectFormattedTime,
   useReminderUiStore,
 } from '../stores/reminderUiStore';
+import { REMINDER_TITLE_MAX_LENGTH } from '../schemas/reminderSchema';
 import { formatReminderInputDate } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { DateChips } from './DateChips';
@@ -80,6 +81,7 @@ export function ReminderInputSheet({
   const isOpenRef = useRef(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const [titleLength, setTitleLength] = useState(0);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const [dismissalVersion, setDismissalVersion] = useState(0);
   const sheetTopInset = safeAreaInsets.top + 8;
@@ -140,9 +142,15 @@ export function ReminderInputSheet({
   }, [selectedTargetDate, time]);
 
   const isTargetFuture = targetAt.getTime() > Date.now();
+  const isTitleCountWarning = titleLength >= REMINDER_TITLE_MAX_LENGTH - 5;
+  const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;
+  const titleCountAccessibilityLabel = isTitleOverLimit
+    ? `タイトルは${titleLength}文字、上限を${titleLength - REMINDER_TITLE_MAX_LENGTH}文字超えています`
+    : `タイトルは${titleLength}文字、あと${REMINDER_TITLE_MAX_LENGTH - titleLength}文字入力できます`;
 
   const resetDraftTitle = useCallback(() => {
     draftTitleRef.current = '';
+    setTitleLength(0);
     titleInputRef.current?.clear();
   }, []);
 
@@ -289,7 +297,7 @@ export function ReminderInputSheet({
       return;
     }
 
-    if (normalizedTitle.length > 40) {
+    if (normalizedTitle.length > REMINDER_TITLE_MAX_LENGTH) {
       setTitleNotice('タイトルは40文字以内で保存できます');
       return;
     }
@@ -411,6 +419,7 @@ export function ReminderInputSheet({
               defaultValue=""
               onChangeText={(text) => {
                 draftTitleRef.current = text;
+                setTitleLength(text.length);
               }}
               placeholder="忘れたくないことを入力"
               placeholderTextColor="#A6B2CE"
@@ -433,6 +442,18 @@ export function ReminderInputSheet({
               <Ionicons name="close" size={20} color={palette.ink} />
             </Pressable>
           </View>
+
+          <Text
+            accessibilityRole="text"
+            accessibilityLabel={titleCountAccessibilityLabel}
+            style={[
+              styles.titleCountText,
+              isTitleCountWarning ? styles.titleCountTextWarning : null,
+              isTitleOverLimit ? styles.titleCountTextOverLimit : null,
+            ]}
+          >
+            {titleLength} / {REMINDER_TITLE_MAX_LENGTH}
+          </Text>
 
           {titleNotice ? <Text style={styles.titleNoticeText}>{titleNotice}</Text> : null}
 
@@ -579,6 +600,23 @@ const styles = StyleSheet.create({
     backgroundColor: palette.white,
     borderWidth: 1,
     borderColor: palette.line,
+  },
+  titleCountText: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginRight: 42,
+    marginBottom: 4,
+    color: palette.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  titleCountTextWarning: {
+    color: '#8B6F2D',
+  },
+  titleCountTextOverLimit: {
+    color: '#B34B58',
   },
   titleNoticeText: {
     color: '#8B6F2D',

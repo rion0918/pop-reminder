@@ -35,3 +35,16 @@ test('bubble board can freeze layout measurements while an overlay is open', () 
     /return current;/,
   ]);
 });
+
+test('overflow bubble matches the immediate spring press response of reminder bubbles', () => {
+  assertSourceIncludes(source, [
+    /const pressProgress = useSharedValue\(0\);/,
+    /reduceMotion\s*\? 1\s*:\s*withSpring\(1, REMINDER_BUBBLE_PRESS_SPRING\)/,
+    /reduceMotion\s*\? 0\s*:\s*withSpring\(0, REMINDER_BUBBLE_PRESS_SPRING\)/,
+    /accessibilityState=\{\{ disabled \}\}/,
+    /accessibilityHint="一覧を開きます"/,
+    /onPressIn=\{handlePressIn\}/,
+    /onPressOut=\{handlePressOut\}/,
+    /REMINDER_BUBBLE_PRESS_SCALE/,
+  ]);
+});

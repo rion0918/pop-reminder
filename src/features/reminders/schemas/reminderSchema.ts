@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
+export const REMINDER_TITLE_MAX_LENGTH = 40;
+
 export const reminderTitleSchema = z
   .string()
   .trim()
   .min(1, 'タイトルを入力してください')
-  .max(40, 'タイトルは40文字以内で保存できます');
+  .max(REMINDER_TITLE_MAX_LENGTH, 'タイトルは40文字以内で保存できます');
 
 export const createReminderInputSchema = z.object({
   title: reminderTitleSchema,

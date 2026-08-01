@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSpring,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
@@ -28,6 +29,10 @@ import {
   REMINDER_BUBBLE_RUPTURE_MS,
 } from './ReminderBubbleBurst.types';
 import { makeReminderBubbleIdleMotionConfig } from './reminderBubbleIdleMotion';
+import {
+  REMINDER_BUBBLE_PRESS_SCALE,
+  REMINDER_BUBBLE_PRESS_SPRING,
+} from './reminderBubblePressMotion';
 
 export type BubbleDeleteMotionPhase = 'bursting' | 'restoring';
 
@@ -79,6 +84,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   const entryProgress = useSharedValue(0);
   const birthProgress = useSharedValue(0);
   const idleProgress = useSharedValue(0);
+  const pressProgress = useSharedValue(0);
   const deleteMotionProgress = useSharedValue(0);
 
   useEffect(() => {
@@ -155,8 +161,20 @@ export const ReminderBubble = memo(function ReminderBubble({
     return () => cancelAnimation(deleteMotionProgress);
   }, [deleteMotionPhase, deleteMotionProgress, reduceMotion]);
 
+  const handlePressIn = () => {
+    if (deleteMotionPhase) return;
+
+    pressProgress.value = reduceMotion ? 1 : withSpring(1, REMINDER_BUBBLE_PRESS_SPRING);
+  };
+
+  const handlePressOut = () => {
+    pressProgress.value = reduceMotion ? 0 : withSpring(0, REMINDER_BUBBLE_PRESS_SPRING);
+  };
+
   const bubbleAnimatedStyle = useAnimatedStyle(() => {
     const idleWeight = deleteMotionPhase ? 0 : 1;
+    const entryScale = 0.98 + entryProgress.value * 0.02 + birthProgress.value * 0.01;
+    const pressScale = 1 - pressProgress.value * (1 - REMINDER_BUBBLE_PRESS_SCALE);
 
     return {
       opacity: entryProgress.value,
@@ -174,7 +192,7 @@ export const ReminderBubble = memo(function ReminderBubble({
           rotate: `${Math.sin(idleProgress.value * Math.PI * 2) * idleMotion.rotateDeg * idleWeight}deg`,
         },
         {
-          scale: 0.98 + entryProgress.value * 0.02 + birthProgress.value * 0.01,
+          scale: entryScale * pressScale,
         },
       ],
     };
@@ -218,8 +236,11 @@ export const ReminderBubble = memo(function ReminderBubble({
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={`${reminder.title}の詳細を開く`}
+      accessibilityHint="詳細を開きます"
       disabled={Boolean(deleteMotionPhase)}
       onPress={() => onPress?.(reminder)}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       style={[
         styles.bubble,
         {

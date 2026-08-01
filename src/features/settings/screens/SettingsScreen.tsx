@@ -34,7 +34,6 @@ import {
 } from '../domain/appSettings';
 
 const appIcon = require('../../../../assets/app-icon.png');
-const BACK_BUTTON_FEEDBACK_MS = 120;
 
 type QuickAddPresetKey = keyof QuickAddPresetTimes;
 type QuickAddPresetIcon = ComponentProps<typeof Ionicons>['name'];
@@ -165,8 +164,6 @@ export function SettingsScreen() {
   >('not-required');
   const [exactAlarmPermissionLabel, setExactAlarmPermissionLabel] = useState('確認が必要');
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
-  const [isBackButtonPressed, setIsBackButtonPressed] = useState(false);
-  const backPressTimeoutRef = useRef<number | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
   const refreshNotificationPermissionStatus = useCallback(async () => {
     const permission = await getNotificationPermissionStatus();
@@ -212,14 +209,6 @@ export function SettingsScreen() {
       subscription.remove();
     };
   }, [refreshExactAlarmPermissionStatus, refreshNotificationPermissionStatus]);
-
-  useEffect(() => {
-    return () => {
-      if (backPressTimeoutRef.current) {
-        clearTimeout(backPressTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const savePreviousTime = async (value: string) => {
     if (
@@ -346,22 +335,12 @@ export function SettingsScreen() {
   };
 
   const handleBackPress = () => {
-    if (backPressTimeoutRef.current) {
-      clearTimeout(backPressTimeoutRef.current);
+    if (router.canGoBack()) {
+      router.back();
+      return;
     }
 
-    setIsBackButtonPressed(true);
-    backPressTimeoutRef.current = setTimeout(() => {
-      setIsBackButtonPressed(false);
-      backPressTimeoutRef.current = null;
-
-      if (router.canGoBack()) {
-        router.back();
-        return;
-      }
-
-      router.replace('/');
-    }, BACK_BUTTON_FEEDBACK_MS) as unknown as number;
+    router.replace('/');
   };
 
   const togglePreviousTimeSelector = () => {
@@ -388,9 +367,7 @@ export function SettingsScreen() {
           hitSlop={8}
           onPress={handleBackPress}
           className="h-[44px] w-[44px] items-center justify-center rounded-[22px] bg-[rgba(255,255,255,0.78)]"
-          style={({ pressed }) => [
-            pressed || isBackButtonPressed ? styles.iconButtonPressed : null,
-          ]}
+          style={({ pressed }) => [pressed ? styles.iconButtonPressed : null]}
         >
           <Ionicons name="chevron-back" size={24} color={palette.ink} />
         </Pressable>
