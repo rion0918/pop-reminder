@@ -37,10 +37,11 @@ test('pr-size-and-automerge workflow restricts size/XS to explicit allowlist and
   assert.match(sizeWorkflow, /gh pr merge "\$PR_NUMBER" --auto --squash/);
 });
 
-test('coderabbit configuration enables Japanese auto review', () => {
+test('coderabbit configuration enables Japanese auto review and auto approve', () => {
   assert.match(codeRabbitConfig, /language:\s*['"]ja-JP['"]/);
   assert.match(codeRabbitConfig, /auto_review:/);
   assert.match(codeRabbitConfig, /enabled:\s*true/);
+  assert.match(codeRabbitConfig, /auto_approve:\s*true/);
 });
 
 test('antigravity pr-review skill covers size matrix from size/XS through size/XL', () => {
