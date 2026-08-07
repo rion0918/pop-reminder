@@ -25,15 +25,15 @@ jobs:
           PR_NUMBER=${{ github.event.pull_request.number }}
 
           # Get PR changed files list and stats
-          FILES_JSON=$(gh pr view "$PR_NUMBER" --json files --jq '[.files[].path]')
-          FILE_COUNT=$(echo "$FILES_JSON" | jq 'length')
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json files,additions,deletions)
 
-          ADDITIONS=$(gh pr view "$PR_NUMBER" --json additions --jq '.additions')
-          DELETIONS=$(gh pr view "$PR_NUMBER" --json deletions --jq '.deletions')
+          FILE_COUNT=$(echo "$PR_DATA" | jq '.files | length')
+          ADDITIONS=$(echo "$PR_DATA" | jq '.additions')
+          DELETIONS=$(echo "$PR_DATA" | jq '.deletions')
           TOTAL_DIFF=$((ADDITIONS + DELETIONS))
 
           # Check for high risk path modifications (DB, Notifications, Native Widgets)
-          HAS_HIGH_RISK=$(echo "$FILES_JSON" | jq 'any(.[] | startswith("src/db/") or startswith("src/lib/notifications/") or startswith("src/widget/"))')
+          HAS_HIGH_RISK=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/db/") or startswith("src/lib/notifications/") or startswith("src/widget/")))')
 
           SIZE_LABEL="size/M"
 
@@ -46,7 +46,7 @@ jobs:
           else
             if [ "$FILE_COUNT" -le 2 ] && [ "$TOTAL_DIFF" -le 30 ]; then
               SIZE_LABEL="size/XS"
-            elif [ "$FILE_COUNT" -le 5 ] && [ "$TOTAL_DIFF" -le 150 ]; then
+            elif [ "$FILE_COUNT" -le 5 ] && [ "$TOTAL_DIFF" -le 250 ]; then
               SIZE_LABEL="size/S"
             elif [ "$FILE_COUNT" -le 15 ] && [ "$TOTAL_DIFF" -le 500 ]; then
               SIZE_LABEL="size/M"
