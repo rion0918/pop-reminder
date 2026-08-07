@@ -24,7 +24,11 @@ test('pr-size-and-automerge workflow triggers on PR events and ignores drafts', 
   assert.match(sizeWorkflow, /if:\s*github\.event\.pull_request\.draft == false/);
 });
 
-test('pr-size-and-automerge workflow classifies size/XS and enables auto-merge', () => {
+test('pr-size-and-automerge workflow classifies size/XS only for non-prod code and expands high risk paths', () => {
+  assert.match(sizeWorkflow, /IS_PROD_CODE=/);
+  assert.match(sizeWorkflow, /src\/features\/reminders\/domain\//);
+  assert.match(sizeWorkflow, /src\/bootstrap\//);
+  assert.match(sizeWorkflow, /\[ "\$IS_PROD_CODE" = "false" \]/);
   assert.match(sizeWorkflow, /SIZE_LABEL="size\/XS"/);
   assert.match(sizeWorkflow, /gh pr merge "\$PR_NUMBER" --auto --squash/);
 });

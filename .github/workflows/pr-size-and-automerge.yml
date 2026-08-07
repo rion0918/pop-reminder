@@ -32,8 +32,11 @@ jobs:
           DELETIONS=$(echo "$PR_DATA" | jq '.deletions')
           TOTAL_DIFF=$((ADDITIONS + DELETIONS))
 
-          # Check for high risk path modifications (DB, Notifications, Native Widgets)
-          HAS_HIGH_RISK=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/db/") or startswith("src/lib/notifications/") or startswith("src/widget/")))')
+          # Check for high risk path modifications (DB, Notifications, Native Widgets, Domain logic, Application use cases, App Bootstrap)
+          HAS_HIGH_RISK=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/db/") or startswith("src/lib/notifications/") or startswith("src/widget/") or startswith("src/features/reminders/domain/") or startswith("src/features/settings/domain/") or startswith("src/features/reminders/application/") or startswith("src/features/settings/application/") or startswith("src/bootstrap/")))')
+
+          # Check for production code modifications (src/, android/, ios/)
+          IS_PROD_CODE=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/") or startswith("android/") or startswith("ios/")))')
 
           SIZE_LABEL="size/M"
 
@@ -43,18 +46,16 @@ jobs:
             else
               SIZE_LABEL="size/M"
             fi
+          elif [ "$IS_PROD_CODE" = "false" ] && [ "$FILE_COUNT" -le 2 ] && [ "$TOTAL_DIFF" -le 30 ]; then
+            SIZE_LABEL="size/XS"
+          elif [ "$FILE_COUNT" -le 5 ] && [ "$TOTAL_DIFF" -le 250 ]; then
+            SIZE_LABEL="size/S"
+          elif [ "$FILE_COUNT" -le 15 ] && [ "$TOTAL_DIFF" -le 500 ]; then
+            SIZE_LABEL="size/M"
+          elif [ "$FILE_COUNT" -le 30 ]; then
+            SIZE_LABEL="size/L"
           else
-            if [ "$FILE_COUNT" -le 2 ] && [ "$TOTAL_DIFF" -le 30 ]; then
-              SIZE_LABEL="size/XS"
-            elif [ "$FILE_COUNT" -le 5 ] && [ "$TOTAL_DIFF" -le 250 ]; then
-              SIZE_LABEL="size/S"
-            elif [ "$FILE_COUNT" -le 15 ] && [ "$TOTAL_DIFF" -le 500 ]; then
-              SIZE_LABEL="size/M"
-            elif [ "$FILE_COUNT" -le 30 ]; then
-              SIZE_LABEL="size/L"
-            else
-              SIZE_LABEL="size/XL"
-            fi
+            SIZE_LABEL="size/XL"
           fi
 
           echo "Calculated Size: $SIZE_LABEL (Files: $FILE_COUNT, Diff: $TOTAL_DIFF, High Risk: $HAS_HIGH_RISK)"
