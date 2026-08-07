@@ -1,0 +1,52 @@
+name: Codex PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  codex-pr-review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Codex PR Review & Size Labeling
+        uses: openai/codex-action@v1
+        with:
+          prompt: |
+            以下の2つのタスクを順に実行してください。
+
+            ## タスク1: PRサイズラベルの付与
+            PRの変更内容を分析し、影響範囲に基づいて size/XS 〜 size/XL のラベルを付与してください。
+            詳細な評価基準は .codex/skills/pr-review.md を参照してください。
+
+            ## タスク2: コードレビュー
+            PRをレビューし、問題がなければ Approve してください。
+            詳細な基準は .codex/skills/pr-review.md を参照してください。
+
+      - name: Enable auto-merge for XS PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+
+          has_xs_label=$(gh pr view "$PR_NUMBER" \
+            --json labels \
+            --jq '[.labels[].name] | any(. == "size/XS")')
+
+          is_approved=$(gh pr view "$PR_NUMBER" \
+            --json reviews \
+            --jq '[.reviews[] | select(.state == "APPROVED")] | length > 0')
+
+          if [ "$has_xs_label" = "true" ] && [ "$is_approved" = "true" ]; then
+            echo "size/XS かつ Approve 済み: auto-merge を有効化"
+            gh pr merge "$PR_NUMBER" --auto --squash
+          fi
