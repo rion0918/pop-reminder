@@ -42,50 +42,63 @@ Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle 
 
 ## 🏗️ アーキテクチャ概要 (Architecture Overview)
 
-本プロジェクトは **Feature-First Hexagonal Architecture (Clean Architecture)** を採用し、ドメインロジック、永続化、画面表示、ネイティブ機能を厳格に分離しています。
+本プロジェクトは **Feature-First Clean Architecture (Hexagonal Architecture)** を採用し、画面表示（UI）、ビジネスロジック、データ永続化（SQLite/通知/Widget）を明確に分離しています。
+
+### 🧩 階層構造とディレクトリ役割一覧
+
+| ディレクトリ              | 役割                        | 含まれる主な処理                                                            | 依存の向き                 |
+| :------------------------ | :-------------------------- | :-------------------------------------------------------------------------- | :------------------------- |
+| `src/app/`                | **ルーティング (UIの入口)** | Expo Router 画面エントリー、Deep Link・通知の起動初期化                     | ➔ `features/`              |
+| `src/features/reminders/` | **リマインダー機能**        | ドメインモデル、ユースケース、画面・コンポーネント・Zustand UI状態          | ➔ `db/`, `lib/` (Port経由) |
+| `src/features/settings/`  | **設定機能**                | 通知設定・クイック追加プリセット・アプリ設定画面                            | ➔ `db/`, `lib/` (Port経由) |
+| `src/db/`                 | **データベースインフラ**    | SQLite (Drizzle ORM) のスキーマ定義・クライアント・CRUD操作                 | 独立 (DB専用)              |
+| `src/lib/notifications/`  | **通知インフラ**            | Expo Notifications によるローカル通知の予約・キャンセル・権限管理           | 独立 (通知専用)            |
+| `src/widget/`             | **Android Widget**          | ウィジェット専用の独立SQLite参照・スナップショット更新・UIレンダリング      | 独立 (Widget専用)          |
+| `src/bootstrap/`          | **依存注入 (DI Container)** | アプリ起動時にインフラ実装（SQLite/通知）をユースケースに接続するアセンブラ | ➔ 全レイヤーを接続         |
+
+---
+
+### 🔄 データフローと依存関係
+
+画面操作（UI）からデータ保存・通知予約までの流れは以下のようになります。
 
 ```mermaid
 graph TD
-    subgraph Presentation Layer [Presentation Layer]
-        UI[Screens / Components / Hooks]
-        Router[Expo Router (src/app)]
+    subgraph UI Layer ["① 画面・表示層 (Presentation)"]
+        Screen["画面 (HomeScreen / DetailSheet)"]
+        Hook["useRemindersQuery (TanStack Query)"]
     end
 
-    subgraph Application Layer [Application Layer]
-        UC[Reminder UseCases]
-        Ports[Repository & Gateway Ports]
+    subgraph App Layer ["② ユースケース層 (Application)"]
+        UseCase["reminderUseCases (保存・削除・更新)"]
+        Port["Port インターフェース (ReminderRepository / NotificationGateway)"]
     end
 
-    subgraph Domain Layer [Domain Layer]
-        Domain[Reminder Models & Rules]
+    subgraph Domain Layer ["③ ビジネスルール層 (Domain)"]
+        Domain["Reminder モデル & バリデーション"]
     end
 
-    subgraph Infrastructure Layer [Infrastructure Layer]
-        DB[SQLite / Drizzle Repository]
-        Notif[Expo Notifications Gateway]
-        Widget[Android Widget Gateway]
+    subgraph Infra Layer ["④ 外部連携・インフラ層 (Infrastructure)"]
+        SQLite["SQLite (src/db)"]
+        Notifications["Expo Notifications (src/lib/notifications)"]
+        Widget["Android Widget (src/widget)"]
     end
 
-    subgraph Bootstrap Layer [Bootstrap Layer]
-        AppServices[appServices (DI Container)]
-    end
-
-    UI --> Router
-    UI --> UC
-    UC --> Domain
-    UC --> Ports
-    Infrastructure Layer -. Implements .-> Ports
-    AppServices -- Injects --> Infrastructure Layer
-    AppServices -- Connects --> UC
+    Screen --> Hook
+    Hook --> UseCase
+    UseCase --> Domain
+    UseCase --> Port
+    Infra Layer -. Portを実装 .-> Port
+    Bootstrap["src/bootstrap/appServices.ts (DI)"] -- 外部実装をポートに接続 --> UseCase
 ```
 
-### 依存ルールとレイヤー境界
+---
 
-- `domain`: React / Expo / SQLite に非依存の純粋な型とビジネスルール。
-- `application`: ユースケースと Port（インターフェース）。具象クラスに直接依存しない。
-- `infrastructure`: SQLite (Drizzle) や Expo Notifications の具体実装。
-- `presentation`: TanStack Query 経由でユースケースと接続。インフラ層を直接呼び出さない。
-- `bootstrap`: アプリ起動時に依存関係を注入 (DI) するアセンブラ。
+### 🛡️ アーキテクチャの黄金律（守るべき3つの原則）
+
+1. 🚫 **UIからSQLiteや通知を直接呼ばない**: 画面コンポーネントから直接 `expo-sqlite` や `expo-notifications` を呼び出さず、必ず `useCases` 経由で実行します。
+2. 💎 **ドメイン層の純粋性**: `src/features/*/domain/` は React、Expo、SQLite に依存せず、純粋な TypeScript コードで記述します。
+3. 🔌 **Port & Adapter (DI) による疎結合**: ユースケースは外部の具体的なDBや通知実装を知らず、`src/bootstrap/appServices.ts` が起動時に具象クラスを注入します。
 
 ---
 
