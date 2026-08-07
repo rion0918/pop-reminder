@@ -1,7 +1,7 @@
-# Pop Reminder (ポップ・リマインダー) 🫧
+# Pop Reminder 🫧
 
 忘れたくないことを、ふわっと泡にして残せるシンプルで心地よいリマインダーアプリです。  
-Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle ORM) によるローカル永続化、ローカル通知、Android Widget、プラットフォーム別最適化アニメーションを備えています。
+Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle ORM) によるローカル永続化、ローカル通知、Android Widget、プラットフォーム別アニメーションを備えています。
 
 ![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-000000?style=for-the-badge&logo=expo&logoColor=white)
 ![React Native 0.81](https://img.shields.io/badge/React%20Native-0.81-61DAFB?style=for-the-badge&logo=react&logoColor=black)
@@ -12,202 +12,73 @@ Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle 
 
 ---
 
-## 📑 目次 (Table of Contents)
+## ✨ 主な機能
 
-1. [✨ 主な機能](#-主な機能-key-features)
-2. [🏗️ アーキテクチャ概要](#️-アーキテクチャ概要-architecture-overview)
-3. [💻 開発環境セットアップ](#-開発環境セットアップ-getting-started)
-4. [🚀 アプリの起動方法](#-アプリの起動方法-running-the-app)
-5. [🔧 トラブルシューティング](#-トラブルシューティング-troubleshooting)
-6. [🧪 品質保証とテスト](#-品質保証とテスト-quality-assurance)
-7. [📚 関連ドキュメント](#-関連ドキュメント-documentation)
+- 🫧 **泡 (Bubble) UI**: 浮遊するシャボン玉風UIと、削除時の破裂アニメーション・触覚フィードバック。
+- ⏱️ **クイック追加**: 4つの時間帯プリセットで即座にリマインダーを登録。
+- 🔔 **予告付きローカル通知**: 予定時刻に加え事前通知でリマインド。
+- 📱 **Android Widget**: ホーム画面で確認・完了操作が可能なホーム画面ウィジェット。
+- 🔒 **完全ローカル永続化**: SQLite データベース保存によるプライバシーファースト設計。
 
 ---
 
-## ✨ 主な機能 (Key Features)
+## 🚀 クイックスタート
 
-- 🫧 **泡 (Bubble) UI & 心地よいアニメーション**  
-  リマインダーが浮遊するシャボン玉として画面に表示されます。削除時には視覚的・触覚的（Haptics）フィードバックとともに弾けます。  
-  _iOS (Skia) / Android (Reanimated) / Web 向けにプラットフォーム別最適化を実施_
-- ⏱️ **クイック追加 & 柔軟なプリセット**  
-  朝・昼・夕・夜など、カスタマイズ可能な4つの時刻プリセットで瞬時にタスクを登録できます。
-- 🔔 **予告付きローカル通知**  
-  予定時刻（Target）に加えて、事前通知（Previous）を設定でき、忘れを防ぎます。
-- 📱 **Android Widget 対応**  
-  ホーム画面で直近のリマインダーをスタック表示し、アプリを開かずに完了・追加操作が可能です。天空の背景カラーが時間帯に応じて変化します。
-- 🔒 **プライバシーファースト & 完全ローカル**  
-  データはすべて端末内の SQLite データベースに安全に保存され、外部サーバーに個人情報は送信されません。
-
----
-
-## 🏗️ アーキテクチャ概要 (Architecture Overview)
-
-本プロジェクトは **Feature-First Clean Architecture (Hexagonal Architecture)** を採用し、画面表示（UI）、ビジネスロジック、データ永続化（SQLite/通知/Widget）を明確に分離しています。
-
-### 🧩 階層構造とディレクトリ役割一覧
-
-| ディレクトリ              | 役割                        | 含まれる主な処理                                                            | 依存の向き                 |
-| :------------------------ | :-------------------------- | :-------------------------------------------------------------------------- | :------------------------- |
-| `src/app/`                | **ルーティング (UIの入口)** | Expo Router 画面エントリー、Deep Link・通知の起動初期化                     | ➔ `features/`              |
-| `src/features/reminders/` | **リマインダー機能**        | ドメインモデル、ユースケース、画面・コンポーネント・Zustand UI状態          | ➔ `db/`, `lib/` (Port経由) |
-| `src/features/settings/`  | **設定機能**                | 通知設定・クイック追加プリセット・アプリ設定画面                            | ➔ `db/`, `lib/` (Port経由) |
-| `src/db/`                 | **データベースインフラ**    | SQLite (Drizzle ORM) のスキーマ定義・クライアント・CRUD操作                 | 独立 (DB専用)              |
-| `src/lib/notifications/`  | **通知インフラ**            | Expo Notifications によるローカル通知の予約・キャンセル・権限管理           | 独立 (通知専用)            |
-| `src/widget/`             | **Android Widget**          | ウィジェット専用の独立SQLite参照・スナップショット更新・UIレンダリング      | 独立 (Widget専用)          |
-| `src/bootstrap/`          | **依存注入 (DI Container)** | アプリ起動時にインフラ実装（SQLite/通知）をユースケースに接続するアセンブラ | ➔ 全レイヤーを接続         |
-
----
-
-### 🔄 データフローと依存関係
-
-画面操作（UI）からデータ保存・通知予約までの流れは以下のようになります。
-
-```mermaid
-graph TD
-    subgraph UILayer ["① 画面・表示層"]
-        Screen["画面 (HomeScreen / DetailSheet)"]
-        Hook["useRemindersQuery (TanStack Query)"]
-    end
-
-    subgraph AppLayer ["② ユースケース層"]
-        UseCase["reminderUseCases (保存・削除・更新)"]
-        Port["Port インターフェース"]
-    end
-
-    subgraph DomainLayer ["③ ビジネスルール層"]
-        Domain["Reminder モデル & バリデーション"]
-    end
-
-    subgraph InfraLayer ["④ 外部連携・インフラ層"]
-        SQLite["SQLite (src/db)"]
-        Notifications["Expo Notifications (src/lib/notifications)"]
-        Widget["Android Widget (src/widget)"]
-    end
-
-    Screen --> Hook
-    Hook --> UseCase
-    UseCase --> Domain
-    UseCase --> Port
-    SQLite -.->|実装| Port
-    Notifications -.->|実装| Port
-    Widget -.->|実装| Port
-    Bootstrap["src/bootstrap/appServices.ts"] -->|DI 接続| UseCase
-```
-
----
-
-### 🛡️ アーキテクチャの黄金律（守るべき3つの原則）
-
-1. 🚫 **UIからSQLiteや通知を直接呼ばない**: 画面コンポーネントから直接 `expo-sqlite` や `expo-notifications` を呼び出さず、必ず `useCases` 経由で実行します。
-2. 💎 **ドメイン層の純粋性**: `src/features/*/domain/` は React、Expo、SQLite に依存せず、純粋な TypeScript コードで記述します。
-3. 🔌 **Port & Adapter (DI) による疎結合**: ユースケースは外部の具体的なDBや通知実装を知らず、`src/bootstrap/appServices.ts` が起動時に具象クラスを注入します。
-
----
-
-## 💻 開発環境セットアップ (Getting Started)
-
-本プロジェクトは Nix / direnv による環境固定を推奨しています。`flake.nix` により Node.js (`v24.16.0`)、pnpm (`10.8.1`)、OpenJDK 17、Android SDK が自動で提供されます。
-
-### 1. Nix / direnv 環境の準備 (推奨)
-
-direnv を利用する場合（初回のみ許可）:
+Nix / direnv 環境（推奨）または Node.js `24.16.0` / pnpm `10.8.1` を使用します。
 
 ```bash
+# 1. 開発環境の有効化 (direnv 利用時)
 direnv allow
-```
 
-以降はリポジトリのディレクトリに入るだけで自動的に開発環境が有効化されます。
-
-手動で Nix シェルに入る場合:
-
-```bash
+# または手動で Nix シェルに入る場合
 nix develop
-```
 
-### 2. 依存パッケージとハーネスのインストール
-
-```bash
+# 2. 依存パッケージとハーネスのセットアップ
 pnpm install
 pnpm run mvh:setup
 ```
 
 ---
 
-## 🚀 アプリの起動方法 (Running the App)
+## 📱 開発コマンド
 
-ネイティブ機能（通知、SQLite、Android Widget）の有無に応じて、最適な起動モードを選択してください。
-
-| 起動モード                   | コマンド                    | 用途・主な活用シーン                                                 |
-| :--------------------------- | :-------------------------- | :------------------------------------------------------------------- |
-| **Development Build (推奨)** | `pnpm run start:dev-client` | ネイティブ機能（通知・Widget・SQLite）を実機やエミュレータで確認する |
-| **Expo Go**                  | `pnpm run start:expo-go`    | JS / UI の変更を迅速に確認する                                       |
-| **Android ローカル実行**     | `pnpm run android`          | Android エミュレータ / 実機にビルドして起動                          |
-| **iOS ローカル実行**         | `pnpm run ios`              | iOS シミュレータ / 実機にビルドして起動                              |
-| **Web 実行**                 | `pnpm run web`              | ブラウザでのレイアウト確認                                           |
-| **通常 Expo 起動**           | `pnpm start`                | Expo CLI 標準モードで起動                                            |
-
-### Development Build で起動するステップ
-
-1. 端末用の Development Build を作成・インストールします（EAS Build を使用する場合）。
-   ```bash
-   eas build --profile development --platform android
-   # iOS の場合は --platform ios
-   ```
-2. Metro サーバーを起動します。
-   ```bash
-   pnpm run start:dev-client
-   ```
-3. 表示された QR コードを端末の「Pop Reminder (Dev Client)」アプリで読み取ります。
+| コマンド                    | 用途                                                             |
+| :-------------------------- | :--------------------------------------------------------------- |
+| `pnpm run start:dev-client` | **Development Build 起動 (推奨)**: 通知・SQLite・Widget 動作確認 |
+| `pnpm run start:expo-go`    | **Expo Go 起動**: UI / JS 迅速確認                               |
+| `pnpm run android`          | Android エミュレータ / 実機でビルド・起動                        |
+| `pnpm run ios`              | iOS シミュレータ / 実機でビルド・起動                            |
+| `pnpm run web`              | ブラウザ表示確認                                                 |
+| `pnpm start`                | Expo CLI 標準起動                                                |
 
 ---
 
-## 🔧 トラブルシューティング (Troubleshooting)
+## 🧪 品質保証・テスト
 
-### Q. Expo CLI が `RangeError [ERR_SOCKET_BAD_PORT]` で起動しない
-
-Nix シェル外の異なる Node.js バージョン (v26.x 等) で実行されている可能性があります。`node -v` を実行し、`v24.16.0` であることを確認してください。必要に応じて `nix develop` または `direnv allow` を再実行してください。
-
-### Q. Port 8081 が使用中で起動できない
-
-既存の Metro プロセスがポートを占有している可能性があります。以下のコマンドでプロセスを特定して停止してください。
-
-```bash
-# ポート占有プロセスの確認
-lsof -iTCP:8081 -sTCP:LISTEN -P -n
-
-# プロセスの停止
-kill <PID>
-```
-
----
-
-## 🧪 品質保証とテスト (Quality Assurance)
-
-本プロジェクトには **Codex MVH (Minimum Viable Harness)** が組み込まれており、高速な品質チェックとアーキテクチャ保護が自動化されています。
+本プロジェクトでは品質ゲート・ルール保護を自動化しています。
 
 ```bash
 # 全系統合検証 (Prettier, Protection Guard, Biome, Test, Typecheck, ESLint)
 pnpm run mvh:verify
 ```
 
-### 個別検証コマンド一覧
+### 個別コマンド
 
-- **テスト実行**: `pnpm test` (Node.js 標準テストランナー `node --import tsx --test`)
-- **TypeScript 型チェック**: `pnpm run typecheck` (`tsc --noEmit`)
-- **Biome ガードチェック**: `pnpm run biome:check`
-- **Prettier 整形チェック**: `pnpm run format:check` (整形実行は `pnpm run format`)
-- **Expo ESLint**: `pnpm run lint`
-- **Expo Health Check**: `pnpm run doctor`
+- **テスト実行**: `pnpm test`
+- **型チェック**: `pnpm run typecheck`
+- **Biome チェック**: `pnpm run biome:check`
+- **コード整形**: `pnpm run format:check` / `pnpm run format`
+- **Linter**: `pnpm run lint`
 
 ---
 
-## 📚 関連ドキュメント (Documentation)
+## 📚 ドキュメント
 
-より詳細な開発・設計・リリース情報については [docs/README.md](docs/README.md) を参照してください。
+プロジェクトの各種設計・運用仕様については [`docs/`](docs/README.md) を参照してください。
 
-- 📐 **[技術スタック詳細 (docs/TECH_STACK.md)](docs/TECH_STACK.md)**
-- 📐 **[アーキテクチャ設計方針 (docs/NEW_ARCHITECTURE_ALIGNMENT.md)](docs/NEW_ARCHITECTURE_ALIGNMENT.md)**
-- 🧪 **[MVH ハーネス仕様 (docs/MVH_HARNESS.md)](docs/MVH_HARNESS.md)**
-- 🧪 **[Development Build QA 手順 (docs/QA_DEVELOPMENT_BUILD.md)](docs/QA_DEVELOPMENT_BUILD.md)**
-- 🚀 **[Android / iOS リリースガイド (docs/RELEASE_ANDROID_IOS.md)](docs/RELEASE_ANDROID_IOS.md)**
-- 📝 **[ADR: 意思決定記録 (docs/adr/)](docs/adr/)**
+- 📐 **[アーキテクチャ & 設計方針](docs/NEW_ARCHITECTURE_ALIGNMENT.md)**: Hexagonal Architecture、レイヤー境界、データフロー
+- 🛠️ **[技術スタック詳細](docs/TECH_STACK.md)**: 使用ライブラリ・ディレクトリ構成
+- 🧪 **[MVH ハーネスガイド](docs/MVH_HARNESS.md)**: ガードルール・開発ハーネス仕様
+- 📱 **[QA & 実機検証手順](docs/QA_DEVELOPMENT_BUILD.md)**: Development Build・通知・Widget テスト手順
+- 🚀 **[リリースガイド](docs/RELEASE_ANDROID_IOS.md)**: EAS Build / ストア配信手順
+- 📝 **[ADR (意思決定記録)](docs/adr/)**: アーキテクチャ採択・ハーネス方針の記録

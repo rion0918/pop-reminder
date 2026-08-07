@@ -50,6 +50,24 @@ graph TD
     AppServices -- Connects & Injects --> Application
 ```
 
+### 🧩 階層構造とディレクトリ役割一覧
+
+| ディレクトリ              | 役割                        | 含まれる主な処理                                                            | 依存の向き                 |
+| :------------------------ | :-------------------------- | :-------------------------------------------------------------------------- | :------------------------- |
+| `src/app/`                | **ルーティング (UIの入口)** | Expo Router 画面エントリー、Deep Link・通知の起動初期化                     | ➔ `features/`              |
+| `src/features/reminders/` | **リマインダー機能**        | ドメインモデル、ユースケース、画面・コンポーネント・Zustand UI状態          | ➔ `db/`, `lib/` (Port経由) |
+| `src/features/settings/`  | **設定機能**                | 通知設定・クイック追加プリセット・アプリ設定画面                            | ➔ `db/`, `lib/` (Port経由) |
+| `src/db/`                 | **データベースインフラ**    | SQLite (Drizzle ORM) のスキーマ定義・クライアント・CRUD操作                 | 独立 (DB専用)              |
+| `src/lib/notifications/`  | **通知インフラ**            | Expo Notifications によるローカル通知の予約・キャンセル・権限管理           | 独立 (通知専用)            |
+| `src/widget/`             | **Android Widget**          | ウィジェット専用の独立SQLite参照・スナップショット更新・UIレンダリング      | 独立 (Widget専用)          |
+| `src/bootstrap/`          | **依存注入 (DI Container)** | アプリ起動時にインフラ実装（SQLite/通知）をユースケースに接続するアセンブラ | ➔ 全レイヤーを接続         |
+
+### 🛡️ アーキテクチャの黄金律（守るべき3つの原則）
+
+1. 🚫 **UIからSQLiteや通知を直接呼ばない**: 画面コンポーネントから直接 `expo-sqlite` や `expo-notifications` を呼び出さず、必ず `useCases` 経由で実行します。
+2. 💎 **ドメイン層の純粋性**: `src/features/*/domain/` は React、React Native、Expo、SQLite に依存せず、純粋な TypeScript コードで記述します。
+3. 🔌 **Port & Adapter (DI) による疎結合**: ユースケースは外部の具体的なDBや通知実装を知らず、`src/bootstrap/appServices.ts` が起動時に具象クラスを注入します。
+
 ---
 
 ## 🛡️ レイヤー境界の厳格な定義
