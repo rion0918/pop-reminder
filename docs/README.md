@@ -17,6 +17,7 @@
 ### 🧪 品質保証 & 開発ハーネス
 
 - **[MVH ハーネスガイド (MVH_HARNESS.md)](MVH_HARNESS.md)**: Minimum Viable Harness の仕組み、Biome ガード、保護ファイルルール、検証コマンド。
+- **[PR 自動レビューガイド](../.agents/skills/pr-review/SKILL.md)**: PRサイズ自動判定・CodeRabbit AIレビュー・自動マージ仕様。
 - **[Development Build QA マニュアル (QA_DEVELOPMENT_BUILD.md)](QA_DEVELOPMENT_BUILD.md)**: 実機・Development Build でのローカル通知、SQLite、Android Widget の検証手順。
 - **[QA チェックリスト (QA_CHECKLIST.md)](QA_CHECKLIST.md)**: リリース前に実施すべき各種 QA 項目。
 
