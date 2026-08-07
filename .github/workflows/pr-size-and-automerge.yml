@@ -1,0 +1,88 @@
+name: PR Size Labeler & Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+jobs:
+  label-and-automerge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate PR Size Label & Enable Auto-Merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+
+          # Get PR changed files list and stats
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json files,additions,deletions)
+
+          FILE_COUNT=$(echo "$PR_DATA" | jq '.files | length')
+          ADDITIONS=$(echo "$PR_DATA" | jq '.additions')
+          DELETIONS=$(echo "$PR_DATA" | jq '.deletions')
+          TOTAL_DIFF=$((ADDITIONS + DELETIONS))
+
+          # Check for high risk path modifications (DB, Notifications, Native Widgets, Domain logic, Application use cases, App Bootstrap)
+          HAS_HIGH_RISK=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/db/") or startswith("src/lib/notifications/") or startswith("src/widget/") or startswith("src/features/reminders/domain/") or startswith("src/features/settings/domain/") or startswith("src/features/reminders/application/") or startswith("src/features/settings/application/") or startswith("src/bootstrap/")))')
+
+          # Check if ALL modified files belong to the explicit size/XS allowlist (docs, skills, low-risk config)
+          IS_ALLOWED_XS=$(echo "$PR_DATA" | jq 'all(.files[]; .path | (test("\\.md$"; "i") or startswith("docs/") or startswith(".agents/") or startswith(".claude/") or startswith(".codex/") or . == ".coderabbit.yaml" or . == ".gitignore" or . == ".gitattributes" or . == ".editorconfig"))')
+
+          SIZE_LABEL="size/M"
+
+          if [ "$HAS_HIGH_RISK" = "true" ]; then
+            if [ "$FILE_COUNT" -gt 10 ]; then
+              SIZE_LABEL="size/L"
+            else
+              SIZE_LABEL="size/M"
+            fi
+          elif [ "$IS_ALLOWED_XS" = "true" ] && [ "$FILE_COUNT" -le 2 ] && [ "$TOTAL_DIFF" -le 30 ]; then
+            SIZE_LABEL="size/XS"
+          elif [ "$FILE_COUNT" -le 5 ] && [ "$TOTAL_DIFF" -le 250 ]; then
+            SIZE_LABEL="size/S"
+          elif [ "$FILE_COUNT" -le 15 ] && [ "$TOTAL_DIFF" -le 500 ]; then
+            SIZE_LABEL="size/M"
+          elif [ "$FILE_COUNT" -le 30 ]; then
+            SIZE_LABEL="size/L"
+          else
+            SIZE_LABEL="size/XL"
+          fi
+
+          echo "Calculated Size: $SIZE_LABEL (Files: $FILE_COUNT, Diff: $TOTAL_DIFF, High Risk: $HAS_HIGH_RISK)"
+
+          # Manage size labels on PR
+          CURRENT_LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '[.labels[].name][]')
+
+          for label in $CURRENT_LABELS; do
+            case "$label" in
+              size/*)
+                if [ "$label" != "$SIZE_LABEL" ]; then
+                  gh pr edit "$PR_NUMBER" --remove-label "$label" || true
+                fi
+                ;;
+            esac
+          done
+
+          gh pr edit "$PR_NUMBER" --add-label "$SIZE_LABEL" || true
+
+          # Auto-merge if size/XS and reviewDecision is APPROVED
+          REVIEW_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision --jq '.reviewDecision')
+
+          if [ "$SIZE_LABEL" = "size/XS" ] && [ "$REVIEW_DECISION" = "APPROVED" ]; then
+            echo "size/XS かつ APPROVED を検出: auto-merge を有効化 (squash)"
+            gh pr merge "$PR_NUMBER" --auto --squash || true
+          else
+            echo "Auto-merge スキップ (Size: $SIZE_LABEL, Review Decision: $REVIEW_DECISION)"
+          fi
