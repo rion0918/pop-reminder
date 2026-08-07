@@ -19,6 +19,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Codex PR Review & Size Labeling
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         uses: openai/codex-action@v1
         with:
           prompt: |
