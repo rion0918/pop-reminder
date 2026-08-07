@@ -64,21 +64,21 @@ Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle 
 
 ```mermaid
 graph TD
-    subgraph UI Layer ["① 画面・表示層 (Presentation)"]
+    subgraph UILayer ["① 画面・表示層"]
         Screen["画面 (HomeScreen / DetailSheet)"]
         Hook["useRemindersQuery (TanStack Query)"]
     end
 
-    subgraph App Layer ["② ユースケース層 (Application)"]
+    subgraph AppLayer ["② ユースケース層"]
         UseCase["reminderUseCases (保存・削除・更新)"]
-        Port["Port インターフェース (ReminderRepository / NotificationGateway)"]
+        Port["Port インターフェース"]
     end
 
-    subgraph Domain Layer ["③ ビジネスルール層 (Domain)"]
+    subgraph DomainLayer ["③ ビジネスルール層"]
         Domain["Reminder モデル & バリデーション"]
     end
 
-    subgraph Infra Layer ["④ 外部連携・インフラ層 (Infrastructure)"]
+    subgraph InfraLayer ["④ 外部連携・インフラ層"]
         SQLite["SQLite (src/db)"]
         Notifications["Expo Notifications (src/lib/notifications)"]
         Widget["Android Widget (src/widget)"]
@@ -88,8 +88,10 @@ graph TD
     Hook --> UseCase
     UseCase --> Domain
     UseCase --> Port
-    Infra Layer -. Portを実装 .-> Port
-    Bootstrap["src/bootstrap/appServices.ts (DI)"] -- 外部実装をポートに接続 --> UseCase
+    SQLite -.->|実装| Port
+    Notifications -.->|実装| Port
+    Widget -.->|実装| Port
+    Bootstrap["src/bootstrap/appServices.ts"] -->|DI 接続| UseCase
 ```
 
 ---
