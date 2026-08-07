@@ -24,7 +24,7 @@ Assign size labels (`size/XS` ~ `size/XL`) based on **impact scope** and **risk 
 - **Component Scope**: Count how many domain modules or layers are touched.
 - **Behavioral Impact**: Check for breaking interface changes, database migrations, or public API modifications.
 - **Domain Risk**: Changes affecting notifications, SQLite DB schemas, widget synchronizations, or core data models must be rated at least `size/M` or `size/L`.
-- Do **NOT** assign `size/XS` to any change modifying core business logic, SQLite schemas, or native module integration.
+- **`size/XS` Allowlist**: `size/XS` is strictly restricted to documentation (`*.md`, `docs/`), skill files (`.agents/`), or explicitly approved low-risk config files (`.coderabbit.yaml`, `.gitignore`, `.gitattributes`, `.editorconfig`). Do **NOT** assign `size/XS` to workflow files, build configs, production code, or database schemas.
 
 ---
 

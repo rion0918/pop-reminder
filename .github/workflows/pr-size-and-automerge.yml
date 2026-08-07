@@ -37,8 +37,8 @@ jobs:
           # Check for high risk path modifications (DB, Notifications, Native Widgets, Domain logic, Application use cases, App Bootstrap)
           HAS_HIGH_RISK=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/db/") or startswith("src/lib/notifications/") or startswith("src/widget/") or startswith("src/features/reminders/domain/") or startswith("src/features/settings/domain/") or startswith("src/features/reminders/application/") or startswith("src/features/settings/application/") or startswith("src/bootstrap/")))')
 
-          # Check for production code modifications (src/, android/, ios/)
-          IS_PROD_CODE=$(echo "$PR_DATA" | jq 'any(.files[]; .path | (startswith("src/") or startswith("android/") or startswith("ios/")))')
+          # Check if ALL modified files belong to the explicit size/XS allowlist (docs, skills, low-risk config)
+          IS_ALLOWED_XS=$(echo "$PR_DATA" | jq 'all(.files[]; .path | (test("\\.md$"; "i") or startswith("docs/") or startswith(".agents/") or startswith(".claude/") or startswith(".codex/") or . == ".coderabbit.yaml" or . == ".gitignore" or . == ".gitattributes" or . == ".editorconfig"))')
 
           SIZE_LABEL="size/M"
 
@@ -48,7 +48,7 @@ jobs:
             else
               SIZE_LABEL="size/M"
             fi
-          elif [ "$IS_PROD_CODE" = "false" ] && [ "$FILE_COUNT" -le 2 ] && [ "$TOTAL_DIFF" -le 30 ]; then
+          elif [ "$IS_ALLOWED_XS" = "true" ] && [ "$FILE_COUNT" -le 2 ] && [ "$TOTAL_DIFF" -le 30 ]; then
             SIZE_LABEL="size/XS"
           elif [ "$FILE_COUNT" -le 5 ] && [ "$TOTAL_DIFF" -le 250 ]; then
             SIZE_LABEL="size/S"

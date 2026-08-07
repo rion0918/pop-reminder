@@ -26,11 +26,11 @@ test('pr-size-and-automerge workflow triggers on PR events and PR review events'
   assert.match(sizeWorkflow, /if:\s*github\.event\.pull_request\.draft == false/);
 });
 
-test('pr-size-and-automerge workflow classifies size/XS for non-prod code and requires APPROVED reviewDecision', () => {
-  assert.match(sizeWorkflow, /IS_PROD_CODE=/);
+test('pr-size-and-automerge workflow restricts size/XS to explicit allowlist and requires APPROVED reviewDecision', () => {
+  assert.match(sizeWorkflow, /IS_ALLOWED_XS=/);
   assert.match(sizeWorkflow, /src\/features\/reminders\/domain\//);
   assert.match(sizeWorkflow, /src\/bootstrap\//);
-  assert.match(sizeWorkflow, /\[ "\$IS_PROD_CODE" = "false" \]/);
+  assert.match(sizeWorkflow, /\[ "\$IS_ALLOWED_XS" = "true" \]/);
   assert.match(sizeWorkflow, /REVIEW_DECISION=/);
   assert.match(sizeWorkflow, /\[ "\$REVIEW_DECISION" = "APPROVED" \]/);
   assert.match(sizeWorkflow, /SIZE_LABEL="size\/XS"/);
