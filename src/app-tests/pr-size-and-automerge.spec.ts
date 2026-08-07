@@ -15,20 +15,24 @@ const antigravitySkill = readFileSync(
   'utf8',
 );
 
-test('pr-size-and-automerge workflow triggers on PR events and ignores drafts', () => {
-  assert.match(sizeWorkflow, /on:\s*\n\s*pull_request:/);
+test('pr-size-and-automerge workflow triggers on PR events and PR review events', () => {
+  assert.match(sizeWorkflow, /pull_request:/);
   assert.match(
     sizeWorkflow,
     /types:\s*\[opened,\s*synchronize,\s*reopened,\s*labeled,\s*unlabeled\]/,
   );
+  assert.match(sizeWorkflow, /pull_request_review:/);
+  assert.match(sizeWorkflow, /types:\s*\[submitted,\s*dismissed\]/);
   assert.match(sizeWorkflow, /if:\s*github\.event\.pull_request\.draft == false/);
 });
 
-test('pr-size-and-automerge workflow classifies size/XS only for non-prod code and expands high risk paths', () => {
+test('pr-size-and-automerge workflow classifies size/XS for non-prod code and requires APPROVED reviewDecision', () => {
   assert.match(sizeWorkflow, /IS_PROD_CODE=/);
   assert.match(sizeWorkflow, /src\/features\/reminders\/domain\//);
   assert.match(sizeWorkflow, /src\/bootstrap\//);
   assert.match(sizeWorkflow, /\[ "\$IS_PROD_CODE" = "false" \]/);
+  assert.match(sizeWorkflow, /REVIEW_DECISION=/);
+  assert.match(sizeWorkflow, /\[ "\$REVIEW_DECISION" = "APPROVED" \]/);
   assert.match(sizeWorkflow, /SIZE_LABEL="size\/XS"/);
   assert.match(sizeWorkflow, /gh pr merge "\$PR_NUMBER" --auto --squash/);
 });

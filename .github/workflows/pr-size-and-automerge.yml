@@ -3,6 +3,8 @@ name: PR Size Labeler & Auto-Merge
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
 
 jobs:
   label-and-automerge:
@@ -75,8 +77,12 @@ jobs:
 
           gh pr edit "$PR_NUMBER" --add-label "$SIZE_LABEL" || true
 
-          # Auto-merge if size/XS
-          if [ "$SIZE_LABEL" = "size/XS" ]; then
-            echo "size/XS detected: Enabling auto-merge (squash)"
+          # Auto-merge if size/XS and reviewDecision is APPROVED
+          REVIEW_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision --jq '.reviewDecision')
+
+          if [ "$SIZE_LABEL" = "size/XS" ] && [ "$REVIEW_DECISION" = "APPROVED" ]; then
+            echo "size/XS かつ APPROVED を検出: auto-merge を有効化 (squash)"
             gh pr merge "$PR_NUMBER" --auto --squash || true
+          else
+            echo "Auto-merge スキップ (Size: $SIZE_LABEL, Review Decision: $REVIEW_DECISION)"
           fi
