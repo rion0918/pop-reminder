@@ -204,11 +204,14 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst({
   height,
   color,
   phase,
+  delayMs = 0,
+  hapticsEnabled = true,
   isSelected,
   surfaceRef,
   onMotionComplete,
 }: ReminderBubbleBurstProps) {
   const reduceMotion = useReducedMotion();
+  const motionDelayMs = reduceMotion ? 0 : delayMs;
   const progress = useSharedValue(0);
   const hapticProgress = useSharedValue(0);
   const mountedRef = useRef(true);
@@ -300,7 +303,7 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst({
     }
 
     if (reduceMotion) {
-      if (phase === 'bursting') {
+      if (phase === 'bursting' && hapticsEnabled) {
         void triggerBubbleBurstHaptic();
       }
       progress.value = 1;
@@ -308,9 +311,9 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst({
       return;
     }
 
-    if (phase === 'bursting') {
+    if (phase === 'bursting' && hapticsEnabled) {
       hapticProgress.value = withDelay(
-        REMINDER_BUBBLE_RUPTURE_MS,
+        motionDelayMs + REMINDER_BUBBLE_RUPTURE_MS,
         withTiming(1, { duration: 1 }, (finished) => {
           if (finished) {
             runOnJS(triggerBubbleBurstHaptic)();
@@ -319,24 +322,35 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst({
       );
     }
 
-    progress.value = withTiming(
-      1,
-      {
-        duration: phase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
-        easing: Easing.linear,
-      },
-      (finished) => {
-        if (finished) {
-          runOnJS(completeMotion)(phase);
-        }
-      },
+    progress.value = withDelay(
+      motionDelayMs,
+      withTiming(
+        1,
+        {
+          duration: phase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
+          easing: Easing.linear,
+        },
+        (finished) => {
+          if (finished) {
+            runOnJS(completeMotion)(phase);
+          }
+        },
+      ),
     );
 
     return () => {
       cancelAnimation(progress);
       cancelAnimation(hapticProgress);
     };
-  }, [completeMotion, hapticProgress, phase, progress, reduceMotion]);
+  }, [
+    completeMotion,
+    hapticProgress,
+    hapticsEnabled,
+    motionDelayMs,
+    phase,
+    progress,
+    reduceMotion,
+  ]);
 
   const holeRadius = useDerivedValue(() => {
     const hole = easeOutCubic(clamp01((progress.value - 0.145) / 0.263));

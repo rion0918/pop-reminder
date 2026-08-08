@@ -38,6 +38,8 @@ export { getTemporalYRatio, makeGridSlots, makeLayoutForItem };
 export type BubbleDeleteMotion = {
   reminderId: string;
   phase: BubbleDeleteMotionPhase;
+  delayMs?: number;
+  hapticsEnabled?: boolean;
 };
 
 type ReminderBubbleBoardProps = {
@@ -45,10 +47,15 @@ type ReminderBubbleBoardProps = {
   loading?: boolean;
   error?: string | null;
   selectedReminderId?: string | null;
+  selectedReminderIds?: ReadonlySet<string>;
+  selectionMode?: boolean;
   deleteMotion?: BubbleDeleteMotion | null;
+  deleteMotions?: readonly BubbleDeleteMotion[];
   freezeLayout?: boolean;
   idleDisabled?: boolean;
+  interactionDisabled?: boolean;
   onReminderPress?: (reminder: Reminder) => void;
+  onReminderLongPress?: (reminder: Reminder) => void;
   onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
   onOverflowPress?: () => void;
   onEmptyPress?: () => void;
@@ -389,11 +396,16 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   loading,
   error,
   selectedReminderId,
+  selectedReminderIds,
+  selectionMode,
   deleteMotion,
+  deleteMotions,
   freezeLayout,
   idleDisabled,
+  interactionDisabled,
   onReminderPress,
   onDeleteMotionComplete,
+  onReminderLongPress,
   onOverflowPress,
   onEmptyPress,
   emptyDisabled,
@@ -656,30 +668,41 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   return (
     <View onLayout={handleBoardLayout} style={styles.board}>
       {boardReady
-        ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => (
-            <ReminderBubble
-              key={reminder.id}
-              reminder={reminder}
-              index={visualIndex}
-              size={size}
-              width={width}
-              height={height}
-              currentDate={colorReferenceDate}
-              isSelected={selectedReminderId === reminder.id}
-              deleteMotionPhase={
-                deleteMotion?.reminderId === reminder.id ? deleteMotion.phase : undefined
-              }
-              idleDisabled={idleDisabled || deleteMotion?.reminderId === reminder.id}
-              onPress={onReminderPress}
-              onDeleteMotionComplete={onDeleteMotionComplete}
-              style={positionStyle}
-            />
-          ))
+        ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => {
+            const isMultiSelected = selectedReminderIds?.has(reminder.id) ?? false;
+            const activeDeleteMotion =
+              deleteMotions?.find((motion) => motion.reminderId === reminder.id) ??
+              (deleteMotion?.reminderId === reminder.id ? deleteMotion : undefined);
+
+            return (
+              <ReminderBubble
+                key={reminder.id}
+                reminder={reminder}
+                index={visualIndex}
+                size={size}
+                width={width}
+                height={height}
+                currentDate={colorReferenceDate}
+                isSelected={selectedReminderId === reminder.id || isMultiSelected}
+                selectionMode={selectionMode}
+                isMultiSelected={isMultiSelected}
+                deleteMotionPhase={activeDeleteMotion?.phase}
+                deleteMotionDelayMs={activeDeleteMotion?.delayMs}
+                deleteMotionHapticsEnabled={activeDeleteMotion?.hapticsEnabled}
+                idleDisabled={idleDisabled || Boolean(activeDeleteMotion)}
+                interactionDisabled={interactionDisabled}
+                onPress={onReminderPress}
+                onLongPress={onReminderLongPress}
+                onDeleteMotionComplete={onDeleteMotionComplete}
+                style={positionStyle}
+              />
+            );
+          })
         : null}
       {overflowBubble ? (
         <OverflowBubble
           count={overflowCount}
-          disabled={!onOverflowPress}
+          disabled={Boolean(selectionMode) || !onOverflowPress}
           left={overflowBubble.left}
           size={overflowBubble.size}
           top={overflowBubble.top}

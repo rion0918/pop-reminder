@@ -3,8 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAppServices } from '../../../bootstrap/AppProviders';
 import type { Reminder } from '../domain/reminder';
+import {
+  activeRemindersQueryKey,
+  deleteRemindersAndSyncCache,
+  removeRemindersFromQueryCache,
+} from './reminderQueryMutations';
 
-export const activeRemindersQueryKey = ['reminders', 'active'] as const;
 const MAX_REFRESH_TIMER_MS = 24 * 60 * 60 * 1000;
 
 function sortReminders(reminders: Reminder[]) {
@@ -43,6 +47,10 @@ export function useRemindersQuery() {
     },
     [queryClient],
   );
+  const removeReminders = useCallback(
+    (ids: string[]) => removeRemindersFromQueryCache(queryClient, ids),
+    [queryClient],
+  );
 
   const createMutation = useMutation({
     mutationFn: ({
@@ -67,6 +75,18 @@ export function useRemindersQuery() {
       if (deleted) removeReminder(id);
       void reconcile();
     },
+  });
+  const deleteManyMutation = useMutation({
+    mutationFn: ({ ids, deferCache }: { ids: string[]; deferCache?: boolean }) =>
+      deleteRemindersAndSyncCache(
+        ids,
+        { deferCache },
+        {
+          deleteMany: (inputIds) => services.reminders.deleteMany(inputIds),
+          removeReminders,
+          reconcile,
+        },
+      ),
   });
   const updateTitleMutation = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) =>
@@ -125,16 +145,20 @@ export function useRemindersQuery() {
     refresh,
     upsertReminder,
     removeReminder,
+    removeReminders,
     createReminder: (
       input: Parameters<typeof services.reminders.create>[0],
       options?: Parameters<typeof services.reminders.create>[1],
     ) => createMutation.mutateAsync({ input, options }),
     deleteReminder: (id: string, options?: { deferCache?: boolean }) =>
       deleteMutation.mutateAsync({ id, ...options }),
+    deleteReminders: (ids: string[], options?: { deferCache?: boolean }) =>
+      deleteManyMutation.mutateAsync({ ids, ...options }),
     updateReminderTitle: (id: string, title: string) =>
       updateTitleMutation.mutateAsync({ id, title }),
     updateReminderTargetTime: (id: string, targetTime: string) =>
       updateTargetTimeMutation.mutateAsync({ id, targetTime }),
     isCreating: createMutation.isPending,
+    isDeletingReminders: deleteManyMutation.isPending,
   };
 }

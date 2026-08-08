@@ -19,6 +19,8 @@ import type { BubbleDeleteMotionPhase } from '../components/ReminderBubble';
 import { ReminderBubbleBoard, type BubbleDeleteMotion } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
+import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
+import { makeBulkDeleteMotions } from '../components/reminderBulkDeleteMotion';
 import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import { useNotificationDevStore } from '../stores/notificationDevStore';
 import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
@@ -32,6 +34,7 @@ import {
   formatReminderDetailAccessibilityDateTime,
 } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
+import { triggerReminderSelectionHaptic } from '../utils/reminderSelectionFeedback';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
@@ -40,10 +43,7 @@ const HOME_BOTTOM_CONTROLS_OFFSET = 28;
 const HOME_BUBBLE_CONTROLS_GAP = 12;
 const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =
   HOME_ADD_BUTTON_SIZE + HOME_BOTTOM_CONTROLS_OFFSET + HOME_BUBBLE_CONTROLS_GAP;
-type DeleteMotionWaiter = {
-  key: string;
-  resolve: () => void;
-};
+const MAX_VISIBLE_HOME_BUBBLES = 12;
 
 function makeDeleteMotionKey(reminderId: string, phase: BubbleDeleteMotionPhase) {
   return `${reminderId}:${phase}`;
@@ -66,11 +66,14 @@ export function HomeScreen() {
     error,
     refresh,
     removeReminder,
+    removeReminders,
     createReminder,
     deleteReminder,
+    deleteReminders,
     updateReminderTitle,
     updateReminderTargetTime,
     isCreating: isSaving,
+    isDeletingReminders,
   } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
@@ -102,13 +105,26 @@ export function HomeScreen() {
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
-  const deleteMotionWaiterRef = useRef<DeleteMotionWaiter | null>(null);
+  const isSelectionModeRef = useRef(false);
+  const deleteMotionWaitersRef = useRef(new Map<string, () => void>());
   const isReminderDeletionInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedReminderIds, setSelectedReminderIds] = useState<Set<string>>(() => new Set());
+  const [isBulkDeletionInProgress, setIsBulkDeletionInProgress] = useState(false);
+  const [bulkDeleteMotions, setBulkDeleteMotions] = useState<readonly BubbleDeleteMotion[]>([]);
   const consumedIntentRef = useRef<string | null>(null);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
+  const visibleReminderIds = useMemo(
+    () => new Set(reminders.slice(0, MAX_VISIBLE_HOME_BUBBLES).map((reminder) => reminder.id)),
+    [reminders],
+  );
+  const selectedCount = selectedReminderIds.size;
+  const allVisibleRemindersSelected =
+    visibleReminderIds.size > 0 && selectedCount === visibleReminderIds.size;
+  const isSelectionBusy = isDeletingReminders || isBulkDeletionInProgress;
 
   const [deleteMotion, setDeleteMotion] = useState<BubbleDeleteMotion | null>(null);
 
@@ -129,6 +145,17 @@ export function HomeScreen() {
   }, [isSaving]);
 
   useEffect(() => {
+    isSelectionModeRef.current = isSelectionMode;
+  }, [isSelectionMode]);
+
+  useEffect(() => {
+    setSelectedReminderIds((current) => {
+      const next = new Set([...current].filter((id) => visibleReminderIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [visibleReminderIds]);
+
+  useEffect(() => {
     if (!routeParams.intent || consumedIntentRef.current === routeParams.intent) return;
     if (routeParams.action === 'view' && loading) return;
 
@@ -145,13 +172,63 @@ export function HomeScreen() {
 
   useEffect(() => {
     isMountedRef.current = true;
+    const deleteMotionWaiters = deleteMotionWaitersRef.current;
 
     return () => {
       isMountedRef.current = false;
-      deleteMotionWaiterRef.current?.resolve();
-      deleteMotionWaiterRef.current = null;
+      for (const resolve of deleteMotionWaiters.values()) {
+        resolve();
+      }
+      deleteMotionWaiters.clear();
     };
   }, []);
+
+  const cancelSelection = useCallback(() => {
+    setIsSelectionMode(false);
+    setSelectedReminderIds(new Set());
+  }, []);
+
+  const handleReminderLongPress = useCallback(
+    (reminder: Reminder) => {
+      if (isSelectionBusy || isSelectionMode) return;
+
+      setSelectedReminderId(null);
+      setIsSelectionMode(true);
+      setSelectedReminderIds(new Set([reminder.id]));
+      void triggerReminderSelectionHaptic();
+    },
+    [isSelectionBusy, isSelectionMode],
+  );
+
+  const handleReminderPress = useCallback(
+    (reminder: Reminder) => {
+      if (isSelectionBusy) return;
+
+      if (isSelectionMode) {
+        void triggerReminderSelectionHaptic();
+        setSelectedReminderIds((current) => {
+          const next = new Set(current);
+          if (next.has(reminder.id)) {
+            next.delete(reminder.id);
+          } else {
+            next.add(reminder.id);
+          }
+          return next;
+        });
+        return;
+      }
+
+      setSelectedReminderId(reminder.id);
+    },
+    [isSelectionBusy, isSelectionMode],
+  );
+
+  const toggleSelectAll = useCallback(() => {
+    if (isSelectionBusy) return;
+
+    void triggerReminderSelectionHaptic();
+    setSelectedReminderIds(allVisibleRemindersSelected ? new Set() : new Set(visibleReminderIds));
+  }, [allVisibleRemindersSelected, isSelectionBusy, visibleReminderIds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -176,6 +253,11 @@ export function HomeScreen() {
           return true;
         }
 
+        if (isSelectionModeRef.current) {
+          cancelSelection();
+          return true;
+        }
+
         if (selectedReminderRef.current) {
           setSelectedReminderId(null);
           return true;
@@ -192,7 +274,7 @@ export function HomeScreen() {
       return () => {
         subscription.remove();
       };
-    }, [closeQuickAdd, setSelectedReminderId]),
+    }, [cancelSelection, closeQuickAdd]),
   );
 
   const handleSave = async (title: string) => {
@@ -260,28 +342,80 @@ export function HomeScreen() {
   const waitForDeleteMotion = useCallback(
     (reminderId: string, phase: BubbleDeleteMotionPhase) =>
       new Promise<void>((resolve) => {
-        deleteMotionWaiterRef.current?.resolve();
-        deleteMotionWaiterRef.current = {
-          key: makeDeleteMotionKey(reminderId, phase),
-          resolve,
-        };
+        const key = makeDeleteMotionKey(reminderId, phase);
+        deleteMotionWaitersRef.current.get(key)?.();
+        deleteMotionWaitersRef.current.set(key, resolve);
       }),
     [],
   );
 
   const handleDeleteMotionComplete = useCallback(
     (reminderId: string, phase: BubbleDeleteMotionPhase) => {
-      const waiter = deleteMotionWaiterRef.current;
+      const key = makeDeleteMotionKey(reminderId, phase);
+      const resolve = deleteMotionWaitersRef.current.get(key);
 
-      if (waiter?.key !== makeDeleteMotionKey(reminderId, phase)) {
-        return;
-      }
+      if (!resolve) return;
 
-      deleteMotionWaiterRef.current = null;
-      waiter.resolve();
+      deleteMotionWaitersRef.current.delete(key);
+      resolve();
     },
     [],
   );
+
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      isReminderDeletionInProgressRef.current = true;
+      setIsBulkDeletionInProgress(true);
+
+      try {
+        const deletedIds = await deleteReminders(ids, { deferCache: true });
+        const motions = makeBulkDeleteMotions(deletedIds);
+        const motionCompletion = Promise.all(
+          motions.map((motion) => waitForDeleteMotion(motion.reminderId, motion.phase)),
+        );
+
+        setBulkDeleteMotions(motions);
+        await motionCompletion;
+
+        if (!isMountedRef.current) return;
+
+        setBulkDeleteMotions([]);
+        removeReminders(deletedIds);
+        cancelSelection();
+        void refresh({ silent: true });
+      } catch (deleteError) {
+        if (!isMountedRef.current) return;
+
+        setBulkDeleteMotions([]);
+        console.warn('Failed to delete reminders from home', deleteError);
+        Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
+      } finally {
+        isReminderDeletionInProgressRef.current = false;
+        if (isMountedRef.current) {
+          setIsBulkDeletionInProgress(false);
+        }
+      }
+    },
+    [cancelSelection, deleteReminders, refresh, removeReminders, waitForDeleteMotion],
+  );
+
+  const handleBulkDeletePress = useCallback(() => {
+    if (selectedCount === 0 || isSelectionBusy) return;
+
+    const ids = [...selectedReminderIds];
+    Alert.alert(
+      '選択したリマインドを削除しますか？',
+      `${selectedCount}件のリマインドを削除します。この操作は取り消せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: `${selectedCount}件を削除`,
+          style: 'destructive',
+          onPress: () => void handleBulkDelete(ids),
+        },
+      ],
+    );
+  }, [handleBulkDelete, isSelectionBusy, selectedCount, selectedReminderIds]);
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
@@ -418,13 +552,19 @@ export function HomeScreen() {
         <View className="flex-row items-center gap-[8px]">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="設定を開く"
+            accessibilityLabel={isSelectionMode ? '選択モードを閉じる' : '設定を開く'}
+            accessibilityState={{ disabled: isSelectionBusy }}
+            disabled={isSelectionBusy}
             hitSlop={8}
-            onPress={handlePressSettings}
+            onPress={isSelectionMode ? cancelSelection : handlePressSettings}
             className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
             style={({ pressed }) => [pressed ? styles.iconButtonPressed : null]}
           >
-            <Ionicons name="settings-outline" size={22} color={palette.ink} />
+            <Ionicons
+              name={isSelectionMode ? 'close' : 'settings-outline'}
+              size={22}
+              color={palette.ink}
+            />
           </Pressable>
         </View>
       </View>
@@ -435,9 +575,12 @@ export function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={nextReminderAccessibilityLabel}
             accessibilityHint="詳細を開きます"
+            accessibilityState={{ disabled: isSelectionMode || isSelectionBusy }}
+            disabled={isSelectionMode || isSelectionBusy}
             onPress={() => setSelectedReminderId(nextReminder.id)}
             style={({ pressed }) => [
               styles.nextReminderCard,
+              isSelectionMode ? styles.nextReminderCardInactive : null,
               pressed ? styles.nextReminderCardPressed : null,
             ]}
           >
@@ -472,10 +615,15 @@ export function HomeScreen() {
           loading={loading}
           error={error}
           selectedReminderId={selectedReminderId}
+          selectedReminderIds={selectedReminderIds}
+          selectionMode={isSelectionMode}
           deleteMotion={deleteMotion}
+          deleteMotions={bulkDeleteMotions}
           freezeLayout={isQuickAddOpen}
           idleDisabled={isBubbleIdleDisabled}
-          onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
+          interactionDisabled={isSelectionBusy}
+          onReminderPress={handleReminderPress}
+          onReminderLongPress={handleReminderLongPress}
           onDeleteMotionComplete={handleDeleteMotionComplete}
           onOverflowPress={handleOpenReminderList}
           onEmptyPress={handlePressAdd}
@@ -499,7 +647,20 @@ export function HomeScreen() {
         onUpdateTargetTime={handleUpdateReminderTargetTime}
       />
 
-      {!isEmptyHome ? (
+      {isSelectionMode ? (
+        <ReminderSelectionBar
+          selectedCount={selectedCount}
+          allSelected={allVisibleRemindersSelected}
+          busy={isSelectionBusy}
+          compact={isCompactPhoneWidth}
+          onToggleAll={toggleSelectAll}
+          onDelete={handleBulkDeletePress}
+          style={[
+            styles.selectionControls,
+            isCompactPhoneWidth ? styles.bottomControlsCompact : null,
+          ]}
+        />
+      ) : !isEmptyHome ? (
         <View
           style={[styles.bottomControls, isCompactPhoneWidth ? styles.bottomControlsCompact : null]}
         >
@@ -599,6 +760,9 @@ const styles = StyleSheet.create({
     opacity: 0.88,
     transform: [{ scale: 0.99 }],
   },
+  nextReminderCardInactive: {
+    opacity: 0.62,
+  },
   nextReminderBackground: {
     minHeight: 68,
     flexDirection: 'row',
@@ -663,6 +827,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  selectionControls: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: HOME_BOTTOM_CONTROLS_OFFSET,
   },
   bottomControlsCompact: {
     left: 16,

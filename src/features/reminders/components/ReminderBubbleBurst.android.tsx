@@ -20,6 +20,8 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst(
   props: ReminderBubbleBurstProps,
 ) {
   const reduceMotion = useReducedMotion();
+  const motionDelayMs = reduceMotion ? 0 : (props.delayMs ?? 0);
+  const hapticsEnabled = props.hapticsEnabled ?? true;
   const hapticTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst(
       hapticTimeoutRef.current = null;
     }
 
-    if (props.phase !== 'bursting') {
+    if (props.phase !== 'bursting' || !hapticsEnabled) {
       return;
     }
 
@@ -40,7 +42,7 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst(
     hapticTimeoutRef.current = setTimeout(() => {
       hapticTimeoutRef.current = null;
       void triggerAndroidBubbleBurstHaptic();
-    }, REMINDER_BUBBLE_RUPTURE_MS);
+    }, motionDelayMs + REMINDER_BUBBLE_RUPTURE_MS);
 
     return () => {
       if (hapticTimeoutRef.current) {
@@ -48,7 +50,7 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst(
         hapticTimeoutRef.current = null;
       }
     };
-  }, [props.phase, reduceMotion]);
+  }, [hapticsEnabled, motionDelayMs, props.phase, reduceMotion]);
 
   return <ReminderBubbleBurstFallback {...props} />;
 });

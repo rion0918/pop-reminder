@@ -249,6 +249,71 @@ test('delete cancels before deleting and does not delete when cancellation fails
   assert.deepEqual(events, ['cancel']);
 });
 
+test('deleteMany deduplicates ids, ignores missing reminders, and syncs once after all cancellations', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const secondReminder: Reminder = { ...reminder, id: 'reminder-2', title: 'Book flights' };
+  const reminders = new Map([
+    [reminder.id, reminder],
+    [secondReminder.id, secondReminder],
+  ]);
+  dependencies.reminders.getById = async (id) => reminders.get(id) ?? null;
+  dependencies.notifications.cancel = async (candidate) => {
+    events.push(`cancel:${candidate.id}`);
+  };
+  dependencies.reminders.deleteMany = async (ids) => {
+    events.push(`delete-many:${ids.join(',')}`);
+  };
+
+  const deletedIds = await createReminderUseCases(dependencies).deleteMany([
+    reminder.id,
+    reminder.id,
+    'missing',
+    secondReminder.id,
+  ]);
+
+  assert.deepEqual(deletedIds, [reminder.id, secondReminder.id]);
+  assert.deepEqual(events, [
+    'cancel:reminder-1',
+    'cancel:reminder-2',
+    'delete-many:reminder-1,reminder-2',
+    'widget',
+  ]);
+});
+
+test('deleteMany does nothing for empty or entirely missing input', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.getById = async () => null;
+  const useCases = createReminderUseCases(dependencies);
+
+  assert.deepEqual(await useCases.deleteMany([]), []);
+  assert.deepEqual(await useCases.deleteMany(['missing', 'missing']), []);
+  assert.deepEqual(events, []);
+});
+
+test('deleteMany skips database deletion and widget sync when any cancellation fails', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const secondReminder: Reminder = { ...reminder, id: 'reminder-2' };
+  dependencies.reminders.getById = async (id) =>
+    id === reminder.id ? reminder : id === secondReminder.id ? secondReminder : null;
+  dependencies.notifications.cancel = async (candidate) => {
+    events.push(`cancel:${candidate.id}`);
+    if (candidate.id === secondReminder.id) throw new Error('cancel failed');
+  };
+  dependencies.reminders.deleteMany = async () => {
+    events.push('delete-many');
+  };
+
+  await assert.rejects(
+    createReminderUseCases(dependencies).deleteMany([reminder.id, secondReminder.id]),
+    /cancel failed/,
+  );
+  assert.equal(events.includes('delete-many'), false);
+  assert.equal(events.includes('widget'), false);
+});
+
 test('title update returns persisted update when replacement scheduling fails', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);

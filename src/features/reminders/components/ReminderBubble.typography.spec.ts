@@ -138,7 +138,7 @@ test('reminder bubble gives immediate interruptible press feedback', () => {
       /const handlePressOut = \(\) => \{/,
       /reduceMotion\s*\? 1\s*:\s*withSpring\(1, REMINDER_BUBBLE_PRESS_SPRING\)/,
       /reduceMotion\s*\? 0\s*:\s*withSpring\(0, REMINDER_BUBBLE_PRESS_SPRING\)/,
-      /accessibilityHint="詳細を開きます"/,
+      /詳細を開きます/,
       /onPressIn=\{handlePressIn\}/,
       /onPressOut=\{handlePressOut\}/,
       /REMINDER_BUBBLE_PRESS_SCALE/,

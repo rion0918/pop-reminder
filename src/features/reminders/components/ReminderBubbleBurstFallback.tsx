@@ -8,6 +8,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -121,9 +122,11 @@ export const ReminderBubbleBurstFallback = memo(function ReminderBubbleBurstFall
   height,
   color,
   phase,
+  delayMs = 0,
   onMotionComplete,
 }: ReminderBubbleBurstProps) {
   const reduceMotion = useReducedMotion();
+  const motionDelayMs = reduceMotion ? 0 : delayMs;
   const progress = useSharedValue(0);
   const geometry = useMemo(
     () => createBubbleBurstGeometry(reminderId, width, height),
@@ -150,21 +153,24 @@ export const ReminderBubbleBurstFallback = memo(function ReminderBubbleBurstFall
       return;
     }
 
-    progress.value = withTiming(
-      1,
-      {
-        duration: phase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
-        easing: Easing.linear,
-      },
-      (finished) => {
-        if (finished) {
-          runOnJS(completeMotion)(phase);
-        }
-      },
+    progress.value = withDelay(
+      motionDelayMs,
+      withTiming(
+        1,
+        {
+          duration: phase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
+          easing: Easing.linear,
+        },
+        (finished) => {
+          if (finished) {
+            runOnJS(completeMotion)(phase);
+          }
+        },
+      ),
     );
 
     return () => cancelAnimation(progress);
-  }, [completeMotion, phase, progress, reduceMotion]);
+  }, [completeMotion, motionDelayMs, phase, progress, reduceMotion]);
 
   const restoreRingStyle = useAnimatedStyle(() => {
     const eased = easeOutCubic(progress.value);
