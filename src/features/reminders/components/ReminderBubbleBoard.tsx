@@ -73,9 +73,9 @@ const FLOATING_SLOTS = [
   { x: 0.18, y: 0.31 },
   { x: 0.82, y: 0.31 },
   { x: 0.34, y: 0.52 },
-  { x: 0.17, y: 0.73 },
-  { x: 0.82, y: 0.72 },
-  { x: 0.48, y: 0.87 },
+  { x: 0.17, y: 0.64 },
+  { x: 0.82, y: 0.64 },
+  { x: 0.48, y: 0.68 },
   { x: 0.68, y: 0.54 },
 ];
 const DENSE_FLOATING_SLOTS = [
@@ -88,10 +88,10 @@ const DENSE_FLOATING_SLOTS = [
   { x: 0.26, y: 0.52 },
   { x: 0.58, y: 0.58 },
   { x: 0.84, y: 0.64 },
-  { x: 0.16, y: 0.72 },
-  { x: 0.44, y: 0.82 },
-  { x: 0.72, y: 0.82 },
-  { x: 0.62, y: 0.74 },
+  { x: 0.16, y: 0.66 },
+  { x: 0.44, y: 0.68 },
+  { x: 0.72, y: 0.68 },
+  { x: 0.62, y: 0.66 },
 ];
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -331,10 +331,12 @@ function makeOverflowIdleMotionConfig(id: string) {
 
 function getTemporalYRatio(index: number, count: number) {
   if (count <= 1) {
-    return 0.38;
+    return 0.36;
   }
 
-  return 0.18 + (index / (count - 1)) * 0.66;
+  const maxSpan = Math.min(0.48, 0.28 + (count - 2) * 0.04);
+  const startY = 0.22 - Math.min(0.04, (count - 2) * 0.008);
+  return startY + (index / (count - 1)) * maxSpan;
 }
 
 function makeGridSlots(isDenseLayout: boolean): LayoutSlot[] {
@@ -349,7 +351,7 @@ function makeGridSlots(isDenseLayout: boolean): LayoutSlot[] {
 
     return {
       x: clamp((column + 0.5) / columns + stagger, 0.14, 0.86),
-      y: clamp(0.14 + rowProgress * 0.72, 0.14, 0.88),
+      y: clamp(0.14 + rowProgress * 0.54, 0.14, 0.68),
       temporal: isDenseLayout,
       slotIndex: index,
     };
@@ -395,7 +397,7 @@ function makeLayoutForItem(
 
     return {
       x: temporalLaneRatios[(index + laneOffset) % temporalLaneRatios.length] ?? xRatio,
-      y: clamp(temporalYRatio + verticalNudge, 0.14, 0.9),
+      y: clamp(temporalYRatio + verticalNudge, 0.14, 0.68),
       temporal: true,
       slotIndex: index,
     };
@@ -455,11 +457,15 @@ function makeLayoutForItem(
 
       return penalty + overlap * 2.4 + excessOverlap * 260 + hardOverlapPenalty + coverRiskPenalty;
     }, 0);
+    const bottomBoundaryPenalty =
+      centerY > boardSize.height * 0.66
+        ? Math.pow((centerY / boardSize.height - 0.66) * 10, 2) * 550
+        : 0;
     const lowerRightPenalty =
-      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.68
+      centerX > boardSize.width * 0.64 && centerY > boardSize.height * 0.64
         ? isDenseLayout
-          ? 180
-          : 280
+          ? 320
+          : 480
         : 0;
     const edgePenalty =
       top <= edgeClearance + 2 || left <= edgeClearance + 2 || left >= maxLeft - 2 ? 28 : 0;
@@ -470,6 +476,7 @@ function makeLayoutForItem(
       distanceFromPreferred * 8 +
       unitFromHash(seed, slotIndex + 10) * 18 +
       overlapPenalty +
+      bottomBoundaryPenalty +
       lowerRightPenalty +
       edgePenalty +
       temporalPenalty +
