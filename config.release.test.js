@@ -153,7 +153,7 @@ test('Android notifications have a release-ready small icon and accent color', (
   assert.equal(existsSync(join(__dirname, 'assets/notification-icon.png')), true);
 });
 
-test('Android notifications declare and expose exact alarm special access', () => {
+test('Android notifications do not require exact alarm special access', () => {
   const permission = 'android.permission.SCHEDULE_EXACT_ALARM';
   const manifest = readFileSync(
     join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
@@ -167,14 +167,10 @@ test('Android notifications declare and expose exact alarm special access', () =
     __dirname,
     'android/app/src/main/java/com/rion0918/popreminder/notifications/ExactAlarmPermissionModule.kt',
   );
-  const exactAlarmModule = readFileSync(exactAlarmModulePath, 'utf8');
-
-  assert.ok(appConfig.expo.android.permissions.includes(permission));
-  assert.match(manifest, /android\.permission\.SCHEDULE_EXACT_ALARM/);
-  assert.equal(existsSync(exactAlarmModulePath), true);
-  assert.match(exactAlarmModule, /alarmManager\.canScheduleExactAlarms\(\)/);
-  assert.match(exactAlarmModule, /Settings\.ACTION_REQUEST_SCHEDULE_EXACT_ALARM/);
-  assert.match(mainApplication, /ExactAlarmPermissionPackage/);
+  assert.equal((appConfig.expo.android.permissions ?? []).includes(permission), false);
+  assert.doesNotMatch(manifest, /android\.permission\.SCHEDULE_EXACT_ALARM/);
+  assert.equal(existsSync(exactAlarmModulePath), false);
+  assert.doesNotMatch(mainApplication, /ExactAlarmPermissionPackage/);
 });
 
 test('Android adaptive icon uses a transparent foreground asset', () => {

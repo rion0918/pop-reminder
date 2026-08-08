@@ -9,7 +9,6 @@ import type {
   ReminderSingleNotificationScheduleResult,
 } from '../../features/reminders/application/ports';
 import type { Reminder } from '../../features/reminders/domain/reminder';
-import { getExactAlarmPermissionStatus } from './exactAlarmPermission';
 
 type ReminderNotificationTarget = Pick<
   Reminder,
@@ -189,11 +188,6 @@ async function getSchedulingBlockReason(
 
   if (permission.status !== 'granted') {
     return 'notification-permission-denied';
-  }
-
-  const exactAlarmPermission = await getExactAlarmPermissionStatus();
-  if (exactAlarmPermission.status === 'denied') {
-    return 'exact-alarm-permission-required';
   }
 
   return null;
