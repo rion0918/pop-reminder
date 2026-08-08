@@ -34,6 +34,8 @@ export type BoardSize = {
   height: number;
 };
 
+export type BubbleVerticalLayoutMode = 'natural' | 'homeTimeline';
+
 export type BubbleDimensions = {
   width: number;
   height: number;
@@ -60,9 +62,9 @@ export type FloatingItemLayout = {
   centerY: number;
 };
 
-export type FloatingItemBounds = {
-  top: number;
-  height: number;
+type BoardSizeMeasurementOptions = {
+  freezeLayout: boolean;
+  contentModeChanged: boolean;
 };
 
 export function clamp(value: number, min: number, max: number) {
@@ -93,18 +95,39 @@ export function getEdgeClearance(boardSize: BoardSize) {
   );
 }
 
-export function getBottomAlignmentOffset(boardSize: BoardSize, itemBounds: FloatingItemBounds[]) {
-  if (itemBounds.length === 0) {
-    return 0;
+export function resolveBoardSizeMeasurement(
+  current: BoardSize,
+  measured: BoardSize,
+  { freezeLayout, contentModeChanged }: BoardSizeMeasurementOptions,
+) {
+  if (current.width === measured.width && current.height === measured.height) {
+    return current;
   }
 
-  const lowestBottom = Math.max(...itemBounds.map(({ top, height }) => top + height));
-  const targetBottom = boardSize.height - getEdgeClearance(boardSize);
+  if (freezeLayout && current.width > 0 && current.height > 0 && !contentModeChanged) {
+    return current;
+  }
 
-  return Math.max(0, targetBottom - lowestBottom);
+  return measured;
 }
 
-export function getTemporalYRatio(index: number, count: number) {
+export function getTemporalYRatio(
+  index: number,
+  count: number,
+  verticalLayoutMode: BubbleVerticalLayoutMode = 'natural',
+) {
+  if (verticalLayoutMode === 'homeTimeline') {
+    if (count <= 1) {
+      return 0.5;
+    }
+
+    const startY = Math.max(0.18, 0.35 - (count - 2) * 0.025);
+    const endY = Math.min(0.68, 0.65 + (count - 2) * 0.01);
+    const ratio = startY + (index / (count - 1)) * (endY - startY);
+
+    return Math.round(ratio * 1000) / 1000;
+  }
+
   if (count <= 1) {
     return 0.36;
   }
@@ -141,6 +164,7 @@ export function makeLayoutForItem(
   preferredSlotIndex: number,
   temporalIndex: number,
   temporalCount: number,
+  verticalLayoutMode: BubbleVerticalLayoutMode = 'natural',
 ): FloatingItemLayout {
   const seed = hashString(id);
   const { width, height, collisionSize } = dimensions;
@@ -152,23 +176,23 @@ export function makeLayoutForItem(
   const preferredSlot = isDenseLayout
     ? temporalIndex % activeFloatingSlots.length
     : preferredSlotIndex % activeFloatingSlots.length;
-  const temporalYRatio = isDenseLayout
-    ? (activeFloatingSlots[preferredSlot]?.y ?? getTemporalYRatio(temporalIndex, temporalCount))
-    : getTemporalYRatio(temporalIndex, temporalCount);
+  const temporalYRatio =
+    isDenseLayout && verticalLayoutMode === 'natural'
+      ? (activeFloatingSlots[preferredSlot]?.y ?? getTemporalYRatio(temporalIndex, temporalCount))
+      : getTemporalYRatio(temporalIndex, temporalCount, verticalLayoutMode);
   const jitterRangeX = clamp(
     boardSize.width * (isDenseLayout ? 0.045 : 0.06),
     10,
     isDenseLayout ? 20 : 30,
   );
-  const jitterRangeY = clamp(
-    boardSize.height * (isDenseLayout ? 0.034 : 0.045),
-    9,
-    isDenseLayout ? 18 : 26,
-  );
+  const jitterRangeY =
+    verticalLayoutMode === 'homeTimeline'
+      ? 0
+      : clamp(boardSize.height * (isDenseLayout ? 0.034 : 0.045), 9, isDenseLayout ? 18 : 26);
   const temporalLaneRatios = [0.5, 0.2, 0.8, 0.34, 0.66, 0.18, 0.82];
   const laneOffset = Math.floor(unitFromHash(seed, 80) * temporalLaneRatios.length);
   const temporalSlots = temporalLaneRatios.map((xRatio, index) => {
-    const verticalNudge = ((index % 3) - 1) * 0.025;
+    const verticalNudge = verticalLayoutMode === 'homeTimeline' ? 0 : ((index % 3) - 1) * 0.025;
 
     return {
       x: temporalLaneRatios[(index + laneOffset) % temporalLaneRatios.length] ?? xRatio,
@@ -178,21 +202,32 @@ export function makeLayoutForItem(
     };
   });
   const gridSlots = makeGridSlots(isDenseLayout);
-  const slotCandidates = isDenseLayout
-    ? [
-        ...DENSE_FLOATING_SLOTS.map((slot, index) => ({
-          ...slot,
-          temporal: true,
-          slotIndex: index,
-        })),
-        ...gridSlots,
-        ...FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: false, slotIndex: index })),
-      ]
-    : [
-        ...temporalSlots,
-        ...FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: false, slotIndex: index })),
-        ...gridSlots,
-      ];
+  const slotCandidates =
+    verticalLayoutMode === 'homeTimeline'
+      ? temporalSlots
+      : isDenseLayout
+        ? [
+            ...DENSE_FLOATING_SLOTS.map((slot, index) => ({
+              ...slot,
+              temporal: true,
+              slotIndex: index,
+            })),
+            ...gridSlots,
+            ...FLOATING_SLOTS.map((slot, index) => ({
+              ...slot,
+              temporal: false,
+              slotIndex: index,
+            })),
+          ]
+        : [
+            ...temporalSlots,
+            ...FLOATING_SLOTS.map((slot, index) => ({
+              ...slot,
+              temporal: false,
+              slotIndex: index,
+            })),
+            ...gridSlots,
+          ];
 
   const bestLayout = slotCandidates.reduce<{
     score: number;

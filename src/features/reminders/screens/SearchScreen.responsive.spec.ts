@@ -12,7 +12,7 @@ test('search result meta keeps the result count inside narrow widths', () => {
     /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*style=\{styles\.noFontPadding\}/,
     /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
   ]);
-  assert.equal(source.includes('alignToBottom'), false);
+  assert.equal(source.includes('verticalLayoutMode'), false);
 });
 
 test('search removes deleted reminders locally before a silent refresh', () => {

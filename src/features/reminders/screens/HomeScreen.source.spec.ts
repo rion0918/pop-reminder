@@ -71,7 +71,19 @@ test('opening quick add keeps reminder bubble positions pinned', () => {
   assertSourceIncludes(source, [
     /<ReminderBubbleBoard/,
     /freezeLayout=\{isQuickAddOpen\}/,
-    /alignToBottom/,
+    /verticalLayoutMode="homeTimeline"/,
+  ]);
+});
+
+test('home bubble board reserves the safe corridor above bottom controls', () => {
+  assertSourceIncludes(source, [
+    /const HOME_ADD_BUTTON_SIZE = 64;/,
+    /const HOME_BOTTOM_CONTROLS_OFFSET = 28;/,
+    /const HOME_BUBBLE_CONTROLS_GAP = 12;/,
+    /const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =\s*HOME_ADD_BUTTON_SIZE \+ HOME_BOTTOM_CONTROLS_OFFSET \+ HOME_BUBBLE_CONTROLS_GAP;/,
+    /bubbleBoardContainer: \{[\s\S]*marginTop: 14,[\s\S]*marginBottom: HOME_BUBBLE_BOARD_BOTTOM_RESERVE/,
+    /bottomControls: \{[\s\S]*bottom: HOME_BOTTOM_CONTROLS_OFFSET/,
+    /className="[^"]*h-\[64px\][^"]*"/,
   ]);
 });
 
@@ -340,7 +352,7 @@ test('home bottom controls use compact spacing on narrow Android widths', () => 
     /position: 'absolute'/,
     /left: 24/,
     /right: 24/,
-    /bottom: 28/,
+    /bottom: HOME_BOTTOM_CONTROLS_OFFSET/,
     /flexDirection: 'row'/,
     /alignItems: 'center'/,
     /gap: 12/,
