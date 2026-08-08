@@ -43,6 +43,15 @@ export function useRemindersQuery() {
     },
     [queryClient],
   );
+  const removeReminders = useCallback(
+    (ids: string[]) => {
+      const idSet = new Set(ids);
+      queryClient.setQueryData<Reminder[]>(activeRemindersQueryKey, (current = []) =>
+        current.filter((item) => !idSet.has(item.id)),
+      );
+    },
+    [queryClient],
+  );
 
   const createMutation = useMutation({
     mutationFn: ({
@@ -65,6 +74,13 @@ export function useRemindersQuery() {
       }
 
       if (deleted) removeReminder(id);
+      void reconcile();
+    },
+  });
+  const deleteManyMutation = useMutation({
+    mutationFn: (ids: string[]) => services.reminders.deleteMany(ids),
+    onSuccess: (deletedIds) => {
+      removeReminders(deletedIds);
       void reconcile();
     },
   });
@@ -125,16 +141,19 @@ export function useRemindersQuery() {
     refresh,
     upsertReminder,
     removeReminder,
+    removeReminders,
     createReminder: (
       input: Parameters<typeof services.reminders.create>[0],
       options?: Parameters<typeof services.reminders.create>[1],
     ) => createMutation.mutateAsync({ input, options }),
     deleteReminder: (id: string, options?: { deferCache?: boolean }) =>
       deleteMutation.mutateAsync({ id, ...options }),
+    deleteReminders: (ids: string[]) => deleteManyMutation.mutateAsync(ids),
     updateReminderTitle: (id: string, title: string) =>
       updateTitleMutation.mutateAsync({ id, title }),
     updateReminderTargetTime: (id: string, targetTime: string) =>
       updateTargetTimeMutation.mutateAsync({ id, targetTime }),
     isCreating: createMutation.isPending,
+    isDeletingReminders: deleteManyMutation.isPending,
   };
 }

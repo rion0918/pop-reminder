@@ -24,7 +24,27 @@ test('reminder list reflects edited titles without leaving the list', () => {
     /const selectedReminder = reminders\.find\(\(reminder\) => reminder\.id === selectedReminderId\) \?\? null;/,
     /const handleUpdateReminderTitle = useCallback\(/,
     /const updatedReminder = await updateReminderTitle\(reminder\.id, title\);/,
-    /onPress=\{\(\) => setSelectedReminderId\(reminder\.id\)\}/,
+    /setSelectedReminderId\(reminder\.id\)/,
     /onUpdateTitle=\{handleUpdateReminderTitle\}/,
+  ]);
+});
+
+test('reminder list supports accessible long-press selection and bulk deletion', () => {
+  assertSourceIncludes(source, [
+    /BackHandler\.addEventListener\('hardwareBackPress'/,
+    /const \[isSelectionMode, setIsSelectionMode\] = useState\(false\)/,
+    /const \[selectedReminderIds, setSelectedReminderIds\] = useState/,
+    /deleteReminders,/,
+    /onLongPress=\{\(\) =>/,
+    /selected: isSelected/,
+    /\$\{selectedCount\}件選択中/,
+    /すべて選択/,
+    /選択解除/,
+    /Alert\.alert\(\s*'選択したリマインドを削除しますか？'/,
+    /`\$\{selectedCount\}件のリマインドを削除します。/,
+    /`\$\{selectedCount\}件を削除`/,
+    /isDeletingReminders/,
+    /setSelectedReminderIds\(new Set\(\)\)/,
+    /長押しで複数選択できます/,
   ]);
 });

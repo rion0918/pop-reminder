@@ -4,7 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,12 +40,18 @@ export function ReminderListScreen() {
     error,
     refresh,
     deleteReminder,
+    deleteReminders,
+    isDeletingReminders,
     updateReminderTitle,
     updateReminderTargetTime,
   } = useReminders();
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedReminderIds, setSelectedReminderIds] = useState<Set<string>>(() => new Set());
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
   const selectedReminder = reminders.find((reminder) => reminder.id === selectedReminderId) ?? null;
+  const selectedCount = selectedReminderIds.size;
+  const allRemindersSelected = reminders.length > 0 && selectedCount === reminders.length;
 
   useFocusEffect(
     useCallback(() => {
@@ -58,6 +66,59 @@ export function ReminderListScreen() {
 
     return () => clearTimeout(timer);
   }, [colorReferenceDate]);
+
+  const cancelSelection = useCallback(() => {
+    setIsSelectionMode(false);
+    setSelectedReminderIds(new Set());
+  }, []);
+
+  const enterSelectionMode = useCallback((id: string) => {
+    setIsSelectionMode(true);
+    setSelectedReminderIds(new Set([id]));
+  }, []);
+
+  const toggleReminderSelection = useCallback((id: string) => {
+    setSelectedReminderIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedReminderIds(
+      allRemindersSelected ? new Set() : new Set(reminders.map((reminder) => reminder.id)),
+    );
+  }, [allRemindersSelected, reminders]);
+
+  useEffect(() => {
+    setSelectedReminderIds((current) => {
+      const availableIds = new Set(reminders.map((reminder) => reminder.id));
+      const next = new Set([...current].filter((id) => availableIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [reminders]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android') return undefined;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (isDeletingReminders) return true;
+        if (isSelectionMode) {
+          cancelSelection();
+          return true;
+        }
+        return false;
+      });
+
+      return () => subscription.remove();
+    }, [cancelSelection, isDeletingReminders, isSelectionMode]),
+  );
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
@@ -76,6 +137,46 @@ export function ReminderListScreen() {
     },
     [deleteReminder],
   );
+
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      try {
+        await deleteReminders(ids);
+        cancelSelection();
+      } catch (deleteError) {
+        console.warn('Failed to delete reminders from list', deleteError);
+        Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
+      }
+    },
+    [cancelSelection, deleteReminders],
+  );
+
+  const handleBulkDeletePress = useCallback(() => {
+    if (selectedCount === 0 || isDeletingReminders) return;
+    const ids = [...selectedReminderIds];
+
+    Alert.alert(
+      '選択したリマインドを削除しますか？',
+      `${selectedCount}件のリマインドを削除します。この操作は取り消せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: `${selectedCount}件を削除`,
+          style: 'destructive',
+          onPress: () => void handleBulkDelete(ids),
+        },
+      ],
+    );
+  }, [handleBulkDelete, isDeletingReminders, selectedCount, selectedReminderIds]);
+
+  const handleHeaderBack = useCallback(() => {
+    if (isSelectionMode) {
+      cancelSelection();
+      return;
+    }
+
+    handleBack(router);
+  }, [cancelSelection, isSelectionMode, router]);
 
   const handleUpdateReminderTitle = useCallback(
     async (reminder: Reminder, title: string) => {
@@ -119,14 +220,21 @@ export function ReminderListScreen() {
       <View className="h-[52px] flex-row items-center justify-between">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="ホームに戻る"
+          accessibilityLabel={isSelectionMode ? '選択モードを閉じる' : 'ホームに戻る'}
           hitSlop={8}
-          onPress={() => handleBack(router)}
+          onPress={handleHeaderBack}
+          disabled={isDeletingReminders}
           className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
         >
-          <Ionicons name="chevron-back" size={24} color={palette.ink} />
+          <Ionicons
+            name={isSelectionMode ? 'close' : 'chevron-back'}
+            size={24}
+            color={palette.ink}
+          />
         </Pressable>
-        <Text className="text-[18px] font-black text-app-ink">すべての泡</Text>
+        <Text className="text-[18px] font-black text-app-ink">
+          {isSelectionMode ? `${selectedCount}件選択中` : 'すべての泡'}
+        </Text>
         <View className="w-[44px]" />
       </View>
 
@@ -190,16 +298,41 @@ export function ReminderListScreen() {
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
           {reminders.map((reminder) => {
             const dueColor = getReminderDueColor(reminder.targetAt, colorReferenceDate);
+            const isSelected = selectedReminderIds.has(reminder.id);
 
             return (
               <Pressable
                 key={reminder.id}
-                accessibilityRole="button"
-                accessibilityLabel={`${reminder.title}の詳細を開く`}
-                onPress={() => setSelectedReminderId(reminder.id)}
+                accessibilityRole={isSelectionMode ? 'checkbox' : 'button'}
+                accessibilityLabel={
+                  isSelectionMode
+                    ? `${reminder.title}を${isSelected ? '選択解除' : '選択'}`
+                    : `${reminder.title}の詳細を開く`
+                }
+                accessibilityHint={
+                  isSelectionMode ? 'タップして選択状態を切り替えます' : '長押しで複数選択できます'
+                }
+                accessibilityState={
+                  isSelectionMode
+                    ? { selected: isSelected, disabled: isDeletingReminders }
+                    : { disabled: isDeletingReminders }
+                }
+                onLongPress={() => {
+                  if (!isDeletingReminders && !isSelectionMode) enterSelectionMode(reminder.id);
+                }}
+                onPress={() => {
+                  if (isDeletingReminders) return;
+                  if (isSelectionMode) {
+                    toggleReminderSelection(reminder.id);
+                  } else {
+                    setSelectedReminderId(reminder.id);
+                  }
+                }}
+                disabled={isDeletingReminders}
                 className="mb-[10px] min-h-[72px] flex-row items-center gap-[12px] rounded-[24px] border border-[rgba(255,255,255,0.92)] bg-[rgba(255,255,255,0.82)] px-[14px]"
                 style={({ pressed }) => [
                   styles.softShadow,
+                  isSelected ? styles.listItemSelected : null,
                   pressed ? styles.listItemPressed : null,
                 ]}
               >
@@ -226,12 +359,59 @@ export function ReminderListScreen() {
                     {formatReminderDateTime(reminder.targetAt)}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+                {isSelectionMode ? (
+                  <View
+                    className="h-[28px] w-[28px] items-center justify-center rounded-[14px] border"
+                    style={[
+                      styles.selectionIndicator,
+                      isSelected ? styles.selectionIndicatorSelected : null,
+                    ]}
+                  >
+                    {isSelected ? (
+                      <Ionicons name="checkmark" size={18} color={palette.white} />
+                    ) : null}
+                  </View>
+                ) : (
+                  <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+                )}
               </Pressable>
             );
           })}
         </ScrollView>
       )}
+
+      {isSelectionMode && !loading && !error && reminders.length > 0 ? (
+        <View style={styles.selectionActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={allRemindersSelected ? 'すべての選択を解除' : 'すべて選択'}
+            onPress={toggleSelectAll}
+            disabled={isDeletingReminders}
+            className="min-h-[48px] flex-1 items-center justify-center rounded-[20px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)] px-[10px]"
+          >
+            <Text className="text-[13px] font-black text-app-lavender-deep">
+              {allRemindersSelected ? '選択解除' : 'すべて選択'}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${selectedCount}件を削除`}
+            onPress={handleBulkDeletePress}
+            disabled={selectedCount === 0 || isDeletingReminders}
+            className="min-h-[48px] flex-1 flex-row items-center justify-center gap-[6px] rounded-[20px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,241,216,0.86)] px-[10px]"
+            style={selectedCount === 0 || isDeletingReminders ? styles.actionDisabled : null}
+          >
+            {isDeletingReminders ? (
+              <ActivityIndicator size="small" color={palette.peachDeep} />
+            ) : (
+              <Ionicons name="trash-outline" size={17} color={palette.peachDeep} />
+            )}
+            <Text className="text-[13px] font-black" style={styles.bulkDeleteLabel}>
+              {selectedCount}件を削除
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <ReminderDetailSheet
         reminder={selectedReminder}
@@ -270,6 +450,29 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 34,
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
+  actionDisabled: {
+    opacity: 0.45,
+  },
+  bulkDeleteLabel: {
+    color: palette.peachDeep,
+  },
+  listItemSelected: {
+    borderColor: palette.lavenderDeep,
+    backgroundColor: 'rgba(237,230,255,0.72)',
+  },
+  selectionIndicator: {
+    borderColor: palette.lavenderDeep,
+    backgroundColor: 'rgba(255,255,255,0.66)',
+  },
+  selectionIndicatorSelected: {
+    backgroundColor: palette.lavenderDeep,
   },
   listItemPressed: {
     opacity: 0.82,

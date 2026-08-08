@@ -12,3 +12,16 @@ test('useReminders exposes an immediate local removal helper', () => {
     /removeReminder,/,
   ]);
 });
+
+test('useReminders exposes a bulk removal mutation that updates the shared cache once', () => {
+  assertSourceIncludes(source, [
+    /const removeReminders = useCallback\(\s*\(ids: string\[\]\) => \{/,
+    /const idSet = new Set\(ids\)/,
+    /current\.filter\(\(item\) => !idSet\.has\(item\.id\)\)/,
+    /const deleteManyMutation = useMutation\(/,
+    /services\.reminders\.deleteMany\(ids\)/,
+    /removeReminders\(deletedIds\)/,
+    /deleteReminders:/,
+    /isDeletingReminders:/,
+  ]);
+});

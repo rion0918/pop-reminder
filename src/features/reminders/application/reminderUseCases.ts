@@ -207,6 +207,22 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       return true;
     },
 
+    async deleteMany(ids: string[]): Promise<string[]> {
+      const uniqueIds = [...new Set(ids)];
+      if (uniqueIds.length === 0) return [];
+
+      const remindersToDelete = (
+        await Promise.all(uniqueIds.map((id) => reminders.getById(id)))
+      ).filter((candidate): candidate is Reminder => candidate !== null);
+      if (remindersToDelete.length === 0) return [];
+
+      await Promise.all(remindersToDelete.map((reminder) => notifications.cancel(reminder)));
+      const deletedIds = remindersToDelete.map((reminder) => reminder.id);
+      await reminders.deleteMany(deletedIds);
+      await widget.sync();
+      return deletedIds;
+    },
+
     async updateTitle(id: string, title: string) {
       const normalizedTitle = normalizeReminderTitle(title);
       const reminder = await reminders.getById(id);
