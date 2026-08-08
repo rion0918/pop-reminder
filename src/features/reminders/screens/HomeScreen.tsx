@@ -212,7 +212,6 @@ export function HomeScreen() {
       if (result.notification.status === 'not-scheduled') {
         const failureMessage = {
           'notification-permission-denied': '端末の通知権限が許可されていません。',
-          'exact-alarm-permission-required': '正確な時刻に通知するための許可が必要です。',
           'target-time-passed': '保存中に指定時刻を過ぎたため、通知を予約できませんでした。',
           'scheduling-failed': '端末で通知を予約できませんでした。',
         }[result.notification.reason];

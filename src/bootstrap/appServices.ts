@@ -8,10 +8,6 @@ import {
   requestNotificationPermissions,
   scheduleTestReminderNotifications,
 } from '../lib/notifications/reminderNotifications';
-import {
-  getExactAlarmPermissionStatus,
-  openExactAlarmSettings,
-} from '../lib/notifications/exactAlarmPermission';
 import { updateWidget } from '../widget/widgetUpdateService';
 
 const widgetGateway = {
@@ -38,9 +34,7 @@ export const appServices = {
   settings: sqliteSettingsRepository,
   notificationSettings: {
     cancelAllScheduledNotifications,
-    getExactAlarmPermissionStatus,
     getNotificationPermissionStatus,
-    openExactAlarmSettings,
     requestNotificationPermissions,
     scheduleTestReminderNotifications,
   },

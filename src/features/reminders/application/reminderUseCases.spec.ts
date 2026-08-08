@@ -30,11 +30,7 @@ const scheduledSingleNotification = {
 };
 
 function notScheduledNotification(
-  reason:
-    | 'notification-permission-denied'
-    | 'exact-alarm-permission-required'
-    | 'target-time-passed'
-    | 'scheduling-failed',
+  reason: 'notification-permission-denied' | 'target-time-passed' | 'scheduling-failed',
 ) {
   return {
     status: 'not-scheduled' as const,
@@ -181,24 +177,6 @@ test('create returns the persisted reminder and reason when notification permiss
   assert.equal(result.reminder.targetNotificationId, null);
   assert.equal(result.notification.status, 'not-scheduled');
   assert.equal(result.notification.reason, 'notification-permission-denied');
-  assert.deepEqual(events, ['insert', 'schedule', 'widget']);
-});
-
-test('create reports that Android exact alarm permission is required without losing the reminder', async () => {
-  const events: string[] = [];
-  const dependencies = makeDependencies(events);
-  dependencies.notifications.schedule = async () => {
-    events.push('schedule');
-    return notScheduledNotification('exact-alarm-permission-required');
-  };
-  const result = await createReminderUseCases(dependencies).create(
-    { title: 'Pay rent', dateOffset: 2, targetTime: '08:00' },
-    { now: new Date('2026-07-12T09:00:00+09:00') },
-  );
-
-  assert.equal(result.reminder.id, reminder.id);
-  assert.equal(result.notification.status, 'not-scheduled');
-  assert.equal(result.notification.reason, 'exact-alarm-permission-required');
   assert.deepEqual(events, ['insert', 'schedule', 'widget']);
 });
 
@@ -527,7 +505,7 @@ test('retryPendingNotifications leaves blocked reminders pending', async () => {
     events.push('schedule-target');
     return {
       status: 'not-scheduled',
-      reason: 'exact-alarm-permission-required',
+      reason: 'notification-permission-denied',
       notificationId: null,
     };
   };

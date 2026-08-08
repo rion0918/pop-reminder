@@ -9,7 +9,6 @@ import {
   Image,
   Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -137,9 +136,7 @@ export function SettingsScreen() {
     useAppSettings();
   const {
     cancelAllScheduledNotifications,
-    getExactAlarmPermissionStatus,
     getNotificationPermissionStatus,
-    openExactAlarmSettings,
     requestNotificationPermissions,
     scheduleTestReminderNotifications,
   } = useNotificationSettings();
@@ -159,10 +156,6 @@ export function SettingsScreen() {
   const [notificationPermissionLabel, setNotificationPermissionLabel] = useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] = useState(false);
   const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] = useState(true);
-  const [exactAlarmPermissionStatus, setExactAlarmPermissionStatus] = useState<
-    'granted' | 'denied' | 'not-required'
-  >('not-required');
-  const [exactAlarmPermissionLabel, setExactAlarmPermissionLabel] = useState('確認が必要');
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
   const refreshNotificationPermissionStatus = useCallback(async () => {
@@ -171,11 +164,6 @@ export function SettingsScreen() {
     setIsNotificationPermissionGranted(permission.status === 'granted');
     setCanAskNotificationPermissionAgain(permission.canAskAgain);
   }, [getNotificationPermissionStatus]);
-  const refreshExactAlarmPermissionStatus = useCallback(async () => {
-    const permission = await getExactAlarmPermissionStatus();
-    setExactAlarmPermissionStatus(permission.status);
-    setExactAlarmPermissionLabel(permission.label);
-  }, [getExactAlarmPermissionStatus]);
   const retryPendingReminderNotifications = useCallback(async () => {
     try {
       await reminderServices.retryPendingNotifications();
@@ -194,21 +182,19 @@ export function SettingsScreen() {
 
   useEffect(() => {
     void refreshNotificationPermissionStatus();
-    void refreshExactAlarmPermissionStatus();
-  }, [refreshExactAlarmPermissionStatus, refreshNotificationPermissionStatus]);
+  }, [refreshNotificationPermissionStatus]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         void refreshNotificationPermissionStatus();
-        void refreshExactAlarmPermissionStatus();
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [refreshExactAlarmPermissionStatus, refreshNotificationPermissionStatus]);
+  }, [refreshNotificationPermissionStatus]);
 
   const savePreviousTime = async (value: string) => {
     if (
@@ -298,18 +284,6 @@ export function SettingsScreen() {
     }
   };
 
-  const handleOpenExactAlarmSettings = async () => {
-    try {
-      await openExactAlarmSettings();
-    } catch (error) {
-      console.warn('Failed to open exact alarm settings', error);
-      Alert.alert(
-        '設定を開けませんでした',
-        '端末の設定から「アラームとリマインダー」を確認してください。',
-      );
-    }
-  };
-
   const handleSendTestNotification = async () => {
     try {
       const now = new Date().toISOString();
@@ -322,7 +296,7 @@ export function SettingsScreen() {
         return;
       }
 
-      Alert.alert('予約できませんでした', '通知権限や正確な時刻の通知設定を確認してください。');
+      Alert.alert('予約できませんでした', '通知権限や端末の通知設定を確認してください。');
     } catch (error) {
       console.warn('Failed to schedule test notification', error);
       Alert.alert('予約できませんでした', '通知権限や端末設定を確認してください。');
@@ -500,39 +474,6 @@ export function SettingsScreen() {
             ) : (
               <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             )}
-            {Platform.OS === 'android' && exactAlarmPermissionStatus !== 'not-required' ? (
-              <>
-                <SettingRow
-                  icon="alarm-outline"
-                  title="正確な時刻の通知"
-                  caption="Android 12以降の特別な許可です"
-                >
-                  <Text className="text-[13px] font-extrabold text-app-muted">
-                    {exactAlarmPermissionLabel}
-                  </Text>
-                </SettingRow>
-                {exactAlarmPermissionStatus !== 'granted' ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="正確な時刻の通知を許可"
-                    onPress={handleOpenExactAlarmSettings}
-                    className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
-                  >
-                    <Ionicons name="alarm-outline" size={18} color={palette.white} />
-                    <Text
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.72}
-                      className="shrink text-[14px] font-extrabold text-app-white"
-                      style={styles.noFontPadding}
-                    >
-                      正確な通知を許可
-                    </Text>
-                  </Pressable>
-                ) : null}
-                <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-              </>
-            ) : null}
             <SettingRow
               icon="sparkles-outline"
               title="自動消滅"

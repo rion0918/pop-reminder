@@ -32,12 +32,12 @@ test('scheduled Android reminder notifications select a channel from sound prefe
 test('notification scheduling reports permission and native scheduling failures', () => {
   assertSourceIncludes(source, [
     /notification-permission-denied/,
-    /exact-alarm-permission-required/,
     /target-time-passed/,
     /scheduling-failed/,
     /previous-scheduling-failed/,
     /permissionMode/,
   ]);
+  assert.equal(source.includes('exact-alarm-permission-required'), false);
 });
 
 test('target notification is scheduled before the optional previous notification', () => {

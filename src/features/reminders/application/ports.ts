@@ -7,10 +7,7 @@ export type ReminderNotificationIds = Pick<
 >;
 
 export type ReminderNotificationFailureReason =
-  | 'notification-permission-denied'
-  | 'exact-alarm-permission-required'
-  | 'target-time-passed'
-  | 'scheduling-failed';
+  'notification-permission-denied' | 'target-time-passed' | 'scheduling-failed';
 
 export type ReminderNotificationScheduleResult =
   | {
@@ -45,8 +42,7 @@ export type ReminderSingleNotificationScheduleResult =
     }
   | {
       status: 'not-scheduled';
-      reason:
-        'notification-permission-denied' | 'exact-alarm-permission-required' | 'scheduling-failed';
+      reason: 'notification-permission-denied' | 'scheduling-failed';
       notificationId: null;
     };
 

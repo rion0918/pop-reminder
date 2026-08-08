@@ -153,7 +153,7 @@ test('Android notifications have a release-ready small icon and accent color', (
   assert.equal(existsSync(join(__dirname, 'assets/notification-icon.png')), true);
 });
 
-test('Android notifications declare and expose exact alarm special access', () => {
+test('Android notifications do not require exact alarm special access', () => {
   const permission = 'android.permission.SCHEDULE_EXACT_ALARM';
   const manifest = readFileSync(
     join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
@@ -167,14 +167,34 @@ test('Android notifications declare and expose exact alarm special access', () =
     __dirname,
     'android/app/src/main/java/com/rion0918/popreminder/notifications/ExactAlarmPermissionModule.kt',
   );
-  const exactAlarmModule = readFileSync(exactAlarmModulePath, 'utf8');
+  assert.equal((appConfig.expo.android.permissions ?? []).includes(permission), false);
+  assert.doesNotMatch(manifest, /android\.permission\.SCHEDULE_EXACT_ALARM/);
+  assert.equal(existsSync(exactAlarmModulePath), false);
+  assert.doesNotMatch(mainApplication, /ExactAlarmPermissionPackage/);
+});
 
-  assert.ok(appConfig.expo.android.permissions.includes(permission));
-  assert.match(manifest, /android\.permission\.SCHEDULE_EXACT_ALARM/);
-  assert.equal(existsSync(exactAlarmModulePath), true);
-  assert.match(exactAlarmModule, /alarmManager\.canScheduleExactAlarms\(\)/);
-  assert.match(exactAlarmModule, /Settings\.ACTION_REQUEST_SCHEDULE_EXACT_ALARM/);
-  assert.match(mainApplication, /ExactAlarmPermissionPackage/);
+test('Android notification QA documents inexact DATE trigger tolerance', () => {
+  const qaDocument = readFileSync(join(__dirname, 'docs/QA_DEVELOPMENT_BUILD.md'), 'utf8');
+  const qaLines = qaDocument.split('\n');
+  const androidBackgroundCheck = qaLines.find(
+    (line) => line.includes('Android 12以降') && line.includes('バックグラウンド'),
+  );
+  const androidTerminatedCheck = qaLines.find(
+    (line) => line.includes('Android 12以降') && line.includes('アプリを終了'),
+  );
+  const androidInexactExpectation = qaLines.find((line) =>
+    line.includes('`SCHEDULE_EXACT_ALARM` を使わない'),
+  );
+
+  assert.ok(androidBackgroundCheck);
+  assert.ok(androidTerminatedCheck);
+  assert.ok(androidInexactExpectation);
+  assert.match(androidBackgroundCheck ?? '', /最大60分程度の遅延を許容/);
+  assert.match(androidTerminatedCheck ?? '', /最大60分程度の遅延を許容/);
+  assert.match(androidInexactExpectation ?? '', /`SCHEDULE_EXACT_ALARM` を使わない/);
+  assert.match(androidInexactExpectation ?? '', /`DATE` トリガーは inexact alarm/);
+  assert.doesNotMatch(androidInexactExpectation ?? '', /必要|要求|必須/);
+  assert.doesNotMatch(qaDocument, /^- \[ \] Android 12以降.*指定時刻に通知が届く$/m);
 });
 
 test('Android adaptive icon uses a transparent foreground asset', () => {
