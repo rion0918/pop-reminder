@@ -80,8 +80,10 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
           accessibilityLabel={allSelected ? '選択解除' : 'すべて選択'}
           accessibilityState={{ disabled: busy }}
           disabled={busy}
+          android_ripple={{ color: 'rgba(122,92,255,0.14)' }}
           hitSlop={4}
           onPress={onToggleAll}
+          pressRetentionOffset={12}
           style={({ pressed }) => [
             styles.action,
             styles.toggleAction,
@@ -98,10 +100,13 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={busy ? `${selectedCount}件を削除中` : `${selectedCount}件を削除`}
+          accessibilityHint="削除確認を開きます"
           accessibilityState={{ disabled: selectedCount === 0 || busy }}
           disabled={selectedCount === 0 || busy}
+          android_ripple={{ color: 'rgba(248,113,113,0.22)' }}
           hitSlop={4}
           onPress={onDelete}
+          pressRetentionOffset={12}
           style={({ pressed }) => [
             styles.action,
             styles.deleteAction,
@@ -113,7 +118,7 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
             {busy ? (
               <ActivityIndicator size="small" color={bubbleDueColors.today.accent} />
             ) : (
-              <Ionicons name="trash-outline" size={22} color={bubbleDueColors.today.accent} />
+              <Ionicons name="trash-outline" size={24} color={bubbleDueColors.today.accent} />
             )}
           </View>
         </Pressable>
@@ -124,12 +129,12 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
 
 const styles = StyleSheet.create({
   container: {
-    minHeight: 60,
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    padding: 6,
-    borderRadius: 30,
+    padding: 4,
+    borderRadius: 32,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.94)',
     backgroundColor: 'rgba(255,255,255,0.86)',
@@ -141,7 +146,7 @@ const styles = StyleSheet.create({
   },
   containerCompact: {
     gap: 4,
-    padding: 5,
+    padding: 4,
   },
   selectionCount: {
     flex: 1,
@@ -164,17 +169,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    gap: 6,
+    gap: 8,
   },
   actionGroupCompact: {
-    gap: 4,
+    gap: 8,
   },
   action: {
-    minHeight: 48,
-    borderRadius: 24,
+    minHeight: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+    overflow: 'hidden',
   },
   toggleAction: {
     minWidth: 88,
@@ -185,16 +191,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
   },
   deleteAction: {
-    width: 48,
-    height: 48,
+    width: 56,
+    height: 56,
     paddingHorizontal: 0,
     borderWidth: 1,
     borderColor: bubbleDueColors.today.border,
     backgroundColor: 'rgba(248,113,113,0.14)',
   },
   deleteIconSlot: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',

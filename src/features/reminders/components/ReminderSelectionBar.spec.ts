@@ -21,7 +21,7 @@ test('selection bar is an accessible responsive material with immediate press fe
     /useReducedMotion\(\)/,
     /withSpring\(1, SELECTION_BAR_SPRING\)/,
     /backgroundColor: 'rgba\(255,255,255,0\.86\)'/,
-    /minHeight: 60/,
+    /minHeight: 64/,
   ]);
 });
 
@@ -32,9 +32,14 @@ test('selection bar keeps one large destructive icon without repeating the selec
       /styles\.toggleActionCompact/,
       /selectionCount: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,[\s\S]*alignItems: 'flex-start'/,
       /actionGroup: \{[\s\S]*flexDirection: 'row',[\s\S]*flexShrink: 0/,
-      /<Ionicons name="trash-outline" size=\{22\}/,
-      /deleteAction: \{[\s\S]*width: 48,[\s\S]*height: 48,[\s\S]*paddingHorizontal: 0/,
-      /deleteIconSlot: \{[\s\S]*width: 24,[\s\S]*height: 24/,
+      /actionGroupCompact: \{\s*gap: 8/,
+      /accessibilityHint="削除確認を開きます"/,
+      /pressRetentionOffset=\{12\}/,
+      /android_ripple=\{\{ color: 'rgba\(248,113,113,0\.22\)' \}\}/,
+      /<Ionicons name="trash-outline" size=\{24\}/,
+      /action: \{[\s\S]*minHeight: 56,[\s\S]*overflow: 'hidden'/,
+      /deleteAction: \{[\s\S]*width: 56,[\s\S]*height: 56,[\s\S]*paddingHorizontal: 0/,
+      /deleteIconSlot: \{[\s\S]*width: 28,[\s\S]*height: 28/,
     ],
     excludes: [
       /toggleAction: \{\s*flex:/,
