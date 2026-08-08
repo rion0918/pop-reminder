@@ -5,63 +5,64 @@ import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAsse
 import {
   DENSE_FLOATING_SLOTS,
   FLOATING_SLOTS,
-  getBottomAlignmentOffset,
   getEdgeClearance,
   getTemporalYRatio,
   makeGridSlots,
   makeLayoutForItem,
+  resolveBoardSizeMeasurement,
 } from './reminderBubbleLayout';
 
 const boardSource = readSource(import.meta.url, './ReminderBubbleBoard.tsx');
 const layoutSource = readSource(import.meta.url, './reminderBubbleLayout.ts');
 
-test('bottom alignment anchors the bubble group across representative board sizes and counts', () => {
-  const scenarios = [
-    { boardSize: { width: 320, height: 360 }, count: 1 },
-    { boardSize: { width: 390, height: 600 }, count: 2 },
-    { boardSize: { width: 390, height: 700 }, count: 6 },
-    { boardSize: { width: 430, height: 760 }, count: 12 },
-  ];
+test('frozen board measurement accepts empty-to-populated resize but pins the same mode', () => {
+  const emptyBoardSize = { width: 350, height: 620 };
+  const populatedBoardSize = { width: 350, height: 516 };
 
-  for (const { boardSize, count } of scenarios) {
-    const targetBottom = boardSize.height - getEdgeClearance(boardSize);
-    const itemHeight = Math.max(20, Math.floor((targetBottom - 48) / count) - 2);
-    const gap = 2;
-    const lowestBottom = targetBottom - 24;
-    const totalHeight = count * itemHeight + (count - 1) * gap;
-    const firstTop = lowestBottom - totalHeight;
-    const itemBounds = Array.from({ length: count }, (_, index) => ({
-      top: firstTop + index * (itemHeight + gap),
-      height: itemHeight,
-    }));
+  assert.deepEqual(
+    resolveBoardSizeMeasurement(emptyBoardSize, populatedBoardSize, {
+      freezeLayout: true,
+      contentModeChanged: true,
+    }),
+    populatedBoardSize,
+  );
+  assert.deepEqual(
+    resolveBoardSizeMeasurement(emptyBoardSize, populatedBoardSize, {
+      freezeLayout: true,
+      contentModeChanged: false,
+    }),
+    emptyBoardSize,
+  );
+  assert.deepEqual(
+    resolveBoardSizeMeasurement(emptyBoardSize, populatedBoardSize, {
+      freezeLayout: false,
+      contentModeChanged: false,
+    }),
+    populatedBoardSize,
+  );
+});
 
-    const offset = getBottomAlignmentOffset(boardSize, itemBounds);
-    const alignedBottoms = itemBounds.map(({ top, height }) => top + height + offset);
+test('home timeline centers the first bubble and expands from near to distant deadlines', () => {
+  assert.equal(getTemporalYRatio(0, 1, 'homeTimeline'), 0.5);
+  assert.equal(getTemporalYRatio(0, 2, 'homeTimeline'), 0.35);
+  assert.equal(getTemporalYRatio(1, 2, 'homeTimeline'), 0.65);
+  assert.equal(getTemporalYRatio(0, 6, 'homeTimeline'), 0.25);
+  assert.equal(getTemporalYRatio(5, 6, 'homeTimeline'), 0.68);
+  assert.equal(getTemporalYRatio(0, 12, 'homeTimeline'), 0.18);
+  assert.equal(getTemporalYRatio(11, 12, 'homeTimeline'), 0.68);
 
-    assert.equal(Math.max(...alignedBottoms), targetBottom);
-    assert.equal(offset, 24);
+  for (const count of [2, 6, 12]) {
+    const ratios = Array.from({ length: count }, (_, index) =>
+      getTemporalYRatio(index, count, 'homeTimeline'),
+    );
+
+    for (let index = 1; index < ratios.length; index += 1) {
+      assert.ok(ratios[index] >= ratios[index - 1]);
+    }
   }
 });
 
-test('bottom alignment preserves relative positions and never shifts an already-safe group upward', () => {
-  const boardSize = { width: 390, height: 600 };
-  const itemBounds = [
-    { top: 100, height: 96 },
-    { top: 244, height: 112 },
-    { top: 388, height: 104 },
-  ];
-  const offset = getBottomAlignmentOffset(boardSize, itemBounds);
-  const targetBottom = boardSize.height - getEdgeClearance(boardSize);
-
-  assert.equal(
-    Math.max(...itemBounds.map(({ top, height }) => top + height + offset)),
-    targetBottom,
-  );
-  assert.equal(itemBounds[1].top + offset - (itemBounds[0].top + offset), 144);
-  assert.equal(getBottomAlignmentOffset(boardSize, [{ top: targetBottom - 80, height: 80 }]), 0);
-});
-
-test('bubble layout keeps temporal ordering and bounded normalized slots before bottom alignment', () => {
+test('natural search layout remains unchanged while home layouts stay inside the measured board', () => {
   assert.equal(getTemporalYRatio(0, 1), 0.36);
   assert.equal(getTemporalYRatio(0, 2), 0.22);
   assert.equal(getTemporalYRatio(1, 2), 0.5);
@@ -75,23 +76,80 @@ test('bubble layout keeps temporal ordering and bounded normalized slots before 
     assert.ok(slot.y >= 0.14 && slot.y <= 0.8);
   }
 
-  const boardSize = { width: 390, height: 600 };
-  const dimensions = { width: 120, height: 120, collisionSize: 120 };
-  const placedBubbles: { size: number; centerX: number; centerY: number }[] = [];
-  const first = makeLayoutForItem('reminder-near-1', dimensions, boardSize, placedBubbles, 1, 0, 2);
-  const second = makeLayoutForItem('reminder-far-1', dimensions, boardSize, placedBubbles, 1, 1, 2);
+  const scenarios = [
+    { boardSize: { width: 288, height: 258 }, count: 1, itemSize: 98 },
+    { boardSize: { width: 350, height: 534 }, count: 2, itemSize: 110 },
+    { boardSize: { width: 350, height: 534 }, count: 6, itemSize: 98 },
+    { boardSize: { width: 390, height: 622 }, count: 12, itemSize: 90 },
+  ];
 
-  assert.ok(second.centerY > first.centerY);
-  assert.ok(second.top + dimensions.height <= boardSize.height - getEdgeClearance(boardSize));
+  for (const { boardSize, count, itemSize } of scenarios) {
+    const placedBubbles: { size: number; centerX: number; centerY: number }[] = [];
+    const itemLayouts: { centerX: number; centerY: number; top: number }[] = [];
+    const edgeClearance = getEdgeClearance(boardSize);
+
+    for (let index = 0; index < count; index += 1) {
+      const layout = makeLayoutForItem(
+        `reminder-${count}-${index}`,
+        { width: itemSize, height: itemSize, collisionSize: itemSize },
+        boardSize,
+        placedBubbles,
+        index,
+        index,
+        count,
+        'homeTimeline',
+      );
+
+      assert.ok(layout.top >= edgeClearance);
+      assert.ok(layout.top + itemSize <= boardSize.height - edgeClearance);
+      itemLayouts.push(layout);
+    }
+
+    for (let index = 1; index < itemLayouts.length; index += 1) {
+      assert.ok(itemLayouts[index].centerY >= itemLayouts[index - 1].centerY);
+    }
+
+    for (let firstIndex = 0; firstIndex < itemLayouts.length; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < itemLayouts.length; secondIndex += 1) {
+        const distance = Math.hypot(
+          itemLayouts[firstIndex].centerX - itemLayouts[secondIndex].centerX,
+          itemLayouts[firstIndex].centerY - itemLayouts[secondIndex].centerY,
+        );
+
+        assert.ok(distance >= itemSize * 0.28);
+      }
+    }
+
+    if (count === 12) {
+      const overflowSize = 90;
+      const overflowLayout = makeLayoutForItem(
+        'overflow-4',
+        { width: overflowSize, height: overflowSize, collisionSize: overflowSize },
+        boardSize,
+        placedBubbles,
+        count,
+        count,
+        count + 1,
+        'homeTimeline',
+      );
+      const lastItemLayout = itemLayouts[itemLayouts.length - 1];
+
+      assert.ok(lastItemLayout);
+      assert.ok(overflowLayout.centerY >= lastItemLayout.centerY);
+      assert.ok(overflowLayout.top >= edgeClearance);
+      assert.ok(overflowLayout.top + overflowSize <= boardSize.height - edgeClearance);
+    }
+  }
+
   assertSourceIncludes(boardSource, [
-    /alignToBottom/,
-    /getBottomAlignmentOffset/,
-    /alignToBottom \? 'bottom' : 'natural'/,
+    /verticalLayoutMode\?: BubbleVerticalLayoutMode/,
+    /verticalLayoutMode = 'natural'/,
+    /verticalLayoutMode/,
+    /resolveBoardSizeMeasurement/,
   ]);
-  assertSourceIncludes(layoutSource, [
-    /export function getBottomAlignmentOffset/,
-    /getEdgeClearance\(boardSize\)/,
-  ]);
+  assert.equal(boardSource.includes('alignToBottom'), false);
+  assert.equal(boardSource.includes('getBottomAlignmentOffset'), false);
+  assertSourceIncludes(layoutSource, [/export function resolveBoardSizeMeasurement/]);
 });
 
 test('bubble layout grid slots remain bounded for sparse and dense boards', () => {

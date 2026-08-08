@@ -27,12 +27,13 @@ test('bubble board lays out long titles with wide bubble dimensions', () => {
   ]);
 });
 
-test('bubble board can freeze layout measurements while an overlay is open', () => {
+test('bubble board freezes only same-mode measurements while an overlay is open', () => {
   assertSourceIncludes(source, [
     /freezeLayout\?: boolean;/,
     /freezeLayout,/,
-    /if \(freezeLayout && current\.width > 0 && current\.height > 0\) \{/,
-    /return current;/,
+    /lastMeasuredContentModeRef/,
+    /contentModeChanged/,
+    /resolveBoardSizeMeasurement/,
   ]);
 });
 

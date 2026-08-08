@@ -35,6 +35,11 @@ import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
+const HOME_ADD_BUTTON_SIZE = 64;
+const HOME_BOTTOM_CONTROLS_OFFSET = 28;
+const HOME_BUBBLE_CONTROLS_GAP = 12;
+const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =
+  HOME_ADD_BUTTON_SIZE + HOME_BOTTOM_CONTROLS_OFFSET + HOME_BUBBLE_CONTROLS_GAP;
 type DeleteMotionWaiter = {
   key: string;
   resolve: () => void;
@@ -475,7 +480,7 @@ export function HomeScreen() {
           onOverflowPress={handleOpenReminderList}
           onEmptyPress={handlePressAdd}
           emptyDisabled={isAddButtonDisabled}
-          alignToBottom
+          verticalLayoutMode="homeTimeline"
         />
       </View>
 
@@ -644,7 +649,7 @@ const styles = StyleSheet.create({
   bubbleBoardContainer: {
     flex: 1,
     marginTop: 14,
-    marginBottom: 104,
+    marginBottom: HOME_BUBBLE_BOARD_BOTTOM_RESERVE,
     overflow: 'visible',
   },
   bubbleBoardContainerEmpty: {
@@ -654,7 +659,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 24,
     right: 24,
-    bottom: 28,
+    bottom: HOME_BOTTOM_CONTROLS_OFFSET,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

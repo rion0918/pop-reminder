@@ -24,11 +24,12 @@ import {
 } from './reminderBubblePressMotion';
 import {
   MIN_EDGE_CLEARANCE,
-  getBottomAlignmentOffset,
   getTemporalYRatio,
   makeGridSlots,
   makeLayoutForItem,
+  resolveBoardSizeMeasurement,
   type BoardSize,
+  type BubbleVerticalLayoutMode,
   type PlacedBubble,
 } from './reminderBubbleLayout';
 
@@ -52,11 +53,11 @@ type ReminderBubbleBoardProps = {
   onOverflowPress?: () => void;
   onEmptyPress?: () => void;
   emptyDisabled?: boolean;
-  alignToBottom?: boolean;
+  verticalLayoutMode?: BubbleVerticalLayoutMode;
 };
 
 const MAX_VISIBLE_BUBBLES = 12;
-const LAYOUT_VERSION = 6;
+const LAYOUT_VERSION = 7;
 const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 * 2 + 32;
 const BUBBLE_SIZE_BUCKETS = {
   large: { base: 160, min: 116 },
@@ -396,12 +397,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   onOverflowPress,
   onEmptyPress,
   emptyDisabled,
-  alignToBottom = false,
+  verticalLayoutMode = 'natural',
 }: ReminderBubbleBoardProps) {
+  const boardContentMode = !loading && !error && reminders.length === 0 ? 'empty' : 'populated';
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
   const layoutCacheRef = useRef(new Map<string, CachedBubbleLayout>());
   const layoutBoardKeyRef = useRef('');
+  const lastMeasuredContentModeRef = useRef(boardContentMode);
   const reminderIdsKey = useMemo(
     () =>
       reminders
@@ -427,26 +430,24 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   const handleBoardLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
+      const measuredSize = {
+        width: Math.round(width),
+        height: Math.round(height),
+      };
+      const contentModeChanged = lastMeasuredContentModeRef.current !== boardContentMode;
 
-      setBoardSize((current) => {
-        const nextWidth = Math.round(width);
-        const nextHeight = Math.round(height);
+      if (contentModeChanged) {
+        lastMeasuredContentModeRef.current = boardContentMode;
+      }
 
-        if (current.width === nextWidth && current.height === nextHeight) {
-          return current;
-        }
-
-        if (freezeLayout && current.width > 0 && current.height > 0) {
-          return current;
-        }
-
-        return {
-          width: nextWidth,
-          height: nextHeight,
-        };
-      });
+      setBoardSize((current) =>
+        resolveBoardSizeMeasurement(current, measuredSize, {
+          freezeLayout: Boolean(freezeLayout),
+          contentModeChanged,
+        }),
+      );
     },
-    [freezeLayout],
+    [boardContentMode, freezeLayout],
   );
   const boardLayout = useMemo(() => {
     if (boardSize.width === 0 || boardSize.height === 0) {
@@ -456,7 +457,11 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       };
     }
 
-    const boardKey = `${LAYOUT_VERSION}:${alignToBottom ? 'bottom' : 'natural'}:${boardSize.width}x${boardSize.height}`;
+    const homeTimelineOrderKey =
+      verticalLayoutMode === 'homeTimeline'
+        ? visibleReminders.map((reminder) => reminder.id).join(',')
+        : 'stable';
+    const boardKey = `${LAYOUT_VERSION}:${verticalLayoutMode}:${boardContentMode}:${boardSize.width}x${boardSize.height}:${homeTimelineOrderKey}`;
     const layoutCache = layoutCacheRef.current;
 
     if (layoutBoardKeyRef.current !== boardKey) {
@@ -520,6 +525,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         visualIndex,
         reminderIndex,
         visibleReminders.length,
+        verticalLayoutMode,
       );
       const nextLayout = {
         contentKey,
@@ -570,6 +576,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
               getStableVisualIndex(`overflow-${overflowCount}`),
               visibleReminders.length,
               visibleReminders.length + 1,
+              verticalLayoutMode,
             );
 
             return {
@@ -580,27 +587,11 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           })()
         : null;
 
-    const bottomAlignmentOffset = alignToBottom
-      ? getBottomAlignmentOffset(boardSize, [
-          ...bubbleLayouts.map(({ top, height }) => ({ top, height })),
-          ...(overflowBubble ? [{ top: overflowBubble.top, height: overflowBubble.size }] : []),
-        ])
-      : 0;
-
     return {
-      bubbleLayouts: bubbleLayouts.map((bubbleLayout) => ({
-        ...bubbleLayout,
-        top: bubbleLayout.top + bottomAlignmentOffset,
-        positionStyle: {
-          left: bubbleLayout.left,
-          top: bubbleLayout.top + bottomAlignmentOffset,
-        },
-      })),
-      overflowBubble: overflowBubble
-        ? { ...overflowBubble, top: overflowBubble.top + bottomAlignmentOffset }
-        : null,
+      bubbleLayouts,
+      overflowBubble,
     };
-  }, [alignToBottom, boardSize, overflowCount, visibleReminders]);
+  }, [boardContentMode, boardSize, overflowCount, verticalLayoutMode, visibleReminders]);
   const { bubbleLayouts, overflowBubble } = boardLayout;
 
   const boardReady = boardSize.width > 0 && boardSize.height > 0;
