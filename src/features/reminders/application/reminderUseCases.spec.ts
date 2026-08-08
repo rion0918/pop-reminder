@@ -68,6 +68,11 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         current = current ? { ...current, ...update } : null;
         return current;
       },
+      updateSchedule: async (_id, update) => {
+        events.push(`update-schedule:${update.targetNotificationId ?? 'null'}`);
+        current = current ? { ...current, ...update } : null;
+        return current;
+      },
       updatePreviousSchedule: async (_id, update) => {
         events.push(`update-previous:${update.previousNotificationId ?? 'null'}`);
         current = current ? { ...current, ...update } : null;
@@ -327,7 +332,7 @@ test('title update returns persisted update when replacement scheduling fails', 
   assert.deepEqual(events, ['update-title', 'schedule', 'widget']);
 });
 
-test('target time update changes only the target schedule and replaces only its notification', async () => {
+test('schedule update changes date and time and replaces both notifications', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
   const scheduledReminder: Reminder = {
@@ -337,81 +342,203 @@ test('target time update changes only the target schedule and replaces only its 
   };
   let current = scheduledReminder;
   dependencies.reminders.getById = async () => current;
-  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
-    events.push(`update-target:${update.targetNotificationId ?? 'null'}`);
+  dependencies.reminders.updateSchedule = async (_id, update) => {
+    events.push(`update-schedule:${update.targetNotificationId ?? 'null'}`);
     current = { ...current, ...update };
     return current;
   };
+  dependencies.reminders.updateNotificationIds = async (_id, ids) => {
+    events.push('notification-ids');
+    current = { ...current, ...ids };
+    return current;
+  };
 
-  const result = await createReminderUseCases(dependencies).updateTargetTime(reminder.id, '18:30', {
-    now: new Date(new Date(reminder.targetAt).getTime() - 60 * 60 * 1000),
-  });
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-15', targetTime: '18:30' },
+    { now: new Date('2026-07-14T09:00:00') },
+  );
 
   assert.equal(result?.reminder.targetAt, result?.reminder.targetNotifyAt);
+  assert.equal(new Date(result?.reminder.targetAt ?? 0).getDate(), 15);
   assert.equal(new Date(result?.reminder.targetAt ?? 0).getHours(), 18);
   assert.equal(new Date(result?.reminder.targetAt ?? 0).getMinutes(), 30);
-  assert.equal(result?.reminder.previousNotifyAt, reminder.previousNotifyAt);
-  assert.equal(result?.reminder.expiresAt, reminder.expiresAt);
-  assert.equal(result?.reminder.previousNotificationId, 'old-previous');
-  assert.equal(result?.reminder.targetNotificationId, 'replacement');
+  assert.equal(new Date(result?.reminder.previousNotifyAt ?? 0).getDate(), 14);
+  assert.equal(new Date(result?.reminder.previousNotifyAt ?? 0).getHours(), 20);
+  assert.equal(new Date(result?.reminder.expiresAt ?? 0).getDate(), 15);
+  assert.equal(new Date(result?.reminder.expiresAt ?? 0).getHours(), 23);
+  assert.equal(result?.reminder.previousNotificationId, 'previous');
+  assert.equal(result?.reminder.targetNotificationId, 'target');
   assert.equal(result?.notification.status, 'scheduled');
   assert.deepEqual(events, [
-    'update-target:null',
-    'cancel-one:old-target',
-    'schedule-target',
-    'update-target:replacement',
+    'update-schedule:null',
+    'cancel',
+    'schedule',
+    'notification-ids',
     'widget',
   ]);
 });
 
-test('target time update keeps the new time when notification scheduling is blocked', async () => {
+test('schedule update accepts a future time today and crosses a calendar year', async () => {
+  const todayEvents: string[] = [];
+  const todayDependencies = makeDependencies(todayEvents);
+  const todayResult = await createReminderUseCases(todayDependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-14', targetTime: '12:30' },
+    { now: new Date('2026-07-14T09:00:00') },
+  );
+
+  assert.equal(todayResult?.reminder.targetAt, new Date('2026-07-14T12:30:00').toISOString());
+
+  const yearEvents: string[] = [];
+  const yearDependencies = makeDependencies(yearEvents);
+  const yearResult = await createReminderUseCases(yearDependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2027-01-01', targetTime: '00:30' },
+    { now: new Date('2026-12-31T23:00:00') },
+  );
+
+  assert.equal(yearResult?.reminder.targetAt, new Date('2027-01-01T00:30:00').toISOString());
+  assert.equal(
+    yearResult?.reminder.previousNotifyAt,
+    new Date('2026-12-31T20:00:00').toISOString(),
+  );
+  assert.equal(yearResult?.reminder.expiresAt, new Date('2027-01-01T23:59:59.999').toISOString());
+});
+
+test('schedule update keeps the new date when notification scheduling is blocked', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
-  dependencies.notifications.scheduleTarget = async () => {
-    events.push('schedule-target');
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule');
     return {
       status: 'not-scheduled',
       reason: 'notification-permission-denied',
-      notificationId: null,
+      ids: { previousNotificationId: null, targetNotificationId: null },
     };
   };
 
-  const result = await createReminderUseCases(dependencies).updateTargetTime(reminder.id, '18:30', {
-    now: new Date(new Date(reminder.targetAt).getTime() - 60 * 60 * 1000),
-  });
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-15', targetTime: '18:30' },
+    { now: new Date('2026-07-14T09:00:00') },
+  );
 
+  assert.equal(new Date(result?.reminder.targetAt ?? 0).getDate(), 15);
   assert.equal(new Date(result?.reminder.targetAt ?? 0).getHours(), 18);
   assert.equal(result?.reminder.targetNotificationId, null);
   assert.equal(result?.notification.status, 'not-scheduled');
-  assert.deepEqual(events, ['update-target:null', 'cancel-one:null', 'schedule-target', 'widget']);
+  assert.deepEqual(events, ['update-schedule:null', 'cancel', 'schedule', 'widget']);
 });
 
-test('target time update rejects a past time and skips unchanged or missing reminders', async () => {
+test('schedule update handles past targets, unchanged values, and missing reminders', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
-  const target = new Date(reminder.targetAt);
-  const currentTime = `${String(target.getHours()).padStart(2, '0')}:${String(
-    target.getMinutes(),
-  ).padStart(2, '0')}`;
   const useCases = createReminderUseCases(dependencies);
 
-  const unchanged = await useCases.updateTargetTime(reminder.id, currentTime, {
-    now: new Date(target.getTime() - 1000),
-  });
+  const unchanged = await useCases.updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-14', targetTime: '08:00' },
+    { now: new Date('2026-07-13T09:00:00') },
+  );
   assert.equal(unchanged?.notification.status, 'unchanged');
   assert.deepEqual(events, []);
 
   await assert.rejects(
-    useCases.updateTargetTime(reminder.id, '00:00', {
-      now: new Date(target.getFullYear(), target.getMonth(), target.getDate(), 12),
-    }),
+    useCases.updateSchedule(
+      reminder.id,
+      { targetDate: '2026-07-14', targetTime: '00:00' },
+      { now: new Date('2026-07-14T12:00:00') },
+    ),
     /future/,
   );
   assert.deepEqual(events, []);
 
   dependencies.reminders.getById = async () => null;
-  assert.equal(await useCases.updateTargetTime('missing', '18:30'), null);
+  assert.equal(
+    await useCases.updateSchedule('missing', { targetDate: '2026-07-15', targetTime: '18:30' }),
+    null,
+  );
   assert.deepEqual(events, []);
+});
+
+test('schedule update skips a past previous notification while scheduling the target', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule');
+    return {
+      status: 'scheduled',
+      ids: { previousNotificationId: null, targetNotificationId: 'replacement-target' },
+    };
+  };
+
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-15', targetTime: '08:00' },
+    { now: new Date('2026-07-14T21:00:00') },
+  );
+
+  assert.equal(result?.notification.status, 'scheduled');
+  assert.equal(result?.reminder.previousNotificationId, null);
+  assert.equal(result?.reminder.targetNotificationId, 'replacement-target');
+  assert.deepEqual(events, [
+    'update-schedule:null',
+    'cancel',
+    'schedule',
+    'notification-ids',
+    'widget',
+  ]);
+});
+
+test('schedule update cancels replacements when notification ids cannot be persisted', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.updateNotificationIds = async () => {
+    events.push('notification-ids');
+    return null;
+  };
+
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-15', targetTime: '18:30' },
+    { now: new Date('2026-07-14T09:00:00') },
+  );
+
+  assert.equal(result?.notification.status, 'not-scheduled');
+  assert.deepEqual(events, [
+    'update-schedule:null',
+    'cancel',
+    'schedule',
+    'notification-ids',
+    'cancel',
+    'widget',
+  ]);
+});
+
+test('schedule update cancels replacements when notification id persistence throws', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.updateNotificationIds = async () => {
+    events.push('notification-ids');
+    throw new Error('database unavailable');
+  };
+
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-15', targetTime: '18:30' },
+    { now: new Date('2026-07-14T09:00:00') },
+  );
+
+  assert.equal(result?.notification.status, 'not-scheduled');
+  assert.deepEqual(events, [
+    'update-schedule:null',
+    'cancel',
+    'schedule',
+    'notification-ids',
+    'cancel',
+    'widget',
+  ]);
 });
 
 test('shared previous time updates every active reminder without touching target notifications', async () => {

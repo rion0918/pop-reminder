@@ -51,6 +51,16 @@ export type ReminderTargetScheduleUpdate = Pick<
   'targetAt' | 'targetNotifyAt' | 'targetNotificationId'
 >;
 
+export type ReminderScheduleUpdate = Pick<
+  Reminder,
+  | 'targetAt'
+  | 'previousNotifyAt'
+  | 'targetNotifyAt'
+  | 'expiresAt'
+  | 'previousNotificationId'
+  | 'targetNotificationId'
+>;
+
 export type ReminderPreviousScheduleUpdate = Pick<
   Reminder,
   'previousNotifyAt' | 'previousNotificationId'
@@ -63,6 +73,7 @@ export type ReminderRepository = {
   insert(draft: CreateReminderDraft): Promise<Reminder>;
   updateNotificationIds(id: string, ids: ReminderNotificationIds): Promise<Reminder | null>;
   updateTitle(id: string, title: string): Promise<Reminder | null>;
+  updateSchedule(id: string, update: ReminderScheduleUpdate): Promise<Reminder | null>;
   updateTargetSchedule(id: string, update: ReminderTargetScheduleUpdate): Promise<Reminder | null>;
   updatePreviousSchedule(
     id: string,

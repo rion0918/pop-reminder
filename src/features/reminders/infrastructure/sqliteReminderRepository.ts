@@ -87,6 +87,14 @@ export const sqliteReminderRepository: ReminderRepository = {
     return getById(id);
   },
 
+  async updateSchedule(id, update) {
+    await db
+      .update(reminders)
+      .set({ ...update, updatedAt: new Date().toISOString() })
+      .where(eq(reminders.id, id));
+    return getById(id);
+  },
+
   async updateTargetSchedule(id, update) {
     await db
       .update(reminders)

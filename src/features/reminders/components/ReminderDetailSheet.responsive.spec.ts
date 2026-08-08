@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { assertSourceContract, readSource } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './ReminderDetailSheet.tsx');
+const editorSource = readSource(import.meta.url, './ReminderScheduleEditorModal.tsx');
 
 test('reminder detail sheet sizes to content and keeps delete action reachable', () => {
   assertSourceContract(source, {
@@ -55,7 +56,7 @@ test('reminder detail sheet presents the editable target before the shared previ
       /formatReminderDetailTime/,
       /formatReminderDetailAccessibilityDateTime/,
       /accessibilityLabel=\{`前日のお知らせ、\$\{previousAccessibilityDateTime\}`\}/,
-      /accessibilityLabel="当日のお知らせ時刻を編集"/,
+      /accessibilityLabel="当日のお知らせ日時を編集"/,
       /accessibilityHint=\{targetAccessibilityDateTime\}/,
       /ImageBackground/,
       /reminder-detail-bubbles\.png/,
@@ -63,6 +64,9 @@ test('reminder detail sheet presents the editable target before the shared previ
       /styles\.targetTimeHint/,
       /styles\.scheduleDivider/,
       /styles\.previousScheduleRow/,
+      /styles\.previousScheduleRowPast/,
+      /前日のお知らせ時刻は過ぎています/,
+      /shouldShowPreviousNotification/,
       /name="notifications-outline"/,
       /closeButton: \{[\s\S]*width: 48,[\s\S]*height: 48,[\s\S]*borderRadius: 24,/,
     ],
@@ -76,22 +80,35 @@ test('reminder detail sheet presents the editable target before the shared previ
   });
 });
 
-test('reminder detail sheet edits only the target time and labels the shared previous time', () => {
+test('reminder detail sheet edits target date and time and labels the shared previous time', () => {
   assertSourceContract(source, {
     includes: [
       /すべての泡に共通/,
-      /accessibilityLabel="当日のお知らせ時刻を編集"/,
-      /onUpdateTargetTime:/,
-      /const handleTargetTimeConfirm = useCallback/,
-      /<TimePickerModal/,
-      /onConfirm=\{handleTargetTimeConfirm\}/,
-      /過去の時刻には変更できません/,
-      /時刻は変更しましたが、通知を予約できませんでした/,
+      /accessibilityLabel="当日のお知らせ日時を編集"/,
+      /onUpdateSchedule:/,
+      /const handleScheduleConfirm = useCallback/,
+      /ReminderScheduleEditorModal/,
+      /onConfirm=\{handleScheduleConfirm\}/,
+      /日時は変更しましたが、通知を予約できませんでした/,
     ],
     excludes: [
       /accessibilityLabel="前日のお知らせ時刻を編集"/,
       /name="create-outline"/,
       /targetEditIcon/,
+      /タップして時間を変更/,
+    ],
+  });
+
+  assertSourceContract(editorSource, {
+    includes: [
+      /対象日を変更/,
+      /当日のお知らせ時刻を変更/,
+      /この日時に変更/,
+      /過去の日時には変更できません/,
+      /前日のお知らせ時刻は過ぎているため、当日だけ通知します/,
+      /すべての泡に共通/,
+      /minimumDate=\{activePicker === 'date' \? minimumDate : undefined\}/,
+      /isSaving \|\| !evaluated\.isValid \|\| !evaluated\.isTargetFuture/,
     ],
   });
 });

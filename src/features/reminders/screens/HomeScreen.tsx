@@ -71,7 +71,7 @@ export function HomeScreen() {
     deleteReminder,
     deleteReminders,
     updateReminderTitle,
-    updateReminderTargetTime,
+    updateReminderSchedule,
     isCreating: isSaving,
     isDeletingReminders,
   } = useReminders();
@@ -485,9 +485,9 @@ export function HomeScreen() {
     [updateReminderTitle],
   );
 
-  const handleUpdateReminderTargetTime = useCallback(
-    async (reminder: Reminder, targetTime: string) => {
-      const result = await updateReminderTargetTime(reminder.id, targetTime);
+  const handleUpdateReminderSchedule = useCallback(
+    async (reminder: Reminder, input: { targetDate: string; targetTime: string }) => {
+      const result = await updateReminderSchedule(reminder.id, input);
 
       if (!result) {
         throw new Error('Reminder was not found');
@@ -495,7 +495,7 @@ export function HomeScreen() {
 
       return result;
     },
-    [updateReminderTargetTime],
+    [updateReminderSchedule],
   );
 
   const isAddButtonDisabled = isSaving;
@@ -644,7 +644,7 @@ export function HomeScreen() {
         onClose={handleCloseReminderDetail}
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}
-        onUpdateTargetTime={handleUpdateReminderTargetTime}
+        onUpdateSchedule={handleUpdateReminderSchedule}
       />
 
       {isSelectionMode ? (

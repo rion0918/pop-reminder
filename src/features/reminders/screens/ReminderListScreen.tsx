@@ -52,7 +52,7 @@ export function ReminderListScreen() {
     deleteReminders,
     isDeletingReminders,
     updateReminderTitle,
-    updateReminderTargetTime,
+    updateReminderSchedule,
   } = useReminders();
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -203,9 +203,9 @@ export function ReminderListScreen() {
     [updateReminderTitle],
   );
 
-  const handleUpdateReminderTargetTime = useCallback(
-    async (reminder: Reminder, targetTime: string) => {
-      const result = await updateReminderTargetTime(reminder.id, targetTime);
+  const handleUpdateReminderSchedule = useCallback(
+    async (reminder: Reminder, input: { targetDate: string; targetTime: string }) => {
+      const result = await updateReminderSchedule(reminder.id, input);
 
       if (!result) {
         throw new Error('Reminder was not found');
@@ -213,7 +213,7 @@ export function ReminderListScreen() {
 
       return result;
     },
-    [updateReminderTargetTime],
+    [updateReminderSchedule],
   );
 
   return (
@@ -418,7 +418,7 @@ export function ReminderListScreen() {
         }
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}
-        onUpdateTargetTime={handleUpdateReminderTargetTime}
+        onUpdateSchedule={handleUpdateReminderSchedule}
       />
     </AppScreen>
   );

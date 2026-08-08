@@ -19,10 +19,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette } from '../../../constants/colors';
-import { TimePickerModal } from '../../../shared/components/TimePickerModal';
-import type { UpdateReminderTargetTimeResult } from '../application/reminderUseCases';
+import type {
+  UpdateReminderScheduleInput,
+  UpdateReminderScheduleResult,
+} from '../application/reminderUseCases';
 import type { Reminder } from '../types/reminder';
 import { reminderTitleSchema } from '../schemas/reminderSchema';
+import { ReminderScheduleEditorModal } from './ReminderScheduleEditorModal';
 import {
   formatReminderDetailAccessibilityDateTime,
   formatReminderDetailDate,
@@ -35,10 +38,10 @@ type ReminderDetailSheetProps = {
   onClose: (closedReminderId: string | null) => void;
   onDelete: (reminder: Reminder) => Promise<void>;
   onUpdateTitle: (reminder: Reminder, title: string) => Promise<Reminder>;
-  onUpdateTargetTime: (
+  onUpdateSchedule: (
     reminder: Reminder,
-    targetTime: string,
-  ) => Promise<UpdateReminderTargetTimeResult>;
+    input: UpdateReminderScheduleInput,
+  ) => Promise<UpdateReminderScheduleResult>;
 };
 
 const DETAIL_SHEET_BOTTOM_CLEARANCE = 24;
@@ -48,16 +51,16 @@ const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubble
 
 type NotificationTimelineProps = {
   reminder: Reminder;
-  isTargetTimeEditingDisabled: boolean;
-  onEditTargetTime: () => void;
+  isScheduleEditingDisabled: boolean;
+  onEditSchedule: () => void;
 };
 
 function NotificationTimeline({
   reminder,
-  isTargetTimeEditingDisabled,
-  onEditTargetTime,
+  isScheduleEditingDisabled,
+  onEditSchedule,
 }: NotificationTimelineProps) {
-  const showPreviousNotification = shouldShowPreviousNotification(reminder.previousNotifyAt);
+  const isPreviousNotificationPast = !shouldShowPreviousNotification(reminder.previousNotifyAt);
   const previousAccessibilityDateTime = formatReminderDetailAccessibilityDateTime(
     reminder.previousNotifyAt,
   );
@@ -69,15 +72,15 @@ function NotificationTimeline({
     <View style={styles.scheduleSection}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="当日のお知らせ時刻を編集"
+        accessibilityLabel="当日のお知らせ日時を編集"
         accessibilityHint={targetAccessibilityDateTime}
-        accessibilityState={{ disabled: isTargetTimeEditingDisabled }}
-        disabled={isTargetTimeEditingDisabled}
-        onPress={onEditTargetTime}
+        accessibilityState={{ disabled: isScheduleEditingDisabled }}
+        disabled={isScheduleEditingDisabled}
+        onPress={onEditSchedule}
         style={({ pressed }) => [
           styles.targetScheduleCard,
-          pressed && !isTargetTimeEditingDisabled ? styles.targetScheduleCardPressed : null,
-          isTargetTimeEditingDisabled ? styles.targetScheduleCardDisabled : null,
+          pressed && !isScheduleEditingDisabled ? styles.targetScheduleCardPressed : null,
+          isScheduleEditingDisabled ? styles.targetScheduleCardDisabled : null,
         ]}
       >
         <ImageBackground
@@ -99,40 +102,42 @@ function NotificationTimeline({
             {formatReminderDetailTime(reminder.targetNotifyAt)}
           </Text>
           <View style={styles.targetTimeHint}>
-            <Text style={styles.targetTimeHintText}>タップして時間を変更</Text>
+            <Text style={styles.targetTimeHintText}>タップして日時を変更</Text>
           </View>
         </ImageBackground>
       </Pressable>
 
-      {showPreviousNotification ? (
-        <>
-          <View style={styles.scheduleDivider} />
-          <View
-            accessible
-            accessibilityRole="text"
-            accessibilityLabel={`前日のお知らせ、${previousAccessibilityDateTime}`}
-            style={styles.previousScheduleRow}
-          >
-            <View style={styles.previousScheduleIcon}>
-              <Ionicons name="notifications-outline" size={19} color={palette.muted} />
-            </View>
-            <View style={styles.previousScheduleContent}>
-              <View style={styles.previousScheduleLabelRow}>
-                <Text style={styles.previousScheduleLabel}>まず、前日にお知らせ</Text>
-                <View style={styles.sharedTimeBadge}>
-                  <Text style={styles.sharedTimeBadgeText}>すべての泡に共通</Text>
-                </View>
-              </View>
-              <Text style={styles.previousScheduleDate}>
-                {formatReminderDetailDate(reminder.previousNotifyAt)}
-              </Text>
-              <Text style={styles.previousScheduleTime}>
-                {formatReminderDetailTime(reminder.previousNotifyAt)}
-              </Text>
+      <View style={styles.scheduleDivider} />
+      <View
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={`前日のお知らせ、${previousAccessibilityDateTime}`}
+        style={[
+          styles.previousScheduleRow,
+          isPreviousNotificationPast ? styles.previousScheduleRowPast : null,
+        ]}
+      >
+        <View style={styles.previousScheduleIcon}>
+          <Ionicons name="notifications-outline" size={19} color={palette.muted} />
+        </View>
+        <View style={styles.previousScheduleContent}>
+          <View style={styles.previousScheduleLabelRow}>
+            <Text style={styles.previousScheduleLabel}>まず、前日にお知らせ</Text>
+            <View style={styles.sharedTimeBadge}>
+              <Text style={styles.sharedTimeBadgeText}>すべての泡に共通</Text>
             </View>
           </View>
-        </>
-      ) : null}
+          <Text style={styles.previousScheduleDate}>
+            {formatReminderDetailDate(reminder.previousNotifyAt)}
+          </Text>
+          <Text style={styles.previousScheduleTime}>
+            {formatReminderDetailTime(reminder.previousNotifyAt)}
+          </Text>
+          {isPreviousNotificationPast ? (
+            <Text style={styles.previousSchedulePastNotice}>前日のお知らせ時刻は過ぎています</Text>
+          ) : null}
+        </View>
+      </View>
     </View>
   );
 }
@@ -142,7 +147,7 @@ export function ReminderDetailSheet({
   onClose,
   onDelete,
   onUpdateTitle,
-  onUpdateTargetTime,
+  onUpdateSchedule,
 }: ReminderDetailSheetProps) {
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -159,14 +164,14 @@ export function ReminderDetailSheet({
   const titleEditSessionRef = useRef(0);
   const shouldDiscardTitleEditRef = useRef(false);
   const isTitleSaveRequestedRef = useRef(false);
-  const targetTimeEditSessionRef = useRef(0);
+  const scheduleEditSessionRef = useRef(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isTitleSaving, setIsTitleSaving] = useState(false);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
-  const [isTargetTimePickerOpen, setIsTargetTimePickerOpen] = useState(false);
-  const [isTargetTimeSaving, setIsTargetTimeSaving] = useState(false);
-  const [timeNotice, setTimeNotice] = useState<string | null>(null);
+  const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
+  const [isScheduleSaving, setIsScheduleSaving] = useState(false);
+  const [scheduleNotice, setScheduleNotice] = useState<string | null>(null);
   const sheetTopInset = safeAreaInsets.top + 8;
   const detailMaxDynamicContentSize = useMemo(
     () =>
@@ -192,11 +197,11 @@ export function ReminderDetailSheet({
     setTitleNotice(null);
   }, [reminder?.title]);
 
-  const discardTargetTimeEdit = useCallback(() => {
-    targetTimeEditSessionRef.current += 1;
-    setIsTargetTimePickerOpen(false);
-    setIsTargetTimeSaving(false);
-    setTimeNotice(null);
+  const discardScheduleEdit = useCallback(() => {
+    scheduleEditSessionRef.current += 1;
+    setIsScheduleEditorOpen(false);
+    setIsScheduleSaving(false);
+    setScheduleNotice(null);
   }, []);
 
   const renderBackdrop = useCallback(
@@ -237,7 +242,7 @@ export function ReminderDetailSheet({
     pendingDeleteReminderRef.current = null;
 
     discardTitleEdit();
-    discardTargetTimeEdit();
+    discardScheduleEdit();
 
     isPresentedRef.current = false;
     if (!pendingDeleteReminder) {
@@ -273,28 +278,28 @@ export function ReminderDetailSheet({
     if (!pendingReminderId) {
       displayedReminderIdRef.current = null;
     }
-  }, [discardTargetTimeEdit, discardTitleEdit, onClose, onDelete]);
+  }, [discardScheduleEdit, discardTitleEdit, onClose, onDelete]);
 
   const handleClosePress = useCallback(() => {
     discardTitleEdit();
-    discardTargetTimeEdit();
+    discardScheduleEdit();
     closingReminderIdRef.current = displayedReminderIdRef.current;
     isClosingRef.current = true;
     sheetRef.current?.dismiss();
-  }, [discardTargetTimeEdit, discardTitleEdit]);
+  }, [discardScheduleEdit, discardTitleEdit]);
 
   const handleSheetAnimate = useCallback(
     (_fromIndex: number, toIndex: number) => {
       if (toIndex === -1) {
         discardTitleEdit();
-        discardTargetTimeEdit();
+        discardScheduleEdit();
       }
     },
-    [discardTargetTimeEdit, discardTitleEdit],
+    [discardScheduleEdit, discardTitleEdit],
   );
 
   const handleTitlePress = useCallback(() => {
-    if (!reminder || isTitleSaving || isTargetTimeSaving || isTargetTimePickerOpen) {
+    if (!reminder || isTitleSaving || isScheduleSaving || isScheduleEditorOpen) {
       return;
     }
 
@@ -308,7 +313,7 @@ export function ReminderDetailSheet({
     requestAnimationFrame(() => {
       titleInputRef.current?.focus();
     });
-  }, [isTargetTimePickerOpen, isTargetTimeSaving, isTitleSaving, reminder]);
+  }, [isScheduleEditorOpen, isScheduleSaving, isTitleSaving, reminder]);
 
   const handleTitleBlur = useCallback(() => {
     const editSession = titleEditSessionRef.current;
@@ -359,79 +364,70 @@ export function ReminderDetailSheet({
     });
   }, [onUpdateTitle, reminder]);
 
-  const handleTargetTimePress = useCallback(() => {
-    if (!reminder || isTitleEditing || isTitleSaving || isTargetTimeSaving) {
+  const handleSchedulePress = useCallback(() => {
+    if (!reminder || isTitleEditing || isTitleSaving || isScheduleSaving) {
       return;
     }
 
-    setTimeNotice(null);
-    setIsTargetTimePickerOpen(true);
-  }, [isTargetTimeSaving, isTitleEditing, isTitleSaving, reminder]);
+    setScheduleNotice(null);
+    setIsScheduleEditorOpen(true);
+  }, [isScheduleSaving, isTitleEditing, isTitleSaving, reminder]);
 
-  const handleTargetTimeConfirm = useCallback(
-    async (targetTime: string) => {
-      if (!reminder || isTargetTimeSaving) {
+  const handleScheduleConfirm = useCallback(
+    async (input: UpdateReminderScheduleInput) => {
+      if (!reminder || isScheduleSaving) {
         return;
       }
 
-      const [hours, minutes] = targetTime.split(':').map(Number);
-      const nextTarget = new Date(reminder.targetAt);
-      nextTarget.setHours(hours, minutes, 0, 0);
-      if (nextTarget.getTime() <= Date.now()) {
-        setTimeNotice('過去の時刻には変更できません');
-        return;
-      }
-
-      const editSession = targetTimeEditSessionRef.current + 1;
-      targetTimeEditSessionRef.current = editSession;
-      setTimeNotice(null);
-      setIsTargetTimeSaving(true);
+      const editSession = scheduleEditSessionRef.current + 1;
+      scheduleEditSessionRef.current = editSession;
+      setScheduleNotice(null);
+      setIsScheduleSaving(true);
 
       try {
-        const result = await onUpdateTargetTime(reminder, targetTime);
-        if (editSession !== targetTimeEditSessionRef.current) {
+        const result = await onUpdateSchedule(reminder, input);
+        if (editSession !== scheduleEditSessionRef.current) {
           return;
         }
 
-        setTimeNotice(
-          result.notification.status === 'scheduled' || result.notification.status === 'unchanged'
-            ? null
-            : '時刻は変更しましたが、通知を予約できませんでした',
-        );
+        setIsScheduleEditorOpen(false);
+        if (result.notification.status === 'not-scheduled') {
+          setScheduleNotice('日時は変更しましたが、通知を予約できませんでした');
+        } else if (result.notification.status === 'partial') {
+          setScheduleNotice('日時は変更しましたが、前日通知を予約できませんでした');
+        } else {
+          setScheduleNotice(null);
+        }
       } catch (error) {
-        if (editSession !== targetTimeEditSessionRef.current) {
+        if (editSession !== scheduleEditSessionRef.current) {
           return;
         }
 
-        console.warn('Failed to update reminder target time', error);
-        setTimeNotice(
-          error instanceof Error && error.message.includes('future')
-            ? '過去の時刻には変更できません'
-            : '時刻を保存できませんでした',
-        );
+        console.warn('Failed to update reminder schedule', error);
+        setScheduleNotice('日時を保存できませんでした');
       } finally {
-        if (editSession === targetTimeEditSessionRef.current) {
-          setIsTargetTimeSaving(false);
+        if (editSession === scheduleEditSessionRef.current) {
+          setIsScheduleSaving(false);
         }
       }
     },
-    [isTargetTimeSaving, onUpdateTargetTime, reminder],
+    [isScheduleSaving, onUpdateSchedule, reminder],
   );
 
   const handleDeletePress = useCallback(() => {
-    if (!reminder || isDeleting || isTargetTimeSaving || isDeleteRequestedRef.current) {
+    if (!reminder || isDeleting || isScheduleSaving || isDeleteRequestedRef.current) {
       return;
     }
 
     discardTitleEdit();
-    discardTargetTimeEdit();
+    discardScheduleEdit();
     isDeleteRequestedRef.current = true;
     setIsDeleting(true);
     pendingDeleteReminderRef.current = reminder;
     closingReminderIdRef.current = displayedReminderIdRef.current;
     isClosingRef.current = true;
     sheetRef.current?.dismiss();
-  }, [discardTargetTimeEdit, discardTitleEdit, isDeleting, isTargetTimeSaving, reminder]);
+  }, [discardScheduleEdit, discardTitleEdit, isDeleting, isScheduleSaving, reminder]);
 
   return (
     <>
@@ -481,9 +477,9 @@ export function ReminderDetailSheet({
                   accessibilityRole="button"
                   accessibilityLabel="タイトルを編集"
                   accessibilityState={{
-                    disabled: !reminder || isTitleSaving || isTargetTimeSaving,
+                    disabled: !reminder || isTitleSaving || isScheduleSaving,
                   }}
-                  disabled={!reminder || isTitleSaving || isTargetTimeSaving}
+                  disabled={!reminder || isTitleSaving || isScheduleSaving}
                   onPress={handleTitlePress}
                   style={({ pressed }) => [
                     styles.titlePressable,
@@ -510,26 +506,26 @@ export function ReminderDetailSheet({
           {reminder ? (
             <NotificationTimeline
               reminder={reminder}
-              isTargetTimeEditingDisabled={
-                isTitleEditing || isTitleSaving || isTargetTimeSaving || isDeleting
+              isScheduleEditingDisabled={
+                isTitleEditing || isTitleSaving || isScheduleSaving || isDeleting
               }
-              onEditTargetTime={handleTargetTimePress}
+              onEditSchedule={handleSchedulePress}
             />
           ) : null}
 
-          {timeNotice ? <Text style={styles.timeNotice}>{timeNotice}</Text> : null}
+          {scheduleNotice ? <Text style={styles.timeNotice}>{scheduleNotice}</Text> : null}
 
           <View style={styles.deleteActionSpacer}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="このシャボン玉を削除する"
-              accessibilityState={{ disabled: !reminder || isDeleting || isTargetTimeSaving }}
+              accessibilityState={{ disabled: !reminder || isDeleting || isScheduleSaving }}
               onPress={handleDeletePress}
-              disabled={!reminder || isDeleting || isTargetTimeSaving}
+              disabled={!reminder || isDeleting || isScheduleSaving}
               style={({ pressed }) => [
                 styles.deleteAction,
                 pressed && !isDeleting ? styles.deleteActionPressed : null,
-                !reminder || isDeleting || isTargetTimeSaving ? styles.deleteActionDisabled : null,
+                !reminder || isDeleting || isScheduleSaving ? styles.deleteActionDisabled : null,
               ]}
             >
               <View style={styles.deleteActionContent}>
@@ -541,14 +537,15 @@ export function ReminderDetailSheet({
         </BottomSheetScrollView>
       </BottomSheetModal>
 
-      <TimePickerModal
-        visible={isTargetTimePickerOpen && reminder !== null}
-        value={reminder ? formatReminderDetailTime(reminder.targetNotifyAt) : '08:00'}
-        title="当日のお知らせ時刻"
-        hint="この泡だけ、当日のお知らせ時刻を変更します"
-        onConfirm={handleTargetTimeConfirm}
-        onClose={() => setIsTargetTimePickerOpen(false)}
-      />
+      {reminder ? (
+        <ReminderScheduleEditorModal
+          visible={isScheduleEditorOpen}
+          reminder={reminder}
+          isSaving={isScheduleSaving}
+          onConfirm={handleScheduleConfirm}
+          onClose={() => setIsScheduleEditorOpen(false)}
+        />
+      ) : null}
     </>
   );
 }
@@ -719,6 +716,9 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 10,
   },
+  previousScheduleRowPast: {
+    opacity: 0.72,
+  },
   previousScheduleIcon: {
     width: 44,
     height: 44,
@@ -767,6 +767,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 34,
     fontWeight: '900',
+  },
+  previousSchedulePastNotice: {
+    marginTop: 2,
+    color: palette.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
   },
   timeNotice: {
     marginTop: 8,
