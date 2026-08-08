@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -48,6 +49,8 @@ type ReminderBubbleProps = {
   selectionMode?: boolean;
   isMultiSelected?: boolean;
   deleteMotionPhase?: BubbleDeleteMotionPhase;
+  deleteMotionDelayMs?: number;
+  deleteMotionHapticsEnabled?: boolean;
   idleDisabled?: boolean;
   interactionDisabled?: boolean;
   onPress?: (reminder: Reminder) => void;
@@ -56,6 +59,12 @@ type ReminderBubbleProps = {
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const REMINDER_BUBBLE_SELECTION_SPRING = {
+  damping: 30,
+  stiffness: 260,
+  mass: 0.9,
+  overshootClamping: true,
+} as const;
 
 export const ReminderBubble = memo(function ReminderBubble({
   reminder,
@@ -69,6 +78,8 @@ export const ReminderBubble = memo(function ReminderBubble({
   selectionMode,
   isMultiSelected,
   deleteMotionPhase,
+  deleteMotionDelayMs = 0,
+  deleteMotionHapticsEnabled = true,
   idleDisabled,
   interactionDisabled,
   onPress,
@@ -95,6 +106,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   const idleProgress = useSharedValue(0);
   const pressProgress = useSharedValue(0);
   const deleteMotionProgress = useSharedValue(0);
+  const selectionProgress = useSharedValue(0);
 
   useEffect(() => {
     entryProgress.value = 0;
@@ -161,14 +173,34 @@ export const ReminderBubble = memo(function ReminderBubble({
       return;
     }
 
-    deleteMotionProgress.value = withTiming(1, {
-      duration:
-        deleteMotionPhase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
-      easing: Easing.linear,
-    });
+    deleteMotionProgress.value = withDelay(
+      deleteMotionDelayMs,
+      withTiming(1, {
+        duration:
+          deleteMotionPhase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
+        easing: Easing.linear,
+      }),
+    );
 
     return () => cancelAnimation(deleteMotionProgress);
-  }, [deleteMotionPhase, deleteMotionProgress, reduceMotion]);
+  }, [deleteMotionDelayMs, deleteMotionPhase, deleteMotionProgress, reduceMotion]);
+
+  useEffect(() => {
+    cancelAnimation(selectionProgress);
+    selectionProgress.value = reduceMotion
+      ? isMultiSelected
+        ? 1
+        : 0
+      : withSpring(isMultiSelected ? 1 : 0, REMINDER_BUBBLE_SELECTION_SPRING);
+
+    return () => cancelAnimation(selectionProgress);
+  }, [isMultiSelected, reduceMotion, selectionProgress]);
+
+  useEffect(() => {
+    if (!selectionMode) {
+      longPressTriggeredRef.current = false;
+    }
+  }, [selectionMode]);
 
   const isDisabled = Boolean(deleteMotionPhase) || Boolean(interactionDisabled);
 
@@ -243,6 +275,11 @@ export const ReminderBubble = memo(function ReminderBubble({
     };
   });
 
+  const selectionIndicatorAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: 0.72 + selectionProgress.value * 0.28,
+    transform: [{ scale: 0.88 + selectionProgress.value * 0.12 }],
+  }));
+
   return (
     <AnimatedPressable
       accessibilityRole={selectionMode ? 'checkbox' : 'button'}
@@ -287,7 +324,7 @@ export const ReminderBubble = memo(function ReminderBubble({
           height: bubbleHeight,
           borderRadius: radius,
         },
-        selectionMode && isMultiSelected ? styles.selectionHighlight : null,
+        selectionMode && isMultiSelected && !deleteMotionPhase ? styles.selectionHighlight : null,
         style,
         bubbleAnimatedStyle,
       ]}
@@ -384,12 +421,26 @@ export const ReminderBubble = memo(function ReminderBubble({
           </Text>
         </View>
       </Animated.View>
+      {selectionMode && !deleteMotionPhase ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.selectionIndicator,
+            isMultiSelected ? styles.selectionIndicatorSelected : null,
+            selectionIndicatorAnimatedStyle,
+          ]}
+        >
+          {isMultiSelected ? <Ionicons name="checkmark" size={17} color={palette.white} /> : null}
+        </Animated.View>
+      ) : null}
       <ReminderBubbleBurst
         reminderId={reminder.id}
         width={bubbleWidth}
         height={bubbleHeight}
         color={color}
         phase={deleteMotionPhase}
+        delayMs={deleteMotionDelayMs}
+        hapticsEnabled={deleteMotionHapticsEnabled}
         isSelected={isSelected}
         surfaceRef={surfaceRef}
         onMotionComplete={onDeleteMotionComplete}
@@ -407,6 +458,27 @@ const styles = StyleSheet.create({
   selectionHighlight: {
     borderWidth: 3,
     borderColor: palette.lavenderDeep,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: palette.lavenderDeep,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    shadowColor: palette.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  selectionIndicatorSelected: {
+    backgroundColor: palette.lavenderDeep,
   },
   bubbleSurface: {
     width: '100%',

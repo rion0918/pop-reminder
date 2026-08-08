@@ -19,6 +19,8 @@ export type ReminderBubbleBurstProps = {
   height: number;
   color: ReminderBubbleBurstColor;
   phase?: BubbleDeleteMotionPhase;
+  delayMs?: number;
+  hapticsEnabled?: boolean;
   isSelected?: boolean;
   surfaceRef: RefObject<View | null>;
   onMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;

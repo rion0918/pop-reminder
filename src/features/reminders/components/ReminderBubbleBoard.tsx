@@ -38,6 +38,8 @@ export { getTemporalYRatio, makeGridSlots, makeLayoutForItem };
 export type BubbleDeleteMotion = {
   reminderId: string;
   phase: BubbleDeleteMotionPhase;
+  delayMs?: number;
+  hapticsEnabled?: boolean;
 };
 
 type ReminderBubbleBoardProps = {
@@ -48,6 +50,7 @@ type ReminderBubbleBoardProps = {
   selectedReminderIds?: ReadonlySet<string>;
   selectionMode?: boolean;
   deleteMotion?: BubbleDeleteMotion | null;
+  deleteMotions?: readonly BubbleDeleteMotion[];
   freezeLayout?: boolean;
   idleDisabled?: boolean;
   interactionDisabled?: boolean;
@@ -396,6 +399,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   selectedReminderIds,
   selectionMode,
   deleteMotion,
+  deleteMotions,
   freezeLayout,
   idleDisabled,
   interactionDisabled,
@@ -666,6 +670,9 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       {boardReady
         ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => {
             const isMultiSelected = selectedReminderIds?.has(reminder.id) ?? false;
+            const activeDeleteMotion =
+              deleteMotions?.find((motion) => motion.reminderId === reminder.id) ??
+              (deleteMotion?.reminderId === reminder.id ? deleteMotion : undefined);
 
             return (
               <ReminderBubble
@@ -676,13 +683,13 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
                 width={width}
                 height={height}
                 currentDate={colorReferenceDate}
-                isSelected={selectedReminderId === reminder.id}
+                isSelected={selectedReminderId === reminder.id || isMultiSelected}
                 selectionMode={selectionMode}
                 isMultiSelected={isMultiSelected}
-                deleteMotionPhase={
-                  deleteMotion?.reminderId === reminder.id ? deleteMotion.phase : undefined
-                }
-                idleDisabled={idleDisabled || deleteMotion?.reminderId === reminder.id}
+                deleteMotionPhase={activeDeleteMotion?.phase}
+                deleteMotionDelayMs={activeDeleteMotion?.delayMs}
+                deleteMotionHapticsEnabled={activeDeleteMotion?.hapticsEnabled}
+                idleDisabled={idleDisabled || Boolean(activeDeleteMotion)}
                 interactionDisabled={interactionDisabled}
                 onPress={onReminderPress}
                 onLongPress={onReminderLongPress}
