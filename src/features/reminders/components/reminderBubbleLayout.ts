@@ -95,6 +95,18 @@ export function getEdgeClearance(boardSize: BoardSize) {
   );
 }
 
+export function getVerticalEdgeClearance(
+  boardSize: BoardSize,
+  verticalLayoutMode: BubbleVerticalLayoutMode,
+  temporalCount: number,
+) {
+  if (verticalLayoutMode === 'homeTimeline' && temporalCount >= 5) {
+    return Math.round(clamp(Math.min(boardSize.width, boardSize.height) * 0.025, 6, 14));
+  }
+
+  return getEdgeClearance(boardSize);
+}
+
 export function resolveBoardSizeMeasurement(
   current: BoardSize,
   measured: BoardSize,
@@ -121,8 +133,11 @@ export function getTemporalYRatio(
       return 0.5;
     }
 
-    const startY = Math.max(0.18, 0.35 - (count - 2) * 0.025);
-    const endY = Math.min(0.68, 0.65 + (count - 2) * 0.01);
+    const baseStartY = Math.max(0.18, 0.35 - (count - 2) * 0.025);
+    const baseEndY = Math.min(0.68, 0.65 + (count - 2) * 0.01);
+    const fillProgress = clamp((count - 4) / 4, 0, 1);
+    const startY = baseStartY * (1 - fillProgress);
+    const endY = baseEndY + (1 - baseEndY) * fillProgress;
     const ratio = startY + (index / (count - 1)) * (endY - startY);
 
     return Math.round(ratio * 1000) / 1000;
@@ -168,9 +183,17 @@ export function makeLayoutForItem(
 ): FloatingItemLayout {
   const seed = hashString(id);
   const { width, height, collisionSize } = dimensions;
-  const edgeClearance = getEdgeClearance(boardSize);
-  const maxLeft = Math.max(edgeClearance, boardSize.width - width - edgeClearance);
-  const maxTop = Math.max(edgeClearance, boardSize.height - height - edgeClearance);
+  const horizontalEdgeClearance = getEdgeClearance(boardSize);
+  const verticalEdgeClearance = getVerticalEdgeClearance(
+    boardSize,
+    verticalLayoutMode,
+    temporalCount,
+  );
+  const maxLeft = Math.max(
+    horizontalEdgeClearance,
+    boardSize.width - width - horizontalEdgeClearance,
+  );
+  const maxTop = Math.max(verticalEdgeClearance, boardSize.height - height - verticalEdgeClearance);
   const isDenseLayout = temporalCount > 7;
   const activeFloatingSlots = isDenseLayout ? DENSE_FLOATING_SLOTS : FLOATING_SLOTS;
   const preferredSlot = isDenseLayout
@@ -196,7 +219,11 @@ export function makeLayoutForItem(
 
     return {
       x: temporalLaneRatios[(index + laneOffset) % temporalLaneRatios.length] ?? xRatio,
-      y: clamp(temporalYRatio + verticalNudge, 0.14, 0.68),
+      y: clamp(
+        temporalYRatio + verticalNudge,
+        verticalLayoutMode === 'homeTimeline' ? 0 : 0.14,
+        verticalLayoutMode === 'homeTimeline' ? 1 : 0.68,
+      ),
       temporal: true,
       slotIndex: index,
     };
@@ -243,8 +270,16 @@ export function makeLayoutForItem(
     );
     const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * jitterRangeX;
     const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * jitterRangeY;
-    const left = clamp(slot.x * boardSize.width - width / 2 + jitterX, edgeClearance, maxLeft);
-    const top = clamp(slot.y * boardSize.height - height / 2 + jitterY, edgeClearance, maxTop);
+    const left = clamp(
+      slot.x * boardSize.width - width / 2 + jitterX,
+      horizontalEdgeClearance,
+      maxLeft,
+    );
+    const top = clamp(
+      slot.y * boardSize.height - height / 2 + jitterY,
+      verticalEdgeClearance,
+      maxTop,
+    );
     const centerX = left + width / 2;
     const centerY = top + height / 2;
     const overlapPenalty = placedBubbles.reduce((penalty, placed) => {
@@ -276,7 +311,9 @@ export function makeLayoutForItem(
           : 480
         : 0;
     const edgePenalty =
-      top <= edgeClearance + 2 || left <= edgeClearance + 2 || left >= maxLeft - 2 ? 28 : 0;
+      top <= verticalEdgeClearance + 2 || left <= horizontalEdgeClearance + 2 || left >= maxLeft - 2
+        ? 28
+        : 0;
     const temporalPenalty =
       Math.abs(centerY / boardSize.height - temporalYRatio) * (isDenseLayout ? 520 : 780);
     const floatingSlotPenalty = slot.temporal ? 0 : isDenseLayout ? 240 : 170;
@@ -304,10 +341,10 @@ export function makeLayoutForItem(
   }, null);
 
   const layout = bestLayout ?? {
-    left: edgeClearance,
-    top: edgeClearance,
-    centerX: edgeClearance + width / 2,
-    centerY: edgeClearance + height / 2,
+    left: horizontalEdgeClearance,
+    top: verticalEdgeClearance,
+    centerX: horizontalEdgeClearance + width / 2,
+    centerY: verticalEdgeClearance + height / 2,
     score: 0,
   };
 

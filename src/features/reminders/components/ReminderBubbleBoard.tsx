@@ -57,7 +57,7 @@ type ReminderBubbleBoardProps = {
 };
 
 const MAX_VISIBLE_BUBBLES = 12;
-const LAYOUT_VERSION = 7;
+const LAYOUT_VERSION = 8;
 const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 * 2 + 32;
 const BUBBLE_SIZE_BUCKETS = {
   large: { base: 160, min: 116 },
@@ -420,6 +420,8 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
     [reminderIdsKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const overflowCount = Math.max(0, reminders.length - visibleReminders.length);
+  const timelineItemCount =
+    visibleReminders.length + (verticalLayoutMode === 'homeTimeline' && overflowCount > 0 ? 1 : 0);
   useEffect(() => {
     const timer = setTimeout(() => {
       setColorReferenceDate(new Date());
@@ -461,7 +463,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       verticalLayoutMode === 'homeTimeline'
         ? visibleReminders.map((reminder) => reminder.id).join(',')
         : 'stable';
-    const boardKey = `${LAYOUT_VERSION}:${verticalLayoutMode}:${boardContentMode}:${boardSize.width}x${boardSize.height}:${homeTimelineOrderKey}`;
+    const boardKey = `${LAYOUT_VERSION}:${verticalLayoutMode}:${boardContentMode}:${boardSize.width}x${boardSize.height}:${homeTimelineOrderKey}:${timelineItemCount}`;
     const layoutCache = layoutCacheRef.current;
 
     if (layoutBoardKeyRef.current !== boardKey) {
@@ -524,7 +526,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
         placedBubbles,
         visualIndex,
         reminderIndex,
-        visibleReminders.length,
+        timelineItemCount,
         verticalLayoutMode,
       );
       const nextLayout = {
@@ -591,7 +593,14 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       bubbleLayouts,
       overflowBubble,
     };
-  }, [boardContentMode, boardSize, overflowCount, verticalLayoutMode, visibleReminders]);
+  }, [
+    boardContentMode,
+    boardSize,
+    overflowCount,
+    timelineItemCount,
+    verticalLayoutMode,
+    visibleReminders,
+  ]);
   const { bubbleLayouts, overflowBubble } = boardLayout;
 
   const boardReady = boardSize.width > 0 && boardSize.height > 0;
