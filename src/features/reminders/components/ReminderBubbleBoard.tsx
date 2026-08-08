@@ -24,6 +24,7 @@ import {
 } from './reminderBubblePressMotion';
 import {
   MIN_EDGE_CLEARANCE,
+  getBottomAlignmentOffset,
   getTemporalYRatio,
   makeGridSlots,
   makeLayoutForItem,
@@ -51,10 +52,11 @@ type ReminderBubbleBoardProps = {
   onOverflowPress?: () => void;
   onEmptyPress?: () => void;
   emptyDisabled?: boolean;
+  alignToBottom?: boolean;
 };
 
 const MAX_VISIBLE_BUBBLES = 12;
-const LAYOUT_VERSION = 5;
+const LAYOUT_VERSION = 6;
 const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 * 2 + 32;
 const BUBBLE_SIZE_BUCKETS = {
   large: { base: 160, min: 116 },
@@ -394,6 +396,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   onOverflowPress,
   onEmptyPress,
   emptyDisabled,
+  alignToBottom = false,
 }: ReminderBubbleBoardProps) {
   const [boardSize, setBoardSize] = useState<BoardSize>({ width: 0, height: 0 });
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
@@ -453,7 +456,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
       };
     }
 
-    const boardKey = `${LAYOUT_VERSION}:${boardSize.width}x${boardSize.height}`;
+    const boardKey = `${LAYOUT_VERSION}:${alignToBottom ? 'bottom' : 'natural'}:${boardSize.width}x${boardSize.height}`;
     const layoutCache = layoutCacheRef.current;
 
     if (layoutBoardKeyRef.current !== boardKey) {
@@ -577,11 +580,27 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
           })()
         : null;
 
+    const bottomAlignmentOffset = alignToBottom
+      ? getBottomAlignmentOffset(boardSize, [
+          ...bubbleLayouts.map(({ top, height }) => ({ top, height })),
+          ...(overflowBubble ? [{ top: overflowBubble.top, height: overflowBubble.size }] : []),
+        ])
+      : 0;
+
     return {
-      bubbleLayouts,
-      overflowBubble,
+      bubbleLayouts: bubbleLayouts.map((bubbleLayout) => ({
+        ...bubbleLayout,
+        top: bubbleLayout.top + bottomAlignmentOffset,
+        positionStyle: {
+          left: bubbleLayout.left,
+          top: bubbleLayout.top + bottomAlignmentOffset,
+        },
+      })),
+      overflowBubble: overflowBubble
+        ? { ...overflowBubble, top: overflowBubble.top + bottomAlignmentOffset }
+        : null,
     };
-  }, [boardSize, overflowCount, visibleReminders]);
+  }, [alignToBottom, boardSize, overflowCount, visibleReminders]);
   const { bubbleLayouts, overflowBubble } = boardLayout;
 
   const boardReady = boardSize.width > 0 && boardSize.height > 0;

@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAssertions';
@@ -11,6 +12,7 @@ test('search result meta keeps the result count inside narrow widths', () => {
     /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.82\}[\s\S]*style=\{styles\.noFontPadding\}/,
     /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
   ]);
+  assert.equal(source.includes('alignToBottom'), false);
 });
 
 test('search removes deleted reminders locally before a silent refresh', () => {

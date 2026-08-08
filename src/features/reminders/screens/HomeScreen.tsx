@@ -476,6 +476,7 @@ export function HomeScreen() {
           onOverflowPress={handleOpenReminderList}
           onEmptyPress={handlePressAdd}
           emptyDisabled={isAddButtonDisabled}
+          alignToBottom
         />
       </View>
 
