@@ -175,10 +175,25 @@ test('Android notifications do not require exact alarm special access', () => {
 
 test('Android notification QA documents inexact DATE trigger tolerance', () => {
   const qaDocument = readFileSync(join(__dirname, 'docs/QA_DEVELOPMENT_BUILD.md'), 'utf8');
+  const qaLines = qaDocument.split('\n');
+  const androidBackgroundCheck = qaLines.find(
+    (line) => line.includes('Android 12以降') && line.includes('バックグラウンド'),
+  );
+  const androidTerminatedCheck = qaLines.find(
+    (line) => line.includes('Android 12以降') && line.includes('アプリを終了'),
+  );
+  const androidInexactExpectation = qaLines.find((line) =>
+    line.includes('`SCHEDULE_EXACT_ALARM` を使わない'),
+  );
 
-  assert.match(qaDocument, /Android 12以降[\s\S]*バックグラウンド[\s\S]*最大60分程度の遅延/);
-  assert.match(qaDocument, /Android 12以降[\s\S]*アプリを終了[\s\S]*最大60分程度の遅延/);
-  assert.match(qaDocument, /SCHEDULE_EXACT_ALARM[\s\S]*DATE`? トリガー[\s\S]*inexact alarm/);
+  assert.ok(androidBackgroundCheck);
+  assert.ok(androidTerminatedCheck);
+  assert.ok(androidInexactExpectation);
+  assert.match(androidBackgroundCheck ?? '', /最大60分程度の遅延を許容/);
+  assert.match(androidTerminatedCheck ?? '', /最大60分程度の遅延を許容/);
+  assert.match(androidInexactExpectation ?? '', /`SCHEDULE_EXACT_ALARM` を使わない/);
+  assert.match(androidInexactExpectation ?? '', /`DATE` トリガーは inexact alarm/);
+  assert.doesNotMatch(androidInexactExpectation ?? '', /必要|要求|必須/);
   assert.doesNotMatch(qaDocument, /^- \[ \] Android 12以降.*指定時刻に通知が届く$/m);
 });
 
