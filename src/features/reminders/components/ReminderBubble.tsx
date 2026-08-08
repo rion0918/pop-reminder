@@ -21,7 +21,7 @@ import {
 } from '../utils/reminderBubbleVisuals';
 import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 import { getReminderDueColor } from '../utils/reminderDueColor';
-import { homeVisualTokens } from '../../../constants/colors';
+import { homeVisualTokens, palette } from '../../../constants/colors';
 import { ReminderBubbleBurst } from './ReminderBubbleBurst';
 import {
   REMINDER_BUBBLE_BURST_MS,
@@ -45,9 +45,13 @@ type ReminderBubbleProps = {
   currentDate: Date;
   style?: ViewStyle;
   isSelected?: boolean;
+  selectionMode?: boolean;
+  isMultiSelected?: boolean;
   deleteMotionPhase?: BubbleDeleteMotionPhase;
   idleDisabled?: boolean;
+  interactionDisabled?: boolean;
   onPress?: (reminder: Reminder) => void;
+  onLongPress?: (reminder: Reminder) => void;
   onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
 };
 
@@ -62,9 +66,13 @@ export const ReminderBubble = memo(function ReminderBubble({
   currentDate,
   style,
   isSelected,
+  selectionMode,
+  isMultiSelected,
   deleteMotionPhase,
   idleDisabled,
+  interactionDisabled,
   onPress,
+  onLongPress,
   onDeleteMotionComplete,
 }: ReminderBubbleProps) {
   const color = getReminderDueColor(reminder.targetAt, currentDate);
@@ -77,6 +85,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   const radius = visualSize / 2;
   const reduceMotion = useReducedMotion();
   const surfaceRef = useRef<View>(null);
+  const longPressTriggeredRef = useRef(false);
   const idleMotion = useMemo(
     () => makeReminderBubbleIdleMotionConfig(reminder.id, index),
     [index, reminder.id],
@@ -161,8 +170,10 @@ export const ReminderBubble = memo(function ReminderBubble({
     return () => cancelAnimation(deleteMotionProgress);
   }, [deleteMotionPhase, deleteMotionProgress, reduceMotion]);
 
+  const isDisabled = Boolean(deleteMotionPhase) || Boolean(interactionDisabled);
+
   const handlePressIn = () => {
-    if (deleteMotionPhase) return;
+    if (isDisabled) return;
 
     pressProgress.value = reduceMotion ? 1 : withSpring(1, REMINDER_BUBBLE_PRESS_SPRING);
   };
@@ -234,11 +245,39 @@ export const ReminderBubble = memo(function ReminderBubble({
 
   return (
     <AnimatedPressable
-      accessibilityRole="button"
-      accessibilityLabel={`${reminder.title}の詳細を開く`}
-      accessibilityHint="詳細を開きます"
-      disabled={Boolean(deleteMotionPhase)}
-      onPress={() => onPress?.(reminder)}
+      accessibilityRole={selectionMode ? 'checkbox' : 'button'}
+      accessibilityLabel={
+        selectionMode
+          ? `${reminder.title}を${isMultiSelected ? '選択解除' : '選択'}`
+          : `${reminder.title}の詳細を開く`
+      }
+      accessibilityHint={
+        selectionMode
+          ? 'タップして選択状態を切り替えます'
+          : onLongPress
+            ? '長押しで複数選択できます'
+            : '詳細を開きます'
+      }
+      accessibilityState={
+        selectionMode
+          ? { selected: isMultiSelected, disabled: isDisabled }
+          : { disabled: isDisabled }
+      }
+      disabled={isDisabled}
+      onPress={() => {
+        if (longPressTriggeredRef.current) {
+          longPressTriggeredRef.current = false;
+          return;
+        }
+
+        onPress?.(reminder);
+      }}
+      onLongPress={() => {
+        if (isDisabled || !onLongPress) return;
+
+        longPressTriggeredRef.current = true;
+        onLongPress(reminder);
+      }}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[
@@ -248,6 +287,7 @@ export const ReminderBubble = memo(function ReminderBubble({
           height: bubbleHeight,
           borderRadius: radius,
         },
+        selectionMode && isMultiSelected ? styles.selectionHighlight : null,
         style,
         bubbleAnimatedStyle,
       ]}
@@ -363,6 +403,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  selectionHighlight: {
+    borderWidth: 3,
+    borderColor: palette.lavenderDeep,
   },
   bubbleSurface: {
     width: '100%',

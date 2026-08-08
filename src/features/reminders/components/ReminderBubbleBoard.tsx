@@ -45,10 +45,14 @@ type ReminderBubbleBoardProps = {
   loading?: boolean;
   error?: string | null;
   selectedReminderId?: string | null;
+  selectedReminderIds?: ReadonlySet<string>;
+  selectionMode?: boolean;
   deleteMotion?: BubbleDeleteMotion | null;
   freezeLayout?: boolean;
   idleDisabled?: boolean;
+  interactionDisabled?: boolean;
   onReminderPress?: (reminder: Reminder) => void;
+  onReminderLongPress?: (reminder: Reminder) => void;
   onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
   onOverflowPress?: () => void;
   onEmptyPress?: () => void;
@@ -389,11 +393,15 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   loading,
   error,
   selectedReminderId,
+  selectedReminderIds,
+  selectionMode,
   deleteMotion,
   freezeLayout,
   idleDisabled,
+  interactionDisabled,
   onReminderPress,
   onDeleteMotionComplete,
+  onReminderLongPress,
   onOverflowPress,
   onEmptyPress,
   emptyDisabled,
@@ -656,30 +664,38 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   return (
     <View onLayout={handleBoardLayout} style={styles.board}>
       {boardReady
-        ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => (
-            <ReminderBubble
-              key={reminder.id}
-              reminder={reminder}
-              index={visualIndex}
-              size={size}
-              width={width}
-              height={height}
-              currentDate={colorReferenceDate}
-              isSelected={selectedReminderId === reminder.id}
-              deleteMotionPhase={
-                deleteMotion?.reminderId === reminder.id ? deleteMotion.phase : undefined
-              }
-              idleDisabled={idleDisabled || deleteMotion?.reminderId === reminder.id}
-              onPress={onReminderPress}
-              onDeleteMotionComplete={onDeleteMotionComplete}
-              style={positionStyle}
-            />
-          ))
+        ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => {
+            const isMultiSelected = selectedReminderIds?.has(reminder.id) ?? false;
+
+            return (
+              <ReminderBubble
+                key={reminder.id}
+                reminder={reminder}
+                index={visualIndex}
+                size={size}
+                width={width}
+                height={height}
+                currentDate={colorReferenceDate}
+                isSelected={selectedReminderId === reminder.id}
+                selectionMode={selectionMode}
+                isMultiSelected={isMultiSelected}
+                deleteMotionPhase={
+                  deleteMotion?.reminderId === reminder.id ? deleteMotion.phase : undefined
+                }
+                idleDisabled={idleDisabled || deleteMotion?.reminderId === reminder.id}
+                interactionDisabled={interactionDisabled}
+                onPress={onReminderPress}
+                onLongPress={onReminderLongPress}
+                onDeleteMotionComplete={onDeleteMotionComplete}
+                style={positionStyle}
+              />
+            );
+          })
         : null}
       {overflowBubble ? (
         <OverflowBubble
           count={overflowCount}
-          disabled={!onOverflowPress}
+          disabled={Boolean(selectionMode) || !onOverflowPress}
           left={overflowBubble.left}
           size={overflowBubble.size}
           top={overflowBubble.top}

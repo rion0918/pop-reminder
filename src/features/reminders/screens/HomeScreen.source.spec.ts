@@ -42,7 +42,7 @@ test('home replaces bottom controls with the add bubble only for a settled empty
     /styles\.bubbleBoardContainer,[\s\S]*isEmptyHome \? styles\.bubbleBoardContainerEmpty : null/,
     /onEmptyPress=\{handlePressAdd\}/,
     /emptyDisabled=\{isAddButtonDisabled\}/,
-    /\{!isEmptyHome \? \([\s\S]*styles\.bottomControls[\s\S]*\) : null\}/,
+    /: !isEmptyHome \? \([\s\S]*styles\.bottomControls[\s\S]*\) : null\}/,
     /bubbleBoardContainerEmpty: \{[\s\S]*marginBottom: 0/,
   ]);
 });
@@ -366,4 +366,27 @@ test('home bottom controls use compact spacing on narrow Android widths', () => 
     includes: [/paddingHorizontal: 8/],
     excludes: [/left: 16/, /right: 116/],
   });
+});
+
+test('home supports long-press multi-selection and sequential bulk deletion', () => {
+  assertSourceIncludes(source, [
+    /deleteReminders,/,
+    /removeReminders,/,
+    /isDeletingReminders,/,
+    /const \[isSelectionMode, setIsSelectionMode\] = useState\(false\);/,
+    /const \[selectedReminderIds, setSelectedReminderIds\] = useState<Set<string>>/,
+    /onReminderLongPress=\{handleReminderLongPress\}/,
+    /selectedReminderIds=\{selectedReminderIds\}/,
+    /selectionMode=\{isSelectionMode\}/,
+    /Alert\.alert\(\s*'選択したリマインドを削除しますか？'/,
+    /`\$\{selectedCount\}件のリマインドを削除します。/,
+    /`\$\{selectedCount\}件を削除`/,
+    /deleteReminders\(ids, \{ deferCache: true \}\)/,
+    /setDeleteMotion\(\{ reminderId: deletedId, phase: 'bursting' \}\)/,
+    /await waitForDeleteMotion\(deletedId, 'bursting'\)/,
+    /removeReminders\(deletedIds\);[\s\S]*void refresh\(\{ silent: true \}\);/,
+    /styles\.selectionControls/,
+    /isSelectionMode \? '選択モードを閉じる' : '設定を開く'/,
+    /allVisibleRemindersSelected \? '選択解除' : 'すべて選択'/,
+  ]);
 });

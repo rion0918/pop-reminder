@@ -49,3 +49,18 @@ test('overflow bubble matches the immediate spring press response of reminder bu
     /REMINDER_BUBBLE_PRESS_SCALE/,
   ]);
 });
+
+test('bubble board forwards home selection state and keeps overflow outside selection', () => {
+  assertSourceIncludes(source, [
+    /selectedReminderIds\?: ReadonlySet<string>;/,
+    /selectionMode\?: boolean;/,
+    /interactionDisabled\?: boolean;/,
+    /onReminderLongPress\?: \(reminder: Reminder\) => void;/,
+    /const isMultiSelected = selectedReminderIds\?\.has\(reminder\.id\) \?\? false;/,
+    /isMultiSelected=\{isMultiSelected\}/,
+    /selectionMode=\{selectionMode\}/,
+    /onLongPress=\{onReminderLongPress\}/,
+    /interactionDisabled=\{interactionDisabled\}/,
+    /disabled=\{Boolean\(selectionMode\) \|\| !onOverflowPress\}/,
+  ]);
+});

@@ -78,8 +78,13 @@ export function useRemindersQuery() {
     },
   });
   const deleteManyMutation = useMutation({
-    mutationFn: (ids: string[]) => services.reminders.deleteMany(ids),
-    onSuccess: (deletedIds) => {
+    mutationFn: ({ ids }: { ids: string[]; deferCache?: boolean }) =>
+      services.reminders.deleteMany(ids),
+    onSuccess: (deletedIds, { deferCache }) => {
+      if (deferCache) {
+        return;
+      }
+
       removeReminders(deletedIds);
       void reconcile();
     },
@@ -148,7 +153,8 @@ export function useRemindersQuery() {
     ) => createMutation.mutateAsync({ input, options }),
     deleteReminder: (id: string, options?: { deferCache?: boolean }) =>
       deleteMutation.mutateAsync({ id, ...options }),
-    deleteReminders: (ids: string[]) => deleteManyMutation.mutateAsync(ids),
+    deleteReminders: (ids: string[], options?: { deferCache?: boolean }) =>
+      deleteManyMutation.mutateAsync({ ids, ...options }),
     updateReminderTitle: (id: string, title: string) =>
       updateTitleMutation.mutateAsync({ id, title }),
     updateReminderTargetTime: (id: string, targetTime: string) =>

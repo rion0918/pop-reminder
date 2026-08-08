@@ -25,3 +25,12 @@ test('useReminders exposes a bulk removal mutation that updates the shared cache
     /isDeletingReminders:/,
   ]);
 });
+
+test('useReminders can defer bulk cache removal while the owner completes its animation', () => {
+  assertSourceIncludes(source, [
+    /mutationFn: \(\{ ids \}: \{ ids: string\[\]; deferCache\?: boolean \}\)/,
+    /if \(deferCache\) \{\s*return;\s*\}/,
+    /deleteReminders: \(ids: string\[], options\?: \{ deferCache\?: boolean \}\)/,
+    /deleteManyMutation\.mutateAsync\(\{ ids, \.\.\.options \}\)/,
+  ]);
+});

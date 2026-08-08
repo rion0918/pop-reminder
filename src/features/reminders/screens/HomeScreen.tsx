@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  ActivityIndicator,
   Alert,
   BackHandler,
   Image,
@@ -40,6 +41,7 @@ const HOME_BOTTOM_CONTROLS_OFFSET = 28;
 const HOME_BUBBLE_CONTROLS_GAP = 12;
 const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =
   HOME_ADD_BUTTON_SIZE + HOME_BOTTOM_CONTROLS_OFFSET + HOME_BUBBLE_CONTROLS_GAP;
+const MAX_VISIBLE_HOME_BUBBLES = 12;
 type DeleteMotionWaiter = {
   key: string;
   resolve: () => void;
@@ -66,11 +68,14 @@ export function HomeScreen() {
     error,
     refresh,
     removeReminder,
+    removeReminders,
     createReminder,
     deleteReminder,
+    deleteReminders,
     updateReminderTitle,
     updateReminderTargetTime,
     isCreating: isSaving,
+    isDeletingReminders,
   } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
@@ -102,13 +107,25 @@ export function HomeScreen() {
   const isSavingRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
+  const isSelectionModeRef = useRef(false);
   const deleteMotionWaiterRef = useRef<DeleteMotionWaiter | null>(null);
   const isReminderDeletionInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedReminderIds, setSelectedReminderIds] = useState<Set<string>>(() => new Set());
+  const [isBulkDeletionInProgress, setIsBulkDeletionInProgress] = useState(false);
   const consumedIntentRef = useRef<string | null>(null);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
+  const visibleReminderIds = useMemo(
+    () => new Set(reminders.slice(0, MAX_VISIBLE_HOME_BUBBLES).map((reminder) => reminder.id)),
+    [reminders],
+  );
+  const selectedCount = selectedReminderIds.size;
+  const allVisibleRemindersSelected =
+    visibleReminderIds.size > 0 && selectedCount === visibleReminderIds.size;
+  const isSelectionBusy = isDeletingReminders || isBulkDeletionInProgress;
 
   const [deleteMotion, setDeleteMotion] = useState<BubbleDeleteMotion | null>(null);
 
@@ -127,6 +144,17 @@ export function HomeScreen() {
   useEffect(() => {
     isSavingRef.current = isSaving;
   }, [isSaving]);
+
+  useEffect(() => {
+    isSelectionModeRef.current = isSelectionMode;
+  }, [isSelectionMode]);
+
+  useEffect(() => {
+    setSelectedReminderIds((current) => {
+      const next = new Set([...current].filter((id) => visibleReminderIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [visibleReminderIds]);
 
   useEffect(() => {
     if (!routeParams.intent || consumedIntentRef.current === routeParams.intent) return;
@@ -153,6 +181,50 @@ export function HomeScreen() {
     };
   }, []);
 
+  const cancelSelection = useCallback(() => {
+    setIsSelectionMode(false);
+    setSelectedReminderIds(new Set());
+  }, []);
+
+  const handleReminderLongPress = useCallback(
+    (reminder: Reminder) => {
+      if (isSelectionBusy || isSelectionMode) return;
+
+      setSelectedReminderId(null);
+      setIsSelectionMode(true);
+      setSelectedReminderIds(new Set([reminder.id]));
+    },
+    [isSelectionBusy, isSelectionMode],
+  );
+
+  const handleReminderPress = useCallback(
+    (reminder: Reminder) => {
+      if (isSelectionBusy) return;
+
+      if (isSelectionMode) {
+        setSelectedReminderIds((current) => {
+          const next = new Set(current);
+          if (next.has(reminder.id)) {
+            next.delete(reminder.id);
+          } else {
+            next.add(reminder.id);
+          }
+          return next;
+        });
+        return;
+      }
+
+      setSelectedReminderId(reminder.id);
+    },
+    [isSelectionBusy, isSelectionMode],
+  );
+
+  const toggleSelectAll = useCallback(() => {
+    if (isSelectionBusy) return;
+
+    setSelectedReminderIds(allVisibleRemindersSelected ? new Set() : new Set(visibleReminderIds));
+  }, [allVisibleRemindersSelected, isSelectionBusy, visibleReminderIds]);
+
   useFocusEffect(
     useCallback(() => {
       void refresh();
@@ -176,6 +248,11 @@ export function HomeScreen() {
           return true;
         }
 
+        if (isSelectionModeRef.current) {
+          cancelSelection();
+          return true;
+        }
+
         if (selectedReminderRef.current) {
           setSelectedReminderId(null);
           return true;
@@ -192,7 +269,7 @@ export function HomeScreen() {
       return () => {
         subscription.remove();
       };
-    }, [closeQuickAdd, setSelectedReminderId]),
+    }, [cancelSelection, closeQuickAdd]),
   );
 
   const handleSave = async (title: string) => {
@@ -282,6 +359,61 @@ export function HomeScreen() {
     },
     [],
   );
+
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      isReminderDeletionInProgressRef.current = true;
+      setIsBulkDeletionInProgress(true);
+
+      try {
+        const deletedIds = await deleteReminders(ids, { deferCache: true });
+
+        for (const deletedId of deletedIds) {
+          if (!isMountedRef.current) return;
+
+          setDeleteMotion({ reminderId: deletedId, phase: 'bursting' });
+          await waitForDeleteMotion(deletedId, 'bursting');
+        }
+
+        if (!isMountedRef.current) return;
+
+        setDeleteMotion(null);
+        removeReminders(deletedIds);
+        cancelSelection();
+        void refresh({ silent: true });
+      } catch (deleteError) {
+        if (!isMountedRef.current) return;
+
+        setDeleteMotion(null);
+        console.warn('Failed to delete reminders from home', deleteError);
+        Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
+      } finally {
+        isReminderDeletionInProgressRef.current = false;
+        if (isMountedRef.current) {
+          setIsBulkDeletionInProgress(false);
+        }
+      }
+    },
+    [cancelSelection, deleteReminders, refresh, removeReminders, waitForDeleteMotion],
+  );
+
+  const handleBulkDeletePress = useCallback(() => {
+    if (selectedCount === 0 || isSelectionBusy) return;
+
+    const ids = [...selectedReminderIds];
+    Alert.alert(
+      '選択したリマインドを削除しますか？',
+      `${selectedCount}件のリマインドを削除します。この操作は取り消せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: `${selectedCount}件を削除`,
+          style: 'destructive',
+          onPress: () => void handleBulkDelete(ids),
+        },
+      ],
+    );
+  }, [handleBulkDelete, isSelectionBusy, selectedCount, selectedReminderIds]);
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
@@ -418,13 +550,19 @@ export function HomeScreen() {
         <View className="flex-row items-center gap-[8px]">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="設定を開く"
+            accessibilityLabel={isSelectionMode ? '選択モードを閉じる' : '設定を開く'}
+            accessibilityState={{ disabled: isSelectionBusy }}
+            disabled={isSelectionBusy}
             hitSlop={8}
-            onPress={handlePressSettings}
+            onPress={isSelectionMode ? cancelSelection : handlePressSettings}
             className="h-[44px] w-[44px] items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.90)] bg-[rgba(255,255,255,0.78)]"
             style={({ pressed }) => [pressed ? styles.iconButtonPressed : null]}
           >
-            <Ionicons name="settings-outline" size={22} color={palette.ink} />
+            <Ionicons
+              name={isSelectionMode ? 'close' : 'settings-outline'}
+              size={22}
+              color={palette.ink}
+            />
           </Pressable>
         </View>
       </View>
@@ -472,10 +610,14 @@ export function HomeScreen() {
           loading={loading}
           error={error}
           selectedReminderId={selectedReminderId}
+          selectedReminderIds={selectedReminderIds}
+          selectionMode={isSelectionMode}
           deleteMotion={deleteMotion}
           freezeLayout={isQuickAddOpen}
           idleDisabled={isBubbleIdleDisabled}
-          onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
+          interactionDisabled={isSelectionBusy}
+          onReminderPress={handleReminderPress}
+          onReminderLongPress={handleReminderLongPress}
           onDeleteMotionComplete={handleDeleteMotionComplete}
           onOverflowPress={handleOpenReminderList}
           onEmptyPress={handlePressAdd}
@@ -499,7 +641,45 @@ export function HomeScreen() {
         onUpdateTargetTime={handleUpdateReminderTargetTime}
       />
 
-      {!isEmptyHome ? (
+      {isSelectionMode ? (
+        <View
+          style={[
+            styles.selectionControls,
+            isCompactPhoneWidth ? styles.bottomControlsCompact : null,
+          ]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={allVisibleRemindersSelected ? '選択解除' : 'すべて選択'}
+            accessibilityState={{ disabled: isSelectionBusy }}
+            disabled={isSelectionBusy}
+            onPress={toggleSelectAll}
+            className="min-h-[52px] flex-1 items-center justify-center rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,255,255,0.76)] px-[10px]"
+          >
+            <Text className="text-[13px] font-black text-app-lavender-deep">
+              {allVisibleRemindersSelected ? '選択解除' : 'すべて選択'}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${selectedCount}件を削除`}
+            accessibilityState={{ disabled: selectedCount === 0 || isSelectionBusy }}
+            disabled={selectedCount === 0 || isSelectionBusy}
+            onPress={handleBulkDeletePress}
+            className="min-h-[52px] flex-1 flex-row items-center justify-center gap-[6px] rounded-[26px] border border-[rgba(255,255,255,0.86)] bg-[rgba(255,241,216,0.88)] px-[10px]"
+            style={selectedCount === 0 || isSelectionBusy ? styles.selectionActionDisabled : null}
+          >
+            {isSelectionBusy ? (
+              <ActivityIndicator size="small" color={palette.peachDeep} />
+            ) : (
+              <Ionicons name="trash-outline" size={17} color={palette.peachDeep} />
+            )}
+            <Text className="text-[13px] font-black" style={styles.selectionDeleteText}>
+              {selectedCount}件を削除
+            </Text>
+          </Pressable>
+        </View>
+      ) : !isEmptyHome ? (
         <View
           style={[styles.bottomControls, isCompactPhoneWidth ? styles.bottomControlsCompact : null]}
         >
@@ -663,6 +843,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  selectionControls: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: HOME_BOTTOM_CONTROLS_OFFSET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectionActionDisabled: {
+    opacity: 0.45,
+  },
+  selectionDeleteText: {
+    color: palette.peachDeep,
   },
   bottomControlsCompact: {
     left: 16,
