@@ -199,9 +199,6 @@ export function ReminderScheduleEditorModal({
               <View style={styles.previousPreviewHeader}>
                 <Ionicons name="notifications-outline" size={18} color={palette.muted} />
                 <Text style={styles.previousPreviewLabel}>前日のお知らせ</Text>
-                <View style={styles.sharedBadge}>
-                  <Text style={styles.sharedBadgeText}>すべての泡に共通</Text>
-                </View>
               </View>
               <Text style={styles.previousPreviewDate}>
                 {formatReminderDetailDate(previousDate)} {formatReminderDetailTime(previousDate)}
@@ -347,18 +344,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
     fontWeight: '900',
-  },
-  sharedBadge: {
-    marginLeft: 'auto',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: '#E9EDF6',
-  },
-  sharedBadgeText: {
-    color: palette.muted,
-    fontSize: 9,
-    fontWeight: '800',
   },
   previousPreviewDate: {
     marginTop: 8,

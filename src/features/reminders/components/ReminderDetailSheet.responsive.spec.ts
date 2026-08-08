@@ -80,10 +80,9 @@ test('reminder detail sheet presents the editable target before the shared previ
   });
 });
 
-test('reminder detail sheet edits target date and time and labels the shared previous time', () => {
+test('reminder detail sheet edits target date and time without a redundant shared-time label', () => {
   assertSourceContract(source, {
     includes: [
-      /すべての泡に共通/,
       /accessibilityLabel="当日のお知らせ日時を編集"/,
       /onUpdateSchedule:/,
       /const handleScheduleConfirm = useCallback/,
@@ -93,6 +92,7 @@ test('reminder detail sheet edits target date and time and labels the shared pre
     ],
     excludes: [
       /accessibilityLabel="前日のお知らせ時刻を編集"/,
+      /すべての泡に共通/,
       /name="create-outline"/,
       /targetEditIcon/,
       /タップして時間を変更/,
@@ -106,10 +106,10 @@ test('reminder detail sheet edits target date and time and labels the shared pre
       /この日時に変更/,
       /過去の日時には変更できません/,
       /前日のお知らせ時刻は過ぎているため、当日だけ通知します/,
-      /すべての泡に共通/,
       /minimumDate=\{activePicker === 'date' \? minimumDate : undefined\}/,
       /isSaving \|\| !evaluated\.isValid \|\| !evaluated\.isTargetFuture/,
     ],
+    excludes: [/すべての泡に共通/, /sharedBadge/],
   });
 });
 

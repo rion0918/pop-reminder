@@ -123,9 +123,6 @@ function NotificationTimeline({
         <View style={styles.previousScheduleContent}>
           <View style={styles.previousScheduleLabelRow}>
             <Text style={styles.previousScheduleLabel}>まず、前日にお知らせ</Text>
-            <View style={styles.sharedTimeBadge}>
-              <Text style={styles.sharedTimeBadgeText}>すべての泡に共通</Text>
-            </View>
           </View>
           <Text style={styles.previousScheduleDate}>
             {formatReminderDetailDate(reminder.previousNotifyAt)}
@@ -741,17 +738,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '800',
-  },
-  sharedTimeBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    backgroundColor: palette.sky,
-  },
-  sharedTimeBadgeText: {
-    color: palette.muted,
-    fontSize: 10,
     fontWeight: '800',
   },
   previousScheduleDate: {
