@@ -58,6 +58,13 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
       { scale: 0.98 + revealProgress.value * 0.02 },
     ],
   }));
+  const deleteButtonLabel = busy
+    ? compact
+      ? '処理中'
+      : '削除中…'
+    : compact
+      ? '削除'
+      : `${selectedCount}件を削除`;
 
   return (
     <Animated.View
@@ -74,50 +81,54 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
         </Text>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={allSelected ? '選択解除' : 'すべて選択'}
-        accessibilityState={{ disabled: busy }}
-        disabled={busy}
-        hitSlop={4}
-        onPress={onToggleAll}
-        style={({ pressed }) => [
-          styles.action,
-          styles.toggleAction,
-          compact ? styles.actionCompact : null,
-          pressed ? styles.actionPressed : null,
-          busy ? styles.actionDisabled : null,
-        ]}
-      >
-        <Text numberOfLines={1} style={styles.toggleLabel}>
-          {allSelected ? '選択解除' : 'すべて選択'}
-        </Text>
-      </Pressable>
+      <View style={[styles.actionGroup, compact ? styles.actionGroupCompact : null]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={allSelected ? '選択解除' : 'すべて選択'}
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          hitSlop={4}
+          onPress={onToggleAll}
+          style={({ pressed }) => [
+            styles.action,
+            styles.toggleAction,
+            compact ? styles.toggleActionCompact : null,
+            pressed ? styles.actionPressed : null,
+            busy ? styles.actionDisabled : null,
+          ]}
+        >
+          <Text numberOfLines={1} style={styles.toggleLabel}>
+            {allSelected ? '選択解除' : 'すべて選択'}
+          </Text>
+        </Pressable>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={busy ? `${selectedCount}件を削除中` : `${selectedCount}件を削除`}
-        accessibilityState={{ disabled: selectedCount === 0 || busy }}
-        disabled={selectedCount === 0 || busy}
-        hitSlop={4}
-        onPress={onDelete}
-        style={({ pressed }) => [
-          styles.action,
-          styles.deleteAction,
-          compact ? styles.actionCompact : null,
-          pressed ? styles.actionPressed : null,
-          selectedCount === 0 || busy ? styles.actionDisabled : null,
-        ]}
-      >
-        {busy ? (
-          <ActivityIndicator size="small" color={bubbleDueColors.today.accent} />
-        ) : (
-          <Ionicons name="trash-outline" size={17} color={bubbleDueColors.today.accent} />
-        )}
-        <Text numberOfLines={1} style={styles.deleteLabel}>
-          {busy ? '削除中…' : `${selectedCount}件を削除`}
-        </Text>
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={busy ? `${selectedCount}件を削除中` : `${selectedCount}件を削除`}
+          accessibilityState={{ disabled: selectedCount === 0 || busy }}
+          disabled={selectedCount === 0 || busy}
+          hitSlop={4}
+          onPress={onDelete}
+          style={({ pressed }) => [
+            styles.action,
+            styles.deleteAction,
+            compact ? styles.deleteActionCompact : null,
+            pressed ? styles.actionPressed : null,
+            selectedCount === 0 || busy ? styles.actionDisabled : null,
+          ]}
+        >
+          <View style={styles.deleteIconSlot}>
+            {busy ? (
+              <ActivityIndicator size="small" color={bubbleDueColors.today.accent} />
+            ) : (
+              <Ionicons name="trash-outline" size={17} color={bubbleDueColors.today.accent} />
+            )}
+          </View>
+          <Text numberOfLines={1} style={styles.deleteLabel}>
+            {deleteButtonLabel}
+          </Text>
+        </Pressable>
+      </View>
     </Animated.View>
   );
 });
@@ -144,46 +155,64 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   selectionCount: {
-    minWidth: 58,
-    maxWidth: 76,
+    flex: 1,
+    minWidth: 0,
     paddingHorizontal: 6,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   selectionCountCompact: {
-    minWidth: 48,
-    maxWidth: 60,
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
   },
   selectionCountText: {
     color: palette.ink,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '900',
-    textAlign: 'center',
+    textAlign: 'left',
+  },
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 6,
+  },
+  actionGroupCompact: {
+    gap: 4,
   },
   action: {
     minHeight: 48,
-    minWidth: 0,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  actionCompact: {
-    paddingHorizontal: 7,
-  },
   toggleAction: {
-    flex: 0.85,
+    minWidth: 88,
     backgroundColor: 'rgba(237,229,255,0.76)',
   },
+  toggleActionCompact: {
+    minWidth: 82,
+    paddingHorizontal: 7,
+  },
   deleteAction: {
-    flex: 1.15,
+    minWidth: 118,
     flexDirection: 'row',
     gap: 5,
     borderWidth: 1,
     borderColor: bubbleDueColors.today.border,
     backgroundColor: 'rgba(248,113,113,0.14)',
+  },
+  deleteActionCompact: {
+    minWidth: 82,
+    paddingHorizontal: 7,
+  },
+  deleteIconSlot: {
+    width: 18,
+    height: 18,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionPressed: {
     opacity: 0.76,
