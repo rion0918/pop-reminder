@@ -15,8 +15,7 @@ test('selection bar is an accessible responsive material with immediate press fe
     /busy: boolean;/,
     /\{selectedCount\}件選択中/,
     /allSelected \? '選択解除' : 'すべて選択'/,
-    /const deleteButtonLabel = busy/,
-    /\{deleteButtonLabel\}/,
+    /accessibilityLabel=\{busy \? `\$\{selectedCount\}件を削除中` : `\$\{selectedCount\}件を削除`\}/,
     /accessibilityState=\{\{ disabled: selectedCount === 0 \|\| busy \}\}/,
     /pressed \? styles\.actionPressed : null/,
     /useReducedMotion\(\)/,
@@ -26,18 +25,23 @@ test('selection bar is an accessible responsive material with immediate press fe
   ]);
 });
 
-test('selection bar keeps the destructive icon and label together on narrow screens', () => {
+test('selection bar keeps one large destructive icon without repeating the selected count', () => {
   assertSourceContract(source, {
     includes: [
       /<View style=\{\[styles\.actionGroup, compact \? styles\.actionGroupCompact : null\]\}>/,
       /styles\.toggleActionCompact/,
-      /styles\.deleteActionCompact/,
-      /const deleteButtonLabel = busy[\s\S]*compact[\s\S]*'処理中'[\s\S]*'削除中…'[\s\S]*compact[\s\S]*'削除'[\s\S]*`\$\{selectedCount\}件を削除`/,
       /selectionCount: \{[\s\S]*flex: 1,[\s\S]*minWidth: 0,[\s\S]*alignItems: 'flex-start'/,
       /actionGroup: \{[\s\S]*flexDirection: 'row',[\s\S]*flexShrink: 0/,
-      /deleteAction: \{[\s\S]*minWidth: 118,[\s\S]*flexDirection: 'row'/,
-      /deleteActionCompact: \{[\s\S]*minWidth: 82/,
+      /<Ionicons name="trash-outline" size=\{22\}/,
+      /deleteAction: \{[\s\S]*width: 48,[\s\S]*height: 48,[\s\S]*paddingHorizontal: 0/,
+      /deleteIconSlot: \{[\s\S]*width: 24,[\s\S]*height: 24/,
     ],
-    excludes: [/toggleAction: \{\s*flex:/, /deleteAction: \{\s*flex:/],
+    excludes: [
+      /toggleAction: \{\s*flex:/,
+      /deleteAction: \{\s*flex:/,
+      /deleteButtonLabel/,
+      /styles\.deleteLabel/,
+      /deleteActionCompact/,
+    ],
   });
 });

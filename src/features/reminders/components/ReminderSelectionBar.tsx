@@ -58,13 +58,6 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
       { scale: 0.98 + revealProgress.value * 0.02 },
     ],
   }));
-  const deleteButtonLabel = busy
-    ? compact
-      ? '処理中'
-      : '削除中…'
-    : compact
-      ? '削除'
-      : `${selectedCount}件を削除`;
 
   return (
     <Animated.View
@@ -112,7 +105,6 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
           style={({ pressed }) => [
             styles.action,
             styles.deleteAction,
-            compact ? styles.deleteActionCompact : null,
             pressed ? styles.actionPressed : null,
             selectedCount === 0 || busy ? styles.actionDisabled : null,
           ]}
@@ -121,12 +113,9 @@ export const ReminderSelectionBar = memo(function ReminderSelectionBar({
             {busy ? (
               <ActivityIndicator size="small" color={bubbleDueColors.today.accent} />
             ) : (
-              <Ionicons name="trash-outline" size={17} color={bubbleDueColors.today.accent} />
+              <Ionicons name="trash-outline" size={22} color={bubbleDueColors.today.accent} />
             )}
           </View>
-          <Text numberOfLines={1} style={styles.deleteLabel}>
-            {deleteButtonLabel}
-          </Text>
         </Pressable>
       </View>
     </Animated.View>
@@ -196,20 +185,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
   },
   deleteAction: {
-    minWidth: 118,
-    flexDirection: 'row',
-    gap: 5,
+    width: 48,
+    height: 48,
+    paddingHorizontal: 0,
     borderWidth: 1,
     borderColor: bubbleDueColors.today.border,
     backgroundColor: 'rgba(248,113,113,0.14)',
   },
-  deleteActionCompact: {
-    minWidth: 82,
-    paddingHorizontal: 7,
-  },
   deleteIconSlot: {
-    width: 18,
-    height: 18,
+    width: 24,
+    height: 24,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
@@ -223,13 +208,6 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     color: palette.lavenderDeep,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '900',
-  },
-  deleteLabel: {
-    minWidth: 0,
-    color: bubbleDueColors.today.accent,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '900',
