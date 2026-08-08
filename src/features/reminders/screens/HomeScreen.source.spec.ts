@@ -68,7 +68,11 @@ test('home keeps non-deleted reminder bubbles floating during burst delete work'
 });
 
 test('opening quick add keeps reminder bubble positions pinned', () => {
-  assertSourceIncludes(source, [/<ReminderBubbleBoard/, /freezeLayout=\{isQuickAddOpen\}/]);
+  assertSourceIncludes(source, [
+    /<ReminderBubbleBoard/,
+    /freezeLayout=\{isQuickAddOpen\}/,
+    /alignToBottom/,
+  ]);
 });
 
 test('home presents the next reminder as a compact bubble card that opens its detail', () => {

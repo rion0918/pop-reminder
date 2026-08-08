@@ -60,6 +60,11 @@ export type FloatingItemLayout = {
   centerY: number;
 };
 
+export type FloatingItemBounds = {
+  top: number;
+  height: number;
+};
+
 export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -86,6 +91,17 @@ export function getEdgeClearance(boardSize: BoardSize) {
   return Math.round(
     clamp(Math.min(boardSize.width, boardSize.height) * 0.055, MIN_EDGE_CLEARANCE, 30),
   );
+}
+
+export function getBottomAlignmentOffset(boardSize: BoardSize, itemBounds: FloatingItemBounds[]) {
+  if (itemBounds.length === 0) {
+    return 0;
+  }
+
+  const lowestBottom = Math.max(...itemBounds.map(({ top, height }) => top + height));
+  const targetBottom = boardSize.height - getEdgeClearance(boardSize);
+
+  return Math.max(0, targetBottom - lowestBottom);
 }
 
 export function getTemporalYRatio(index: number, count: number) {
