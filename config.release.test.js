@@ -173,6 +173,15 @@ test('Android notifications do not require exact alarm special access', () => {
   assert.doesNotMatch(mainApplication, /ExactAlarmPermissionPackage/);
 });
 
+test('Android notification QA documents inexact DATE trigger tolerance', () => {
+  const qaDocument = readFileSync(join(__dirname, 'docs/QA_DEVELOPMENT_BUILD.md'), 'utf8');
+
+  assert.match(qaDocument, /Android 12以降[\s\S]*バックグラウンド[\s\S]*最大60分程度の遅延/);
+  assert.match(qaDocument, /Android 12以降[\s\S]*アプリを終了[\s\S]*最大60分程度の遅延/);
+  assert.match(qaDocument, /SCHEDULE_EXACT_ALARM[\s\S]*DATE`? トリガー[\s\S]*inexact alarm/);
+  assert.doesNotMatch(qaDocument, /^- \[ \] Android 12以降.*指定時刻に通知が届く$/m);
+});
+
 test('Android adaptive icon uses a transparent foreground asset', () => {
   const adaptiveIconPath = join(__dirname, 'assets/adaptive-icon.png');
 
