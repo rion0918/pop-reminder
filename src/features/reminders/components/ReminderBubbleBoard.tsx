@@ -22,6 +22,16 @@ import {
   REMINDER_BUBBLE_PRESS_SCALE,
   REMINDER_BUBBLE_PRESS_SPRING,
 } from './reminderBubblePressMotion';
+import {
+  MIN_EDGE_CLEARANCE,
+  getTemporalYRatio,
+  makeGridSlots,
+  makeLayoutForItem,
+  type BoardSize,
+  type PlacedBubble,
+} from './reminderBubbleLayout';
+
+export { getTemporalYRatio, makeGridSlots, makeLayoutForItem };
 
 export type BubbleDeleteMotion = {
   reminderId: string;
@@ -44,10 +54,7 @@ type ReminderBubbleBoardProps = {
 };
 
 const MAX_VISIBLE_BUBBLES = 12;
-const MIN_EDGE_CLEARANCE = 18;
 const LAYOUT_VERSION = 5;
-const MAX_SOFT_OVERLAP_RATIO = 0.12;
-const MAX_DENSE_SOFT_OVERLAP_RATIO = 0.16;
 const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 * 2 + 32;
 const BUBBLE_SIZE_BUCKETS = {
   large: { base: 160, min: 116 },
@@ -68,39 +75,9 @@ const BUBBLE_SIZE_SEQUENCE: BubbleSizeName[] = [
   'medium',
   'small',
 ];
-const FLOATING_SLOTS = [
-  { x: 0.5, y: 0.16 },
-  { x: 0.18, y: 0.31 },
-  { x: 0.82, y: 0.31 },
-  { x: 0.34, y: 0.52 },
-  { x: 0.17, y: 0.73 },
-  { x: 0.82, y: 0.72 },
-  { x: 0.48, y: 0.87 },
-  { x: 0.68, y: 0.54 },
-];
-const DENSE_FLOATING_SLOTS = [
-  { x: 0.28, y: 0.15 },
-  { x: 0.62, y: 0.15 },
-  { x: 0.82, y: 0.28 },
-  { x: 0.15, y: 0.32 },
-  { x: 0.48, y: 0.34 },
-  { x: 0.72, y: 0.43 },
-  { x: 0.26, y: 0.52 },
-  { x: 0.58, y: 0.58 },
-  { x: 0.84, y: 0.64 },
-  { x: 0.16, y: 0.72 },
-  { x: 0.44, y: 0.82 },
-  { x: 0.72, y: 0.82 },
-  { x: 0.62, y: 0.74 },
-];
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type BubbleSizeName = keyof typeof BUBBLE_SIZE_BUCKETS;
-
-type BoardSize = {
-  width: number;
-  height: number;
-};
 
 type BubbleDimensions = {
   width: number;
@@ -127,26 +104,6 @@ type CachedBubbleLayout = {
   width: number;
   height: number;
   collisionSize: number;
-  left: number;
-  top: number;
-  centerX: number;
-  centerY: number;
-};
-
-type PlacedBubble = {
-  size: number;
-  centerX: number;
-  centerY: number;
-};
-
-type LayoutSlot = {
-  x: number;
-  y: number;
-  temporal: boolean;
-  slotIndex: number;
-};
-
-type FloatingItemLayout = {
   left: number;
   top: number;
   centerX: number;
@@ -327,182 +284,6 @@ function makeOverflowIdleMotionConfig(id: string) {
     amplitudeY: 1.8 + unitFromHash(seed, 4) * 2.2,
     rotateDeg: 0.18 + unitFromHash(seed, 5) * 0.28,
   };
-}
-
-function getTemporalYRatio(index: number, count: number) {
-  if (count <= 1) {
-    return 0.38;
-  }
-
-  return 0.18 + (index / (count - 1)) * 0.66;
-}
-
-function makeGridSlots(isDenseLayout: boolean): LayoutSlot[] {
-  const columns = isDenseLayout ? 3 : 3;
-  const rows = isDenseLayout ? 5 : 3;
-
-  return Array.from({ length: columns * rows }, (_, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    const rowProgress = rows <= 1 ? 0 : row / (rows - 1);
-    const stagger = row % 2 === 0 ? -0.02 : 0.02;
-
-    return {
-      x: clamp((column + 0.5) / columns + stagger, 0.14, 0.86),
-      y: clamp(0.14 + rowProgress * 0.72, 0.14, 0.88),
-      temporal: isDenseLayout,
-      slotIndex: index,
-    };
-  });
-}
-
-function makeLayoutForItem(
-  id: string,
-  dimensions: BubbleDimensions,
-  boardSize: BoardSize,
-  placedBubbles: PlacedBubble[],
-  preferredSlotIndex: number,
-  temporalIndex: number,
-  temporalCount: number,
-): FloatingItemLayout {
-  const seed = hashString(id);
-  const { width, height, collisionSize } = dimensions;
-  const edgeClearance = getEdgeClearance(boardSize);
-  const maxLeft = Math.max(edgeClearance, boardSize.width - width - edgeClearance);
-  const maxTop = Math.max(edgeClearance, boardSize.height - height - edgeClearance);
-  const isDenseLayout = temporalCount > 7;
-  const activeFloatingSlots = isDenseLayout ? DENSE_FLOATING_SLOTS : FLOATING_SLOTS;
-  const preferredSlot = isDenseLayout
-    ? temporalIndex % activeFloatingSlots.length
-    : preferredSlotIndex % activeFloatingSlots.length;
-  const temporalYRatio = isDenseLayout
-    ? (activeFloatingSlots[preferredSlot]?.y ?? getTemporalYRatio(temporalIndex, temporalCount))
-    : getTemporalYRatio(temporalIndex, temporalCount);
-  const jitterRangeX = clamp(
-    boardSize.width * (isDenseLayout ? 0.045 : 0.06),
-    10,
-    isDenseLayout ? 20 : 30,
-  );
-  const jitterRangeY = clamp(
-    boardSize.height * (isDenseLayout ? 0.034 : 0.045),
-    9,
-    isDenseLayout ? 18 : 26,
-  );
-  const temporalLaneRatios = [0.5, 0.2, 0.8, 0.34, 0.66, 0.18, 0.82];
-  const laneOffset = Math.floor(unitFromHash(seed, 80) * temporalLaneRatios.length);
-  const temporalSlots = temporalLaneRatios.map((xRatio, index) => {
-    const verticalNudge = ((index % 3) - 1) * 0.025;
-
-    return {
-      x: temporalLaneRatios[(index + laneOffset) % temporalLaneRatios.length] ?? xRatio,
-      y: clamp(temporalYRatio + verticalNudge, 0.14, 0.9),
-      temporal: true,
-      slotIndex: index,
-    };
-  });
-  const gridSlots = makeGridSlots(isDenseLayout);
-  const slotCandidates = isDenseLayout
-    ? [
-        ...DENSE_FLOATING_SLOTS.map((slot, index) => ({
-          ...slot,
-          temporal: true,
-          slotIndex: index,
-        })),
-        ...gridSlots,
-        ...FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: false, slotIndex: index })),
-      ]
-    : [
-        ...temporalSlots,
-        ...FLOATING_SLOTS.map((slot, index) => ({ ...slot, temporal: false, slotIndex: index })),
-        ...gridSlots,
-      ];
-
-  const bestLayout = slotCandidates.reduce<{
-    score: number;
-    left: number;
-    top: number;
-    centerX: number;
-    centerY: number;
-  } | null>((best, slot, slotIndex) => {
-    const baseSlotIndex = slot.slotIndex % activeFloatingSlots.length;
-    const distanceFromPreferred = Math.min(
-      Math.abs(baseSlotIndex - preferredSlot),
-      activeFloatingSlots.length - Math.abs(baseSlotIndex - preferredSlot),
-    );
-    const jitterX = (unitFromHash(seed, slotIndex + 30) - 0.5) * jitterRangeX;
-    const jitterY = (unitFromHash(seed, slotIndex + 50) - 0.5) * jitterRangeY;
-    const left = clamp(slot.x * boardSize.width - width / 2 + jitterX, edgeClearance, maxLeft);
-    const top = clamp(slot.y * boardSize.height - height / 2 + jitterY, edgeClearance, maxTop);
-    const centerX = left + width / 2;
-    const centerY = top + height / 2;
-    const overlapPenalty = placedBubbles.reduce((penalty, placed) => {
-      const distance = Math.hypot(centerX - placed.centerX, centerY - placed.centerY);
-      const radiusSum = (collisionSize + placed.size) / 2;
-      const overlap = Math.max(0, radiusSum - distance);
-
-      if (overlap <= 0) {
-        return penalty;
-      }
-
-      const allowedOverlap =
-        Math.min(collisionSize, placed.size) *
-        (isDenseLayout ? MAX_DENSE_SOFT_OVERLAP_RATIO : MAX_SOFT_OVERLAP_RATIO);
-      const excessOverlap = Math.max(0, overlap - allowedOverlap);
-      const coverRiskDistance =
-        Math.abs(collisionSize - placed.size) / 2 + Math.min(collisionSize, placed.size) * 0.28;
-      const coverRiskPenalty = distance < coverRiskDistance ? 20000 : 0;
-      const hardOverlapPenalty = excessOverlap > 0 ? 12000 : 0;
-
-      return penalty + overlap * 2.4 + excessOverlap * 260 + hardOverlapPenalty + coverRiskPenalty;
-    }, 0);
-    const lowerRightPenalty =
-      centerX > boardSize.width * 0.68 && centerY > boardSize.height * 0.68
-        ? isDenseLayout
-          ? 180
-          : 280
-        : 0;
-    const edgePenalty =
-      top <= edgeClearance + 2 || left <= edgeClearance + 2 || left >= maxLeft - 2 ? 28 : 0;
-    const temporalPenalty =
-      Math.abs(centerY / boardSize.height - temporalYRatio) * (isDenseLayout ? 520 : 780);
-    const floatingSlotPenalty = slot.temporal ? 0 : isDenseLayout ? 240 : 170;
-    const score =
-      distanceFromPreferred * 8 +
-      unitFromHash(seed, slotIndex + 10) * 18 +
-      overlapPenalty +
-      lowerRightPenalty +
-      edgePenalty +
-      temporalPenalty +
-      floatingSlotPenalty;
-
-    if (!best || score < best.score) {
-      return {
-        score,
-        left,
-        top,
-        centerX,
-        centerY,
-      };
-    }
-
-    return best;
-  }, null);
-
-  const layout = bestLayout ?? {
-    left: edgeClearance,
-    top: edgeClearance,
-    centerX: edgeClearance + width / 2,
-    centerY: edgeClearance + height / 2,
-    score: 0,
-  };
-
-  placedBubbles.push({
-    size: collisionSize,
-    centerX: layout.centerX,
-    centerY: layout.centerY,
-  });
-
-  return layout;
 }
 
 const OverflowBubble = memo(function OverflowBubble({
