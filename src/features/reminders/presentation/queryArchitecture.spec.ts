@@ -7,6 +7,7 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const querySource = readSource(import.meta.url, './useRemindersQuery.ts');
+const queryMutationsSource = readSource(import.meta.url, './reminderQueryMutations.ts');
 const providersSource = readSource(import.meta.url, '../../../bootstrap/AppProviders.tsx');
 const storeSource = readSource(import.meta.url, '../stores/reminderUiStore.ts');
 const screensSource = [
@@ -17,11 +18,12 @@ const screensSource = [
 
 test('all reminder screens share the active reminders query cache', () => {
   assertSourceIncludes(querySource, [
-    /\['reminders', 'active'\] as const/,
+    /activeRemindersQueryKey/,
     /retry: false/,
     /queryClient\.setQueryData<Reminder\[]>/,
     /queryClient\.invalidateQueries\(\{ queryKey: activeRemindersQueryKey \}\)/,
   ]);
+  assertSourceIncludes(queryMutationsSource, [/\['reminders', 'active'\] as const/]);
   assertSourceIncludes(screensSource, [
     /useRemindersQuery as useReminders/,
     /useRemindersQuery as useReminders/,

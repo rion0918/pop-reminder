@@ -23,6 +23,13 @@ import type { Reminder } from '../types/reminder';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';
 import { triggerReminderSelectionHaptic } from '../utils/reminderSelectionFeedback';
+import {
+  executeReminderBulkDelete,
+  retainVisibleReminderSelection,
+  startReminderSelection,
+  toggleAllReminderSelection,
+  toggleReminderSelection as toggleReminderSelectionIds,
+} from './reminderListSelection';
 
 function handleBack(router: ReturnType<typeof useRouter>) {
   if (router.canGoBack()) {
@@ -78,36 +85,32 @@ export function ReminderListScreen() {
 
   const enterSelectionMode = useCallback((id: string) => {
     setIsSelectionMode(true);
-    setSelectedReminderIds(new Set([id]));
+    setSelectedReminderIds(startReminderSelection(id));
     void triggerReminderSelectionHaptic();
   }, []);
 
   const toggleReminderSelection = useCallback((id: string) => {
     void triggerReminderSelectionHaptic();
-    setSelectedReminderIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    setSelectedReminderIds((current) => toggleReminderSelectionIds(current, id));
   }, []);
 
   const toggleSelectAll = useCallback(() => {
     void triggerReminderSelectionHaptic();
-    setSelectedReminderIds(
-      allRemindersSelected ? new Set() : new Set(reminders.map((reminder) => reminder.id)),
+    setSelectedReminderIds((current) =>
+      toggleAllReminderSelection(
+        current,
+        reminders.map((reminder) => reminder.id),
+      ),
     );
-  }, [allRemindersSelected, reminders]);
+  }, [reminders]);
 
   useEffect(() => {
-    setSelectedReminderIds((current) => {
-      const availableIds = new Set(reminders.map((reminder) => reminder.id));
-      const next = new Set([...current].filter((id) => availableIds.has(id)));
-      return next.size === current.size ? current : next;
-    });
+    setSelectedReminderIds((current) =>
+      retainVisibleReminderSelection(
+        current,
+        reminders.map((reminder) => reminder.id),
+      ),
+    );
   }, [reminders]);
 
   useFocusEffect(
@@ -147,13 +150,15 @@ export function ReminderListScreen() {
 
   const handleBulkDelete = useCallback(
     async (ids: string[]) => {
-      try {
-        await deleteReminders(ids);
+      const result = await executeReminderBulkDelete(ids, deleteReminders);
+
+      if (result.ok) {
         cancelSelection();
-      } catch (deleteError) {
-        console.warn('Failed to delete reminders from list', deleteError);
-        Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
+        return;
       }
+
+      console.warn('Failed to delete reminders from list', result.error);
+      Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
     },
     [cancelSelection, deleteReminders],
   );
@@ -322,7 +327,7 @@ export function ReminderListScreen() {
                 }
                 accessibilityState={
                   isSelectionMode
-                    ? { selected: isSelected, disabled: isDeletingReminders }
+                    ? { checked: isSelected, disabled: isDeletingReminders }
                     : { disabled: isDeletingReminders }
                 }
                 onLongPress={() => {

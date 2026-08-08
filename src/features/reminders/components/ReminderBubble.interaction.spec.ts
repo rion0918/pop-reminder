@@ -14,7 +14,7 @@ test('reminder bubbles support accessible multi-selection and suppress tap after
     /if \(longPressTriggeredRef\.current\) \{[\s\S]*longPressTriggeredRef\.current = false;[\s\S]*return;/,
     /if \(!selectionMode\) \{\s*longPressTriggeredRef\.current = false;/,
     /accessibilityRole=\{selectionMode \? 'checkbox' : 'button'\}/,
-    /accessibilityState=\{\s*selectionMode\s*\? \{ selected: isMultiSelected, disabled: isDisabled \}\s*:/,
+    /accessibilityState=\{\s*selectionMode\s*\? \{ checked: isMultiSelected, disabled: isDisabled \}\s*:/,
     /styles\.selectionHighlight/,
     /const selectionProgress = useSharedValue\(0\);/,
     /withSpring\(isMultiSelected \? 1 : 0, REMINDER_BUBBLE_SELECTION_SPRING\)/,

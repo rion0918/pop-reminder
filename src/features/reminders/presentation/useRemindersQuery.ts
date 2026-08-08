@@ -3,8 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAppServices } from '../../../bootstrap/AppProviders';
 import type { Reminder } from '../domain/reminder';
+import {
+  activeRemindersQueryKey,
+  deleteRemindersAndSyncCache,
+  removeRemindersFromQueryCache,
+} from './reminderQueryMutations';
 
-export const activeRemindersQueryKey = ['reminders', 'active'] as const;
 const MAX_REFRESH_TIMER_MS = 24 * 60 * 60 * 1000;
 
 function sortReminders(reminders: Reminder[]) {
@@ -44,12 +48,7 @@ export function useRemindersQuery() {
     [queryClient],
   );
   const removeReminders = useCallback(
-    (ids: string[]) => {
-      const idSet = new Set(ids);
-      queryClient.setQueryData<Reminder[]>(activeRemindersQueryKey, (current = []) =>
-        current.filter((item) => !idSet.has(item.id)),
-      );
-    },
+    (ids: string[]) => removeRemindersFromQueryCache(queryClient, ids),
     [queryClient],
   );
 
@@ -78,16 +77,16 @@ export function useRemindersQuery() {
     },
   });
   const deleteManyMutation = useMutation({
-    mutationFn: ({ ids }: { ids: string[]; deferCache?: boolean }) =>
-      services.reminders.deleteMany(ids),
-    onSuccess: (deletedIds, { deferCache }) => {
-      if (deferCache) {
-        return;
-      }
-
-      removeReminders(deletedIds);
-      void reconcile();
-    },
+    mutationFn: ({ ids, deferCache }: { ids: string[]; deferCache?: boolean }) =>
+      deleteRemindersAndSyncCache(
+        ids,
+        { deferCache },
+        {
+          deleteMany: (inputIds) => services.reminders.deleteMany(inputIds),
+          removeReminders,
+          reconcile,
+        },
+      ),
   });
   const updateTitleMutation = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) =>

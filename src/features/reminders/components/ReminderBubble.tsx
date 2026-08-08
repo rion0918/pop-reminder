@@ -297,7 +297,7 @@ export const ReminderBubble = memo(function ReminderBubble({
       }
       accessibilityState={
         selectionMode
-          ? { selected: isMultiSelected, disabled: isDisabled }
+          ? { checked: isMultiSelected, disabled: isDisabled }
           : { disabled: isDisabled }
       }
       disabled={isDisabled}
