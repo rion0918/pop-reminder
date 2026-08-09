@@ -1,22 +1,52 @@
 import assert from 'node:assert/strict';
+import { globSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-import { readSource } from '../test-utils/sourceAssertions';
+const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const domainSources = [
-  readSource(import.meta.url, '../features/reminders/domain/reminder.ts'),
-  readSource(import.meta.url, '../features/reminders/domain/reminderSchedule.ts'),
-  readSource(import.meta.url, '../features/settings/domain/appSettings.ts'),
-].join('\n');
-const presentationSources = [
-  readSource(import.meta.url, '../features/reminders/presentation/useRemindersQuery.ts'),
-  readSource(import.meta.url, '../features/settings/presentation/useAppSettingsQuery.ts'),
-].join('\n');
+function readProductionSources(patterns: string[]) {
+  return patterns
+    .flatMap((pattern) => globSync(pattern, { cwd: sourceRoot }))
+    .filter((path) => !path.includes('.spec.'))
+    .map((path) => ({ path, source: readFileSync(resolve(sourceRoot, path), 'utf8') }));
+}
 
-test('domain does not import database, Expo, React, or React Native modules', () => {
-  assert.doesNotMatch(domainSources, /from ['"][^'"]*(?:db|expo|react-native|react)['"]/);
+function assertSourcesDoNotMatch(
+  sources: ReturnType<typeof readProductionSources>,
+  pattern: RegExp,
+) {
+  for (const { path, source } of sources) {
+    assert.doesNotMatch(source, pattern, path);
+  }
+}
+
+const infrastructureImport =
+  /from ['"](?:@\/|(?:\.\.?\/)+)(?:[^'"/]+\/)*(?:infrastructure|db|lib|widget)(?:\/[^'"]*)?['"]/;
+const externalPackageImport = /from ['"](?![./]|@\/)/;
+
+const domainSources = readProductionSources(['features/*/domain/**/*.ts']);
+const applicationSources = readProductionSources(['features/*/application/**/*.ts']);
+const presentationSources = readProductionSources(['features/**/*.ts', 'features/**/*.tsx']).filter(
+  ({ path }) => !/features\/[^/]+\/(?:application|domain|infrastructure)\//.test(path),
+);
+const routeSources = readProductionSources(['app/**/*.ts', 'app/**/*.tsx']);
+
+test('domain imports only project-owned pure TypeScript modules', () => {
+  assertSourcesDoNotMatch(domainSources, externalPackageImport);
+  assertSourcesDoNotMatch(domainSources, infrastructureImport);
+});
+
+test('application imports only project-owned modules and no infrastructure', () => {
+  assertSourcesDoNotMatch(applicationSources, externalPackageImport);
+  assertSourcesDoNotMatch(applicationSources, infrastructureImport);
 });
 
 test('presentation does not import infrastructure adapters', () => {
-  assert.doesNotMatch(presentationSources, /from ['"][^'"]*infrastructure[^'"]*['"]/);
+  assertSourcesDoNotMatch(presentationSources, infrastructureImport);
+});
+
+test('app routes delegate infrastructure setup to bootstrap', () => {
+  assertSourcesDoNotMatch(routeSources, infrastructureImport);
 });

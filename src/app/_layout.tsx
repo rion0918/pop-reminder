@@ -9,14 +9,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { AppProviders } from '../bootstrap/AppProviders';
-import { appServices } from '../bootstrap/appServices';
+import { configureAppRuntime, prepareAppData } from '../bootstrap/appInitialization';
 import { createDeepLinkIntentBuffer, type DeepLinkIntent } from '../bootstrap/deepLinkIntent';
 import { palette } from '../constants/colors';
-import { initializeDatabase } from '../db/client';
-import {
-  configureAndroidNotificationChannels,
-  configureNotificationHandler,
-} from '../lib/notifications/reminderNotifications';
 
 type BootstrapState = 'loading' | 'ready' | 'error';
 
@@ -55,13 +50,7 @@ export default function RootLayout() {
     stateRef.current = 'loading';
     setBootstrapState('loading');
     try {
-      await initializeDatabase();
-      await appServices.reminders.cleanup();
-      try {
-        await appServices.reminders.retryPendingNotifications();
-      } catch (error) {
-        console.warn('Failed to retry pending reminder notifications', error);
-      }
+      await prepareAppData();
       stateRef.current = 'ready';
       setBootstrapState('ready');
       const pendingIntent = intentBufferRef.current.consume();
@@ -74,10 +63,7 @@ export default function RootLayout() {
   }, [publishIntent]);
 
   useEffect(() => {
-    configureNotificationHandler();
-    void configureAndroidNotificationChannels().catch((error) => {
-      console.warn('Failed to configure notification channels', error);
-    });
+    configureAppRuntime();
 
     const subscription = Linking.addEventListener('url', (event) => receiveUrl(event.url));
     void Linking.getInitialURL()

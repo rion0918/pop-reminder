@@ -1,4 +1,4 @@
-import { addDays, set, startOfDay, subDays } from 'date-fns';
+import { addLocalDays, setLocalTime, startOfLocalDay } from './localDate';
 
 export type ReminderScheduleInput = {
   dateOffset: 0 | 1 | 2;
@@ -53,22 +53,18 @@ export function buildReminderSchedule({
   previousNotifyTime,
   now = new Date(),
 }: ReminderScheduleInput) {
-  const targetDay = startOfDay(
-    customTargetDate ? parseLocalDate(customTargetDate) : addDays(now, dateOffset),
+  const targetDay = startOfLocalDay(
+    customTargetDate ? parseLocalDate(customTargetDate) : addLocalDays(now, dateOffset),
   );
   const target = parseTime(targetTime);
   const previous = parseTime(previousNotifyTime);
-  const targetAt = set(targetDay, { ...target, seconds: 0, milliseconds: 0 });
+  const targetAt = setLocalTime(targetDay, target.hours, target.minutes);
 
   return {
     targetAt,
-    previousNotifyAt: set(subDays(targetDay, 1), {
-      ...previous,
-      seconds: 0,
-      milliseconds: 0,
-    }),
+    previousNotifyAt: setLocalTime(addLocalDays(targetDay, -1), previous.hours, previous.minutes),
     targetNotifyAt: targetAt,
-    expiresAt: set(targetDay, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 }),
+    expiresAt: setLocalTime(targetDay, 23, 59, 59, 999),
   };
 }
 
@@ -76,16 +72,12 @@ export function replaceReminderTargetTime(value: Date | string, targetTime: stri
   const target = value instanceof Date ? value : new Date(value);
   const time = parseTime(targetTime);
 
-  return set(target, { ...time, seconds: 0, milliseconds: 0 });
+  return setLocalTime(target, time.hours, time.minutes);
 }
 
 export function buildPreviousNotifyAt(value: Date | string, previousNotifyTime: string) {
   const target = value instanceof Date ? value : new Date(value);
   const previous = parseTime(previousNotifyTime);
 
-  return set(subDays(startOfDay(target), 1), {
-    ...previous,
-    seconds: 0,
-    milliseconds: 0,
-  });
+  return setLocalTime(addLocalDays(startOfLocalDay(target), -1), previous.hours, previous.minutes);
 }
