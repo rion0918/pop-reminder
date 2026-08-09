@@ -664,7 +664,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   }
 
   return (
-    <View onLayout={handleBoardLayout} style={styles.board}>
+    <View testID="reminder-bubble-board" onLayout={handleBoardLayout} style={styles.board}>
       {boardReady
         ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => {
             const isMultiSelected = selectedReminderIds?.has(reminder.id) ?? false;

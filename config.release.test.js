@@ -107,10 +107,12 @@ test('eas config makes Android preview installable and production store-ready', 
 });
 
 test('package scripts expose release regression checks', () => {
+  assert.equal(packageConfig.scripts.test, 'pnpm run test:node && pnpm run test:ui');
   assert.equal(
-    packageConfig.scripts.test,
-    "node --import tsx --test config.release.test.js $(rg --files src -g '*.test.js' -g '*.spec.ts' -g '*.spec.tsx')",
+    packageConfig.scripts['test:node'],
+    "node --import tsx --test config.release.test.js $(rg --files src -g '*.test.js' -g '*.spec.ts' -g '*.spec.tsx' -g '!*.ui.spec.tsx')",
   );
+  assert.equal(packageConfig.scripts['test:ui'], 'jest --config jest.config.cjs --runInBand');
 });
 
 test('package scripts expose a release verification command', () => {

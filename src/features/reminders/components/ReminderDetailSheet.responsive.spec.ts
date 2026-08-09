@@ -4,7 +4,6 @@ import { test } from 'node:test';
 import { assertSourceContract, readSource } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './ReminderDetailSheet.tsx');
-const editorSource = readSource(import.meta.url, './ReminderScheduleEditorModal.tsx');
 
 test('reminder detail sheet sizes to content and keeps delete action reachable', () => {
   assertSourceContract(source, {
@@ -80,7 +79,7 @@ test('reminder detail sheet presents the editable target before the shared previ
   });
 });
 
-test('reminder detail sheet edits target date and time without a redundant shared-time label', () => {
+test('reminder detail sheet opens the schedule editor and saves its result', () => {
   assertSourceContract(source, {
     includes: [
       /accessibilityLabel="当日のお知らせ日時を編集"/,
@@ -96,64 +95,6 @@ test('reminder detail sheet edits target date and time without a redundant share
       /name="create-outline"/,
       /targetEditIcon/,
       /タップして時間を変更/,
-    ],
-  });
-
-  assertSourceContract(editorSource, {
-    includes: [
-      /import \{ useSafeAreaInsets \} from 'react-native-safe-area-context';/,
-      /animationType="slide"/,
-      /statusBarTranslucent/,
-      /accessibilityViewIsModal/,
-      /style=\{styles\.backdrop\}/,
-      /paddingBottom: Math\.max\(18, safeAreaInsets\.bottom \+ 8\)/,
-      /accessibilityLabel="日時変更をキャンセル"/,
-      /accessibilityLabel="日時変更を完了"/,
-      /isSaving \? '保存中…' : '完了'/,
-      /onPress=\{\(\) => onConfirm\(draft\)\}/,
-      /const wasVisibleRef = useRef\(false\);/,
-      /if \(visible && !wasVisibleRef\.current\) \{[\s\S]*setDraft\(createReminderScheduleDraft\(reminder\)\);[\s\S]*setActivePicker\(null\);[\s\S]*\}/,
-      /wasVisibleRef\.current = visible;/,
-      /<Text style=\{styles\.scheduleLabel\}>お知らせ日時<\/Text>/,
-      /accessibilityLabel="日付を変更"/,
-      /accessibilityLabel="時刻を変更"/,
-      /accessibilityHint=\{formatReminderDetailDate\(datePickerValue\)\}/,
-      /accessibilityHint=\{formatReminderDetailTime\(timePickerValue\)\}/,
-      /activePicker === 'date' \? styles\.scheduleValueActive : null/,
-      /activePicker === 'time' \? styles\.scheduleValueActive : null/,
-      /pressed \? styles\.scheduleValuePressed : null/,
-      /const hasChanges =/,
-      /前日のお知らせは/,
-      /前日のお知らせも/,
-      /に変わります/,
-      /accessibilityLabel=\{previousNoticeText\}/,
-      /styles\.pickerSurface/,
-      /過去の日時には変更できません/,
-      /前日のお知らせ時刻は過ぎているため、当日だけお知らせします/,
-      /minimumDate=\{activePicker === 'date' \? minimumDate : undefined\}/,
-      /isSaving \|\| !evaluated\.isValid \|\| !evaluated\.isTargetFuture/,
-      /modalOverlay: \{[^}]*justifyContent: 'flex-end',/,
-      /panel: \{[^}]*maxWidth: 460,[^}]*maxHeight: '96%',/,
-      /actionButton: \{[^}]*minHeight: 44,/,
-      /scheduleDateButton: \{[^}]*minHeight: 52,/,
-      /scheduleTimeButton: \{[^}]*minHeight: 68,/,
-    ],
-    excludes: [
-      /import \{ PrimaryButton \}/,
-      /<PrimaryButton/,
-      /<Text style=\{styles\.title\}>日時を変更<\/Text>/,
-      /当日のお知らせ日時を変更します/,
-      /変更後のお知らせ/,
-      /前日にもお知らせ/,
-      /この日時に変更/,
-      /automaticBadge/,
-      /DateChips/,
-      /TimeSelector/,
-      /timePresets/,
-      />今日<\/Text>/,
-      />明日<\/Text>/,
-      />週末<\/Text>/,
-      /sharedBadge/,
     ],
   });
 });
