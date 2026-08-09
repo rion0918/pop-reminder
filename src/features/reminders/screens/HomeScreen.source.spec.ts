@@ -37,20 +37,23 @@ test('home add button is visually disabled only while saving', () => {
 });
 
 test('home gates the seventh active reminder before opening quick add', () => {
-  assertSourceIncludes(source, [
-    /FREE_ACTIVE_REMINDER_LIMIT/,
-    /reminders\.length >= FREE_ACTIVE_REMINDER_LIMIT/,
-    /purchases\.getProAccessState\(\)/,
-    /analytics\.captureProGateReached\(\{ source \}\)/,
-    /purchases\.presentProPaywallIfNeeded\(\)/,
-    /placement: 'active_limit'/,
-    /result === 'cancelled'/,
-    /result === 'error'/,
-    /result === 'purchased' \|\| result === 'restored' \|\| accessState !== 'free'/,
-    /accessState === 'free'/,
-    /openQuickAddForSource\(source, options\)/,
-    /ふわっと。Proなら、忘れたくないことを無制限に追加できます。/,
-  ]);
+  assertSourceContract(source, {
+    includes: [
+      /FREE_ACTIVE_REMINDER_LIMIT/,
+      /reminders\.length >= FREE_ACTIVE_REMINDER_LIMIT/,
+      /purchases\.getProAccessState\(\)/,
+      /analytics\.captureProGateReached\(\{ source \}\)/,
+      /purchases\.presentProPaywallIfNeeded\(\)/,
+      /placement: 'active_limit'/,
+      /result === 'cancelled'/,
+      /result === 'error'/,
+      /result === 'purchased' \|\| result === 'restored' \|\| accessState !== 'free'/,
+      /accessState === 'free'/,
+      /openQuickAddForSource\(source, options\)/,
+      /Pro版ふわっと。なら、忘れたくないことを無制限に追加できます。/,
+    ],
+    excludes: [/ふわっと。Pro/],
+  });
 });
 
 test('widget quick add uses the same pro gate as the home button', () => {

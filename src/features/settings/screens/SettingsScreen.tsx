@@ -26,7 +26,6 @@ import { useNotificationSettings } from '../presentation/useNotificationSettings
 import { useProAccessQuery } from '../../purchases/presentation/useProAccessQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
-import { TimeSelector } from '../../../shared/components/TimeSelector';
 import { type AppTheme, appThemes, palette, themeOptions } from '../../../constants/colors';
 import {
   isValidQuickAddPresetTimes,
@@ -89,7 +88,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '6. アプリ内購入について',
-      body: '買い切りの「ふわっと。Pro」を提供するため RevenueCat、Apple App Store、Google Play を利用します。RevenueCatにはSDKが生成する匿名購入ID、購入商品、購入・復元・権利状態、アプリ・端末の技術情報が送信されます。リマインダーの内容は送信しません。',
+      body: '買い切りの「Pro版ふわっと。」を提供するため RevenueCat、Apple App Store、Google Play を利用します。RevenueCatにはSDKが生成する匿名購入ID、購入商品、購入・復元・権利状態、アプリ・端末の技術情報が送信されます。リマインダーの内容は送信しません。',
     },
     {
       title: '7. データの削除',
@@ -121,7 +120,7 @@ const termsSections = [
   },
   {
     title: '5. アプリ内購入',
-    body: '無料版では、現在時刻より後に通知予定がある有効なリマインダーを同時に6件まで登録できます。「ふわっと。Pro」は、ストアに表示される価格で忘れたくないことを無制限に追加できる買い切り商品です。自動更新はありません。購入の請求、返金、取消はApple App StoreまたはGoogle Playの規約に従います。購入権利は購入時と同じストアアカウントで復元できますが、AndroidとiOSの間では共有されません。返金や取消が確認された場合、Pro機能は利用できなくなります。',
+    body: '無料版では、現在時刻より後に通知予定がある有効なリマインダーを同時に6件まで登録できます。「Pro版ふわっと。」は、ストアに表示される価格で忘れたくないことを無制限に追加できる買い切り商品です。自動更新はありません。購入の請求、返金、取消はApple App StoreまたはGoogle Playの規約に従います。購入権利は購入時と同じストアアカウントで復元できますが、AndroidとiOSの間では共有されません。返金や取消が確認された場合、Pro機能は利用できなくなります。',
   },
   {
     title: '6. 免責事項',
@@ -162,7 +161,6 @@ export function SettingsScreen() {
     (state) => state.setNotificationTestModeEnabled,
   );
   const [previousTime, setPreviousTime] = useState('20:00');
-  const [isPreviousTimeSelectorOpen, setIsPreviousTimeSelectorOpen] = useState(false);
   const [isPreviousTimePickerOpen, setIsPreviousTimePickerOpen] = useState(false);
   const [isQuickAddPresetSectionOpen, setIsQuickAddPresetSectionOpen] = useState(false);
   const [quickAddPresetPickerKey, setQuickAddPresetPickerKey] = useState<QuickAddPresetKey | null>(
@@ -273,15 +271,6 @@ export function SettingsScreen() {
     }
   };
 
-  const quickAddPresets = settings
-    ? [
-        { label: '朝', time: settings.defaultTargetTime },
-        { label: '昼', time: settings.noonTargetTime },
-        { label: '夕', time: settings.eveningTargetTime },
-        { label: '夜', time: settings.nightTargetTime },
-      ]
-    : [];
-
   const saveQuickAddPresetTime = async (key: QuickAddPresetKey, value: string) => {
     if (!settings) {
       return;
@@ -356,7 +345,7 @@ export function SettingsScreen() {
       await refreshProAccess();
 
       if (result === 'restored') {
-        Alert.alert('購入を復元しました', 'ふわっと。Proを利用できます。');
+        Alert.alert('購入を復元しました', 'Pro版ふわっと。を利用できます。');
       } else if (result === 'no-purchase') {
         Alert.alert('復元できる購入がありません', '購入時と同じストアアカウントをご確認ください。');
       } else {
@@ -412,13 +401,6 @@ export function SettingsScreen() {
     router.replace('/');
   };
 
-  const togglePreviousTimeSelector = () => {
-    if (isUpdatingPreviousNotifyTime) {
-      return;
-    }
-    setIsPreviousTimeSelectorOpen((current) => !current);
-  };
-
   const handleTimePickerChange = (value: string) => {
     void savePreviousTime(value);
   };
@@ -464,7 +446,7 @@ export function SettingsScreen() {
                     <Ionicons name="infinite-outline" size={22} color={palette.lavenderDeep} />
                   </View>
                   <Text className="min-w-0 flex-1 text-[16px] font-black text-app-lavender-deep">
-                    ふわっと。Pro
+                    Pro版ふわっと。
                   </Text>
                   {isProAccessLoading ? (
                     <ActivityIndicator size="small" color={palette.lavenderDeep} />
@@ -485,7 +467,12 @@ export function SettingsScreen() {
                   style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
                 >
                   <View className="h-[38px] w-[38px] items-center justify-center rounded-[19px] bg-[#EEE8FF]">
-                    <Ionicons name="sparkles-outline" size={22} color={palette.lavenderDeep} />
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={22}
+                      color={palette.lavenderDeep}
+                      style={styles.proUpgradeIcon}
+                    />
                   </View>
                   <Text
                     numberOfLines={1}
@@ -506,7 +493,6 @@ export function SettingsScreen() {
                   <SettingRow
                     icon="refresh-outline"
                     title="購入を復元"
-                    caption="購入時と同じストアアカウントで復元します"
                     onPress={() => void handleRestoreProPurchase()}
                   >
                     <Ionicons name="chevron-forward" size={18} color={palette.muted} />
@@ -517,56 +503,27 @@ export function SettingsScreen() {
           ) : null}
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
-            <SettingRow
-              icon="notifications-outline"
-              title="前日のお知らせ時刻"
-              caption="すべての泡に共通"
-              onPress={togglePreviousTimeSelector}
-            >
+            <SettingRow icon="notifications-outline" title="前日のお知らせ時刻">
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="前日のお知らせ時刻を変更"
                 accessibilityState={{ disabled: isUpdatingPreviousNotifyTime }}
-                onPress={togglePreviousTimeSelector}
+                onPress={() => setIsPreviousTimePickerOpen(true)}
                 disabled={isUpdatingPreviousNotifyTime}
-                className={`h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border ${
-                  isPreviousTimeSelectorOpen
-                    ? 'border-app-lavender-deep bg-app-lavender-deep'
-                    : 'border-app-line bg-[#F6FAFF]'
-                }`}
+                className="h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border border-app-line bg-[#F6FAFF]"
                 style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
               >
                 {isUpdatingPreviousNotifyTime ? (
                   <ActivityIndicator size="small" color={palette.lavenderDeep} />
                 ) : (
-                  <Text
-                    className={`text-[15px] font-extrabold ${
-                      isPreviousTimeSelectorOpen ? 'text-app-white' : 'text-app-ink'
-                    }`}
-                  >
-                    {previousTime}
-                  </Text>
+                  <Text className="text-[15px] font-extrabold text-app-ink">{previousTime}</Text>
                 )}
               </Pressable>
             </SettingRow>
-            {isPreviousTimeSelectorOpen ? (
-              <View className="px-[16px] pb-[12px]">
-                <TimeSelector
-                  value={previousTime}
-                  disabled={isUpdatingPreviousNotifyTime}
-                  onChange={(value) => {
-                    void savePreviousTime(value);
-                  }}
-                  onSelectCustomTime={() => setIsPreviousTimePickerOpen(true)}
-                  presets={quickAddPresets}
-                />
-              </View>
-            ) : null}
             <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
               icon="volume-medium-outline"
               title="通知音"
-              caption="OS標準の通知音を鳴らします"
               onPress={() => {
                 void update({ notificationSoundEnabled: !settings.notificationSoundEnabled });
               }}
@@ -583,11 +540,7 @@ export function SettingsScreen() {
               />
             </SettingRow>
             <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-            <SettingRow
-              icon="notifications-outline"
-              title="通知権限"
-              caption="端末の通知設定と連動します"
-            >
+            <SettingRow icon="notifications-outline" title="通知権限">
               <Text className="text-[13px] font-extrabold text-app-muted">
                 {notificationPermissionLabel}
               </Text>
@@ -632,7 +585,6 @@ export function SettingsScreen() {
             <SettingRow
               icon="sparkles-outline"
               title="自動消滅"
-              caption="期限切れ後は表示せず、起動時に整理します"
               onPress={() => {
                 void update({ autoDeleteEnabled: !settings.autoDeleteEnabled });
               }}
@@ -665,9 +617,6 @@ export function SettingsScreen() {
                   style={styles.noFontPadding}
                 >
                   クイック追加の時刻
-                </Text>
-                <Text className="mt-[3px] text-[11px] font-semibold leading-[16px] text-app-muted">
-                  朝・昼・夕・夜の候補を設定
                 </Text>
               </View>
               <Ionicons
@@ -711,9 +660,6 @@ export function SettingsScreen() {
                   style={styles.noFontPadding}
                 >
                   テーマ
-                </Text>
-                <Text className="mt-[3px] text-[11px] font-semibold leading-[16px] text-app-muted">
-                  テーマを選択
                 </Text>
               </View>
             </View>
@@ -776,11 +722,7 @@ export function SettingsScreen() {
           </View>
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
-            <SettingRow
-              icon="analytics-outline"
-              title="匿名の利用状況を共有"
-              caption="画面表示と操作結果のみ。内容は送信しません"
-            >
+            <SettingRow icon="analytics-outline" title="匿名の利用状況を共有">
               {isAnalyticsPreferenceLoading ? (
                 <ActivityIndicator size="small" color={palette.lavenderDeep} />
               ) : (
@@ -799,7 +741,6 @@ export function SettingsScreen() {
             <SettingRow
               icon="shield-checkmark-outline"
               title="プライバシーポリシー"
-              caption="保存データ、通知権限、利用状況の計測について"
               onPress={() => setLegalDocument(privacyPolicyDocument)}
             >
               <Ionicons name="chevron-forward" size={18} color={palette.muted} />
@@ -808,7 +749,6 @@ export function SettingsScreen() {
             <SettingRow
               icon="document-text-outline"
               title="利用規約"
-              caption="アプリのご利用にあたって"
               onPress={() => setLegalDocument(termsDocument)}
             >
               <Ionicons name="chevron-forward" size={18} color={palette.muted} />
@@ -825,7 +765,6 @@ export function SettingsScreen() {
               <SettingRow
                 icon="timer-outline"
                 title="通知テストモード"
-                caption="保存後10秒・20秒で通知を予約します"
                 onPress={() => {
                   setNotificationTestModeEnabled(!isNotificationTestModeEnabled);
                 }}
@@ -998,6 +937,12 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '900',
     includeFontPadding: false,
+  },
+  proUpgradeIcon: {
+    includeFontPadding: false,
+    lineHeight: 22,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   noFontPadding: {
     includeFontPadding: false,

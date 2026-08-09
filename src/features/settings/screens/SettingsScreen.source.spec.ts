@@ -36,9 +36,10 @@ test('settings exposes notification permission controls outside the dev-only sec
 test('settings exposes native Pro purchase and independent restore actions', () => {
   assertSourceContract(source, {
     includes: [
-      /text-app-lavender-deep">\s*ふわっと。Pro\s*<\/Text>/,
+      /text-app-lavender-deep">\s*Pro版ふわっと。\s*<\/Text>/,
       /accessibilityLabel="Proにアップグレードする"/,
-      /name="sparkles-outline"/,
+      /name="sparkles-outline"\s*size=\{22\}\s*color=\{palette\.lavenderDeep\}\s*style=\{styles\.proUpgradeIcon\}/,
+      /proUpgradeIcon: \{\s*includeFontPadding: false,\s*lineHeight: 22,\s*textAlign: 'center',\s*textAlignVertical: 'center',\s*\}/,
       /text-app-lavender-deep"\s*>\s*Proにアップグレードする\s*<\/Text>/,
       /handleOpenProPaywall/,
       /presentProPaywallIfNeeded/,
@@ -58,6 +59,7 @@ test('settings exposes native Pro purchase and independent restore actions', () 
       /現在の利用状態: 無料版（6件まで）/,
       /現在の利用状態を確認できません/,
       /text-app-white">Pro<\/Text>/,
+      /ふわっと。Pro/,
     ],
   });
 });
@@ -80,14 +82,46 @@ test('settings exposes four independently editable quick-add preset times', () =
 });
 
 test('settings applies the shared previous time to existing reminders with observable feedback', () => {
-  assertSourceIncludes(source, [
-    /updatePreviousNotifyTime/,
-    /isUpdatingPreviousNotifyTime/,
-    /すべての泡に共通/,
-    /result\.skippedPastCount/,
-    /result\.failedReminderCount/,
-    /disabled=\{isUpdatingPreviousNotifyTime\}/,
-  ]);
+  assertSourceContract(source, {
+    includes: [
+      /updatePreviousNotifyTime/,
+      /isUpdatingPreviousNotifyTime/,
+      /result\.skippedPastCount/,
+      /result\.failedReminderCount/,
+      /disabled=\{isUpdatingPreviousNotifyTime\}/,
+    ],
+    excludes: [
+      /caption=/,
+      /すべての泡に共通/,
+      /OS標準の通知音を鳴らします/,
+      /端末の通知設定と連動します/,
+      /期限切れ後は表示せず、起動時に整理します/,
+      /朝・昼・夕・夜の候補を設定/,
+      /画面表示と操作結果のみ。内容は送信しません/,
+      /保存データ、通知権限、利用状況の計測について/,
+      /アプリのご利用にあたって/,
+      /保存後10秒・20秒で通知を予約します/,
+    ],
+  });
+});
+
+test('settings edits the shared previous time directly from its value button', () => {
+  assertSourceContract(source, {
+    includes: [
+      /accessibilityLabel="前日のお知らせ時刻を変更"/,
+      /onPress=\{\(\) => setIsPreviousTimePickerOpen\(true\)\}/,
+      /visible=\{isPreviousTimePickerOpen\}/,
+    ],
+    excludes: [
+      /const quickAddPresets = settings/,
+      /presets=\{quickAddPresets\}/,
+      /<TimeSelector/,
+      /isPreviousTimeSelectorOpen/,
+      /togglePreviousTimeSelector/,
+      /前日のお知らせ時刻を選ぶ/,
+      /時刻を選ぶ/,
+    ],
+  });
 });
 
 test('settings uses distinct time-of-day icons for quick-add preset times', () => {

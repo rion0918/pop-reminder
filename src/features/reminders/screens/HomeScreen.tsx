@@ -395,7 +395,7 @@ export function HomeScreen() {
       if (saveError instanceof Error && saveError.name === 'ActiveReminderLimitReachedError') {
         Alert.alert(
           '無料版では6件まで追加できます',
-          'ふわっと。Proなら、忘れたくないことを無制限に追加できます。',
+          'Pro版ふわっと。なら、忘れたくないことを無制限に追加できます。',
           [
             { text: 'あとで', style: 'cancel' },
             {
