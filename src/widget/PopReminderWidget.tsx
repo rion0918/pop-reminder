@@ -1,16 +1,8 @@
-import {
-  FlexWidget,
-  ImageWidget,
-  OverlapWidget,
-  TextWidget,
-  type ColorProp,
-} from 'react-native-android-widget';
-import type { ImageRequireSource } from 'react-native';
+import { FlexWidget, OverlapWidget, TextWidget, type ColorProp } from 'react-native-android-widget';
 
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
 import { getReminderDueColor } from '../features/reminders/utils/reminderDueColor';
 import { widgetTheme } from './widgetColors';
-import { getWidgetSkyPeriod, type WidgetSkyPeriod } from './widgetSky';
 import {
   getWidgetLayoutPlan,
   type WidgetDisplayMode,
@@ -38,17 +30,6 @@ const WIDGET_COMPACT_STATUS_DOT_SIZE = 10;
 const WIDGET_ROW_ACTION_SIZE = 36;
 const WIDGET_FONT_FAMILY = 'sans-serif-rounded';
 export const WIDGET_DELETE_REMINDER_ACTION = 'DELETE_REMINDER';
-
-const widgetSkyAssets: Record<WidgetSkyPeriod, ImageRequireSource> = {
-  morning: require('../../assets/widget-sky-morning.png'),
-  day: require('../../assets/widget-sky-day.png'),
-  sunset: require('../../assets/widget-sky-sunset.png'),
-  night: require('../../assets/widget-sky-night.png'),
-};
-
-function getWidgetSkyAsset(currentDate = new Date()) {
-  return widgetSkyAssets[getWidgetSkyPeriod(currentDate)];
-}
 
 function getWidgetTypography(mode: WidgetDisplayMode) {
   if (mode === 'compact') {
@@ -102,11 +83,8 @@ function WidgetHeader({
         style={{
           fontFamily: WIDGET_FONT_FAMILY,
           fontSize: typography.headerFontSize,
-          fontWeight: '900',
+          fontWeight: '800',
           color: widgetTheme.primaryText as ColorProp,
-          textShadowColor: widgetTheme.textHalo as ColorProp,
-          textShadowOffset: { width: 0, height: 1 },
-          textShadowRadius: 2,
         }}
         maxLines={1}
         allowFontScaling={false}
@@ -116,7 +94,7 @@ function WidgetHeader({
         style={{
           fontFamily: WIDGET_FONT_FAMILY,
           fontSize: mode === 'compact' ? 10 : 11,
-          fontWeight: '800',
+          fontWeight: '600',
           color: widgetTheme.secondaryText as ColorProp,
           textAlign: 'right',
         }}
@@ -202,7 +180,7 @@ function ReminderListRow({
               style={{
                 fontFamily: WIDGET_FONT_FAMILY,
                 fontSize: typography.titleFontSize,
-                fontWeight: '900',
+                fontWeight: '700',
                 color: widgetTheme.primaryText as ColorProp,
                 adjustsFontSizeToFit: true,
               }}
@@ -217,7 +195,7 @@ function ReminderListRow({
               width: typography.timeWidth,
               fontFamily: WIDGET_FONT_FAMILY,
               fontSize: typography.timeFontSize,
-              fontWeight: '800',
+              fontWeight: '600',
               color: widgetTheme.secondaryText as ColorProp,
               marginLeft: 8,
               textAlign: 'right',
@@ -235,7 +213,7 @@ function ReminderListRow({
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: Math.round(WIDGET_ROW_ACTION_SIZE / 2),
-            backgroundColor: 'rgba(255, 255, 255, 0.44)',
+            backgroundColor: widgetTheme.rowActionSurface as ColorProp,
           }}
           clickAction={WIDGET_DELETE_REMINDER_ACTION}
           clickActionData={{ id: reminder.id }}
@@ -277,7 +255,7 @@ function EmptyState({ listBounds }: { listBounds: WidgetLayoutPlan['listBounds']
           style={{
             fontFamily: WIDGET_FONT_FAMILY,
             fontSize: 14,
-            fontWeight: '900',
+            fontWeight: '700',
             color: widgetTheme.primaryText as ColorProp,
             textAlign: 'center',
             adjustsFontSizeToFit: true,
@@ -291,7 +269,7 @@ function EmptyState({ listBounds }: { listBounds: WidgetLayoutPlan['listBounds']
             width: listBounds.width,
             fontFamily: WIDGET_FONT_FAMILY,
             fontSize: 10,
-            fontWeight: '800',
+            fontWeight: '600',
             color: widgetTheme.secondaryText as ColorProp,
             textAlign: 'center',
             marginTop: 4,
@@ -345,7 +323,7 @@ function AddReminderButton({ layout }: { layout: WidgetRect }) {
         borderRadius: Math.round(layout.height / 2),
         borderWidth: 1,
         borderColor: widgetTheme.plusButtonBorder as ColorProp,
-        backgroundGradient: widgetTheme.plusButtonGradient,
+        backgroundColor: widgetTheme.plusButtonSurface as ColorProp,
       }}
       clickAction="OPEN_URI"
       clickActionData={{ uri: 'popreminder://?action=add' }}
@@ -356,7 +334,7 @@ function AddReminderButton({ layout }: { layout: WidgetRect }) {
         style={{
           fontFamily: WIDGET_FONT_FAMILY,
           fontSize: 22,
-          fontWeight: '900',
+          fontWeight: '700',
           color: widgetTheme.plusButtonText as ColorProp,
           textAlign: 'center',
         }}
@@ -379,27 +357,13 @@ export function PopReminderWidget({
       style={{
         width: 'match_parent',
         height: 'match_parent',
-        backgroundColor: widgetTheme.cloudSurfaceBackground as ColorProp,
+        backgroundColor: widgetTheme.surface as ColorProp,
         borderRadius: 24,
         borderWidth: 1,
-        borderColor: widgetTheme.cloudSurfaceBorder as ColorProp,
+        borderColor: widgetTheme.surfaceBorder as ColorProp,
         overflow: 'hidden',
       }}
     >
-      <ImageWidget
-        image={getWidgetSkyAsset()}
-        imageWidth={widgetWidth}
-        imageHeight={widgetHeight}
-        radius={24}
-        style={{ width: 'match_parent', height: 'match_parent' }}
-      />
-      <FlexWidget
-        style={{
-          width: 'match_parent',
-          height: 'match_parent',
-          backgroundColor: widgetTheme.glassVeil as ColorProp,
-        }}
-      />
       <WidgetHeader layout={plan.header} mode={plan.mode} totalCount={reminders.length} />
       <ReminderContent reminders={reminders} plan={plan} />
       <AddReminderButton layout={plan.addButton} />

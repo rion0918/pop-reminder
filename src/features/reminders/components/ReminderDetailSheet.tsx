@@ -24,7 +24,7 @@ import type {
   UpdateReminderScheduleResult,
 } from '../application/reminderUseCases';
 import type { Reminder } from '../types/reminder';
-import { reminderTitleSchema } from '../schemas/reminderSchema';
+import { REMINDER_TITLE_MAX_LENGTH, reminderTitleSchema } from '../schemas/reminderSchema';
 import { ReminderScheduleEditorModal } from './ReminderScheduleEditorModal';
 import {
   formatReminderDetailAccessibilityDateTime,
@@ -165,6 +165,7 @@ export function ReminderDetailSheet({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isTitleSaving, setIsTitleSaving] = useState(false);
+  const [titleLength, setTitleLength] = useState(0);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
   const [isScheduleSaving, setIsScheduleSaving] = useState(false);
@@ -183,6 +184,11 @@ export function ReminderDetailSheet({
     [safeAreaInsets.bottom],
   );
   latestReminderIdRef.current = reminder?.id ?? null;
+  const isTitleCountWarning = titleLength >= REMINDER_TITLE_MAX_LENGTH - 5;
+  const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;
+  const titleCountAccessibilityLabel = isTitleOverLimit
+    ? `タイトルは${titleLength}文字、上限を${titleLength - REMINDER_TITLE_MAX_LENGTH}文字超えています`
+    : `タイトルは${titleLength}文字、あと${REMINDER_TITLE_MAX_LENGTH - titleLength}文字入力できます`;
 
   const discardTitleEdit = useCallback(() => {
     titleEditSessionRef.current += 1;
@@ -304,6 +310,7 @@ export function ReminderDetailSheet({
     shouldDiscardTitleEditRef.current = false;
     isTitleSaveRequestedRef.current = false;
     draftTitleRef.current = reminder.title;
+    setTitleLength(reminder.title.length);
     setTitleNotice(null);
     setIsTitleEditing(true);
 
@@ -452,23 +459,37 @@ export function ReminderDetailSheet({
             <View style={styles.headerCopy}>
               <Text style={styles.kicker}>ふわっと思い出す予定</Text>
               {isTitleEditing ? (
-                <BottomSheetTextInput
-                  ref={titleInputRef}
-                  accessibilityLabel="リマインダーのタイトル"
-                  defaultValue={draftTitleRef.current}
-                  onChangeText={(text) => {
-                    draftTitleRef.current = text;
-                  }}
-                  onBlur={handleTitleBlur}
-                  onSubmitEditing={() => titleInputRef.current?.blur()}
-                  keyboardType="default"
-                  autoCorrect
-                  spellCheck={false}
-                  autoCapitalize="none"
-                  blurOnSubmit={false}
-                  returnKeyType="done"
-                  style={styles.titleInput}
-                />
+                <>
+                  <BottomSheetTextInput
+                    ref={titleInputRef}
+                    accessibilityLabel="リマインダーのタイトル"
+                    defaultValue={draftTitleRef.current}
+                    onChangeText={(text) => {
+                      draftTitleRef.current = text;
+                      setTitleLength(text.length);
+                    }}
+                    onBlur={handleTitleBlur}
+                    onSubmitEditing={() => titleInputRef.current?.blur()}
+                    keyboardType="default"
+                    autoCorrect
+                    spellCheck={false}
+                    autoCapitalize="none"
+                    blurOnSubmit={false}
+                    returnKeyType="done"
+                    style={styles.titleInput}
+                  />
+                  <Text
+                    accessibilityRole="text"
+                    accessibilityLabel={titleCountAccessibilityLabel}
+                    style={[
+                      styles.titleCountText,
+                      isTitleCountWarning ? styles.titleCountTextWarning : null,
+                      isTitleOverLimit ? styles.titleCountTextOverLimit : null,
+                    ]}
+                  >
+                    {titleLength} / {REMINDER_TITLE_MAX_LENGTH}
+                  </Text>
+                </>
               ) : (
                 <Pressable
                   accessibilityRole="button"
@@ -601,6 +622,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     borderRadius: 14,
     backgroundColor: '#F3F6FC',
+  },
+  titleCountText: {
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    marginRight: 4,
+    color: palette.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  titleCountTextWarning: {
+    color: '#8B6F2D',
+  },
+  titleCountTextOverLimit: {
+    color: '#B34B58',
   },
   titleNotice: {
     marginTop: 4,

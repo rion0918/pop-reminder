@@ -1,20 +1,15 @@
-import { addButtonVisualTokens, palette } from '../constants/colors';
+import { palette } from '../constants/colors';
 
 export const widgetTheme = {
   primaryText: palette.ink,
-  secondaryText: 'rgba(38,49,81,0.72)',
-  cloudSurfaceBackground: '#A8D1F0',
-  cloudSurfaceBorder: 'rgba(255,255,255,0.72)',
-  glassVeil: 'rgba(247,251,255,0.38)',
-  cardSurface: 'rgba(255,255,255,0.58)',
-  cardBorder: 'rgba(255,255,255,0.78)',
-  cardShadow: 'rgba(38,49,81,0.10)',
-  plusButtonGradient: {
-    from: addButtonVisualTokens.gradientFrom,
-    to: addButtonVisualTokens.gradientTo,
-    orientation: 'TOP_BOTTOM',
-  },
-  plusButtonBorder: addButtonVisualTokens.border,
-  plusButtonText: addButtonVisualTokens.text,
-  textHalo: 'rgba(255,255,255,0.72)',
+  secondaryText: 'rgba(38,49,81,0.68)',
+  surface: '#F6F7FA',
+  surfaceBorder: 'rgba(38,49,81,0.06)',
+  cardSurface: '#FFFFFF',
+  cardBorder: 'rgba(38,49,81,0.07)',
+  cardShadow: 'rgba(38,49,81,0.07)',
+  rowActionSurface: '#F2F4F8',
+  plusButtonSurface: '#E7EEF8',
+  plusButtonBorder: 'rgba(80,101,143,0.16)',
+  plusButtonText: '#50658F',
 } as const;

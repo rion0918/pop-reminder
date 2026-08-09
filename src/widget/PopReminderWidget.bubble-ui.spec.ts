@@ -18,7 +18,7 @@ const nativeWidgetConfigSource = readSource(
 const updateSource = readSource(import.meta.url, './widgetUpdateService.tsx');
 const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx');
 
-test('android widget renders reminders as rounded glass list rows', () => {
+test('android widget renders reminders as rounded solid list rows', () => {
   const reminderListRowSource = source.slice(
     source.indexOf('function ReminderListRow'),
     source.indexOf('function EmptyState'),
@@ -121,41 +121,35 @@ test('android widget keeps the selected app-name header and bottom add action', 
       /function AddReminderButton/,
       /text="＋"/,
       /accessibilityLabel="リマインダーを追加"/,
-      /backgroundGradient: widgetTheme\.plusButtonGradient/,
+      /backgroundColor: widgetTheme\.plusButtonSurface as ColorProp/,
       /popreminder:\/\/\?action=add/,
       /plan\.addButton/,
     ],
     excludes: [/text="次の予定"/, /checkbox/i, /checkmark/i, /チェック/],
   });
   assertSourceIncludes(colorsSource, [
-    /glassVeil: 'rgba\(247,251,255,0\.38\)'/,
-    /cardSurface: 'rgba\(255,255,255,0\.58\)'/,
-    /cardBorder: 'rgba\(255,255,255,0\.78\)'/,
-    /cardShadow: 'rgba\(38,49,81,0\.10\)'/,
-    /plusButtonGradient: \{/,
-    /from: addButtonVisualTokens\.gradientFrom/,
-    /to: addButtonVisualTokens\.gradientTo/,
-    /orientation: 'TOP_BOTTOM'/,
-    /plusButtonBorder: addButtonVisualTokens\.border/,
-    /plusButtonText: addButtonVisualTokens\.text/,
+    /surface: '#F6F7FA'/,
+    /cardSurface: '#FFFFFF'/,
+    /rowActionSurface: '#F2F4F8'/,
+    /plusButtonSurface: '#E7EEF8'/,
   ]);
 });
 
-test('android widget uses rounded heavy type without a redundant bottom-right guide', () => {
+test('android widget uses a restrained rounded type hierarchy without redundant guidance', () => {
   assertSourceContract(source, {
     includes: [
       /const WIDGET_FONT_FAMILY = 'sans-serif-rounded'/,
       /fontFamily: WIDGET_FONT_FAMILY/,
-      /text="ふわっと。"[\s\S]*?fontWeight: '900'/,
-      /text=\{reminder\.title\}[\s\S]*?fontWeight: '900'/,
-      /text=\{timeText\}[\s\S]*?fontWeight: '800'/,
+      /text="ふわっと。"[\s\S]*?fontWeight: '800'/,
+      /text=\{reminder\.title\}[\s\S]*?fontWeight: '700'/,
+      /text=\{timeText\}[\s\S]*?fontWeight: '600'/,
       /text="＋"[\s\S]*?fontSize: 22/,
     ],
     excludes: [/text="右下から"/, /text="↓"/],
   });
 });
 
-test('android widget add button keeps a restrained pearl finish without embossed text', () => {
+test('android widget add button uses one solid action surface without ornamental effects', () => {
   const addButtonSource = source.slice(
     source.indexOf('function AddReminderButton'),
     source.indexOf('export function PopReminderWidget'),
@@ -163,11 +157,11 @@ test('android widget add button keeps a restrained pearl finish without embossed
 
   assertSourceContract(addButtonSource, {
     includes: [
-      /backgroundGradient: widgetTheme\.plusButtonGradient/,
+      /backgroundColor: widgetTheme\.plusButtonSurface as ColorProp/,
       /borderColor: widgetTheme\.plusButtonBorder as ColorProp/,
       /color: widgetTheme\.plusButtonText as ColorProp/,
     ],
-    excludes: [/textShadowColor/, /textShadowOffset/, /textShadowRadius/],
+    excludes: [/backgroundGradient/, /textShadowColor/, /textShadowOffset/, /textShadowRadius/],
   });
 });
 
@@ -196,32 +190,26 @@ test('android widget clips native click feedback to rounded controls', () => {
   ]);
 });
 
-test('android widget uses local time-based sky assets behind a lightweight glass veil', () => {
+test('android widget uses one neutral material without decorative background layers', () => {
   assertSourceContract(source, {
     includes: [
-      /ImageWidget/,
-      /import \{ getWidgetSkyPeriod(?:, type WidgetSkyPeriod)? \} from '\.\/widgetSky';/,
-      /const widgetSkyAssets(?:\s*:\s*Record<WidgetSkyPeriod, ImageRequireSource>)? = \{/,
-      /morning: require\('\.\.\/\.\.\/assets\/widget-sky-morning\.png'\)/,
-      /day: require\('\.\.\/\.\.\/assets\/widget-sky-day\.png'\)/,
-      /sunset: require\('\.\.\/\.\.\/assets\/widget-sky-sunset\.png'\)/,
-      /night: require\('\.\.\/\.\.\/assets\/widget-sky-night\.png'\)/,
-      /image=\{getWidgetSkyAsset\(\)\}/,
-      /imageWidth=\{widgetWidth\}/,
-      /imageHeight=\{widgetHeight\}/,
-      /backgroundColor: widgetTheme\.glassVeil as ColorProp/,
+      /backgroundColor: widgetTheme\.surface as ColorProp/,
+      /borderColor: widgetTheme\.surfaceBorder as ColorProp/,
     ],
-    excludes: [/SvgWidget/, /makeFrostedGlassSurfaceSvg/],
+    excludes: [
+      /ImageWidget/,
+      /ImageRequireSource/,
+      /widgetSky/,
+      /widget-sky-/,
+      /skyPresentation/,
+      /textShadowColor/,
+      /SvgWidget/,
+      /makeFrostedGlassSurfaceSvg/,
+    ],
   });
-
-  const skyAssetBlock = source.slice(
-    source.indexOf('const widgetSkyAssets'),
-    source.indexOf('function WidgetHeader'),
-  );
-  assert.equal(/https?:\/\//.test(skyAssetBlock), false);
 });
 
-test('widget sky changes are refreshed by the native periodic widget update', () => {
+test('native periodic updates keep expired reminders out while the app is closed', () => {
   assertSourceIncludes(appConfigSource, [
     /"name": "PopReminderWidget"[\s\S]*"updatePeriodMillis": 1800000/,
   ]);
