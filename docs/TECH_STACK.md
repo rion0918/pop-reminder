@@ -96,6 +96,7 @@ graph TB
 | **react-native-android-widget** | `^0.20.3`  | Android ホーム画面 Widget の描画・タスク同期             |
 | **expo-linking**                | `~8.0.12`  | 通知や Widget からの Deep Link 処理                      |
 | **expo-haptics**                | `~15.0.8`  | 泡が破裂する際の物理ハプティクスフィードバック           |
+| **posthog-react-native**        | `^4.62.0`  | 匿名イベント計測、手動画面追跡、永続的な opt in / out    |
 
 ---
 
@@ -126,6 +127,7 @@ src/
 │   ├── reminders/     # リマインダー機能 (domain, application, infrastructure, presentation, UI)
 │   └── settings/      # 設定機能 (domain, application, infrastructure, presentation, UI)
 ├── lib/
+│   ├── analytics/     # PostHog Adapter・イベント許可リスト
 │   └── notifications/ # Expo Notifications 管理
 ├── shared/            # 共通 UI コンポーネントおよびユーティリティ
 ├── test-utils/        # ソース契約・テストヘルパー

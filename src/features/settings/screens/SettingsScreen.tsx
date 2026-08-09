@@ -63,7 +63,7 @@ type LegalDocument = {
 
 const privacyPolicyDocument: LegalDocument = {
   title: 'プライバシーポリシー',
-  updatedAt: '2026年7月14日',
+  updatedAt: '2026年8月9日',
   sections: [
     {
       title: '1. 基本方針',
@@ -71,22 +71,26 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '2. 保存する情報',
-      body: '登録したリマインダーのタイトル、日時、通知ID、アプリ設定などを、お使いの端末内に保存します。現時点ではログイン機能や外部サーバーへの同期はありません。',
+      body: '登録したリマインダーのタイトル、日時、通知ID、アプリ設定などを、お使いの端末内に保存します。現時点ではログイン機能や登録データの外部サーバーへの同期はありません。',
     },
     {
       title: '3. 通知権限について',
       body: '本アプリは、お知らせを届けるために端末の通知権限を利用します。通知権限は端末の設定からいつでも変更できます。',
     },
     {
-      title: '4. 外部送信について',
-      body: '現時点では、登録したリマインダーや設定内容を開発者のサーバーへ送信することはありません。将来、外部サービスを利用する機能を追加する場合は、分かりやすくお知らせします。',
+      title: '4. 匿名の利用状況について',
+      body: '品質改善のため、SDKが生成する匿名ID、アプリ・端末の技術情報、ホーム・一覧・設定の画面表示、リマインダー操作や通知の結果を PostHog の US Cloud へ送信します。タイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません。',
     },
     {
-      title: '5. データの削除',
+      title: '5. 利用状況計測の停止',
+      body: '匿名の利用状況は初期状態で有効です。設定画面の「匿名の利用状況を共有」からいつでも停止・再開でき、選択は端末内に保存されます。タッチ操作の自動収集、セッションリプレイ、位置情報の推定、リモートFeature Flagは使用しません。',
+    },
+    {
+      title: '6. データの削除',
       body: 'アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。',
     },
     {
-      title: '6. お問い合わせ',
+      title: '7. お問い合わせ',
       body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
     },
   ],
@@ -103,7 +107,7 @@ const termsSections = [
   },
   {
     title: '3. データの取り扱い',
-    body: '登録したリマインダーや設定は、お使いの端末内に保存されます。現時点ではログイン機能や外部サーバーへの同期はありません。アプリの削除や端末の初期化により、保存データが失われる場合があります。',
+    body: '登録したリマインダーや設定は、お使いの端末内に保存されます。現時点ではログイン機能や登録データの外部サーバーへの同期はありません。アプリの削除や端末の初期化により、保存データが失われる場合があります。',
   },
   {
     title: '4. 通知について',
@@ -131,7 +135,7 @@ const termsDocument: LegalDocument = {
 
 export function SettingsScreen() {
   const router = useRouter();
-  const reminderServices = useAppServices().reminders;
+  const { reminders: reminderServices, analytics } = useAppServices();
   const { settings, loading, update, updatePreviousNotifyTime, isUpdatingPreviousNotifyTime } =
     useAppSettings();
   const {
@@ -156,6 +160,8 @@ export function SettingsScreen() {
   const [notificationPermissionLabel, setNotificationPermissionLabel] = useState('確認が必要');
   const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] = useState(false);
   const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] = useState(true);
+  const [isAnalyticsEnabled, setIsAnalyticsEnabled] = useState(false);
+  const [isAnalyticsPreferenceLoading, setIsAnalyticsPreferenceLoading] = useState(true);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
   const refreshNotificationPermissionStatus = useCallback(async () => {
@@ -183,6 +189,24 @@ export function SettingsScreen() {
   useEffect(() => {
     void refreshNotificationPermissionStatus();
   }, [refreshNotificationPermissionStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAnalyticsPreference = async () => {
+      const enabled = await analytics.getCaptureEnabled();
+      if (cancelled) return;
+
+      setIsAnalyticsEnabled(enabled);
+      setIsAnalyticsPreferenceLoading(false);
+    };
+
+    void loadAnalyticsPreference();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analytics]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -270,9 +294,22 @@ export function SettingsScreen() {
   };
 
   const handleRequestNotificationPermission = async () => {
-    await requestNotificationPermissions();
+    const permission = await requestNotificationPermissions();
+    analytics.captureNotificationPermissionUpdated({
+      status: permission.status,
+      canAskAgain: permission.canAskAgain,
+    });
     await refreshNotificationPermissionStatus();
     await retryPendingReminderNotifications();
+  };
+
+  const handleAnalyticsEnabledChange = async (value: boolean) => {
+    if (!analytics.configured || isAnalyticsPreferenceLoading) return;
+
+    setIsAnalyticsPreferenceLoading(true);
+    const enabled = await analytics.setCaptureEnabled(value);
+    setIsAnalyticsEnabled(enabled);
+    setIsAnalyticsPreferenceLoading(false);
   };
 
   const handleOpenAppSettings = async () => {
@@ -622,9 +659,29 @@ export function SettingsScreen() {
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow
+              icon="analytics-outline"
+              title="匿名の利用状況を共有"
+              caption="画面表示と操作結果のみ。内容は送信しません"
+            >
+              {isAnalyticsPreferenceLoading ? (
+                <ActivityIndicator size="small" color={palette.lavenderDeep} />
+              ) : (
+                <Switch
+                  accessibilityLabel="匿名の利用状況を共有"
+                  accessibilityState={{ disabled: !analytics.configured }}
+                  value={isAnalyticsEnabled}
+                  disabled={!analytics.configured}
+                  onValueChange={(value) => void handleAnalyticsEnabledChange(value)}
+                  trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
+                  thumbColor={isAnalyticsEnabled ? palette.lavenderDeep : palette.white}
+                />
+              )}
+            </SettingRow>
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
+            <SettingRow
               icon="shield-checkmark-outline"
               title="プライバシーポリシー"
-              caption="保存データと通知権限について"
+              caption="保存データ、通知権限、利用状況の計測について"
               onPress={() => setLegalDocument(privacyPolicyDocument)}
             >
               <Ionicons name="chevron-forward" size={18} color={palette.muted} />

@@ -276,7 +276,13 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.match(storeDraft, /## アプリ名\s+ふわっと。/);
   assert.match(storeDraft, /## 短い説明\s+忘れる前に、数秒だけ。/);
   assert.match(storeDraft, /データは端末内に保存/);
-  assert.match(storeDraft, /外部サーバーへの同期はありません/);
+  assert.match(storeDraft, /リマインダーデータの外部同期はありません/);
+  assert.match(storeDraft, /PostHog US Cloud/);
+  assert.match(storeDraft, /匿名の利用状況は設定画面からいつでも停止・再開できます/);
+  assert.match(
+    storeDraft,
+    /タイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません/,
+  );
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
   assert.match(storeDraft, /Widgetは別タスク/);
@@ -290,10 +296,16 @@ test('privacy policy draft is ready to publish for store review', () => {
   const privacyPolicy = readFileSync(privacyPolicyPath, 'utf8');
 
   assert.match(privacyPolicy, /プライバシーポリシー/);
-  assert.match(privacyPolicy, /最終更新日: 2026年7月14日/);
+  assert.match(privacyPolicy, /最終更新日: 2026年8月9日/);
   assert.match(privacyPolicy, /「ふわっと。」は/);
   assert.match(privacyPolicy, /端末内に保存/);
-  assert.match(privacyPolicy, /外部サーバーへの同期はありません/);
+  assert.match(privacyPolicy, /登録したリマインダーやアプリ設定を同期する機能はなく/);
+  assert.match(privacyPolicy, /PostHog US Cloud/);
+  assert.match(privacyPolicy, /いつでも停止・再開できます/);
+  assert.match(
+    privacyPolicy,
+    /リマインダーのタイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません/,
+  );
   assert.match(privacyPolicy, /通知権限/);
   assert.match(privacyPolicy, /データの削除/);
   assert.match(privacyPolicy, /Google PlayやApp Store/);

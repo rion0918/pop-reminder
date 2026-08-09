@@ -1,10 +1,20 @@
-import { createContext, type PropsWithChildren, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type PropsWithChildren,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { AppState, Platform } from 'react-native';
+import { usePathname } from 'expo-router';
+import { PostHogProvider } from 'posthog-react-native';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { appServices, type AppServices } from './appServices';
 
 const AppServicesContext = createContext<AppServices | null>(null);
+const trackedPathnames = new Set(['/', '/reminders-list', '/settings']);
 
 export function useAppServices() {
   const services = useContext(AppServicesContext);
@@ -13,12 +23,22 @@ export function useAppServices() {
 }
 
 export function AppProviders({ children }: PropsWithChildren) {
+  const pathname = usePathname();
+  const previousPathnameRef = useRef<string | null>(null);
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       }),
   );
+
+  useEffect(() => {
+    if (!trackedPathnames.has(pathname)) return;
+    if (previousPathnameRef.current === pathname) return;
+
+    previousPathnameRef.current = pathname;
+    appServices.analytics.captureScreen(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -34,9 +54,17 @@ export function AppProviders({ children }: PropsWithChildren) {
     return () => subscription.remove();
   }, []);
 
-  return (
+  const providers = (
     <AppServicesContext.Provider value={appServices}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </AppServicesContext.Provider>
+  );
+
+  return appServices.analytics.client ? (
+    <PostHogProvider client={appServices.analytics.client} autocapture={false}>
+      {providers}
+    </PostHogProvider>
+  ) : (
+    providers
   );
 }

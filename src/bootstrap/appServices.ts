@@ -8,6 +8,7 @@ import {
   requestNotificationPermissions,
   scheduleTestReminderNotifications,
 } from '../lib/notifications/reminderNotifications';
+import { posthogAnalytics } from '../lib/analytics/posthogAnalytics';
 import { updateWidget } from '../widget/widgetUpdateService';
 
 const widgetGateway = {
@@ -21,6 +22,7 @@ const widgetGateway = {
 };
 
 export const appServices = {
+  analytics: posthogAnalytics,
   reminders: createReminderUseCases({
     reminders: sqliteReminderRepository,
     settings: {

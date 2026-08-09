@@ -376,6 +376,24 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 
 ---
 
+### 15.1 匿名の利用状況（PostHog）
+
+Development Build に検証用の `EXPO_PUBLIC_POSTHOG_API_KEY` と US Cloud host を設定し、PostHog Live Events を開いて確認する。
+
+- [ ] ホーム、一覧、設定へ移動すると、`/`、`/reminders-list`、`/settings` の `$screen` が各遷移につき1回だけ届く
+- [ ] クイック追加を開く、リマインダーを作成・編集・削除する、通知権限を更新すると、計画した5種類のカスタムイベントが成功後にだけ届く
+- [ ] タイトル、リマインダーID、具体的な日付・時刻、設定値、検索パラメータ、ディープリンクURLがイベントに含まれない
+- [ ] 「匿名の利用状況を共有」をOFFにすると新しいイベントが届かず、アプリを再起動してもOFFが維持される
+- [ ] スイッチをONに戻すとイベント送信が再開する
+- [ ] API key 未設定ではスイッチがOFF・操作不可になり、起動、画面遷移、リマインダー操作は通常どおり動作する
+
+**期待される結果**
+
+- PostHog には許可した画面名と操作結果だけが匿名IDで届く
+- opt out / opt in が端末内に永続化され、計測の失敗がアプリ操作を妨げない
+
+---
+
 ### Android Widget（Development Build）
 
 Android Widget は Expo Go では確認せず、Widget 対応済みの Development Build をホーム画面へ追加して確認する。装飾画像や時間帯別の背景切り替えは使わず、単一のニュートラル面と不透明な白い行カードで情報を優先する。AndroidのRemoteViewsは任意の連続アニメーションを実行できず、`updatePeriodMillis` の下限も30分のため、アプリ終了中の期限切れ除外はbest-effortとして扱う。

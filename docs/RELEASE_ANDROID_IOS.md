@@ -38,6 +38,12 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 - Android 提出番号: `app.json` の `expo.android.versionCode`
 - iOS 提出番号: `app.json` の `expo.ios.buildNumber`
 
+4. PostHog のリリース設定と匿名計測を確認する。
+
+- EAS の対象環境に `EXPO_PUBLIC_POSTHOG_API_KEY` を設定し、`EXPO_PUBLIC_POSTHOG_HOST` は US Cloud (`https://us.i.posthog.com`) を使用する。
+- Development Build と PostHog Live Events で、3画面、主要5イベント、opt out / opt in、機微情報が含まれないことを確認する。
+- project token を `.env` やリポジトリへコミットしない。
+
 ## Android 先行リリース
 
 1. 実機確認用APKを作る。
@@ -72,6 +78,7 @@ eas build --profile production --platform android
 - 内部テストまたはクローズドテストに配布する。
 - 個人開発者アカウントでクローズドテスト要件が出る場合は、必要なテスター数と期間を満たす。
 - Google Play提出前に `expo.android.versionCode` が前回提出版より大きいことを確認する。
+- Google Play Console のデータ安全性を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
 
 ## App Store 後追いリリース
 
@@ -97,6 +104,7 @@ eas build --profile production --platform ios
 - App Store提出前に `expo.ios.buildNumber` が前回提出版より大きいことを確認する。
 - `ITSAppUsesNonExemptEncryption = false` と暗号化申告が一致していることを確認する。
 - プライバシーポリシーと利用規約の問い合わせ文言がApp Storeでも不自然でないことを確認する。
+- App Store Connect の App Privacy を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
 
 ## リリース後
 
