@@ -53,13 +53,13 @@ test('Zustand owns only the quick-add draft and development settings', () => {
   });
 });
 
-test('target time updates flow through the shared query cache on every reminder screen', () => {
+test('schedule updates flow through the shared query cache on every reminder screen', () => {
   assertSourceIncludes(querySource, [
-    /const updateTargetTimeMutation = useMutation/,
-    /services\.reminders\.updateTargetTime/,
-    /updateReminderTargetTime:/,
+    /const updateScheduleMutation = useMutation/,
+    /services\.reminders\.updateSchedule/,
+    /updateReminderSchedule:/,
   ]);
-  assertSourceIncludes(screensSource, [/updateReminderTargetTime/, /onUpdateTargetTime=/]);
+  assertSourceIncludes(screensSource, [/updateReminderSchedule/, /onUpdateSchedule=/]);
 });
 
 test('deferred deletes keep the active query stable until the owner finishes its motion', () => {

@@ -421,9 +421,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
     () =>
       reminders
         .slice(0, MAX_VISIBLE_BUBBLES)
-        .map(
-          (reminder) => `${reminder.id}:${Math.round(getTitleVisualLength(reminder.title) * 10)}`,
-        )
+        .map((reminder) => `${reminder.id}:${reminder.targetAt}:${reminder.title}`)
         .join(','),
     [reminders],
   );
@@ -666,7 +664,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
   }
 
   return (
-    <View onLayout={handleBoardLayout} style={styles.board}>
+    <View testID="reminder-bubble-board" onLayout={handleBoardLayout} style={styles.board}>
       {boardReady
         ? bubbleLayouts.map(({ reminder, visualIndex, size, width, height, positionStyle }) => {
             const isMultiSelected = selectedReminderIds?.has(reminder.id) ?? false;

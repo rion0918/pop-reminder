@@ -2,14 +2,9 @@ import { normalizeReminderTitle, type Reminder } from '../domain/reminder';
 import {
   buildPreviousNotifyAt,
   buildReminderSchedule,
-  replaceReminderTargetTime,
   validateReminderScheduleInput,
 } from '../domain/reminderSchedule';
-import type {
-  ReminderApplicationDependencies,
-  ReminderNotificationScheduleResult,
-  ReminderSingleNotificationScheduleResult,
-} from './ports';
+import type { ReminderApplicationDependencies, ReminderNotificationScheduleResult } from './ports';
 
 export type CreateReminderInput = {
   title: string;
@@ -32,9 +27,14 @@ type ScheduleUpdateOptions = {
   now?: Date;
 };
 
-export type UpdateReminderTargetTimeResult = {
+export type UpdateReminderScheduleInput = {
+  targetDate: string;
+  targetTime: string;
+};
+
+export type UpdateReminderScheduleResult = {
   reminder: Reminder;
-  notification: ReminderSingleNotificationScheduleResult | { status: 'unchanged' };
+  notification: ReminderNotificationScheduleResult | { status: 'unchanged' };
 };
 
 export type UpdatePreviousNotifyTimeResult = {
@@ -51,12 +51,6 @@ const schedulingFailedResult: ReminderNotificationScheduleResult = {
     previousNotificationId: null,
     targetNotificationId: null,
   },
-};
-
-const singleSchedulingFailedResult: ReminderSingleNotificationScheduleResult = {
-  status: 'not-scheduled',
-  reason: 'scheduling-failed',
-  notificationId: null,
 };
 
 export function createReminderUseCases(dependencies: ReminderApplicationDependencies) {
@@ -256,53 +250,84 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       return updatedReminder;
     },
 
-    async updateTargetTime(
+    async updateSchedule(
       id: string,
-      targetTime: string,
+      input: UpdateReminderScheduleInput,
       options?: ScheduleUpdateOptions,
-    ): Promise<UpdateReminderTargetTimeResult | null> {
+    ): Promise<UpdateReminderScheduleResult | null> {
       const reminder = await reminders.getById(id);
       if (!reminder) return null;
 
-      const nextTarget = replaceReminderTargetTime(reminder.targetAt, targetTime);
-      const nextTargetAt = nextTarget.toISOString();
-      if (nextTarget.getTime() <= (options?.now ?? new Date()).getTime()) {
+      const now = options?.now ?? new Date();
+      const currentSettings = await settings.get();
+      const schedule = buildReminderSchedule({
+        dateOffset: 0,
+        customTargetDate: input.targetDate,
+        targetTime: input.targetTime,
+        previousNotifyTime: currentSettings.previousNotifyTime,
+        now,
+      });
+      const nextTargetAt = schedule.targetAt.toISOString();
+      const nextPreviousNotifyAt = schedule.previousNotifyAt.toISOString();
+      const nextExpiresAt = schedule.expiresAt.toISOString();
+
+      if (schedule.targetAt.getTime() <= now.getTime()) {
         throw new Error('Reminder target time must be in the future');
       }
-      if (nextTargetAt === reminder.targetAt) {
+
+      if (
+        nextTargetAt === reminder.targetAt &&
+        nextPreviousNotifyAt === reminder.previousNotifyAt &&
+        nextExpiresAt === reminder.expiresAt
+      ) {
         return { reminder, notification: { status: 'unchanged' } };
       }
 
-      let persistedReminder = await reminders.updateTargetSchedule(id, {
+      let persistedReminder = await reminders.updateSchedule(id, {
         targetAt: nextTargetAt,
+        previousNotifyAt: nextPreviousNotifyAt,
         targetNotifyAt: nextTargetAt,
+        expiresAt: nextExpiresAt,
+        previousNotificationId: null,
         targetNotificationId: null,
       });
       if (!persistedReminder) return null;
 
-      await notifications.cancelOne(reminder.targetNotificationId);
+      await notifications.cancel(reminder);
 
-      let notification = singleSchedulingFailedResult;
+      let notification = schedulingFailedResult;
       try {
-        const currentSettings = await settings.get();
-        notification = await notifications.scheduleTarget(persistedReminder, {
+        notification = await notifications.schedule(persistedReminder, {
           soundEnabled: currentSettings.notificationSoundEnabled,
         });
-        if (notification.status === 'scheduled') {
-          const reminderWithNotification = await reminders.updateTargetSchedule(id, {
-            targetAt: nextTargetAt,
-            targetNotifyAt: nextTargetAt,
-            targetNotificationId: notification.notificationId,
-          });
+        const hasReplacement =
+          notification.ids.previousNotificationId !== null ||
+          notification.ids.targetNotificationId !== null;
+        if (hasReplacement) {
+          const reminderWithNotification = await reminders.updateNotificationIds(
+            id,
+            notification.ids,
+          );
           if (reminderWithNotification) {
             persistedReminder = reminderWithNotification;
           } else {
-            await notifications.cancelOne(notification.notificationId);
-            notification = singleSchedulingFailedResult;
+            await notifications.cancel({ ...persistedReminder, ...notification.ids });
+            notification = schedulingFailedResult;
           }
         }
       } catch (error) {
-        console.warn('Failed to schedule target notification after time update', error);
+        if (
+          notification.ids.previousNotificationId !== null ||
+          notification.ids.targetNotificationId !== null
+        ) {
+          await notifications
+            .cancel({ ...persistedReminder, ...notification.ids })
+            .catch((cancelError) => {
+              console.warn('Failed to cancel replacement notifications', cancelError);
+            });
+          notification = schedulingFailedResult;
+        }
+        console.warn('Failed to schedule reminder notifications after schedule update', error);
       }
 
       await widget.sync();

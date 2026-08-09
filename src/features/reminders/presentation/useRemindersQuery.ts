@@ -96,9 +96,14 @@ export function useRemindersQuery() {
       void reconcile();
     },
   });
-  const updateTargetTimeMutation = useMutation({
-    mutationFn: ({ id, targetTime }: { id: string; targetTime: string }) =>
-      services.reminders.updateTargetTime(id, targetTime),
+  const updateScheduleMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Parameters<typeof services.reminders.updateSchedule>[1];
+    }) => services.reminders.updateSchedule(id, input),
     onSuccess: (result) => {
       if (result) upsertReminder(result.reminder);
       void reconcile();
@@ -156,8 +161,10 @@ export function useRemindersQuery() {
       deleteManyMutation.mutateAsync({ ids, ...options }),
     updateReminderTitle: (id: string, title: string) =>
       updateTitleMutation.mutateAsync({ id, title }),
-    updateReminderTargetTime: (id: string, targetTime: string) =>
-      updateTargetTimeMutation.mutateAsync({ id, targetTime }),
+    updateReminderSchedule: (
+      id: string,
+      input: Parameters<typeof services.reminders.updateSchedule>[1],
+    ) => updateScheduleMutation.mutateAsync({ id, input }),
     isCreating: createMutation.isPending,
     isDeletingReminders: deleteManyMutation.isPending,
   };

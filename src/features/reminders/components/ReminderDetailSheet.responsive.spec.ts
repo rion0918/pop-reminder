@@ -55,7 +55,7 @@ test('reminder detail sheet presents the editable target before the shared previ
       /formatReminderDetailTime/,
       /formatReminderDetailAccessibilityDateTime/,
       /accessibilityLabel=\{`前日のお知らせ、\$\{previousAccessibilityDateTime\}`\}/,
-      /accessibilityLabel="当日のお知らせ時刻を編集"/,
+      /accessibilityLabel="当日のお知らせ日時を編集"/,
       /accessibilityHint=\{targetAccessibilityDateTime\}/,
       /ImageBackground/,
       /reminder-detail-bubbles\.png/,
@@ -63,6 +63,9 @@ test('reminder detail sheet presents the editable target before the shared previ
       /styles\.targetTimeHint/,
       /styles\.scheduleDivider/,
       /styles\.previousScheduleRow/,
+      /styles\.previousScheduleRowPast/,
+      /前日のお知らせ時刻は過ぎています/,
+      /shouldShowPreviousNotification/,
       /name="notifications-outline"/,
       /closeButton: \{[\s\S]*width: 48,[\s\S]*height: 48,[\s\S]*borderRadius: 24,/,
     ],
@@ -76,22 +79,22 @@ test('reminder detail sheet presents the editable target before the shared previ
   });
 });
 
-test('reminder detail sheet edits only the target time and labels the shared previous time', () => {
+test('reminder detail sheet opens the schedule editor and saves its result', () => {
   assertSourceContract(source, {
     includes: [
-      /すべての泡に共通/,
-      /accessibilityLabel="当日のお知らせ時刻を編集"/,
-      /onUpdateTargetTime:/,
-      /const handleTargetTimeConfirm = useCallback/,
-      /<TimePickerModal/,
-      /onConfirm=\{handleTargetTimeConfirm\}/,
-      /過去の時刻には変更できません/,
-      /時刻は変更しましたが、通知を予約できませんでした/,
+      /accessibilityLabel="当日のお知らせ日時を編集"/,
+      /onUpdateSchedule:/,
+      /const handleScheduleConfirm = useCallback/,
+      /ReminderScheduleEditorModal/,
+      /onConfirm=\{handleScheduleConfirm\}/,
+      /日時は変更しましたが、通知を予約できませんでした/,
     ],
     excludes: [
       /accessibilityLabel="前日のお知らせ時刻を編集"/,
+      /すべての泡に共通/,
       /name="create-outline"/,
       /targetEditIcon/,
+      /タップして時間を変更/,
     ],
   });
 });
