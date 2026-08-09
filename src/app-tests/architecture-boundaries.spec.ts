@@ -38,6 +38,7 @@ const presentationSources = readProductionSources(['features/**/*.ts', 'features
   ({ path }) => !/features\/[^/]+\/(?:application|domain|infrastructure)\//.test(path),
 );
 const routeSources = readProductionSources(['app/**/*.ts', 'app/**/*.tsx']);
+const allProductionSources = readProductionSources(['**/*.ts', '**/*.tsx']);
 
 test('boundary matchers include side-effect-only imports', () => {
   assert.match("import 'date-fns';", externalPackageImport);
@@ -60,4 +61,15 @@ test('presentation does not import infrastructure adapters', () => {
 
 test('app routes delegate infrastructure setup to bootstrap', () => {
   assertSourcesDoNotMatch(routeSources, infrastructureImport);
+});
+
+test('RevenueCat SDK imports stay inside the purchase infrastructure adapter', () => {
+  const revenueCatSources = allProductionSources.filter(({ source }) =>
+    /from ['"]react-native-purchases(?:-ui)?['"]/.test(source),
+  );
+
+  assert.ok(revenueCatSources.length > 0);
+  for (const { path } of revenueCatSources) {
+    assert.match(path, /^features\/purchases\/infrastructure\//);
+  }
 });

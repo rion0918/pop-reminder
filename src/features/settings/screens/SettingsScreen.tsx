@@ -9,6 +9,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,7 @@ import { useAppServices } from '../../../bootstrap/AppProviders';
 import { SettingRow } from '../components/SettingRow';
 import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
 import { useNotificationSettings } from '../presentation/useNotificationSettings';
+import { useProAccessQuery } from '../../purchases/presentation/useProAccessQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
 import { TimeSelector } from '../../../shared/components/TimeSelector';
@@ -79,18 +81,22 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '4. 匿名の利用状況について',
-      body: '品質改善のため、SDKが生成する匿名ID、アプリ・端末の技術情報、ホーム・一覧・設定の画面表示、リマインダー操作や通知の結果を PostHog の US Cloud へ送信します。タイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません。',
+      body: '品質改善のため、SDKが生成する匿名ID、アプリ・端末の技術情報、ホーム・一覧・設定の画面表示、リマインダー操作、通知、Pro購入導線の結果を PostHog の US Cloud へ送信します。タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません。',
     },
     {
       title: '5. 利用状況計測の停止',
       body: '匿名の利用状況は初期状態で有効です。設定画面の「匿名の利用状況を共有」からいつでも停止・再開でき、選択は端末内に保存されます。タッチ操作の自動収集、セッションリプレイ、位置情報の推定、リモートFeature Flagは使用しません。',
     },
     {
-      title: '6. データの削除',
+      title: '6. アプリ内購入について',
+      body: '買い切りの「ふわっと。Pro」を提供するため RevenueCat、Apple App Store、Google Play を利用します。RevenueCatにはSDKが生成する匿名購入ID、購入商品、購入・復元・権利状態、アプリ・端末の技術情報が送信されます。リマインダーの内容は送信しません。',
+    },
+    {
+      title: '7. データの削除',
       body: 'アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。',
     },
     {
-      title: '7. お問い合わせ',
+      title: '8. お問い合わせ',
       body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
     },
   ],
@@ -114,15 +120,19 @@ const termsSections = [
     body: '本アプリは、端末の通知権限を利用してお知らせを表示します。通知の表示や通知音は、OS設定、集中モード、通信環境、端末の状態などの影響を受ける場合があります。',
   },
   {
-    title: '5. 免責事項',
+    title: '5. アプリ内購入',
+    body: '無料版では、現在時刻より後に通知予定がある有効なリマインダーを同時に6件まで登録できます。「ふわっと。Pro」は、ストアに表示される価格で忘れたくないことを無制限に追加できる買い切り商品です。自動更新はありません。購入の請求、返金、取消はApple App StoreまたはGoogle Playの規約に従います。購入権利は購入時と同じストアアカウントで復元できますが、AndroidとiOSの間では共有されません。返金や取消が確認された場合、Pro機能は利用できなくなります。',
+  },
+  {
+    title: '6. 免責事項',
     body: '本アプリの利用により生じた損失、予定の見落とし、通知の不達などについて、開発者は法令で認められる範囲で責任を負いません。本アプリは学生の個人開発者により提供されています。',
   },
   {
-    title: '6. 規約の変更',
+    title: '7. 規約の変更',
     body: '必要に応じて、この利用規約を変更することがあります。重要な変更がある場合は、アプリ内などで分かりやすくお知らせします。',
   },
   {
-    title: '7. お問い合わせ',
+    title: '8. お問い合わせ',
     body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
   },
 ];
@@ -135,7 +145,8 @@ const termsDocument: LegalDocument = {
 
 export function SettingsScreen() {
   const router = useRouter();
-  const { reminders: reminderServices, analytics } = useAppServices();
+  const { reminders: reminderServices, analytics, purchases } = useAppServices();
+  const { proAccessState, isProAccessLoading, refreshProAccess } = useProAccessQuery();
   const { settings, loading, update, updatePreviousNotifyTime, isUpdatingPreviousNotifyTime } =
     useAppSettings();
   const {
@@ -162,8 +173,10 @@ export function SettingsScreen() {
   const [canAskNotificationPermissionAgain, setCanAskNotificationPermissionAgain] = useState(true);
   const [isAnalyticsEnabled, setIsAnalyticsEnabled] = useState(false);
   const [isAnalyticsPreferenceLoading, setIsAnalyticsPreferenceLoading] = useState(true);
+  const [isPurchaseActionPending, setIsPurchaseActionPending] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
+  const isNativePurchasePlatform = Platform.OS === 'android' || Platform.OS === 'ios';
   const refreshNotificationPermissionStatus = useCallback(async () => {
     const permission = await getNotificationPermissionStatus();
     setNotificationPermissionLabel(permission.label);
@@ -212,13 +225,14 @@ export function SettingsScreen() {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         void refreshNotificationPermissionStatus();
+        void refreshProAccess();
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [refreshNotificationPermissionStatus]);
+  }, [refreshNotificationPermissionStatus, refreshProAccess]);
 
   const savePreviousTime = async (value: string) => {
     if (
@@ -312,6 +326,50 @@ export function SettingsScreen() {
     setIsAnalyticsPreferenceLoading(false);
   };
 
+  const handleOpenProPaywall = async () => {
+    if (isPurchaseActionPending) return;
+
+    setIsPurchaseActionPending(true);
+    try {
+      const result = await purchases.presentProPaywallIfNeeded();
+      analytics.captureProPaywallResult({ placement: 'settings', outcome: result });
+      await refreshProAccess();
+
+      if (result === 'error') {
+        Alert.alert(
+          'Proを確認できませんでした',
+          '通信状況を確認して、時間をおいてもう一度お試しください。',
+        );
+      }
+    } finally {
+      setIsPurchaseActionPending(false);
+    }
+  };
+
+  const handleRestoreProPurchase = async () => {
+    if (isPurchaseActionPending) return;
+
+    setIsPurchaseActionPending(true);
+    try {
+      const result = await purchases.restoreProPurchase();
+      analytics.captureProRestoreResult({ outcome: result });
+      await refreshProAccess();
+
+      if (result === 'restored') {
+        Alert.alert('購入を復元しました', 'ふわっと。Proを利用できます。');
+      } else if (result === 'no-purchase') {
+        Alert.alert('復元できる購入がありません', '購入時と同じストアアカウントをご確認ください。');
+      } else {
+        Alert.alert(
+          '購入を復元できませんでした',
+          '通信状況とストアアカウントを確認して、もう一度お試しください。',
+        );
+      }
+    } finally {
+      setIsPurchaseActionPending(false);
+    }
+  };
+
   const handleOpenAppSettings = async () => {
     try {
       await Linking.openSettings();
@@ -397,6 +455,63 @@ export function SettingsScreen() {
             className="mb-[30px] mt-[18px] h-[156px] w-[156px] self-center rounded-[36px]"
             style={styles.appIconShadow}
           />
+
+          {isNativePurchasePlatform ? (
+            <View className="mb-[18px] rounded-[24px] border border-[rgba(168,145,245,0.26)] bg-[rgba(255,255,255,0.88)] px-[16px] py-[14px]">
+              <View className="flex-row items-center gap-[12px]">
+                <View className="h-[38px] w-[38px] items-center justify-center rounded-[19px] bg-[#EEE8FF]">
+                  <Ionicons name="infinite-outline" size={22} color={palette.lavenderDeep} />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="text-[16px] font-black text-app-ink">ふわっと。Pro</Text>
+                  <Text className="mt-[3px] text-[12px] font-bold leading-[17px] text-app-muted">
+                    忘れたくないことを無制限に
+                  </Text>
+                </View>
+                {isProAccessLoading ? (
+                  <ActivityIndicator size="small" color={palette.lavenderDeep} />
+                ) : proAccessState === 'pro' ? (
+                  <View className="rounded-[14px] bg-[#E9F8F1] px-[12px] py-[8px]">
+                    <Text className="text-[12px] font-black text-app-mint-deep">Pro利用中</Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="ふわっと。Proを解放"
+                    accessibilityState={{ disabled: isPurchaseActionPending }}
+                    disabled={isPurchaseActionPending}
+                    onPress={() => void handleOpenProPaywall()}
+                    className="min-h-[40px] items-center justify-center rounded-[14px] bg-app-lavender-deep px-[14px]"
+                    style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+                  >
+                    {isPurchaseActionPending ? (
+                      <ActivityIndicator size="small" color={palette.white} />
+                    ) : (
+                      <Text className="text-[13px] font-black text-app-white">Proを解放</Text>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+              <Text className="ml-[50px] mt-[7px] text-[11px] font-bold text-app-muted">
+                {isProAccessLoading
+                  ? '利用状態を確認中'
+                  : proAccessState === 'pro'
+                    ? '現在の利用状態: Pro'
+                    : proAccessState === 'free'
+                      ? '現在の利用状態: 無料版（6件まで）'
+                      : '現在の利用状態を確認できません'}
+              </Text>
+              <View className="my-[10px] ml-[50px] h-px bg-[rgba(220,233,247,0.78)]" />
+              <SettingRow
+                icon="refresh-outline"
+                title="購入を復元"
+                caption="購入時と同じストアアカウントで復元します"
+                onPress={() => void handleRestoreProPurchase()}
+              >
+                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+              </SettingRow>
+            </View>
+          ) : null}
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow

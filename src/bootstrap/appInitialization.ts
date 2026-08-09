@@ -5,11 +5,14 @@ import {
 } from '../lib/notifications/reminderNotifications';
 import { appServices } from './appServices';
 
-export function configureAppRuntime() {
+export async function configureAppRuntime() {
   configureNotificationHandler();
-  return configureAndroidNotificationChannels().catch((error) => {
-    console.warn('Failed to configure notification channels', error);
-  });
+  await Promise.all([
+    configureAndroidNotificationChannels().catch((error) => {
+      console.warn('Failed to configure notification channels', error);
+    }),
+    appServices.purchases.configure(),
+  ]);
 }
 
 export async function prepareAppData() {

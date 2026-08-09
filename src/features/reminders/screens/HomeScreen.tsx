@@ -36,6 +36,7 @@ import {
 } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { triggerReminderSelectionHaptic } from '../utils/reminderSelectionFeedback';
+import { FREE_ACTIVE_REMINDER_LIMIT } from '../../purchases/domain/proAccess';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
@@ -45,6 +46,9 @@ const HOME_BUBBLE_CONTROLS_GAP = 12;
 const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =
   HOME_ADD_BUTTON_SIZE + HOME_BOTTOM_CONTROLS_OFFSET + HOME_BUBBLE_CONTROLS_GAP;
 const MAX_VISIBLE_HOME_BUBBLES = 12;
+
+type QuickAddSource = 'home_button' | 'widget_deep_link';
+type QuickAddOptions = { focusTitle?: boolean };
 
 function makeDeleteMotionKey(reminderId: string, phase: BubbleDeleteMotionPhase) {
   return `${reminderId}:${phase}`;
@@ -59,7 +63,7 @@ const dueLegendItems = [
 
 export function HomeScreen() {
   const router = useRouter();
-  const analytics = useAppServices().analytics;
+  const { analytics, purchases } = useAppServices();
   const routeParams = useLocalSearchParams<{ action?: string; id?: string; intent?: string }>();
   const { width: windowWidth } = useWindowDimensions();
   const {
@@ -106,7 +110,8 @@ export function HomeScreen() {
   );
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
-  const quickAddSourceRef = useRef<'home_button' | 'widget_deep_link'>('home_button');
+  const isQuickAddRequestPendingRef = useRef(false);
+  const quickAddSourceRef = useRef<QuickAddSource>('home_button');
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
   const isSelectionModeRef = useRef(false);
@@ -131,6 +136,60 @@ export function HomeScreen() {
   const isSelectionBusy = isDeletingReminders || isBulkDeletionInProgress;
 
   const [deleteMotion, setDeleteMotion] = useState<BubbleDeleteMotion | null>(null);
+
+  const openQuickAddForSource = useCallback(
+    (source: QuickAddSource, options?: QuickAddOptions) => {
+      isQuickAddOpenRef.current = true;
+      quickAddSourceRef.current = source;
+      analytics.captureQuickAddOpened({ source });
+      openQuickAdd(getQuickAddDefaultTime(), options);
+    },
+    [analytics, getQuickAddDefaultTime, openQuickAdd],
+  );
+
+  const showActiveLimitPaywall = useCallback(
+    async (source: QuickAddSource) => {
+      analytics.captureProGateReached({ source });
+      const result = await purchases.presentProPaywallIfNeeded();
+      analytics.captureProPaywallResult({ placement: 'active_limit', outcome: result });
+
+      if (result === 'cancelled') return false;
+      if (result === 'error') {
+        Alert.alert(
+          'Proを確認できませんでした',
+          '通信状況を確認して、時間をおいてもう一度お試しください。',
+        );
+        return false;
+      }
+
+      const accessState = await purchases.getProAccessState();
+      return result === 'purchased' || result === 'restored' || accessState !== 'free';
+    },
+    [analytics, purchases],
+  );
+
+  const requestQuickAdd = useCallback(
+    async (source: QuickAddSource, options?: QuickAddOptions) => {
+      if (isQuickAddOpenRef.current || isSavingRef.current || isQuickAddRequestPendingRef.current) {
+        return;
+      }
+
+      isQuickAddRequestPendingRef.current = true;
+      try {
+        if (reminders.length >= FREE_ACTIVE_REMINDER_LIMIT) {
+          const accessState = await purchases.getProAccessState();
+          if (accessState === 'free' && !(await showActiveLimitPaywall(source))) {
+            return;
+          }
+        }
+
+        openQuickAddForSource(source, options);
+      } finally {
+        isQuickAddRequestPendingRef.current = false;
+      }
+    },
+    [openQuickAddForSource, purchases, reminders.length, showActiveLimitPaywall],
+  );
 
   useEffect(() => {
     isQuickAddOpenRef.current = isQuickAddOpen;
@@ -161,20 +220,18 @@ export function HomeScreen() {
 
   useEffect(() => {
     if (!routeParams.intent || consumedIntentRef.current === routeParams.intent) return;
-    if (routeParams.action === 'view' && loading) return;
+    if ((routeParams.action === 'add' || routeParams.action === 'view') && loading) return;
 
     consumedIntentRef.current = routeParams.intent;
     if (routeParams.action === 'add') {
-      quickAddSourceRef.current = 'widget_deep_link';
-      analytics.captureQuickAddOpened({ source: 'widget_deep_link' });
-      openQuickAdd(getQuickAddDefaultTime(), { focusTitle: true });
+      void requestQuickAdd('widget_deep_link', { focusTitle: true });
     } else if (routeParams.action === 'view' && routeParams.id) {
       setSelectedReminderId(
         reminders.some((reminder) => reminder.id === routeParams.id) ? routeParams.id : null,
       );
     }
     router.setParams({ action: undefined, id: undefined, intent: undefined });
-  }, [analytics, getQuickAddDefaultTime, loading, openQuickAdd, reminders, routeParams, router]);
+  }, [loading, reminders, requestQuickAdd, routeParams, router]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -326,9 +383,30 @@ export function HomeScreen() {
           '当日の通知は予約されています。端末の通知設定を確認してください。',
         );
       }
+
+      if (reminders.length + 1 >= FREE_ACTIVE_REMINDER_LIMIT) {
+        const accessState = await purchases.getProAccessState();
+        if (accessState === 'free') {
+          closeQuickAdd();
+        }
+      }
     } catch (saveError) {
       console.warn('Failed to save reminder', saveError);
-      Alert.alert('追加できませんでした', 'タイトルと時刻を確認してください。');
+      if (saveError instanceof Error && saveError.name === 'ActiveReminderLimitReachedError') {
+        Alert.alert(
+          '無料版では6件まで追加できます',
+          'ふわっと。Proなら、忘れたくないことを無制限に追加できます。',
+          [
+            { text: 'あとで', style: 'cancel' },
+            {
+              text: 'Proを見る',
+              onPress: () => void showActiveLimitPaywall(quickAddSourceRef.current),
+            },
+          ],
+        );
+      } else {
+        Alert.alert('追加できませんでした', 'タイトルと時刻を確認してください。');
+      }
       throw saveError;
     } finally {
       isSavingRef.current = false;
@@ -336,15 +414,8 @@ export function HomeScreen() {
   };
 
   const handlePressAdd = useCallback(() => {
-    if (isQuickAddOpenRef.current || isSaving) {
-      return;
-    }
-
-    isQuickAddOpenRef.current = true;
-    quickAddSourceRef.current = 'home_button';
-    analytics.captureQuickAddOpened({ source: 'home_button' });
-    openQuickAdd(getQuickAddDefaultTime());
-  }, [analytics, getQuickAddDefaultTime, isSaving, openQuickAdd]);
+    void requestQuickAdd('home_button');
+  }, [requestQuickAdd]);
 
   const handleOpenReminderList = useCallback(() => {
     router.push('/reminders-list');

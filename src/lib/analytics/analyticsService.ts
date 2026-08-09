@@ -1,4 +1,8 @@
 import type { ReminderDatePreset } from '../../features/reminders/utils/reminderDatePresets';
+import type {
+  ProPaywallResult,
+  ProRestoreResult,
+} from '../../features/purchases/application/purchaseService';
 
 export type AnalyticsClient = {
   optedOut: boolean;
@@ -13,6 +17,7 @@ type QuickAddSource = 'home_button' | 'widget_deep_link';
 type ReminderSurface = 'home' | 'reminders_list';
 type NotificationStatus = 'scheduled' | 'partial' | 'not-scheduled' | 'unchanged';
 type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined';
+type ProPaywallPlacement = 'active_limit' | 'settings';
 
 export const ALLOWED_ANALYTICS_EVENTS = [
   '$screen',
@@ -21,6 +26,9 @@ export const ALLOWED_ANALYTICS_EVENTS = [
   'reminder edited',
   'reminder deleted',
   'notification permission updated',
+  'pro gate reached',
+  'pro paywall result',
+  'pro restore result',
 ] as const;
 
 const allowedAnalyticsEventSet = new Set<string>(ALLOWED_ANALYTICS_EVENTS);
@@ -120,6 +128,21 @@ export function createAnalyticsService<TClient extends AnalyticsClient = Analyti
         status: input.status,
         can_ask_again: input.canAskAgain,
       });
+    },
+
+    captureProGateReached(input: { source: QuickAddSource }) {
+      capture('pro gate reached', { source: input.source });
+    },
+
+    captureProPaywallResult(input: { placement: ProPaywallPlacement; outcome: ProPaywallResult }) {
+      capture('pro paywall result', {
+        placement: input.placement,
+        outcome: input.outcome,
+      });
+    },
+
+    captureProRestoreResult(input: { outcome: ProRestoreResult }) {
+      capture('pro restore result', { outcome: input.outcome });
     },
 
     async getCaptureEnabled() {

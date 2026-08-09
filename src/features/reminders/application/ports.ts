@@ -1,4 +1,5 @@
 import type { AppSettings } from '../../settings/domain/appSettings';
+import type { ProAccessState } from '../../purchases/application/purchaseService';
 import type { CreateReminderDraft, Reminder } from '../domain/reminder';
 
 export type ReminderNotificationIds = Pick<
@@ -114,9 +115,14 @@ export type WidgetSyncGateway = {
   sync(): Promise<void>;
 };
 
+export type ProAccessGateway = {
+  getState(): Promise<ProAccessState>;
+};
+
 export type ReminderApplicationDependencies = {
   reminders: ReminderRepository;
   notifications: ReminderNotificationGateway;
   settings: ReminderSettingsGateway;
   widget: WidgetSyncGateway;
+  proAccess: ProAccessGateway;
 };

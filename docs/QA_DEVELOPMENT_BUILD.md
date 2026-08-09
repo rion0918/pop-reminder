@@ -394,6 +394,31 @@ Development Build に検証用の `EXPO_PUBLIC_POSTHOG_API_KEY` と US Cloud hos
 
 ---
 
+### 15.2 買い切りPro（RevenueCat）
+
+前提として [RevenueCatセットアップ](REVENUECAT_SETUP.md) を完了し、対象environmentへプラットフォーム別の公開SDK keyを設定する。実購入はExpo GoではなくDevelopment Buildまたはストアの内部テスト版で行う。
+
+- [ ] 初回起動だけではPaywallが表示されない
+- [ ] 無料状態で期限内の泡を6件まで追加できる
+- [ ] 6件目を追加した後に追加Sheetが閉じ、7件目の追加ボタンを押すと入力前にPaywallが表示される
+- [ ] Android Widgetの追加Deep Linkでも、7件目は同じPaywallへ進む
+- [ ] Paywallに「泡を、好きなだけ。」「買い切り・自動更新なし」、ストアのローカライズ済み価格、閉じる、購入復元が表示される
+- [ ] Paywallを閉じても既存6件は編集、削除、通知できる
+- [ ] 購入成功後は追加Sheetが開き、7件目以降を追加できる
+- [ ] 設定画面に「ふわっと。Pro」「Pro利用中」が表示される
+- [ ] 設定画面の「購入を復元」で、同じストアアカウントの購入を復元できる
+- [ ] 購入履歴がない場合と通信エラーの場合に、それぞれ異なる案内が表示される
+- [ ] 返金・取消後も既存の泡は削除されず、新しい泡の追加だけが6件で止まる
+- [ ] RevenueCat API key未設定、オフライン、CustomerInfo取得失敗でもクラッシュせず、件数制限はfail-openする
+- [ ] WebではProカードとPaywallを表示せず、7件以上追加できる
+- [ ] PostHogへタイトル、日時、価格、取引IDを送らず、上限到達・Paywall結果・復元結果だけを送る
+
+**期待される結果**
+
+- 無料ユーザーは価値体験前に課金を求められず、7件目だけが明確にPro導線へ接続される
+- 購入・復元・キャンセル・エラー・権利取消のいずれでもリマインダーデータを失わない
+- RevenueCat Customer画面の匿名ユーザー、`fuwatto_pro_lifetime`、`pro` entitlementが一致する
+
 ### Android Widget（Development Build）
 
 Android Widget は Expo Go では確認せず、Widget 対応済みの Development Build をホーム画面へ追加して確認する。装飾画像や時間帯別の背景切り替えは使わず、単一のニュートラル面と不透明な白い行カードで情報を優先する。AndroidのRemoteViewsは任意の連続アニメーションを実行できず、`updatePeriodMillis` の下限も30分のため、アプリ終了中の期限切れ除外はbest-effortとして扱う。
@@ -494,6 +519,7 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 | 16  | バンドル読み込み速度        | 初回のみネイティブ                    | 毎回 Metro からロード     | □             |
 | 17  | フォント/アセット読み込み   | 事前にバンドル済み                    | 同左                      | □             |
 | 18  | ディープリンク（`scheme`）  | `popreminder://`                      | 同左                      | □             |
+| 19  | RevenueCat購入・復元        | Development Build / ストアテスト      | 実購入不可                | □             |
 
 ---
 
@@ -510,6 +536,9 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 - [ ] 追加Sheetと詳細Sheetを開いた状態でAndroid Backキーを押し、画面離脱ではなくSheetだけ閉じることを確認する
 - [ ] Android 小画面端末で Home、追加 Sheet、設定画面、一覧画面が崩れない
 - [ ] Google Play の配布ページから問い合わせ導線を用意する
+- [ ] Google Playの非消耗型商品 `fuwatto_pro_lifetime` が800円で有効になっている
+- [ ] RevenueCatのdefault offeringと`pro` entitlementがGoogle Play商品へ接続されている
+- [ ] ライセンステスターで購入、復元、返金後の権利取消を確認する
 
 **期待される結果**
 
@@ -527,6 +556,8 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 - [ ] iOS 実機で通知権限、通知音 ON/OFF、通知タップ復帰を確認する
 - [ ] プライバシーポリシーと利用規約の問い合わせ文言が App Store でも不自然でない
 - [ ] `ITSAppUsesNonExemptEncryption = false` が App Store Connect の暗号化申告と一致している
+- [ ] App Store Connectの非消耗型商品 `fuwatto_pro_lifetime` とRevenueCatの`pro` entitlementが接続されている
+- [ ] Sandbox testerで購入、復元、返金後の権利取消を確認する
 
 **期待される結果**
 

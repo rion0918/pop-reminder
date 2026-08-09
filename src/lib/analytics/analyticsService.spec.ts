@@ -58,6 +58,9 @@ test('analytics emits only the approved event schema without reminder content', 
   });
   analytics.captureReminderDeleted({ surface: 'home', count: 2 });
   analytics.captureNotificationPermissionUpdated({ status: 'denied', canAskAgain: false });
+  analytics.captureProGateReached({ source: 'widget_deep_link' });
+  analytics.captureProPaywallResult({ placement: 'active_limit', outcome: 'purchased' });
+  analytics.captureProRestoreResult({ outcome: 'no-purchase' });
 
   assert.deepEqual(fake.captured, [
     { event: 'quick add opened', properties: { source: 'widget_deep_link' } },
@@ -84,6 +87,12 @@ test('analytics emits only the approved event schema without reminder content', 
       event: 'notification permission updated',
       properties: { status: 'denied', can_ask_again: false },
     },
+    { event: 'pro gate reached', properties: { source: 'widget_deep_link' } },
+    {
+      event: 'pro paywall result',
+      properties: { placement: 'active_limit', outcome: 'purchased' },
+    },
+    { event: 'pro restore result', properties: { outcome: 'no-purchase' } },
   ]);
   assert.deepEqual(
     [...ALLOWED_ANALYTICS_EVENTS],
@@ -94,6 +103,9 @@ test('analytics emits only the approved event schema without reminder content', 
       'reminder edited',
       'reminder deleted',
       'notification permission updated',
+      'pro gate reached',
+      'pro paywall result',
+      'pro restore result',
     ],
   );
   assert.equal(isAllowedAnalyticsEvent('$screen'), true);

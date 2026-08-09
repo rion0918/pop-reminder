@@ -12,12 +12,12 @@ const settingsSource = readSource(import.meta.url, '../../settings/screens/Setti
 
 test('home captures quick-add entry and successful reminder outcomes', () => {
   assertSourceIncludes(homeSource, [
-    /const analytics = useAppServices\(\)\.analytics;/,
+    /const \{ analytics, purchases \} = useAppServices\(\);/,
     /const datePreset = useReminderUiStore\(\(state\) => state\.datePreset\);/,
-    /quickAddSourceRef\.current = 'widget_deep_link';/,
-    /captureQuickAddOpened\(\{ source: 'widget_deep_link' \}\)/,
-    /quickAddSourceRef\.current = 'home_button';/,
-    /captureQuickAddOpened\(\{ source: 'home_button' \}\)/,
+    /quickAddSourceRef\.current = source;/,
+    /captureQuickAddOpened\(\{ source \}\)/,
+    /captureProGateReached\(\{ source \}\)/,
+    /captureProPaywallResult\(\{ placement: 'active_limit', outcome: result \}\)/,
     /const result = await createReminder\(/,
     /analytics\.captureReminderCreated\(/,
     /datePreset,/,
@@ -42,7 +42,7 @@ test('reminder list captures only successful edit and delete outcomes', () => {
 test('settings captures permission results and exposes persisted analytics opt-out', () => {
   assertSourceContract(settingsSource, {
     includes: [
-      /const \{ reminders: reminderServices, analytics \} = useAppServices\(\);/,
+      /const \{ reminders: reminderServices, analytics, purchases \} = useAppServices\(\);/,
       /const permission = await requestNotificationPermissions\(\);/,
       /analytics\.captureNotificationPermissionUpdated\(\{/,
       /status: permission\.status/,
@@ -51,6 +51,8 @@ test('settings captures permission results and exposes persisted analytics opt-o
       /await analytics\.setCaptureEnabled\(value\)/,
       /title="匿名の利用状況を共有"/,
       /value=\{isAnalyticsEnabled\}/,
+      /captureProPaywallResult\(\{ placement: 'settings', outcome: result \}\)/,
+      /captureProRestoreResult\(\{ outcome: result \}\)/,
     ],
     excludes: [/captureReminderCreated\([^)]*title/, /captureScreen\([^)]*routeParams/],
   });

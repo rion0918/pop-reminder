@@ -10,6 +10,7 @@ import {
 } from '../lib/notifications/reminderNotifications';
 import { posthogAnalytics } from '../lib/analytics/posthogAnalytics';
 import { updateWidget } from '../widget/widgetUpdateService';
+import { revenueCatPurchaseService } from '../features/purchases/infrastructure/revenueCatPurchaseService';
 
 const widgetGateway = {
   async sync() {
@@ -23,6 +24,7 @@ const widgetGateway = {
 
 export const appServices = {
   analytics: posthogAnalytics,
+  purchases: revenueCatPurchaseService,
   reminders: createReminderUseCases({
     reminders: sqliteReminderRepository,
     settings: {
@@ -32,6 +34,9 @@ export const appServices = {
     },
     notifications: reminderNotificationGateway,
     widget: widgetGateway,
+    proAccess: {
+      getState: revenueCatPurchaseService.getProAccessState,
+    },
   }),
   settings: sqliteSettingsRepository,
   notificationSettings: {

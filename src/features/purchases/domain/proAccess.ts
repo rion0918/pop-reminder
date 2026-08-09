@@ -1,0 +1,1 @@
+export const FREE_ACTIVE_REMINDER_LIMIT = 6;

@@ -18,6 +18,7 @@ graph TD
         PortRepo[ReminderRepository Port]
         PortNotif[ReminderNotificationGateway Port]
         PortWidget[WidgetSyncGateway Port]
+        PortPro[ProAccessGateway Port]
     end
 
     subgraph Domain ["3. Domain Layer (src/features/*/domain)"]
@@ -29,6 +30,7 @@ graph TD
         SQLiteRepo[SqliteReminderRepository]
         ExpoNotifGateway[ExpoNotificationGateway]
         AndroidWidgetGateway[AndroidWidgetGateway]
+        RevenueCatAdapter[RevenueCatPurchaseService]
     end
 
     subgraph Bootstrap ["5. Bootstrap Layer (src/bootstrap)"]
@@ -42,25 +44,28 @@ graph TD
     UC --> PortRepo
     UC --> PortNotif
     UC --> PortWidget
+    UC --> PortPro
 
     SQLiteRepo -. Implements .-> PortRepo
     ExpoNotifGateway -. Implements .-> PortNotif
     AndroidWidgetGateway -. Implements .-> PortWidget
+    RevenueCatAdapter -. Implements .-> PortPro
 
     AppServices -- Connects & Injects --> Application
 ```
 
 ### 🧩 階層構造とディレクトリ役割一覧
 
-| ディレクトリ              | 役割                        | 含まれる主な処理                                                            | 依存の向き                 |
-| :------------------------ | :-------------------------- | :-------------------------------------------------------------------------- | :------------------------- |
-| `src/app/`                | **ルーティング (UIの入口)** | Expo Router 画面エントリー、Deep Link・通知の起動初期化                     | ➔ `features/`              |
-| `src/features/reminders/` | **リマインダー機能**        | ドメインモデル、ユースケース、画面・コンポーネント・Zustand UI状態          | ➔ `db/`, `lib/` (Port経由) |
-| `src/features/settings/`  | **設定機能**                | 通知設定・クイック追加プリセット・アプリ設定画面                            | ➔ `db/`, `lib/` (Port経由) |
-| `src/db/`                 | **データベースインフラ**    | SQLite (Drizzle ORM) のスキーマ定義・クライアント・CRUD操作                 | 独立 (DB専用)              |
-| `src/lib/notifications/`  | **通知インフラ**            | Expo Notifications によるローカル通知の予約・キャンセル・権限管理           | 独立 (通知専用)            |
-| `src/widget/`             | **Android Widget**          | ウィジェット専用の独立SQLite参照・スナップショット更新・UIレンダリング      | 独立 (Widget専用)          |
-| `src/bootstrap/`          | **依存注入 (DI Container)** | アプリ起動時にインフラ実装（SQLite/通知）をユースケースに接続するアセンブラ | ➔ 全レイヤーを接続         |
+| ディレクトリ              | 役割                        | 含まれる主な処理                                                                 | 依存の向き                 |
+| :------------------------ | :-------------------------- | :------------------------------------------------------------------------------- | :------------------------- |
+| `src/app/`                | **ルーティング (UIの入口)** | Expo Router 画面エントリー、Deep Link・通知の起動初期化                          | ➔ `features/`              |
+| `src/features/reminders/` | **リマインダー機能**        | ドメインモデル、ユースケース、画面・コンポーネント・Zustand UI状態               | ➔ `db/`, `lib/` (Port経由) |
+| `src/features/purchases/` | **購入機能**                | Pro権利契約、RevenueCat Adapter、購入状態Query                                   | ➔ RevenueCat (Adapter経由) |
+| `src/features/settings/`  | **設定機能**                | 通知設定・クイック追加プリセット・アプリ設定画面                                 | ➔ `db/`, `lib/` (Port経由) |
+| `src/db/`                 | **データベースインフラ**    | SQLite (Drizzle ORM) のスキーマ定義・クライアント・CRUD操作                      | 独立 (DB専用)              |
+| `src/lib/notifications/`  | **通知インフラ**            | Expo Notifications によるローカル通知の予約・キャンセル・権限管理                | 独立 (通知専用)            |
+| `src/widget/`             | **Android Widget**          | ウィジェット専用の独立SQLite参照・スナップショット更新・UIレンダリング           | 独立 (Widget専用)          |
+| `src/bootstrap/`          | **依存注入 (DI Container)** | アプリ起動時にインフラ実装（SQLite/通知/購入）をユースケースに接続するアセンブラ | ➔ 全レイヤーを接続         |
 
 ### 🛡️ アーキテクチャの黄金律（守るべき3つの原則）
 
@@ -108,6 +113,7 @@ graph TD
 | **一時的 UI 状態**       | Zustand               | Quick Add の下書き、メニュー開閉、開発用デバッグ設定         |
 | **画面ローカル状態**     | Component State       | 削除モーション中のバブルID、選択状態、ローカルアニメーション |
 | **Deep Link 状態**       | Expo Router Params    | Widget や通知クリックからの画面遷移インテント                |
+| **Pro権利キャッシュ**    | TanStack Query        | RevenueCatから取得した権利状態。購入・復元・復帰時に再取得   |
 
 ---
 
@@ -118,5 +124,7 @@ graph TD
 - `ReminderRepository`: SQLite データベースへの保存・取得・削除。
 - `ReminderNotificationGateway`: ローカル通知の予約・キャンセル・権限確認。
 - `WidgetSyncGateway`: Android Widget スナップショットの同期。
+- `ProAccessGateway`: リマインダー作成前に `free` / `pro` / `unavailable` の権利状態を取得。
+- `PurchaseService`: RevenueCatの初期化、管理Paywall表示、購入復元。SDKの直接利用は購入infrastructureに限定。
 
 これらの Port を束ねるユースケースは、`src/bootstrap/appServices.ts` において具象実装と接続されます。

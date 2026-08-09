@@ -3,7 +3,11 @@ import { test } from 'node:test';
 
 import type { Reminder } from '../domain/reminder';
 import type { ReminderApplicationDependencies } from './ports';
-import { createReminderUseCases } from './reminderUseCases';
+import {
+  ActiveReminderLimitReachedError,
+  createReminderUseCases,
+  FREE_ACTIVE_REMINDER_LIMIT,
+} from './reminderUseCases';
 
 const reminder: Reminder = {
   id: 'reminder-1',
@@ -150,7 +154,17 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         events.push('widget');
       },
     },
+    proAccess: {
+      getState: async () => 'free',
+    },
   };
+}
+
+function makeActiveReminders(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    ...reminder,
+    id: `reminder-${index + 1}`,
+  }));
 }
 
 test('create persists before notification scheduling and widget sync', async () => {
@@ -164,6 +178,118 @@ test('create persists before notification scheduling and widget sync', async () 
   assert.equal(result.reminder.title, 'Pay rent');
   assert.deepEqual(result.notification, scheduledNotification);
   assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
+});
+
+test('free access allows the sixth active reminder', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.listActive = async () =>
+    makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT - 1);
+
+  await createReminderUseCases(dependencies).create(
+    { title: 'Sixth reminder', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
+});
+
+test('free access rejects the seventh active reminder before side effects', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.listActive = async () => makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT);
+
+  await assert.rejects(
+    createReminderUseCases(dependencies).create(
+      { title: 'Seventh reminder', dateOffset: 2, targetTime: '08:00' },
+      { now: new Date('2026-07-12T09:00:00+09:00') },
+    ),
+    ActiveReminderLimitReachedError,
+  );
+  assert.deepEqual(events, []);
+});
+
+test('pro and unavailable access fail open above the free active reminder limit', async () => {
+  for (const accessState of ['pro', 'unavailable'] as const) {
+    const events: string[] = [];
+    const dependencies = makeDependencies(events);
+    dependencies.proAccess.getState = async () => accessState;
+    dependencies.reminders.listActive = async () => makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT);
+
+    await createReminderUseCases(dependencies).create(
+      { title: `${accessState} reminder`, dateOffset: 2, targetTime: '08:00' },
+      { now: new Date('2026-07-12T09:00:00+09:00') },
+    );
+
+    assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
+  }
+});
+
+test('expired reminders do not consume the free active reminder limit', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.listActive = async () =>
+    makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT - 1);
+  dependencies.reminders.listExpired = async () => makeActiveReminders(3);
+
+  await createReminderUseCases(dependencies).create(
+    { title: 'Replacement reminder', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
+});
+
+test('deleting an active reminder returns one free slot', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  let activeReminders = makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT);
+  dependencies.reminders.listActive = async () => activeReminders;
+  dependencies.reminders.getById = async (id) =>
+    activeReminders.find((candidate) => candidate.id === id) ?? null;
+  dependencies.reminders.deleteById = async (id) => {
+    events.push('delete');
+    activeReminders = activeReminders.filter((candidate) => candidate.id !== id);
+  };
+  const useCases = createReminderUseCases(dependencies);
+
+  assert.equal(await useCases.delete(activeReminders[0].id), true);
+  events.length = 0;
+  await useCases.create(
+    { title: 'Replacement reminder', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.equal(activeReminders.length, FREE_ACTIVE_REMINDER_LIMIT - 1);
+  assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
+});
+
+test('Pro revocation preserves existing reminders and blocks only the next creation', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  let accessState: 'free' | 'pro' = 'pro';
+  let activeReminders = makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT);
+  dependencies.proAccess.getState = async () => accessState;
+  dependencies.reminders.listActive = async () => activeReminders;
+  const useCases = createReminderUseCases(dependencies);
+
+  await useCases.create(
+    { title: 'Seventh reminder', dateOffset: 2, targetTime: '08:00' },
+    { now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+  activeReminders = makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT + 1);
+  accessState = 'free';
+  events.length = 0;
+
+  await assert.rejects(
+    useCases.create(
+      { title: 'Eighth reminder', dateOffset: 2, targetTime: '08:00' },
+      { now: new Date('2026-07-12T09:00:00+09:00') },
+    ),
+    ActiveReminderLimitReachedError,
+  );
+  assert.equal(activeReminders.length, FREE_ACTIVE_REMINDER_LIMIT + 1);
+  assert.deepEqual(events, []);
 });
 
 test('create returns the persisted reminder and reason when notification permission is denied', async () => {

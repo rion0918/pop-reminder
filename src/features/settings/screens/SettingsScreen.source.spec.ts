@@ -33,6 +33,25 @@ test('settings exposes notification permission controls outside the dev-only sec
   ]);
 });
 
+test('settings exposes native Pro purchase and independent restore actions', () => {
+  assertSourceIncludes(source, [
+    /ふわっと。Pro/,
+    /忘れたくないことを無制限に/,
+    /handleOpenProPaywall/,
+    /presentProPaywallIfNeeded/,
+    /handleRestoreProPurchase/,
+    /restoreProPurchase/,
+    /購入を復元/,
+    /proAccessState === 'pro'/,
+    /現在の利用状態: 無料版（6件まで）/,
+    /現在の利用状態を確認できません/,
+    /result === 'restored'/,
+    /result === 'no-purchase'/,
+    /購入を復元できませんでした/,
+    /await refreshProAccess\(\)/,
+  ]);
+});
+
 test('settings exposes four independently editable quick-add preset times', () => {
   assertSourceIncludes(source, [
     /クイック追加の時刻/,
@@ -78,7 +97,8 @@ test('settings legal copy supports both Google Play and App Store release pages'
       /body: '「ふわっと。」は/,
       /updatedAt: '2026年8月9日'/,
       /PostHog の US Cloud/,
-      /タイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません/,
+      /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
+      /RevenueCatにはSDKが生成する匿名購入ID/,
     ],
     excludes: [/App Storeの配布ページ/, /ポップ・リマインダー/],
   });

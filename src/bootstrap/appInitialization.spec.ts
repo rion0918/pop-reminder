@@ -8,7 +8,9 @@ const layoutSource = readSource(import.meta.url, '../app/_layout.tsx');
 test('bootstrap owns native setup and persisted data preparation', () => {
   assertSourceIncludes(source, [
     /configureNotificationHandler\(\);/,
-    /return configureAndroidNotificationChannels\(\)\.catch/,
+    /await Promise\.all\(\[/,
+    /configureAndroidNotificationChannels\(\)\.catch/,
+    /appServices\.purchases\.configure\(\)/,
     /await initializeDatabase\(\);\s+await appServices\.reminders\.cleanup\(\);/,
     /await appServices\.reminders\.retryPendingNotifications\(\);/,
   ]);

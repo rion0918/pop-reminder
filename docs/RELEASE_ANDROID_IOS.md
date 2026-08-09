@@ -44,6 +44,13 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 - Development Build と PostHog Live Events で、3画面、主要5イベント、opt out / opt in、機微情報が含まれないことを確認する。
 - project token を `.env` やリポジトリへコミットしない。
 
+5. RevenueCatとストア商品を確認する。
+
+- [RevenueCatセットアップ](REVENUECAT_SETUP.md) に従い、`pro` entitlement、default offering、`$rc_lifetime` packageを設定する。
+- EASの対象environmentへ `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` と `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` を設定する。
+- RevenueCatのpublic SDK key以外のsecret、Google service account、App Store Connect private keyをアプリへ含めない。
+- Development Buildまたはストアテスト版で購入と復元を確認する。Expo Goの購入UIは実購入の確認に使用しない。
+
 ## Android 先行リリース
 
 1. 実機確認用APKを作る。
@@ -66,6 +73,7 @@ eas build --profile preview --platform android
 - 通知音OFFの通知チャンネル: `リマインダー（通知音なし）`
 - 追加Sheetと詳細Sheetを開いた状態でBackキーを押すと、画面離脱ではなくSheetだけ閉じること
 - Android小画面でHome、追加Sheet、設定、一覧が崩れないこと
+- 無料6件、7件目のPaywall、買い切りPro購入、購入復元、返金後の権利取消
 
 3. Google Play向けAABを作る。
 
@@ -79,6 +87,8 @@ eas build --profile production --platform android
 - 個人開発者アカウントでクローズドテスト要件が出る場合は、必要なテスター数と期間を満たす。
 - Google Play提出前に `expo.android.versionCode` が前回提出版より大きいことを確認する。
 - Google Play Console のデータ安全性を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
+- 非消耗型商品 `fuwatto_pro_lifetime` が800円で有効であり、RevenueCatの`pro` entitlementへ接続されていることを確認する。
+- プライバシーポリシーとデータ安全性をRevenueCatによる匿名購入情報の処理と一致させる。
 
 ## App Store 後追いリリース
 
@@ -98,6 +108,7 @@ eas build --profile production --platform ios
 - 通知音ON/OFF
 - 通知タップ後のアプリ復帰
 - Home、追加Sheet、設定、一覧が崩れないこと
+- App Store Sandboxで買い切りProの購入、復元、返金後の権利取消
 
 3. App Store Connectへ提出する。
 
@@ -105,9 +116,14 @@ eas build --profile production --platform ios
 - `ITSAppUsesNonExemptEncryption = false` と暗号化申告が一致していることを確認する。
 - プライバシーポリシーと利用規約の問い合わせ文言がApp Storeでも不自然でないことを確認する。
 - App Store Connect の App Privacy を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
+- 非消耗型商品 `fuwatto_pro_lifetime` がRevenueCatの`pro` entitlementへ接続されていることを確認する。
+- App PrivacyをRevenueCatによる匿名購入情報の処理と一致させる。
 
 ## リリース後
 
 - ストアページの問い合わせ導線を確認する。
 - 通知が届かない端末報告があれば、OSバージョン、通知権限、通知チャンネル、バッテリー最適化の状態を記録する。
 - Widget 実装は別タスクで設計し、Android/iOSそれぞれのネイティブ制約を確認してから進める。
+- RevenueCatでPaywall到達、購入、復元、返金を確認し、PostHogで上限到達後の継続率と購入結果を確認する。
+- AndroidクローズドテストではPaywall到達率、購入率、キャンセル・エラー率、到達後の継続利用、復元失敗を確認する。
+- 初期段階ではA/Bテストを行わず、6件制限による離脱が強い場合だけ10件への緩和を検討する。

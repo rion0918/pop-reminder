@@ -281,8 +281,10 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.match(storeDraft, /匿名の利用状況は設定画面からいつでも停止・再開できます/);
   assert.match(
     storeDraft,
-    /タイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません/,
+    /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
   );
+  assert.match(storeDraft, /RevenueCat/);
+  assert.match(storeDraft, /買い切りの「ふわっと。Pro」/);
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
   assert.match(storeDraft, /Widgetは別タスク/);
@@ -304,8 +306,10 @@ test('privacy policy draft is ready to publish for store review', () => {
   assert.match(privacyPolicy, /いつでも停止・再開できます/);
   assert.match(
     privacyPolicy,
-    /リマインダーのタイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません/,
+    /リマインダーのタイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
   );
+  assert.match(privacyPolicy, /RevenueCat/);
+  assert.match(privacyPolicy, /AndroidとiOSの間で購入権利は共有されません/);
   assert.match(privacyPolicy, /通知権限/);
   assert.match(privacyPolicy, /データの削除/);
   assert.match(privacyPolicy, /Google PlayやApp Store/);

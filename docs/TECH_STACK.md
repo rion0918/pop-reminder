@@ -1,6 +1,6 @@
 # 技術スタック (Technology Stack)
 
-`pop-reminder` は、Expo / React Native / Expo Router を基盤にした Android・iOS・Web 対応のリマインダーアプリケーションです。SQLite によるローカル永続化、通知、Android ホーム画面 Widget、プラットフォーム別最適化アニメーションを採用しています。
+`pop-reminder` は、Expo / React Native / Expo Router を基盤にした Android・iOS・Web 対応のリマインダーアプリケーションです。SQLite によるローカル永続化、通知、Android ホーム画面 Widget、RevenueCatによるモバイルの買い切り課金、プラットフォーム別最適化アニメーションを採用しています。
 
 ---
 
@@ -24,6 +24,7 @@ graph TB
         Drizzle[Drizzle ORM & SQLite]
         Notifications[Expo Notifications Gateway]
         Haptics[Expo Haptics Engine]
+        Purchases[RevenueCat Purchase Adapter]
     end
 
     AppUI --> TanStack
@@ -31,6 +32,7 @@ graph TB
     AppUI --> BubbleUI
     TanStack --> Drizzle
     AppUI --> Notifications
+    AppUI --> Purchases
     BubbleUI --> Haptics
     WidgetUI --> Drizzle
 ```
@@ -97,6 +99,8 @@ graph TB
 | **expo-linking**                | `~8.0.12`  | 通知や Widget からの Deep Link 処理                      |
 | **expo-haptics**                | `~15.0.8`  | 泡が破裂する際の物理ハプティクスフィードバック           |
 | **posthog-react-native**        | `^4.62.0`  | 匿名イベント計測、手動画面追跡、永続的な opt in / out    |
+| **react-native-purchases**      | `^10.7.0`  | Android / iOSのRevenueCat購入権利取得・復元              |
+| **react-native-purchases-ui**   | `^10.7.0`  | RevenueCat管理Paywallの表示                              |
 
 ---
 
@@ -125,6 +129,7 @@ src/
 ├── db/                # SQLite スキーマ、Drizzle client、Migration
 ├── features/
 │   ├── reminders/     # リマインダー機能 (domain, application, infrastructure, presentation, UI)
+│   ├── purchases/     # Pro権利契約、RevenueCat Adapter、購入状態Query
 │   └── settings/      # 設定機能 (domain, application, infrastructure, presentation, UI)
 ├── lib/
 │   ├── analytics/     # PostHog Adapter・イベント許可リスト

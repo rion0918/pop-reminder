@@ -20,7 +20,8 @@ test('widget deep links always land on home before opening add or detail UI', ()
   ]);
   assertSourceIncludes(homeSource, [
     /useLocalSearchParams/,
-    /openQuickAdd\(getQuickAddDefaultTime\(\), \{ focusTitle: true \}\);/,
+    /requestQuickAdd\('widget_deep_link', \{ focusTitle: true \}\);/,
+    /purchases\.getProAccessState\(\)/,
     /setSelectedReminderId\(/,
     /router\.setParams\(\{ action: undefined, id: undefined, intent: undefined \}\);/,
   ]);

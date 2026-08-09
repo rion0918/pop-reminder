@@ -1,4 +1,5 @@
 import { normalizeReminderTitle, type Reminder } from '../domain/reminder';
+import { FREE_ACTIVE_REMINDER_LIMIT } from '../../purchases/domain/proAccess';
 import {
   buildPreviousNotifyAt,
   buildReminderSchedule,
@@ -44,6 +45,15 @@ export type UpdatePreviousNotifyTimeResult = {
   failedReminderCount: number;
 };
 
+export { FREE_ACTIVE_REMINDER_LIMIT } from '../../purchases/domain/proAccess';
+
+export class ActiveReminderLimitReachedError extends Error {
+  constructor() {
+    super(`Free users can keep up to ${FREE_ACTIVE_REMINDER_LIMIT} active reminders`);
+    this.name = 'ActiveReminderLimitReachedError';
+  }
+}
+
 const schedulingFailedResult: ReminderNotificationScheduleResult = {
   status: 'not-scheduled',
   reason: 'scheduling-failed',
@@ -54,7 +64,7 @@ const schedulingFailedResult: ReminderNotificationScheduleResult = {
 };
 
 export function createReminderUseCases(dependencies: ReminderApplicationDependencies) {
-  const { reminders, notifications, settings, widget } = dependencies;
+  const { reminders, notifications, settings, widget, proAccess } = dependencies;
 
   return {
     listActive: (now?: Date) => reminders.listActive(now),
@@ -65,6 +75,13 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
     ): Promise<CreateReminderResult> {
       const title = normalizeReminderTitle(input.title);
       validateReminderScheduleInput({ ...input, previousNotifyTime: '00:00', now: options?.now });
+      const accessState = await proAccess.getState();
+      if (accessState === 'free') {
+        const activeReminders = await reminders.listActive(options?.now);
+        if (activeReminders.length >= FREE_ACTIVE_REMINDER_LIMIT) {
+          throw new ActiveReminderLimitReachedError();
+        }
+      }
       const currentSettings = await settings.get();
       const schedule = buildReminderSchedule({
         dateOffset: input.dateOffset,

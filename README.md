@@ -47,6 +47,15 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 API key が未設定の場合、分析機能は完全な no-op になり、設定画面の「匿名の利用状況を共有」は OFF・操作不可になります。
 
+買い切りProの実購入を確認する場合は、RevenueCatの公開SDK keyも環境ごとに設定します。未設定または取得不能の場合は、購入済みユーザーを誤って制限しないよう無料件数制限をfail-openします。
+
+```dotenv
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=your_android_public_sdk_key
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=your_ios_public_sdk_key
+```
+
+RevenueCatのダッシュボードとストア商品は [RevenueCatセットアップ](docs/REVENUECAT_SETUP.md) に従って構成し、実購入・復元はExpo GoではなくDevelopment Buildで確認します。
+
 ---
 
 ## 📱 開発コマンド
@@ -90,4 +99,5 @@ pnpm run mvh:verify
 - 🧪 **[MVH ハーネスガイド](docs/MVH_HARNESS.md)**: ガードルール・開発ハーネス仕様
 - 📱 **[QA & 実機検証手順](docs/QA_DEVELOPMENT_BUILD.md)**: Development Build・通知・Widget テスト手順
 - 🚀 **[リリースガイド](docs/RELEASE_ANDROID_IOS.md)**: EAS Build / ストア配信手順
+- 💳 **[RevenueCatセットアップ](docs/REVENUECAT_SETUP.md)**: 買い切りPro / Paywall / 購入復元
 - 📝 **[ADR (意思決定記録)](docs/adr/)**: アーキテクチャ採択・ハーネス方針の記録
