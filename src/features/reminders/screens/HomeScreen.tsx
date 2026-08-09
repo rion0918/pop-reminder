@@ -25,6 +25,7 @@ import { useRemindersQuery as useReminders } from '../presentation/useRemindersQ
 import { useNotificationDevStore } from '../stores/notificationDevStore';
 import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
 import type { Reminder } from '../types/reminder';
+import { useAppServices } from '../../../bootstrap/AppProviders';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { DEFAULT_TIME_PRESETS } from '../../../shared/utils/timePresets';
@@ -58,6 +59,7 @@ const dueLegendItems = [
 
 export function HomeScreen() {
   const router = useRouter();
+  const analytics = useAppServices().analytics;
   const routeParams = useLocalSearchParams<{ action?: string; id?: string; intent?: string }>();
   const { width: windowWidth } = useWindowDimensions();
   const {
@@ -79,6 +81,7 @@ export function HomeScreen() {
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
+  const datePreset = useReminderUiStore((state) => state.datePreset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const targetTime = useReminderUiStore(selectFormattedTime);
   const isNotificationTestModeEnabled = useNotificationDevStore(
@@ -103,6 +106,7 @@ export function HomeScreen() {
   );
   const isQuickAddOpenRef = useRef(false);
   const isSavingRef = useRef(false);
+  const quickAddSourceRef = useRef<'home_button' | 'widget_deep_link'>('home_button');
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
   const isSelectionModeRef = useRef(false);
@@ -161,6 +165,8 @@ export function HomeScreen() {
 
     consumedIntentRef.current = routeParams.intent;
     if (routeParams.action === 'add') {
+      quickAddSourceRef.current = 'widget_deep_link';
+      analytics.captureQuickAddOpened({ source: 'widget_deep_link' });
       openQuickAdd(getQuickAddDefaultTime(), { focusTitle: true });
     } else if (routeParams.action === 'view' && routeParams.id) {
       setSelectedReminderId(
@@ -168,7 +174,7 @@ export function HomeScreen() {
       );
     }
     router.setParams({ action: undefined, id: undefined, intent: undefined });
-  }, [getQuickAddDefaultTime, loading, openQuickAdd, reminders, routeParams, router]);
+  }, [analytics, getQuickAddDefaultTime, loading, openQuickAdd, reminders, routeParams, router]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -295,6 +301,13 @@ export function HomeScreen() {
           useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
         },
       );
+      analytics.captureReminderCreated({
+        source: quickAddSourceRef.current,
+        datePreset,
+        notificationStatus: result.notification.status,
+        notificationReason:
+          'reason' in result.notification ? result.notification.reason : undefined,
+      });
 
       if (result.notification.status === 'not-scheduled') {
         const failureMessage = {
@@ -328,8 +341,10 @@ export function HomeScreen() {
     }
 
     isQuickAddOpenRef.current = true;
+    quickAddSourceRef.current = 'home_button';
+    analytics.captureQuickAddOpened({ source: 'home_button' });
     openQuickAdd(getQuickAddDefaultTime());
-  }, [getQuickAddDefaultTime, isSaving, openQuickAdd]);
+  }, [analytics, getQuickAddDefaultTime, isSaving, openQuickAdd]);
 
   const handleOpenReminderList = useCallback(() => {
     router.push('/reminders-list');
@@ -369,6 +384,7 @@ export function HomeScreen() {
 
       try {
         const deletedIds = await deleteReminders(ids, { deferCache: true });
+        analytics.captureReminderDeleted({ surface: 'home', count: deletedIds.length });
         const motions = makeBulkDeleteMotions(deletedIds);
         const motionCompletion = Promise.all(
           motions.map((motion) => waitForDeleteMotion(motion.reminderId, motion.phase)),
@@ -396,7 +412,7 @@ export function HomeScreen() {
         }
       }
     },
-    [cancelSelection, deleteReminders, refresh, removeReminders, waitForDeleteMotion],
+    [analytics, cancelSelection, deleteReminders, refresh, removeReminders, waitForDeleteMotion],
   );
 
   const handleBulkDeletePress = useCallback(() => {
@@ -452,6 +468,7 @@ export function HomeScreen() {
           throw deleteError;
         }
 
+        analytics.captureReminderDeleted({ surface: 'home', count: 1 });
         setSelectedReminderId(null);
         removeReminder(reminder.id);
         setDeleteMotion(null);
@@ -460,7 +477,7 @@ export function HomeScreen() {
         isReminderDeletionInProgressRef.current = false;
       }
     },
-    [deleteReminder, refresh, removeReminder, waitForDeleteMotion],
+    [analytics, deleteReminder, refresh, removeReminder, waitForDeleteMotion],
   );
 
   const handleCloseReminderDetail = useCallback(
@@ -480,9 +497,10 @@ export function HomeScreen() {
         throw new Error('Reminder was not found');
       }
 
+      analytics.captureReminderEdited({ surface: 'home', field: 'title' });
       return updatedReminder;
     },
-    [updateReminderTitle],
+    [analytics, updateReminderTitle],
   );
 
   const handleUpdateReminderSchedule = useCallback(
@@ -493,9 +511,18 @@ export function HomeScreen() {
         throw new Error('Reminder was not found');
       }
 
+      if (result.notification.status !== 'unchanged') {
+        analytics.captureReminderEdited({
+          surface: 'home',
+          field: 'schedule',
+          notificationStatus: result.notification.status,
+          notificationReason:
+            'reason' in result.notification ? result.notification.reason : undefined,
+        });
+      }
       return result;
     },
-    [updateReminderSchedule],
+    [analytics, updateReminderSchedule],
   );
 
   const isAddButtonDisabled = isSaving;

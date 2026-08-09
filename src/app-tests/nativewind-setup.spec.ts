@@ -41,6 +41,12 @@ test('nativewind Babel and Metro setup is present', () => {
   assert.match(metroConfig, /withNativeWind\(config, \{ input: '\.\/global\.css' \}\)/);
 });
 
+test('Metro treats the expo-sqlite WebAssembly module as an asset', () => {
+  const metroConfig = readRootSource('metro.config.js');
+
+  assert.match(metroConfig, /config\.resolver\.assetExts\.push\('wasm'\)/);
+});
+
 test('tailwind config exposes app color tokens without platform-specific colors', () => {
   const tailwindConfig = readRootSource('tailwind.config.js');
 

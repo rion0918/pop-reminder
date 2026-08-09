@@ -18,7 +18,7 @@ Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle 
 - ⏱️ **クイック追加**: 4つの時間帯プリセットで即座にリマインダーを登録。
 - 🔔 **予告付きローカル通知**: 予定時刻に加え事前通知でリマインド。
 - 📱 **Android Widget**: ホーム画面で確認・完了操作が可能なホーム画面ウィジェット。
-- 🔒 **完全ローカル永続化**: SQLite データベース保存によるプライバシーファースト設計。
+- 🔒 **リマインダーは端末内に保存**: SQLite データベース保存によるプライバシーファースト設計。
 
 ---
 
@@ -37,6 +37,15 @@ nix develop
 pnpm install
 pnpm run mvh:setup
 ```
+
+匿名の利用状況計測を有効にする場合は、`.env.example` を参考にローカル環境または EAS の環境変数を設定します。project token はリポジトリへコミットしません。host を省略した場合も US Cloud (`https://us.i.posthog.com`) を使用します。
+
+```dotenv
+EXPO_PUBLIC_POSTHOG_API_KEY=your_project_token
+EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+```
+
+API key が未設定の場合、分析機能は完全な no-op になり、設定画面の「匿名の利用状況を共有」は OFF・操作不可になります。
 
 ---
 

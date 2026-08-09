@@ -1,0 +1,154 @@
+import type { ReminderDatePreset } from '../../features/reminders/utils/reminderDatePresets';
+
+export type AnalyticsClient = {
+  optedOut: boolean;
+  capture(event: string, properties?: Record<string, unknown>): unknown;
+  screen(name: string, properties?: Record<string, unknown>): unknown;
+  ready?(): unknown;
+  optIn(): unknown;
+  optOut(): unknown;
+};
+
+type QuickAddSource = 'home_button' | 'widget_deep_link';
+type ReminderSurface = 'home' | 'reminders_list';
+type NotificationStatus = 'scheduled' | 'partial' | 'not-scheduled' | 'unchanged';
+type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+export const ALLOWED_ANALYTICS_EVENTS = [
+  '$screen',
+  'quick add opened',
+  'reminder created',
+  'reminder edited',
+  'reminder deleted',
+  'notification permission updated',
+] as const;
+
+const allowedAnalyticsEventSet = new Set<string>(ALLOWED_ANALYTICS_EVENTS);
+
+export function isAllowedAnalyticsEvent(event: string) {
+  return allowedAnalyticsEventSet.has(event);
+}
+
+function ignoreAsyncFailure(result: unknown) {
+  if (result instanceof Promise) {
+    void result.catch(() => {});
+  }
+}
+
+export function createAnalyticsService<TClient extends AnalyticsClient = AnalyticsClient>(
+  client: TClient | null,
+) {
+  const capture = (
+    event: (typeof ALLOWED_ANALYTICS_EVENTS)[number],
+    properties?: Record<string, unknown>,
+  ) => {
+    if (!client) return;
+
+    try {
+      ignoreAsyncFailure(client.capture(event, properties));
+    } catch {
+      // Analytics must never interrupt the user action being measured.
+    }
+  };
+
+  return {
+    client,
+    configured: client !== null,
+
+    captureScreen(pathname: string) {
+      if (!client) return;
+
+      try {
+        ignoreAsyncFailure(client.screen(pathname));
+      } catch {
+        // Navigation must continue even when analytics is unavailable.
+      }
+    },
+
+    captureQuickAddOpened(input: { source: QuickAddSource }) {
+      capture('quick add opened', { source: input.source });
+    },
+
+    captureReminderCreated(input: {
+      source: QuickAddSource;
+      datePreset: ReminderDatePreset;
+      notificationStatus: Exclude<NotificationStatus, 'unchanged'>;
+      notificationReason?: string;
+    }) {
+      const includeNotificationReason =
+        input.notificationStatus === 'partial' || input.notificationStatus === 'not-scheduled';
+      capture('reminder created', {
+        source: input.source,
+        date_preset: input.datePreset,
+        notification_status: input.notificationStatus,
+        ...(includeNotificationReason && input.notificationReason
+          ? { notification_reason: input.notificationReason }
+          : {}),
+      });
+    },
+
+    captureReminderEdited(input: {
+      surface: ReminderSurface;
+      field: 'title' | 'schedule';
+      notificationStatus?: Exclude<NotificationStatus, 'unchanged'>;
+      notificationReason?: string;
+    }) {
+      const includeNotificationResult = input.field === 'schedule' && input.notificationStatus;
+      const includeNotificationReason =
+        includeNotificationResult &&
+        (input.notificationStatus === 'partial' || input.notificationStatus === 'not-scheduled');
+      capture('reminder edited', {
+        surface: input.surface,
+        field: input.field,
+        ...(includeNotificationResult ? { notification_status: input.notificationStatus } : {}),
+        ...(includeNotificationReason && input.notificationReason
+          ? { notification_reason: input.notificationReason }
+          : {}),
+      });
+    },
+
+    captureReminderDeleted(input: { surface: ReminderSurface; count: number }) {
+      if (input.count <= 0) return;
+      capture('reminder deleted', { surface: input.surface, count: input.count });
+    },
+
+    captureNotificationPermissionUpdated(input: {
+      status: NotificationPermissionStatus;
+      canAskAgain: boolean;
+    }) {
+      capture('notification permission updated', {
+        status: input.status,
+        can_ask_again: input.canAskAgain,
+      });
+    },
+
+    async getCaptureEnabled() {
+      if (!client) return false;
+
+      try {
+        await client.ready?.();
+        return !client.optedOut;
+      } catch {
+        return false;
+      }
+    },
+
+    async setCaptureEnabled(enabled: boolean) {
+      if (!client) return false;
+
+      try {
+        await client.ready?.();
+        if (enabled) {
+          await client.optIn();
+        } else {
+          await client.optOut();
+        }
+        return !client.optedOut;
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
+export type AnalyticsService = ReturnType<typeof createAnalyticsService<AnalyticsClient>>;

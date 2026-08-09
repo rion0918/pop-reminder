@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { useAppServices } from '../../../bootstrap/AppProviders';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { palette } from '../../../constants/colors';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
@@ -42,6 +43,7 @@ function handleBack(router: ReturnType<typeof useRouter>) {
 
 export function ReminderListScreen() {
   const router = useRouter();
+  const analytics = useAppServices().analytics;
   const { settings } = useAppSettings();
   const {
     reminders,
@@ -139,13 +141,14 @@ export function ReminderListScreen() {
           throw new Error('Reminder was not found');
         }
 
+        analytics.captureReminderDeleted({ surface: 'reminders_list', count: 1 });
         setSelectedReminderId(null);
       } catch (deleteError) {
         console.warn('Failed to delete reminder from list', deleteError);
         Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
       }
     },
-    [deleteReminder],
+    [analytics, deleteReminder],
   );
 
   const handleBulkDelete = useCallback(
@@ -153,6 +156,10 @@ export function ReminderListScreen() {
       const result = await executeReminderBulkDelete(ids, deleteReminders);
 
       if (result.ok) {
+        analytics.captureReminderDeleted({
+          surface: 'reminders_list',
+          count: result.deletedIds.length,
+        });
         cancelSelection();
         return;
       }
@@ -160,7 +167,7 @@ export function ReminderListScreen() {
       console.warn('Failed to delete reminders from list', result.error);
       Alert.alert('削除できませんでした', '時間をおいてもう一度お試しください。');
     },
-    [cancelSelection, deleteReminders],
+    [analytics, cancelSelection, deleteReminders],
   );
 
   const handleBulkDeletePress = useCallback(() => {
@@ -198,9 +205,13 @@ export function ReminderListScreen() {
         throw new Error('Reminder was not found');
       }
 
+      analytics.captureReminderEdited({
+        surface: 'reminders_list',
+        field: 'title',
+      });
       return updatedReminder;
     },
-    [updateReminderTitle],
+    [analytics, updateReminderTitle],
   );
 
   const handleUpdateReminderSchedule = useCallback(
@@ -211,9 +222,18 @@ export function ReminderListScreen() {
         throw new Error('Reminder was not found');
       }
 
+      if (result.notification.status !== 'unchanged') {
+        analytics.captureReminderEdited({
+          surface: 'reminders_list',
+          field: 'schedule',
+          notificationStatus: result.notification.status,
+          notificationReason:
+            'reason' in result.notification ? result.notification.reason : undefined,
+        });
+      }
       return result;
     },
-    [updateReminderSchedule],
+    [analytics, updateReminderSchedule],
   );
 
   return (

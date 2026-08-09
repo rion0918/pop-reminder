@@ -76,7 +76,9 @@ test('settings legal copy supports both Google Play and App Store release pages'
     includes: [
       /Google PlayやApp Storeなどの配布ページ/,
       /body: '「ふわっと。」は/,
-      /updatedAt: '2026年7月14日'/,
+      /updatedAt: '2026年8月9日'/,
+      /PostHog の US Cloud/,
+      /タイトル、リマインダーID、具体的な日付・時刻、設定値、ディープリンクURLは送信しません/,
     ],
     excludes: [/App Storeの配布ページ/, /ポップ・リマインダー/],
   });
