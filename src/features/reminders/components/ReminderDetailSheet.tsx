@@ -60,7 +60,9 @@ function NotificationTimeline({
   isScheduleEditingDisabled,
   onEditSchedule,
 }: NotificationTimelineProps) {
-  const isPreviousNotificationPast = !shouldShowPreviousNotification(reminder.previousNotifyAt);
+  const shouldDisplayPreviousNotification = shouldShowPreviousNotification(
+    reminder.previousNotifyAt,
+  );
   const previousAccessibilityDateTime = formatReminderDetailAccessibilityDateTime(
     reminder.previousNotifyAt,
   );
@@ -107,34 +109,32 @@ function NotificationTimeline({
         </ImageBackground>
       </Pressable>
 
-      <View style={styles.scheduleDivider} />
-      <View
-        accessible
-        accessibilityRole="text"
-        accessibilityLabel={`前日のお知らせ、${previousAccessibilityDateTime}`}
-        style={[
-          styles.previousScheduleRow,
-          isPreviousNotificationPast ? styles.previousScheduleRowPast : null,
-        ]}
-      >
-        <View style={styles.previousScheduleIcon}>
-          <Ionicons name="notifications-outline" size={19} color={palette.muted} />
-        </View>
-        <View style={styles.previousScheduleContent}>
-          <View style={styles.previousScheduleLabelRow}>
-            <Text style={styles.previousScheduleLabel}>まず、前日にお知らせ</Text>
+      {shouldDisplayPreviousNotification ? (
+        <>
+          <View style={styles.scheduleDivider} />
+          <View
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={`前日のお知らせ、${previousAccessibilityDateTime}`}
+            style={styles.previousScheduleRow}
+          >
+            <View style={styles.previousScheduleIcon}>
+              <Ionicons name="notifications-outline" size={19} color={palette.muted} />
+            </View>
+            <View style={styles.previousScheduleContent}>
+              <View style={styles.previousScheduleLabelRow}>
+                <Text style={styles.previousScheduleLabel}>まず、前日にお知らせ</Text>
+              </View>
+              <Text style={styles.previousScheduleDate}>
+                {formatReminderDetailDate(reminder.previousNotifyAt)}
+              </Text>
+              <Text style={styles.previousScheduleTime}>
+                {formatReminderDetailTime(reminder.previousNotifyAt)}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.previousScheduleDate}>
-            {formatReminderDetailDate(reminder.previousNotifyAt)}
-          </Text>
-          <Text style={styles.previousScheduleTime}>
-            {formatReminderDetailTime(reminder.previousNotifyAt)}
-          </Text>
-          {isPreviousNotificationPast ? (
-            <Text style={styles.previousSchedulePastNotice}>前日のお知らせ時刻は過ぎています</Text>
-          ) : null}
-        </View>
-      </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -713,9 +713,6 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 10,
   },
-  previousScheduleRowPast: {
-    opacity: 0.72,
-  },
   previousScheduleIcon: {
     width: 44,
     height: 44,
@@ -753,13 +750,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 34,
     fontWeight: '900',
-  },
-  previousSchedulePastNotice: {
-    marginTop: 2,
-    color: palette.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '700',
   },
   timeNotice: {
     marginTop: 8,

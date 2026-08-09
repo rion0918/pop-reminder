@@ -37,7 +37,7 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
   });
 });
 
-test('reminder detail sheet presents the editable target before the shared previous notification', () => {
+test('reminder detail sheet presents the editable target and hides an elapsed previous notification', () => {
   const targetLabelIndex = source.indexOf('当日にもう一度お知らせ');
   const previousLabelIndex = source.indexOf('まず、前日にお知らせ');
 
@@ -61,10 +61,10 @@ test('reminder detail sheet presents the editable target before the shared previ
       /reminder-detail-bubbles\.png/,
       /styles\.targetScheduleCard/,
       /styles\.targetTimeHint/,
+      /const shouldDisplayPreviousNotification = shouldShowPreviousNotification\([\s\S]*reminder\.previousNotifyAt,[\s\S]*\);/,
+      /\{shouldDisplayPreviousNotification \? \(/,
       /styles\.scheduleDivider/,
       /styles\.previousScheduleRow/,
-      /styles\.previousScheduleRowPast/,
-      /前日のお知らせ時刻は過ぎています/,
       /shouldShowPreviousNotification/,
       /name="notifications-outline"/,
       /closeButton: \{[\s\S]*width: 48,[\s\S]*height: 48,[\s\S]*borderRadius: 24,/,
@@ -75,6 +75,8 @@ test('reminder detail sheet presents the editable target before the shared previ
       /name="notifications"/,
       /styles\.timelineCard/,
       /styles\.timelineLine/,
+      /styles\.previousScheduleRowPast/,
+      /前日のお知らせ時刻は過ぎています/,
     ],
   });
 });
