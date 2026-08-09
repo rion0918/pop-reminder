@@ -40,6 +40,8 @@ test('published terms document the lifetime Pro purchase contract', () => {
   assert.match(terms, /最終更新日：2026年8月9日/);
   assert.match(terms, /同時に6件まで/);
   assert.match(terms, /買い切り商品/);
+  assert.match(terms, /忘れたくないことを無制限に追加できる/);
+  assert.doesNotMatch(terms, /アクティブなリマインダー件数を無制限/);
   assert.match(terms, /自動更新はありません/);
   assert.match(terms, /同じストアアカウントで復元/);
   assert.match(terms, /返金や取消/);
