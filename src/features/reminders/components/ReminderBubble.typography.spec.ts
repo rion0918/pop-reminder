@@ -9,7 +9,6 @@ import {
 const source = readSource(import.meta.url, './ReminderBubble.tsx');
 const visualsSource = readSource(import.meta.url, '../utils/reminderBubbleVisuals.ts');
 const nativeBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.native.tsx');
-const webBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.web.tsx');
 const burstTypesSource = readSource(import.meta.url, './ReminderBubbleBurst.types.ts');
 const colorsSource = readSource(import.meta.url, '../../../constants/colors.ts');
 
@@ -119,13 +118,6 @@ test('native reminder bubble burst uses a captured Skia membrane and physical ti
       /onMotionComplete\?\.\(reminderId, completedPhase\)/,
     ],
     excludes: [/burstCrack/, /burstFlash/, /setInterval/],
-  });
-});
-
-test('web reminder bubble burst stays on the lightweight fallback', () => {
-  assertSourceContract(webBurstSource, {
-    includes: [/ReminderBubbleBurstFallback/],
-    excludes: [/@shopify\/react-native-skia/, /canvaskit/],
   });
 });
 

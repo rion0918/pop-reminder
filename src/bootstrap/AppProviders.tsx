@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState } from 'react-native';
 import { usePathname } from 'expo-router';
 import { PostHogProvider } from 'posthog-react-native';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -41,7 +41,6 @@ export function AppProviders({ children }: PropsWithChildren) {
   }, [pathname]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
     const subscription = AppState.addEventListener('change', (state) => {
       const isActive = state === 'active';
       focusManager.setFocused(isActive);

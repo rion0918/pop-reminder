@@ -13,8 +13,6 @@
 
 テーマ、時刻設定、検索、一覧、通知、Android Widgetは無料機能のままにする。将来のPro機能をすべて含むという表現は使用しない。
 
-Web版は課金UIと件数制限を適用せず、無料・無制限とする。
-
 ## RevenueCat Project
 
 1. RevenueCatでProjectを作成する。

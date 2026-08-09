@@ -35,7 +35,6 @@ test('app focus and target time both trigger SQLite reconciliation', () => {
   assertSourceIncludes(providersSource, [
     /const isActive = state === 'active'/,
     /focusManager\.setFocused\(isActive\)/,
-    /Platform\.OS === 'web'/,
   ]);
   assertSourceIncludes(querySource, [
     /const reconcileExpiredReminders = useCallback\(async \(\) => \{[\s\S]*await services\.reminders\.cleanup\(\);[\s\S]*await refetch\(\);/,

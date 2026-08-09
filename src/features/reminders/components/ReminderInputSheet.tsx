@@ -509,7 +509,7 @@ export function ReminderInputSheet({
         />
       )}
 
-      {Platform.OS !== 'android' && (
+      {Platform.OS === 'ios' && (
         <Modal
           visible={isDatePickerOpen}
           transparent

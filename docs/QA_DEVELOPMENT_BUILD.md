@@ -117,7 +117,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 **期待される結果**
 
 - `BottomSheetTextInput` 上で日本語 IME が問題なく動作
-- Android は `keyboardBehavior="fillParent"` + `android_keyboardInputMode="adjustResize"`、iOS/Web は `keyboardBehavior="interactive"` で、キーボード表示時も入力欄が隠れない
+- Android は `keyboardBehavior="fillParent"` + `android_keyboardInputMode="adjustResize"`、iOS は `keyboardBehavior="interactive"` で、キーボード表示時も入力欄が隠れない
 - 日本語 IME の候補欄が表示されても、タイトル欄は Safe Area 内で見え、他の入力項目と追加ボタンには Sheet 内スクロールで到達できる
 
 ---
@@ -251,7 +251,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] 背景の Backdrop をタップすると Sheet が閉じる（`enablePanDownToClose` も有効）
 - [ ] Bubble タップで詳細 Sheet（`ReminderDetailSheet`）が開く
 - [ ] 詳細 Sheet もスワイプダウンで閉じられる
-- [ ] キーボード表示中に Sheet を閉じても、キーボードが追従して閉じる（Android: `fillParent`、iOS/Web: `interactive`）
+- [ ] キーボード表示中に Sheet を閉じても、キーボードが追従して閉じる（Android: `fillParent`、iOS: `interactive`）
 - [ ] Sheet 開閉中に素早く連打しても、状態の不整合（開かない/閉じない）が発生しない
 
 **期待される結果**
@@ -273,7 +273,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 
 **受け入れ条件**
 
-- Android は `fillParent + adjustResize`、iOS/Web は `interactive` で動作する
+- Android は `fillParent + adjustResize`、iOS は `interactive` で動作する
 - すべての追加経路と表示タイミングでタイトル欄がキーボード上にあり、追加ボタンまでスクロール可能で、Sheet を閉じた後にキーボードが再出現しない
 
 ---
@@ -410,7 +410,6 @@ Development Build に検証用の `EXPO_PUBLIC_POSTHOG_API_KEY` と US Cloud hos
 - [ ] 購入履歴がない場合と通信エラーの場合に、それぞれ異なる案内が表示される
 - [ ] 返金・取消後も既存の泡は削除されず、新しい泡の追加だけが6件で止まる
 - [ ] RevenueCat API key未設定、オフライン、CustomerInfo取得失敗でもクラッシュせず、件数制限はfail-openする
-- [ ] WebではProカードとPaywallを表示せず、7件以上追加できる
 - [ ] PostHogへタイトル、日時、価格、取引IDを送らず、上限到達・Paywall結果・復元結果だけを送る
 
 **期待される結果**

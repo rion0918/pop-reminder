@@ -47,7 +47,7 @@ Focused region comparisonは不要。390×844の結合画像で、見出しの�
 ## Console check
 
 - QA画面の表示と操作は完了。追加用バブル自体からのconsole errorはない。
-- 既存のWeb export graphが本番ルートの`src/db/client.ts`も含むため、`expo-file-system`の`Paths.document`に起因する既存Web互換エラーを1件確認した。今回の差分、ネイティブ実行、空状態コンポーネントの表示・操作には影響せず、本チケットではDB・依存関係・保護ファイルを変更しない。
+- Web export は対象外とし、ネイティブ実行（Android / iOS）で表示・操作を確認した。
 
 ## Implementation checklist
 

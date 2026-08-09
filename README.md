@@ -66,7 +66,6 @@ RevenueCatのダッシュボードとストア商品は [RevenueCatセットア�
 | `pnpm run start:expo-go`    | **Expo Go 起動**: UI / JS 迅速確認                               |
 | `pnpm run android`          | Android エミュレータ / 実機でビルド・起動                        |
 | `pnpm run ios`              | iOS シミュレータ / 実機でビルド・起動                            |
-| `pnpm run web`              | ブラウザ表示確認                                                 |
 | `pnpm start`                | Expo CLI 標準起動                                                |
 
 ---

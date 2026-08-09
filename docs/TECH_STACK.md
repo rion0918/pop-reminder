@@ -1,6 +1,6 @@
 # 技術スタック (Technology Stack)
 
-`pop-reminder` は、Expo / React Native / Expo Router を基盤にした Android・iOS・Web 対応のリマインダーアプリケーションです。SQLite によるローカル永続化、通知、Android ホーム画面 Widget、RevenueCatによるモバイルの買い切り課金、プラットフォーム別最適化アニメーションを採用しています。
+`pop-reminder` は、Expo / React Native / Expo Router を基盤にした Android・iOS 対応のリマインダーアプリケーションです。SQLite によるローカル永続化、通知、Android ホーム画面 Widget、RevenueCatによるモバイルの買い切り課金、プラットフォーム別最適化アニメーションを採用しています。
 
 ---
 

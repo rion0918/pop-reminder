@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, globSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,10 +41,37 @@ test('nativewind Babel and Metro setup is present', () => {
   assert.match(metroConfig, /withNativeWind\(config, \{ input: '\.\/global\.css' \}\)/);
 });
 
-test('Metro treats the expo-sqlite WebAssembly module as an asset', () => {
-  const metroConfig = readRootSource('metro.config.js');
+test('native app configuration omits the Web runtime', () => {
+  const appConfig = JSON.parse(readRootSource('app.json'));
+  const packageConfig = JSON.parse(readRootSource('package.json'));
 
-  assert.match(metroConfig, /config\.resolver\.assetExts\.push\('wasm'\)/);
+  assert.equal('web' in appConfig.expo, false);
+  assert.equal(packageConfig.scripts.web, undefined);
+  assert.equal(packageConfig.dependencies['react-dom'], undefined);
+  assert.deepEqual(globSync('src/**/*.web.tsx', { cwd: repoRoot }), []);
+});
+
+test('native platform implementations retain iOS and Android branches', () => {
+  assert.match(
+    readRootSource('src/features/reminders/components/ReminderInputSheet.tsx'),
+    /Platform\.OS === 'ios'/,
+  );
+  assert.match(
+    readRootSource('src/features/reminders/components/ReminderScheduleEditorModal.tsx'),
+    /Platform\.OS === 'ios'/,
+  );
+  assert.match(
+    readRootSource('src/features/reminders/utils/reminderSelectionFeedback.ts'),
+    /Platform\.OS === 'android'/,
+  );
+  assert.match(
+    readRootSource('src/features/reminders/components/ReminderBubbleBurst.native.tsx'),
+    /Platform\.OS === 'android'/,
+  );
+  assert.match(
+    readRootSource('src/features/reminders/components/ReminderBubbleBurst.android.tsx'),
+    /ReminderBubbleBurstFallback/,
+  );
 });
 
 test('tailwind config exposes app color tokens without platform-specific colors', () => {
@@ -68,12 +95,9 @@ test('tailwind config exposes app color tokens without platform-specific colors'
 });
 
 test('global CSS and TypeScript NativeWind types are wired from the root layout', () => {
-  const appConfig = JSON.parse(readRootSource('app.json'));
-
   assert.match(readRootSource('global.css'), /@tailwind base;\n/);
   assert.match(readRootSource('global.css'), /@tailwind components;\n/);
   assert.match(readRootSource('global.css'), /@tailwind utilities;\n/);
   assert.match(readRootSource('nativewind-env.d.ts'), /<reference types="nativewind\/types" \/>/);
   assert.match(readRootSource('src/app/_layout.tsx'), /import '\.\.\/\.\.\/global\.css';/);
-  assert.equal(appConfig.expo.web.bundler, 'metro');
 });

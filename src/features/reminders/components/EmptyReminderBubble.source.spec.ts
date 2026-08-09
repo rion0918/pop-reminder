@@ -8,7 +8,6 @@ const nativeMembraneSource = readSource(
   import.meta.url,
   './EmptyReminderBubbleMembrane.native.tsx',
 );
-const webMembraneSource = readSource(import.meta.url, './EmptyReminderBubbleMembrane.web.tsx');
 const skiaMembraneSource = readSource(import.meta.url, './EmptyReminderBubbleMembraneSkia.tsx');
 const fallbackMembraneSource = readSource(
   import.meta.url,
@@ -89,15 +88,7 @@ test('empty reminder bubble uses one Skia membrane canvas with thin-film light a
   });
 });
 
-test('empty reminder bubble loads Skia lazily on web and keeps the previous glass fallback', () => {
-  assertSourceContract(webMembraneSource, {
-    includes: [
-      /WithSkiaWeb/,
-      /import\('\.\/EmptyReminderBubbleMembraneSkia'\)/,
-      /<EmptyReminderBubbleMembraneFallback/,
-      /componentProps=\{\{ size, motionProgress \}\}/,
-    ],
-  });
+test('empty reminder bubble fallback keeps the previous glass treatment', () => {
   assertSourceContract(fallbackMembraneSource, {
     includes: [/<LinearGradient/, /outerGlassRing/, /colorRim/],
     excludes: [/<Text/, /<Image/],

@@ -13,7 +13,7 @@
 
 ## プロジェクト概要
 
-- Expo SDK 54、React Native 0.81、React 19、TypeScript 5.9、Expo Router 6 の Android / iOS / Web 対応アプリ。
+- Expo SDK 54、React Native 0.81、React 19、TypeScript 5.9、Expo Router 6 の Android / iOS 対応アプリ。
 - `src/app/` が typed routes を有効にした Expo Router の入口で、起動初期化と通知・Widget の deep link を受け取る。
 - `src/features/reminders/` が domain、application、infrastructure、presentation、泡 UI、入力・詳細・検索・一覧、Zustand UI store を持つ。
 - `src/features/settings/` が domain、application、infrastructure、presentation、設定画面を持つ。
@@ -21,7 +21,7 @@
 - SQLite / Drizzle の schema と DB client は `src/db/`、ローカル通知の channel・権限・予約・キャンセルは `src/lib/notifications/` に集約する。
 - Android Widget は `src/widget/` にあり、通常アプリとは別の SQLite 接続で snapshot を読み、データ変更後に更新する。
 - NativeWind / Tailwind と Reanimated を UI の基本に使い、色・画面トークンは `src/constants/colors.ts` と `tailwind.config.js` を参照する。
-- iOS の泡破裂は `ReminderBubbleBurst.native.tsx`、Android は `ReminderBubbleBurst.android.tsx`、Web は `ReminderBubbleBurst.web.tsx` を使う。
+- iOS の泡破裂は `ReminderBubbleBurst.native.tsx`、Android は `ReminderBubbleBurst.android.tsx` を使う。
 
 ## 実装時の境界
 
@@ -32,7 +32,7 @@
 - 永続データは SQLite、読み込み・mutation・画面間同期はTanStack Query、Quick Add draftと開発用設定はZustand、選択・検索・削除アニメーションは画面ローカルに置く。
 - reminders の追加・削除・タイトル更新では `src/widget/widgetUpdateService.tsx` の同期契約を維持する。
 - 通知や Widget の実機挙動を変更したら、Development Build を使い、`docs/QA_DEVELOPMENT_BUILD.md` と関連テストを更新する。
-- プラットフォーム差分は既存の `.native.tsx`、`.android.tsx`、`.web.tsx` の解決規則に沿わせ、共通ファイルに分岐を増やしすぎない。
+- プラットフォーム差分は既存の `.native.tsx`、`.android.tsx` の解決規則に沿わせ、共通ファイルに分岐を増やしすぎない。
 
 ## テストと検証
 
@@ -47,7 +47,7 @@
 
 - 環境は `nix develop` または direnv。固定 Node.js は `.node-version` の 24.16.0、pnpm は 10.8.1。
 - 初回セットアップは `pnpm install` の後に `pnpm run mvh:setup`。
-- Development Build の Metro は `pnpm run start:dev-client`、Expo Go は `pnpm run start:expo-go`、Web は `pnpm run web`。
+- Development Build の Metro は `pnpm run start:dev-client`、Expo Go は `pnpm run start:expo-go`。
 - ネイティブローカル実行は `pnpm run android` または `pnpm run ios`。
 - 通知・SQLite・Android Widget の確認には Expo Go を使わず Development Build を使う。
 - EAS の開発ビルドは `eas build --profile development --platform android` または `ios`。release 手順は `docs/RELEASE_ANDROID_IOS.md` を参照する。

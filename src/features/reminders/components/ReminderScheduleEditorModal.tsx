@@ -246,7 +246,7 @@ export function ReminderScheduleEditorModal({
                 </Pressable>
               </View>
 
-              {Platform.OS !== 'android' ? renderPicker() : null}
+              {Platform.OS === 'ios' ? renderPicker() : null}
 
               {!evaluated.isTargetFuture ? (
                 <Text style={styles.targetWarning}>過去の日時には変更できません</Text>
