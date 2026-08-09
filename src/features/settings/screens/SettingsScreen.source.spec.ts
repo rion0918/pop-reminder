@@ -34,22 +34,32 @@ test('settings exposes notification permission controls outside the dev-only sec
 });
 
 test('settings exposes native Pro purchase and independent restore actions', () => {
-  assertSourceIncludes(source, [
-    /ふわっと。Pro/,
-    /忘れたくないことを無制限に/,
-    /handleOpenProPaywall/,
-    /presentProPaywallIfNeeded/,
-    /handleRestoreProPurchase/,
-    /restoreProPurchase/,
-    /購入を復元/,
-    /proAccessState === 'pro'/,
-    /現在の利用状態: 無料版（6件まで）/,
-    /現在の利用状態を確認できません/,
-    /result === 'restored'/,
-    /result === 'no-purchase'/,
-    /購入を復元できませんでした/,
-    /await refreshProAccess\(\)/,
-  ]);
+  assertSourceContract(source, {
+    includes: [
+      /text-app-lavender-deep">\s*ふわっと。Pro\s*<\/Text>/,
+      /accessibilityLabel="Proにアップグレードする"/,
+      /name="sparkles-outline"/,
+      /text-app-lavender-deep"\s*>\s*Proにアップグレードする\s*<\/Text>/,
+      /handleOpenProPaywall/,
+      /presentProPaywallIfNeeded/,
+      /handleRestoreProPurchase/,
+      /restoreProPurchase/,
+      /!isProAccessLoading && proAccessState !== 'pro'/,
+      /購入を復元/,
+      /proAccessState === 'pro'/,
+      /result === 'restored'/,
+      /result === 'no-purchase'/,
+      /購入を復元できませんでした/,
+      /await refreshProAccess\(\)/,
+    ],
+    excludes: [
+      />\s*忘れたくないことを無制限に\s*<\/Text>/,
+      /現在の利用状態: Pro/,
+      /現在の利用状態: 無料版（6件まで）/,
+      /現在の利用状態を確認できません/,
+      /text-app-white">Pro<\/Text>/,
+    ],
+  });
 });
 
 test('settings exposes four independently editable quick-add preset times', () => {

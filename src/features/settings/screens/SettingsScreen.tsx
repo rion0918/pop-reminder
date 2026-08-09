@@ -458,58 +458,61 @@ export function SettingsScreen() {
 
           {isNativePurchasePlatform ? (
             <View className="mb-[18px] rounded-[24px] border border-[rgba(168,145,245,0.26)] bg-[rgba(255,255,255,0.88)] px-[16px] py-[14px]">
-              <View className="flex-row items-center gap-[12px]">
-                <View className="h-[38px] w-[38px] items-center justify-center rounded-[19px] bg-[#EEE8FF]">
-                  <Ionicons name="infinite-outline" size={22} color={palette.lavenderDeep} />
-                </View>
-                <View className="min-w-0 flex-1">
-                  <Text className="text-[16px] font-black text-app-ink">ふわっと。Pro</Text>
-                  <Text className="mt-[3px] text-[12px] font-bold leading-[17px] text-app-muted">
-                    忘れたくないことを無制限に
-                  </Text>
-                </View>
-                {isProAccessLoading ? (
-                  <ActivityIndicator size="small" color={palette.lavenderDeep} />
-                ) : proAccessState === 'pro' ? (
-                  <View className="rounded-[14px] bg-[#E9F8F1] px-[12px] py-[8px]">
-                    <Text className="text-[12px] font-black text-app-mint-deep">Pro利用中</Text>
+              {isProAccessLoading || proAccessState === 'pro' ? (
+                <View className="min-h-[64px] flex-row items-center gap-[12px] py-[10px]">
+                  <View className="h-[38px] w-[38px] items-center justify-center rounded-[19px] bg-[#EEE8FF]">
+                    <Ionicons name="infinite-outline" size={22} color={palette.lavenderDeep} />
                   </View>
-                ) : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="ふわっと。Proを解放"
-                    accessibilityState={{ disabled: isPurchaseActionPending }}
-                    disabled={isPurchaseActionPending}
-                    onPress={() => void handleOpenProPaywall()}
-                    className="min-h-[40px] items-center justify-center rounded-[14px] bg-app-lavender-deep px-[14px]"
-                    style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+                  <Text className="min-w-0 flex-1 text-[16px] font-black text-app-lavender-deep">
+                    ふわっと。Pro
+                  </Text>
+                  {isProAccessLoading ? (
+                    <ActivityIndicator size="small" color={palette.lavenderDeep} />
+                  ) : (
+                    <View className="rounded-[14px] bg-[#E9F8F1] px-[12px] py-[8px]">
+                      <Text className="text-[12px] font-black text-app-mint-deep">Pro利用中</Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Proにアップグレードする"
+                  accessibilityState={{ disabled: isPurchaseActionPending }}
+                  disabled={isPurchaseActionPending}
+                  onPress={() => void handleOpenProPaywall()}
+                  className="min-h-[64px] flex-row items-center gap-[12px] py-[10px]"
+                  style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+                >
+                  <View className="h-[38px] w-[38px] items-center justify-center rounded-[19px] bg-[#EEE8FF]">
+                    <Ionicons name="sparkles-outline" size={22} color={palette.lavenderDeep} />
+                  </View>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    className="min-w-0 flex-1 text-[15px] font-black text-app-lavender-deep"
                   >
-                    {isPurchaseActionPending ? (
-                      <ActivityIndicator size="small" color={palette.white} />
-                    ) : (
-                      <Text className="text-[13px] font-black text-app-white">Proを解放</Text>
-                    )}
-                  </Pressable>
-                )}
-              </View>
-              <Text className="ml-[50px] mt-[7px] text-[11px] font-bold text-app-muted">
-                {isProAccessLoading
-                  ? '利用状態を確認中'
-                  : proAccessState === 'pro'
-                    ? '現在の利用状態: Pro'
-                    : proAccessState === 'free'
-                      ? '現在の利用状態: 無料版（6件まで）'
-                      : '現在の利用状態を確認できません'}
-              </Text>
-              <View className="my-[10px] ml-[50px] h-px bg-[rgba(220,233,247,0.78)]" />
-              <SettingRow
-                icon="refresh-outline"
-                title="購入を復元"
-                caption="購入時と同じストアアカウントで復元します"
-                onPress={() => void handleRestoreProPurchase()}
-              >
-                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
-              </SettingRow>
+                    Proにアップグレードする
+                  </Text>
+                  {isPurchaseActionPending ? (
+                    <ActivityIndicator size="small" color={palette.lavenderDeep} />
+                  ) : null}
+                </Pressable>
+              )}
+              {!isProAccessLoading && proAccessState !== 'pro' ? (
+                <>
+                  <View className="ml-[50px] h-px bg-[rgba(220,233,247,0.78)]" />
+                  <SettingRow
+                    icon="refresh-outline"
+                    title="購入を復元"
+                    caption="購入時と同じストアアカウントで復元します"
+                    onPress={() => void handleRestoreProPurchase()}
+                  >
+                    <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+                  </SettingRow>
+                </>
+              ) : null}
             </View>
           ) : null}
 

@@ -140,6 +140,13 @@ test('local development uses the Expo-compatible Node version', () => {
   assert.match(flakeConfig, /nodejs_24/);
 });
 
+test('macOS development shell leaves native builds to the Apple toolchain', () => {
+  assert.match(
+    flakeConfig,
+    /mkDevShell = if pkgs\.stdenv\.isDarwin then pkgs\.mkShellNoCC else pkgs\.mkShell;/,
+  );
+});
+
 test('native release dependencies include vector icon peer dependencies', () => {
   assert.match(packageConfig.dependencies['expo-font'], /^~14\./);
 });

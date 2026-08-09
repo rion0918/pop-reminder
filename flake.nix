@@ -10,9 +10,10 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+        mkDevShell = if pkgs.stdenv.isDarwin then pkgs.mkShellNoCC else pkgs.mkShell;
       in
       {
-        devShells.default = pkgs.mkShell {
+        devShells.default = mkDevShell {
           packages = with pkgs; [
             nodejs_24
             pnpm
