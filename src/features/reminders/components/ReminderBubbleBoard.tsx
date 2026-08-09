@@ -421,9 +421,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
     () =>
       reminders
         .slice(0, MAX_VISIBLE_BUBBLES)
-        .map(
-          (reminder) => `${reminder.id}:${Math.round(getTitleVisualLength(reminder.title) * 10)}`,
-        )
+        .map((reminder) => `${reminder.id}:${reminder.targetAt}:${reminder.title}`)
         .join(','),
     [reminders],
   );

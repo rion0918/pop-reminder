@@ -236,6 +236,18 @@ test('overflow joins the home timeline as its final item and invalidates cached 
   ]);
 });
 
+test('schedule updates refresh visible reminder data even when the bubble order stays the same', () => {
+  const reminderKeyStart = boardSource.indexOf('const reminderIdsKey = useMemo');
+  const visibleRemindersStart = boardSource.indexOf('const visibleReminders = useMemo');
+  const reminderKeySource = boardSource.slice(reminderKeyStart, visibleRemindersStart);
+
+  assert.notEqual(reminderKeyStart, -1);
+  assert.notEqual(visibleRemindersStart, -1);
+  assert.match(reminderKeySource, /reminder\.targetAt/);
+  assert.match(reminderKeySource, /reminder\.title/);
+  assert.match(boardSource, /const visibleReminders = useMemo\([\s\S]*\[reminderIdsKey\]/);
+});
+
 test('dense home timeline fills representative safe corridors without changing deadline order', () => {
   const boardSizes = [
     { width: 288, height: 258 },
