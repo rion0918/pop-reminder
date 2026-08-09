@@ -8,7 +8,7 @@ const layoutSource = readSource(import.meta.url, '../app/_layout.tsx');
 test('bootstrap owns native setup and persisted data preparation', () => {
   assertSourceIncludes(source, [
     /configureNotificationHandler\(\);/,
-    /void configureAndroidNotificationChannels\(\)\.catch/,
+    /return configureAndroidNotificationChannels\(\)\.catch/,
     /await initializeDatabase\(\);\s+await appServices\.reminders\.cleanup\(\);/,
     /await appServices\.reminders\.retryPendingNotifications\(\);/,
   ]);
@@ -17,7 +17,6 @@ test('bootstrap owns native setup and persisted data preparation', () => {
 test('root layout delegates runtime and data initialization to bootstrap', () => {
   assertSourceIncludes(layoutSource, [
     /import \{ configureAppRuntime, prepareAppData \} from '\.\.\/bootstrap\/appInitialization';/,
-    /await prepareAppData\(\);/,
-    /configureAppRuntime\(\);/,
+    /await configureAppRuntime\(\);\s+await prepareAppData\(\);/,
   ]);
 });

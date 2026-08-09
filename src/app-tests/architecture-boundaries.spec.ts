@@ -9,7 +9,7 @@ const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 function readProductionSources(patterns: string[]) {
   return patterns
     .flatMap((pattern) => globSync(pattern, { cwd: sourceRoot }))
-    .filter((path) => !path.includes('.spec.'))
+    .filter((path) => !/\.(?:spec|test)\.tsx?$/.test(path))
     .map((path) => ({ path, source: readFileSync(resolve(sourceRoot, path), 'utf8') }));
 }
 
@@ -23,15 +23,26 @@ function assertSourcesDoNotMatch(
 }
 
 const infrastructureImport =
-  /from ['"](?:@\/|(?:\.\.?\/)+)(?:[^'"/]+\/)*(?:infrastructure|db|lib|widget)(?:\/[^'"]*)?['"]/;
-const externalPackageImport = /from ['"](?![./]|@\/)/;
+  /(?:from|import)\s+['"](?:@\/|(?:\.\.?\/)+)(?:[^'"/]+\/)*(?:infrastructure|db|lib|widget)(?:\/[^'"]*)?['"]/;
+const externalPackageImport = /(?:from|import)\s+['"](?![./]|@\/)/;
 
-const domainSources = readProductionSources(['features/*/domain/**/*.ts']);
-const applicationSources = readProductionSources(['features/*/application/**/*.ts']);
+const domainSources = readProductionSources([
+  'features/*/domain/**/*.ts',
+  'features/*/domain/**/*.tsx',
+]);
+const applicationSources = readProductionSources([
+  'features/*/application/**/*.ts',
+  'features/*/application/**/*.tsx',
+]);
 const presentationSources = readProductionSources(['features/**/*.ts', 'features/**/*.tsx']).filter(
   ({ path }) => !/features\/[^/]+\/(?:application|domain|infrastructure)\//.test(path),
 );
 const routeSources = readProductionSources(['app/**/*.ts', 'app/**/*.tsx']);
+
+test('boundary matchers include side-effect-only imports', () => {
+  assert.match("import 'date-fns';", externalPackageImport);
+  assert.match("import '../infrastructure/register';", infrastructureImport);
+});
 
 test('domain imports only project-owned pure TypeScript modules', () => {
   assertSourcesDoNotMatch(domainSources, externalPackageImport);

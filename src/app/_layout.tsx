@@ -50,6 +50,7 @@ export default function RootLayout() {
     stateRef.current = 'loading';
     setBootstrapState('loading');
     try {
+      await configureAppRuntime();
       await prepareAppData();
       stateRef.current = 'ready';
       setBootstrapState('ready');
@@ -63,8 +64,6 @@ export default function RootLayout() {
   }, [publishIntent]);
 
   useEffect(() => {
-    configureAppRuntime();
-
     const subscription = Linking.addEventListener('url', (event) => receiveUrl(event.url));
     void Linking.getInitialURL()
       .then(receiveUrl)

@@ -7,7 +7,7 @@ import { appServices } from './appServices';
 
 export function configureAppRuntime() {
   configureNotificationHandler();
-  void configureAndroidNotificationChannels().catch((error) => {
+  return configureAndroidNotificationChannels().catch((error) => {
     console.warn('Failed to configure notification channels', error);
   });
 }
