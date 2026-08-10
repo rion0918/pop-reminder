@@ -393,6 +393,9 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.doesNotMatch(storeDraft, /Widgetは別タスク/);
   assert.match(storeDraft, /Google Play Data safety 下書き/);
   assert.match(storeDraft, /Device or other IDs、App interactions、Purchase history/);
+  assert.match(storeDraft, /PostHog[\s\S]*収集[\s\S]*共有/);
+  assert.match(storeDraft, /RevenueCat[\s\S]*収集[\s\S]*共有/);
+  assert.doesNotMatch(storeDraft, /第三者との共有はありません/);
   assert.match(storeDraft, /App Store Connect App Privacy 下書き/);
   assert.match(storeDraft, /ATT \/ IDFA は使用しません/);
 });
@@ -403,17 +406,28 @@ test('iOS privacy manifest matches the declared anonymous collection', () => {
 
   assert.equal(existsSync(privacyManifestPath), true);
   assert.match(privacyManifest, /<key>NSPrivacyTracking<\/key>\s*<false\/>/);
-  for (const dataType of [
-    'NSPrivacyCollectedDataTypeDeviceID',
-    'NSPrivacyCollectedDataTypeProductInteraction',
-    'NSPrivacyCollectedDataTypePurchaseHistory',
-  ]) {
-    assert.match(
-      privacyManifest,
+  const expectedPurposes = {
+    NSPrivacyCollectedDataTypeDeviceID: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+    NSPrivacyCollectedDataTypeProductInteraction: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+    NSPrivacyCollectedDataTypePurchaseHistory: [
+      'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+      'NSPrivacyCollectedDataTypePurposeAnalytics',
+    ],
+  };
+  for (const [dataType, purposes] of Object.entries(expectedPurposes)) {
+    const entry = privacyManifest.match(
       new RegExp(
-        `<string>${dataType}<\\/string>[\\s\\S]*?<key>NSPrivacyCollectedDataTypeLinked<\\/key>\\s*<false\\/>[\\s\\S]*?<key>NSPrivacyCollectedDataTypeTracking<\\/key>\\s*<false\\/>`,
+        `<dict>\\s*<key>NSPrivacyCollectedDataType<\\/key>\\s*<string>${dataType}<\\/string>[\\s\\S]*?<\\/dict>`,
       ),
+    )?.[0];
+    assert.ok(entry, `Privacy manifest entry is missing for ${dataType}`);
+    assert.match(
+      entry,
+      /<key>NSPrivacyCollectedDataTypeLinked<\/key>\s*<false\/>[\s\S]*?<key>NSPrivacyCollectedDataTypeTracking<\/key>\s*<false\/>/,
     );
+    for (const purpose of purposes) {
+      assert.match(entry, new RegExp(`<string>${purpose}<\\/string>`));
+    }
   }
 });
 

@@ -6,14 +6,14 @@ EAS Build による development build（`.ipa` / `.apk`）を実機にインス�
 
 ## テスト環境
 
-| 項目           | 内容                                                                                                               |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| ビルド種別     | development build（`developmentClient: true`）                                                                     |
-| 配布方法       | internal distribution（`.ipa` / `.apk`）                                                                           |
-| 対象 OS        | iOS / Android                                                                                                      |
-| 前提条件       | 通知権限のリクエスト、日本語 IME、SQLite、Expo Notifications が実機ネイティブ環境で動作することを確認              |
-| リリース方針   | Android を先行し、App Store は後追いで同じ機能セットを確認する。Android Widgetも初回リリース機能として確認する     |
-| バージョン管理 | ユーザー向けは `expo.version`、Android提出番号は `android.versionCode`、iOS提出番号は `ios.buildNumber` を更新する |
+| 項目           | 内容                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| ビルド種別     | development build（`developmentClient: true`）                                                                                              |
+| 配布方法       | internal distribution（`.ipa` / `.apk`）                                                                                                    |
+| 対象 OS        | iOS / Android                                                                                                                               |
+| 前提条件       | 通知権限のリクエスト、日本語 IME、SQLite、Expo Notifications が実機ネイティブ環境で動作することを確認                                       |
+| リリース方針   | Android を先行し、App Store は Android 専用 Widget を除く共通機能を後追いで確認する。Android Widget は初回Androidリリース機能として確認する |
+| バージョン管理 | ユーザー向けは `expo.version`、Android提出番号は `android.versionCode`、iOS提出番号は `ios.buildNumber` を更新する                          |
 
 ## Android 実機でQR検証する手順
 

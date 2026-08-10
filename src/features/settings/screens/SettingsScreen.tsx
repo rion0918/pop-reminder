@@ -147,7 +147,7 @@ const termsSections = [
 
 const termsDocument: LegalDocument = {
   title: '利用規約',
-  updatedAt: '2026年7月14日',
+  updatedAt: '2026年8月10日',
   sections: termsSections,
 };
 
@@ -318,17 +318,20 @@ export function SettingsScreen() {
     if (!analytics.configured || isAnalyticsPreferenceLoading || !settings) return;
 
     setIsAnalyticsPreferenceLoading(true);
+    const previousConsent = settings.analyticsConsent;
+    const nextConsent = value ? 'granted' : 'denied';
+    let consentPersisted = false;
     try {
-      if (value) {
-        const enabled = await analytics.setCaptureEnabled(true);
-        if (!enabled) throw new Error('Analytics could not be enabled');
-        await update({ analyticsConsent: 'granted' });
-      } else {
-        await analytics.setCaptureEnabled(false);
-        await update({ analyticsConsent: 'denied' });
-      }
+      await update({ analyticsConsent: nextConsent });
+      consentPersisted = true;
+      const enabled = await analytics.setCaptureEnabled(value);
+      if (value && !enabled) throw new Error('Analytics could not be enabled');
       setIsAnalyticsEnabled(value);
     } catch {
+      await analytics.setCaptureEnabled(false);
+      if (consentPersisted && previousConsent !== nextConsent) {
+        await update({ analyticsConsent: previousConsent }).catch(() => undefined);
+      }
       await refreshSettings();
       Alert.alert('設定を変更できませんでした', '時間をおいてもう一度お試しください。');
     } finally {
@@ -418,10 +421,12 @@ export function SettingsScreen() {
   };
 
   const handleDismissRaiseToSpeakIntro = useCallback(() => {
+    if (isRaiseToSpeakSetupBusy) return;
+
     setRaiseToSpeakSetupMessage(null);
     setIsRaiseToSpeakCalibrating(false);
     void update({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false });
-  }, [update]);
+  }, [isRaiseToSpeakSetupBusy, update]);
 
   const handlePrepareRaiseToSpeak = useCallback(async () => {
     if (isRaiseToSpeakSetupBusy) return;
@@ -468,22 +473,23 @@ export function SettingsScreen() {
     }
   }, [isRaiseToSpeakSetupBusy, raiseToSpeak]);
 
-  const handleRaiseToSpeakCalibrationStart = useCallback(() => {
+  const handleRaiseToSpeakCalibrationStart = useCallback(async () => {
     if (!isRaiseToSpeakCalibrating || isRaiseToSpeakSetupBusy) return;
 
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    void update({
-      raiseToSpeakEnabled: true,
-      raiseToSpeakIntroSeen: true,
-    })
-      .then(() => {
-        setRaiseToSpeakSetupMessage(null);
-        setIsRaiseToSpeakCalibrating(false);
-      })
-      .catch(() => {
-        setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
-        setIsRaiseToSpeakCalibrating(false);
+    setIsRaiseToSpeakSetupBusy(true);
+    try {
+      await update({
+        raiseToSpeakEnabled: true,
+        raiseToSpeakIntroSeen: true,
       });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setRaiseToSpeakSetupMessage(null);
+    } catch {
+      setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
+    } finally {
+      setIsRaiseToSpeakCalibrating(false);
+      setIsRaiseToSpeakSetupBusy(false);
+    }
   }, [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, update]);
 
   const handleRaiseToSpeakCalibrationStop = useCallback(() => {}, []);

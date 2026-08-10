@@ -56,8 +56,13 @@ function AnalyticsConsentGate({ children }: PropsWithChildren) {
   const chooseConsent = async (consent: 'granted' | 'denied') => {
     if (isSaving) return;
     setIsSaving(true);
+    const previousConsent = settingsQuery.data?.analyticsConsent ?? 'unknown';
+    let consentPersisted = false;
 
     try {
+      await settingsMutation.mutateAsync({ analyticsConsent: consent });
+      consentPersisted = true;
+
       if (consent === 'granted') {
         const enabled = await appServices.analytics.setCaptureEnabled(true);
         if (appServices.analytics.configured && !enabled) {
@@ -67,11 +72,16 @@ function AnalyticsConsentGate({ children }: PropsWithChildren) {
         await appServices.analytics.setCaptureEnabled(false);
       }
 
-      await settingsMutation.mutateAsync({ analyticsConsent: consent });
       if (consent === 'granted' && trackedPathnames.has(pathname)) {
         appServices.analytics.captureScreen(pathname);
       }
     } catch {
+      await appServices.analytics.setCaptureEnabled(false);
+      if (consentPersisted && previousConsent !== consent) {
+        await settingsMutation
+          .mutateAsync({ analyticsConsent: previousConsent })
+          .catch(() => undefined);
+      }
       // Keep the gate open when persistence or SDK setup fails.
     } finally {
       setIsSaving(false);

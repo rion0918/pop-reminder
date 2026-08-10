@@ -68,7 +68,8 @@
 
 - 収集するデータ: Device or other IDs、App interactions、Purchase history
 - 収集目的: Analytics（Device or other IDs / App interactions）、App functionality と Analytics（Purchase history）
-- 任意の匿名計測は明示的な同意後だけ有効化し、第三者との共有はありません。
+- PostHog: 明示的な同意後に匿名の Device or other IDs と App interactions を収集します。サービス提供者としての契約・処理範囲、匿名化・集計後のサービス改善、サブプロセッサーを確認し、Google Playの「共有」は実際の契約と連携先がサービス提供者の例外に該当するかで判定します。広告・独自目的の連携を設定した場合は共有として申告します。
+- RevenueCat: 購入履歴を収集し、App functionality と Analytics に利用します。現在のアプリコードでは第三者連携を設定していませんが、RevenueCatダッシュボードで連携先を追加した場合は、各連携先がサービス提供者に該当するかを確認し、該当しない連携は共有として申告します。
 - リマインダー本文、具体的な日時、音声・録音・文字起こし、モーション値は収集しません。
 - 通信中は暗号化され、設定画面または専用サポートメールから削除を依頼できます。
 

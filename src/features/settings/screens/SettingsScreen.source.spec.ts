@@ -182,6 +182,10 @@ test('settings shows the side-tilt voice intro on the first enable before prepar
     /visible=\{Boolean\(settings\?\.raiseToSpeakEnabled && !settings\.raiseToSpeakIntroSeen\)\}/,
     /onEnable=\{\(\) => void handlePrepareRaiseToSpeak\(\)\}/,
     /onDismiss=\{handleDismissRaiseToSpeakIntro\}/,
+    /if \(!isRaiseToSpeakCalibrating \|\| isRaiseToSpeakSetupBusy\) return;/,
+    /setIsRaiseToSpeakSetupBusy\(true\);\s*try \{\s*await update\(\{[\s\S]*raiseToSpeakEnabled: true/,
+    /finally \{\s*setIsRaiseToSpeakCalibrating\(false\);\s*setIsRaiseToSpeakSetupBusy\(false\);/,
+    /blocked: isRaiseToSpeakSetupBusy/,
     /音声は端末内で処理し、録音を保存しません/,
   ]);
   assert.doesNotMatch(
