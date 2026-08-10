@@ -7,4 +7,12 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    files: ['config.release.test.js'],
+    languageOptions: {
+      globals: {
+        __dirname: 'readonly',
+      },
+    },
+  },
 ]);

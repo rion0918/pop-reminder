@@ -1,5 +1,3 @@
-/* global __dirname */
-
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const { existsSync, readFileSync } = require('node:fs');

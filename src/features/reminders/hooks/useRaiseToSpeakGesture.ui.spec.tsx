@@ -105,9 +105,16 @@ describe('useRaiseToSpeakGesture', () => {
     expect(mockMotion.addListener).toHaveBeenCalledTimes(3);
 
     await act(async () => {
+      jest.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(200);
+      mockMotionListener({ accelerationIncludingGravity: { x: 9.8, y: 0, z: 0 } });
+      mockMotionListener({ accelerationIncludingGravity: { x: 9.8, y: 0, z: 0 } });
+    });
+    expect(onStart).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
       mockAppStateListener?.('background');
     });
-    expect(onStop).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenCalledTimes(2);
     expect(mockMotionRemove).toHaveBeenCalledTimes(3);
 
     await act(async () => {
