@@ -5,7 +5,7 @@ import DeviceMotion from 'expo-sensors/build/DeviceMotion';
 
 import {
   createRaiseToSpeakDetectorState,
-  isRightTiltedVoicePose,
+  isSideTiltedVoicePose,
   RAISE_TO_SPEAK_UPDATE_INTERVAL_MS,
   reduceRaiseToSpeakDetector,
   type RaiseToSpeakDetectorState,
@@ -59,7 +59,7 @@ export function useRaiseToSpeakGesture({
       const gravity = measurement.accelerationIncludingGravity;
       const result = reduceRaiseToSpeakDetector(detectorRef.current, {
         timestamp,
-        rightTilted: isRightTiltedVoicePose(gravity),
+        sideTilted: isSideTiltedVoicePose(gravity),
       });
       detectorRef.current = result.state;
       if (result.action === 'start') onStartRef.current();

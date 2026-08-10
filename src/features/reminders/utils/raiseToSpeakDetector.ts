@@ -1,16 +1,16 @@
 export const RAISE_TO_SPEAK_UPDATE_INTERVAL_MS = 50;
-export const RAISE_TO_SPEAK_RIGHT_TILT_HOLD_MS = 200;
+export const RAISE_TO_SPEAK_SIDE_TILT_HOLD_MS = 200;
 export const RAISE_TO_SPEAK_PORTRAIT_HOLD_MS = 350;
 export const RAISE_TO_SPEAK_COOLDOWN_MS = 1_500;
 export const RAISE_TO_SPEAK_MAX_LISTENING_MS = 30_000;
 
-const RIGHT_TILT_GRAVITY_RATIO = 0.64;
+const SIDE_TILT_GRAVITY_RATIO = 0.64;
 
 type RaiseToSpeakPhase = 'idle' | 'listening' | 'cooldown';
 
 export type RaiseToSpeakDetectorState = {
   phase: RaiseToSpeakPhase;
-  rightTiltedSince: number | null;
+  sideTiltedSince: number | null;
   portraitSince: number | null;
   listeningStartedAt: number | null;
   cooldownUntil: number | null;
@@ -18,12 +18,12 @@ export type RaiseToSpeakDetectorState = {
 
 export type RaiseToSpeakSample = {
   timestamp: number;
-  rightTilted: boolean;
+  sideTilted: boolean;
 };
 
 export type RaiseToSpeakAction = 'none' | 'start' | 'stop';
 
-export function isRightTiltedVoicePose(
+export function isSideTiltedVoicePose(
   gravity: { x: number; y: number; z: number } | null | undefined,
 ) {
   if (!gravity) return false;
@@ -31,15 +31,15 @@ export function isRightTiltedVoicePose(
   const magnitude = Math.sqrt(gravity.x ** 2 + gravity.y ** 2 + gravity.z ** 2);
   if (magnitude < 1) return false;
 
-  const horizontalRatio = gravity.x / magnitude;
+  const horizontalRatio = Math.abs(gravity.x) / magnitude;
   const verticalRatio = gravity.y / magnitude;
-  return horizontalRatio >= RIGHT_TILT_GRAVITY_RATIO && horizontalRatio >= Math.abs(verticalRatio);
+  return horizontalRatio >= SIDE_TILT_GRAVITY_RATIO && horizontalRatio >= Math.abs(verticalRatio);
 }
 
 export function createRaiseToSpeakDetectorState(): RaiseToSpeakDetectorState {
   return {
     phase: 'idle',
-    rightTiltedSince: null,
+    sideTiltedSince: null,
     portraitSince: null,
     listeningStartedAt: null,
     cooldownUntil: null,
@@ -62,7 +62,7 @@ export function reduceRaiseToSpeakDetector(
     if (
       state.cooldownUntil !== null &&
       sample.timestamp >= state.cooldownUntil &&
-      !sample.rightTilted
+      !sample.sideTilted
     ) {
       return { state: createRaiseToSpeakDetectorState(), action: 'none' };
     }
@@ -77,7 +77,7 @@ export function reduceRaiseToSpeakDetector(
       return { state: enterCooldown(sample.timestamp), action: 'stop' };
     }
 
-    const portraitSince = sample.rightTilted ? null : (state.portraitSince ?? sample.timestamp);
+    const portraitSince = sample.sideTilted ? null : (state.portraitSince ?? sample.timestamp);
     if (
       portraitSince !== null &&
       sample.timestamp - portraitSince >= RAISE_TO_SPEAK_PORTRAIT_HOLD_MS
@@ -88,16 +88,16 @@ export function reduceRaiseToSpeakDetector(
     return { state: { ...state, portraitSince }, action: 'none' };
   }
 
-  const rightTiltedSince = sample.rightTilted ? (state.rightTiltedSince ?? sample.timestamp) : null;
+  const sideTiltedSince = sample.sideTilted ? (state.sideTiltedSince ?? sample.timestamp) : null;
   if (
-    rightTiltedSince !== null &&
-    sample.timestamp - rightTiltedSince >= RAISE_TO_SPEAK_RIGHT_TILT_HOLD_MS
+    sideTiltedSince !== null &&
+    sample.timestamp - sideTiltedSince >= RAISE_TO_SPEAK_SIDE_TILT_HOLD_MS
   ) {
     return {
       state: {
         ...state,
         phase: 'listening',
-        rightTiltedSince,
+        sideTiltedSince,
         portraitSince: null,
         listeningStartedAt: sample.timestamp,
       },
@@ -105,5 +105,5 @@ export function reduceRaiseToSpeakDetector(
     };
   }
 
-  return { state: { ...state, rightTiltedSince }, action: 'none' };
+  return { state: { ...state, sideTiltedSince }, action: 'none' };
 }

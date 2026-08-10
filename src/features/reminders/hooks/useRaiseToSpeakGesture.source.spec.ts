@@ -13,7 +13,7 @@ test('raise-to-speak sensors run only on the focused foreground home screen and 
     /enabled && !blocked && isFocused && appState === 'active'/,
     /DeviceMotion\.setUpdateInterval\(RAISE_TO_SPEAK_UPDATE_INTERVAL_MS\)/,
     /DeviceMotion\.addListener/,
-    /rightTilted: isRightTiltedVoicePose\(gravity\)/,
+    /sideTilted: isSideTiltedVoicePose\(gravity\)/,
     /if \(detectorRef\.current\.phase === 'listening'\) onStopRef\.current\(\);/,
     /detectorRef\.current = createRaiseToSpeakDetectorState\(\);/,
     /motionSubscription\.remove\(\);/,

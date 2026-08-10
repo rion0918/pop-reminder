@@ -5,7 +5,7 @@ import { assertSourceIncludes, readSource } from '../../test-utils/sourceAsserti
 
 const source = readSource(import.meta.url, './prepareRaiseToSpeak.ts');
 
-test('right-tilt voice setup requires motion and on-device speech but not proximity', () => {
+test('side-tilt voice setup requires motion and on-device speech but not proximity', () => {
   assertSourceIncludes(source, [
     /DeviceMotion\.isAvailableAsync\(\)/,
     /DeviceMotion\.requestPermissionsAsync\(\)/,

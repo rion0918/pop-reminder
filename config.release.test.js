@@ -151,7 +151,7 @@ test('native release dependencies include vector icon peer dependencies', () => 
   assert.match(packageConfig.dependencies['expo-font'], /^~14\./);
 });
 
-test('right-tilt voice native dependencies and permissions are synced without proximity', () => {
+test('side-tilt voice native dependencies and permissions are synced without proximity', () => {
   const sensorPlugin = appConfig.expo.plugins.find(
     (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-sensors',
   );
@@ -167,7 +167,7 @@ test('right-tilt voice native dependencies and permissions are synced without pr
   assert.equal(packageConfig.dependencies['expo-sensors'], '~15.0.8');
   assert.equal(packageConfig.dependencies['expo-speech-recognition'], '3.1.3');
   assert.ok(sensorPlugin);
-  assert.match(sensorPlugin[1].motionPermission, /右へ傾けた動き/);
+  assert.match(sensorPlugin[1].motionPermission, /左右へ傾けた動き/);
   assert.ok(speechPlugin);
   assert.match(speechPlugin[1].microphonePermission, /端末内で文字にする/);
   assert.match(speechPlugin[1].speechRecognitionPermission, /端末内で文字に変換/);
@@ -337,7 +337,7 @@ test('store listing draft documents privacy and platform release notes', () => {
     /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
   );
   assert.match(storeDraft, /RevenueCat/);
-  assert.match(storeDraft, /右に傾けて音声入力/);
+  assert.match(storeDraft, /左右に傾けて音声入力/);
   assert.match(storeDraft, /音声認識は端末内/);
   assert.match(storeDraft, /録音、文字起こし、モーション値は外部送信しません/);
   assert.match(storeDraft, /買い切りの「ふわっと。Pro」/);

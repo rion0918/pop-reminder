@@ -152,9 +152,9 @@ test('settings legal copy supports both Google Play and App Store release pages'
   });
 });
 
-test('settings explicitly prepares and persists right-tilt voice input while keeping it off by default', () => {
+test('settings explicitly prepares and persists side-tilt voice input while keeping it off by default', () => {
   assertSourceIncludes(source, [
-    /title="右に傾けて音声入力"/,
+    /title="左右に傾けて音声入力"/,
     /settings\.raiseToSpeakEnabled/,
     /raiseToSpeak\.prepare\(\)/,
     /raiseToSpeakEnabled: true, raiseToSpeakIntroSeen: true/,

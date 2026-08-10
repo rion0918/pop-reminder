@@ -57,12 +57,12 @@ export function RaiseToSpeakIntroModal({
             />
           </View>
           <Text style={styles.title}>
-            {calibrating ? '試しに右へ傾けてください' : '右に傾けて音声入力'}
+            {calibrating ? '試しに左右どちらかへ傾けてください' : '左右に傾けて音声入力'}
           </Text>
           <Text style={styles.body}>
             {calibrating
-              ? 'スマホを縦向きから時計回りに右へ傾けます。振動したら設定完了です。'
-              : 'スマホを右へ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。'}
+              ? 'スマホを縦向きから左右どちらかへ傾けます。振動したら設定完了です。'
+              : 'スマホを左右どちらかへ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。'}
           </Text>
           <View style={styles.privacyRow}>
             <Ionicons name="shield-checkmark-outline" size={17} color={palette.mintDeep} />
@@ -79,7 +79,7 @@ export function RaiseToSpeakIntroModal({
             <View style={styles.actions}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="右に傾けて音声入力を使ってみる"
+                accessibilityLabel="左右に傾けて音声入力を使ってみる"
                 accessibilityState={{ disabled: busy, busy }}
                 disabled={busy}
                 onPress={onEnable}

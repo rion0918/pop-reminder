@@ -3,15 +3,15 @@ import { test } from 'node:test';
 
 import {
   createRaiseToSpeakDetectorState,
-  isRightTiltedVoicePose,
+  isSideTiltedVoicePose,
   reduceRaiseToSpeakDetector,
 } from './raiseToSpeakDetector';
 
-function sample(timestamp: number, rightTilted = false) {
-  return { timestamp, rightTilted };
+function sample(timestamp: number, sideTilted = false) {
+  return { timestamp, sideTilted };
 }
 
-test('right tilt starts voice input after the orientation is briefly stable', () => {
+test('either side tilt starts voice input after the orientation is briefly stable', () => {
   let state = createRaiseToSpeakDetectorState();
 
   let result = reduceRaiseToSpeakDetector(state, sample(0, true));
@@ -27,17 +27,18 @@ test('right tilt starts voice input after the orientation is briefly stable', ()
   assert.equal(result.state.phase, 'listening');
 });
 
-test('voice pose accepts right rotation only', () => {
-  assert.equal(isRightTiltedVoicePose(undefined), false);
-  assert.equal(isRightTiltedVoicePose({ x: 0, y: -9.8, z: 0 }), false);
-  assert.equal(isRightTiltedVoicePose({ x: 7.2, y: -6.8, z: 0 }), true);
-  assert.equal(isRightTiltedVoicePose({ x: 9.8, y: 0, z: 0 }), true);
-  assert.equal(isRightTiltedVoicePose({ x: -7.2, y: -6.8, z: 0 }), false);
-  assert.equal(isRightTiltedVoicePose({ x: 0, y: -7, z: -7 }), false);
-  assert.equal(isRightTiltedVoicePose({ x: 0, y: 0, z: -9.8 }), false);
+test('voice pose accepts left and right rotation symmetrically', () => {
+  assert.equal(isSideTiltedVoicePose(undefined), false);
+  assert.equal(isSideTiltedVoicePose({ x: 0, y: -9.8, z: 0 }), false);
+  assert.equal(isSideTiltedVoicePose({ x: 7.2, y: -6.8, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: 9.8, y: 0, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: -7.2, y: -6.8, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: -9.8, y: 0, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: 0, y: -7, z: -7 }), false);
+  assert.equal(isSideTiltedVoicePose({ x: 0, y: 0, z: -9.8 }), false);
 });
 
-test('left tilt and a brief right-tilt bounce never start voice input', () => {
+test('portrait and a brief side-tilt bounce never start voice input', () => {
   let state = createRaiseToSpeakDetectorState();
 
   ({ state } = reduceRaiseToSpeakDetector(state, sample(0, false)));
@@ -106,7 +107,7 @@ test('listening stops at the safety timeout and reset drops all pending state', 
 
   assert.deepEqual(createRaiseToSpeakDetectorState(), {
     phase: 'idle',
-    rightTiltedSince: null,
+    sideTiltedSince: null,
     portraitSince: null,
     listeningStartedAt: null,
     cooldownUntil: null,
