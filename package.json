@@ -67,6 +67,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@babel/plugin-transform-react-jsx": "^7.29.7",
     "@biomejs/biome": "^2.5.2",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "29.5.14",
