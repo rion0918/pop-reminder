@@ -248,6 +248,12 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - ExpoProximitySensor (1.0.0):
+    - ExpoModulesCore
+  - ExpoSensors (15.0.8):
+    - ExpoModulesCore
+  - ExpoSpeechRecognition (3.1.3):
+    - ExpoModulesCore
   - ExpoSQLite (16.0.10):
     - ExpoModulesCore
   - EXUpdatesInterface (2.0.0):
@@ -2274,6 +2280,9 @@ DEPENDENCIES:
   - "ExpoLinking (from `../node_modules/.pnpm/expo-linking@8.0.12_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@react-native+m_efc8f52d73961822f16ead9fb9f8cc1e/node_modules/expo-linking/ios`)"
   - "ExpoLocalization (from `../node_modules/.pnpm/expo-localization@17.0.9_expo@54.0.35_react@19.1.0/node_modules/expo-localization/ios`)"
   - "ExpoModulesCore (from `../node_modules/.pnpm/expo-modules-core@3.0.30_react-native@0.81.5_@babel+core@7.29.7_@react-native+metro-con_7cb4f61257e96286399846a750c81cfe/node_modules/expo-modules-core`)"
+  - ExpoProximitySensor (from `../modules/expo-proximity-sensor/ios`)
+  - "ExpoSensors (from `../node_modules/.pnpm/expo-sensors@15.0.8_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@react-native+m_3f14c3fea4af930e9f8447b24d63c160/node_modules/expo-sensors/ios`)"
+  - "ExpoSpeechRecognition (from `../node_modules/.pnpm/expo-speech-recognition@3.1.3_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@reac_fb915b52411427fa7a2702baf8fe1d26/node_modules/expo-speech-recognition/ios`)"
   - "ExpoSQLite (from `../node_modules/.pnpm/expo-sqlite@16.0.10_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@react-native+m_9be1dab8e8c10faf98fbedffdf6eb1f5/node_modules/expo-sqlite/ios`)"
   - "EXUpdatesInterface (from `../node_modules/.pnpm/expo-updates-interface@2.0.0_expo@54.0.35/node_modules/expo-updates-interface/ios`)"
   - "FBLazyVector (from `../node_modules/.pnpm/react-native@0.81.5_@babel+core@7.29.7_@react-native+metro-config@0.86.0_@babel+core@7._a151f2059729198a075c135bcd8ee82d/node_modules/react-native/Libraries/FBLazyVector`)"
@@ -2405,6 +2414,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/expo-localization@17.0.9_expo@54.0.35_react@19.1.0/node_modules/expo-localization/ios"
   ExpoModulesCore:
     :path: "../node_modules/.pnpm/expo-modules-core@3.0.30_react-native@0.81.5_@babel+core@7.29.7_@react-native+metro-con_7cb4f61257e96286399846a750c81cfe/node_modules/expo-modules-core"
+  ExpoProximitySensor:
+    :path: "../modules/expo-proximity-sensor/ios"
+  ExpoSensors:
+    :path: "../node_modules/.pnpm/expo-sensors@15.0.8_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@react-native+m_3f14c3fea4af930e9f8447b24d63c160/node_modules/expo-sensors/ios"
+  ExpoSpeechRecognition:
+    :path: "../node_modules/.pnpm/expo-speech-recognition@3.1.3_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@reac_fb915b52411427fa7a2702baf8fe1d26/node_modules/expo-speech-recognition/ios"
   ExpoSQLite:
     :path: "../node_modules/.pnpm/expo-sqlite@16.0.10_expo@54.0.35_react-native@0.81.5_@babel+core@7.29.7_@react-native+m_9be1dab8e8c10faf98fbedffdf6eb1f5/node_modules/expo-sqlite/ios"
   EXUpdatesInterface:
@@ -2587,6 +2602,9 @@ SPEC CHECKSUMS:
   ExpoLinking: 2ef632ad5013e3f1568fae9408d56ab9af5efc55
   ExpoLocalization: d936ff63557366e2e487264f5b495b1f0637fabd
   ExpoModulesCore: 9e6a5514828e7dd5ded9e99d33557be2d284e660
+  ExpoProximitySensor: 8d155a9af08fea158b45845161c72b86fb272e11
+  ExpoSensors: 8f9fe9a9ffd36ca9c2f0fe40dafc0a063f844420
+  ExpoSpeechRecognition: 95a6287f24fb8764ded6e9d0dd667a1e9e633dab
   ExpoSQLite: 7eedbe476870a5f18d6b89c817c4ac6f299830ad
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12

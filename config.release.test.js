@@ -151,6 +151,64 @@ test('native release dependencies include vector icon peer dependencies', () => 
   assert.match(packageConfig.dependencies['expo-font'], /^~14\./);
 });
 
+test('side-tilt voice native dependencies and permissions are synced without proximity', () => {
+  const sensorPlugin = appConfig.expo.plugins.find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-sensors',
+  );
+  const speechPlugin = appConfig.expo.plugins.find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-speech-recognition',
+  );
+  const iosInfoPlist = readFileSync(join(__dirname, 'ios/app/Info.plist'), 'utf8');
+  const androidManifest = readFileSync(
+    join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
+    'utf8',
+  );
+
+  assert.equal(packageConfig.dependencies['expo-sensors'], '~15.0.8');
+  assert.equal(packageConfig.dependencies['expo-speech-recognition'], '3.1.3');
+  assert.ok(sensorPlugin);
+  assert.match(sensorPlugin[1].motionPermission, /左右へ傾けた動き/);
+  assert.ok(speechPlugin);
+  assert.match(speechPlugin[1].microphonePermission, /端末内で文字にする/);
+  assert.match(speechPlugin[1].speechRecognitionPermission, /端末内で文字に変換/);
+  assert.deepEqual(speechPlugin[1].androidSpeechServicePackages, [
+    'com.google.android.as',
+    'com.google.android.tts',
+    'com.google.android.googlequicksearchbox',
+  ]);
+  assert.match(
+    iosInfoPlist,
+    /<key>NSMicrophoneUsageDescription<\/key>\s*<string>ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。<\/string>/,
+  );
+  assert.match(
+    iosInfoPlist,
+    /<key>NSMotionUsageDescription<\/key>\s*<string>ふわっと。が端末を左右へ傾けた動きを検出するために、モーションデータを使用します。<\/string>/,
+  );
+  assert.match(
+    iosInfoPlist,
+    /<key>NSSpeechRecognitionUsageDescription<\/key>\s*<string>ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。<\/string>/,
+  );
+  assert.match(
+    androidManifest,
+    /<uses-permission\b[^>]*android:name="android\.permission\.RECORD_AUDIO"/,
+  );
+  assert.equal(
+    existsSync(
+      join(
+        __dirname,
+        'modules/expo-proximity-sensor/android/src/main/java/expo/modules/proximitysensor/ExpoProximitySensorModule.kt',
+      ),
+    ),
+    false,
+  );
+  assert.equal(
+    existsSync(
+      join(__dirname, 'modules/expo-proximity-sensor/ios/ExpoProximitySensorModule.swift'),
+    ),
+    false,
+  );
+});
+
 test('Android notifications have a release-ready small icon and accent color', () => {
   const notificationsPlugin = appConfig.expo.plugins.find((plugin) => {
     return Array.isArray(plugin) && plugin[0] === 'expo-notifications';
@@ -291,6 +349,9 @@ test('store listing draft documents privacy and platform release notes', () => {
     /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
   );
   assert.match(storeDraft, /RevenueCat/);
+  assert.match(storeDraft, /左右に傾けて音声入力/);
+  assert.match(storeDraft, /音声認識は端末内/);
+  assert.match(storeDraft, /録音、文字起こし、モーション値は外部送信しません/);
   assert.match(storeDraft, /買い切りの「ふわっと。Pro」/);
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
@@ -305,7 +366,7 @@ test('privacy policy draft is ready to publish for store review', () => {
   const privacyPolicy = readFileSync(privacyPolicyPath, 'utf8');
 
   assert.match(privacyPolicy, /プライバシーポリシー/);
-  assert.match(privacyPolicy, /最終更新日: 2026年8月9日/);
+  assert.match(privacyPolicy, /最終更新日: 2026年8月10日/);
   assert.match(privacyPolicy, /「ふわっと。」は/);
   assert.match(privacyPolicy, /端末内に保存/);
   assert.match(privacyPolicy, /登録したリマインダーやアプリ設定を同期する機能はなく/);
@@ -318,6 +379,11 @@ test('privacy policy draft is ready to publish for store review', () => {
   assert.match(privacyPolicy, /RevenueCat/);
   assert.match(privacyPolicy, /AndroidとiOSの間で購入権利は共有されません/);
   assert.match(privacyPolicy, /通知権限/);
+  assert.match(privacyPolicy, /マイクとモーション/);
+  assert.match(privacyPolicy, /音声認識は端末内/);
+  assert.match(privacyPolicy, /音声、録音、モーション値は保存、分析、外部送信しません/);
+  assert.doesNotMatch(privacyPolicy, /近接センサー|近接情報/);
+  assert.match(privacyPolicy, /文字起こしを分析、外部送信することはありません/);
   assert.match(privacyPolicy, /データの削除/);
   assert.match(privacyPolicy, /Google PlayやApp Store/);
 });

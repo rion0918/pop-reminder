@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ElementRef } from 'react';
 import {
+  AccessibilityInfo,
+  Alert,
   Keyboard,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -13,6 +16,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { addDays, format, set, startOfDay } from 'date-fns';
 import {
   BottomSheetBackdrop,
@@ -36,6 +40,9 @@ import { REMINDER_TITLE_MAX_LENGTH } from '../schemas/reminderSchema';
 import { formatReminderInputDate } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { DateChips } from './DateChips';
+import { useAppServices } from '../../../bootstrap/AppProviders';
+
+type VoiceInputStatus = 'idle' | 'starting' | 'listening' | 'stopping';
 
 export type ReminderInputSheetProps = {
   defaultTargetTime?: string;
@@ -45,6 +52,7 @@ export type ReminderInputSheetProps = {
 };
 
 const QUICK_ADD_BOTTOM_CLEARANCE = 24;
+const VOICE_STOP_FALLBACK_MS = 1_500;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
   android: 'default',
@@ -62,27 +70,63 @@ function buildTargetDateTime(targetDate: Date, time: string) {
   });
 }
 
+function normalizeVoiceText(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function joinVoiceText(...values: string[]) {
+  return values.map(normalizeVoiceText).filter(Boolean).join(' ');
+}
+
+function voiceErrorMessage(error: string) {
+  if (error === 'no-speech' || error === 'speech-timeout') {
+    return '音声を聞き取れませんでした。もう一度お試しください。';
+  }
+  if (error === 'interrupted') return '通話やアラームにより音声入力が中断されました。';
+  if (error === 'not-allowed') return 'マイクの使用が許可されていません。';
+  if (error === 'language-not-supported' || error === 'service-not-allowed') {
+    return 'この端末では日本語の端末内音声認識を利用できません。';
+  }
+  return '音声入力を完了できませんでした。手入力をお試しください。';
+}
+
 export function ReminderInputSheet({
   defaultTargetTime = '08:00',
   presets = DEFAULT_TIME_PRESETS,
   isSaving = false,
   onSave,
 }: ReminderInputSheetProps) {
+  const voiceInput = useAppServices().voiceInput;
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
   const titleInputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
   const draftTitleRef = useRef('');
+  const [draftTitle, setDraftTitleText] = useState('');
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
   const isSaveRequestedRef = useRef(false);
   const titleFocusRequestIdRef = useRef(0);
   const pendingTitleFocusRequestIdRef = useRef<number | null>(null);
+  const handledVoiceInputRequestIdRef = useRef(0);
+  const handledVoiceInputStopRequestIdRef = useRef(0);
+  const voiceOperationIdRef = useRef(0);
+  const voiceStatusRef = useRef<VoiceInputStatus>('idle');
+  const voiceBaselineTitleRef = useRef('');
+  const voiceCommittedTranscriptRef = useRef('');
+  const voiceReceivedTextRef = useRef(false);
+  const explicitVoiceAbortRef = useRef(false);
+  const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beginVoiceInputRef = useRef<() => void>(() => {});
+  const stopVoiceInputRef = useRef<() => void>(() => {});
   const isOpenRef = useRef(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [titleLength, setTitleLength] = useState(0);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceInputStatus>('idle');
+  const [voiceVolume, setVoiceVolume] = useState(0);
+  const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   const [dismissalVersion, setDismissalVersion] = useState(0);
   const sheetTopInset = safeAreaInsets.top + 8;
   const quickAddMaxDynamicContentSize = useMemo(
@@ -101,12 +145,17 @@ export function ReminderInputSheet({
 
   const isOpen = useReminderUiStore((state) => state.isQuickAddOpen);
   const shouldFocusTitleOnOpen = useReminderUiStore((state) => state.shouldFocusTitleOnOpen);
+  const quickAddInputMode = useReminderUiStore((state) => state.quickAddInputMode);
+  const voiceInputRequestId = useReminderUiStore((state) => state.voiceInputRequestId);
+  const voiceInputStopRequestId = useReminderUiStore((state) => state.voiceInputStopRequestId);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
   const datePreset = useReminderUiStore((state) => state.datePreset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const time = useReminderUiStore(selectFormattedTime);
   const isTimeValid = useReminderUiStore(selectIsTimeValid);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
+  const completeVoiceInput = useReminderUiStore((state) => state.completeVoiceInput);
+  const setQuickAddPickerOpen = useReminderUiStore((state) => state.setQuickAddPickerOpen);
   const setTitle = useReminderUiStore((state) => state.setTitle);
   const resetTitle = useReminderUiStore((state) => state.resetTitle);
   const setDateOffset = useReminderUiStore((state) => state.setDateOffset);
@@ -150,8 +199,15 @@ export function ReminderInputSheet({
 
   const resetDraftTitle = useCallback(() => {
     draftTitleRef.current = '';
+    setDraftTitleText('');
     setTitleLength(0);
     titleInputRef.current?.clear();
+  }, []);
+
+  const updateDraftTitle = useCallback((text: string) => {
+    draftTitleRef.current = text;
+    setTitleLength(text.length);
+    setDraftTitleText(text);
   }, []);
 
   const invalidateTitleFocusRequest = useCallback(() => {
@@ -166,11 +222,247 @@ export function ReminderInputSheet({
     [],
   );
 
+  const setVoiceStatusValue = useCallback((status: VoiceInputStatus) => {
+    voiceStatusRef.current = status;
+    setVoiceStatus(status);
+  }, []);
+
+  const clearVoiceStopFallback = useCallback(() => {
+    if (voiceStopFallbackRef.current === null) return;
+    clearTimeout(voiceStopFallbackRef.current);
+    voiceStopFallbackRef.current = null;
+  }, []);
+
+  const cancelVoiceInput = useCallback(
+    (restoreBaseline: boolean) => {
+      clearVoiceStopFallback();
+      voiceOperationIdRef.current += 1;
+      explicitVoiceAbortRef.current = true;
+      if (voiceStatusRef.current !== 'idle') voiceInput.abort();
+      if (restoreBaseline) updateDraftTitle(voiceBaselineTitleRef.current);
+      voiceCommittedTranscriptRef.current = '';
+      voiceReceivedTextRef.current = false;
+      setVoiceVolume(0);
+      setVoiceStatusValue('idle');
+      completeVoiceInput();
+    },
+    [clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, updateDraftTitle, voiceInput],
+  );
+
+  const stopVoiceInput = useCallback(() => {
+    if (voiceStatusRef.current === 'idle' || voiceStatusRef.current === 'stopping') return;
+
+    clearVoiceStopFallback();
+    if (voiceStatusRef.current === 'starting') {
+      voiceOperationIdRef.current += 1;
+      explicitVoiceAbortRef.current = true;
+      voiceInput.abort();
+      setVoiceStatusValue('idle');
+      completeVoiceInput();
+      return;
+    }
+
+    setVoiceStatusValue('stopping');
+    setVoiceVolume(0);
+    voiceInput.stop();
+    completeVoiceInput();
+    voiceStopFallbackRef.current = setTimeout(() => {
+      voiceStopFallbackRef.current = null;
+      if (voiceStatusRef.current !== 'stopping') return;
+
+      explicitVoiceAbortRef.current = true;
+      voiceInput.abort();
+      setVoiceVolume(0);
+      setVoiceStatusValue('idle');
+      completeVoiceInput();
+      void Haptics.selectionAsync().catch(() => {});
+      AccessibilityInfo.announceForAccessibility('音声入力を終了しました。内容を確認してください');
+    }, VOICE_STOP_FALLBACK_MS);
+  }, [clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, voiceInput]);
+
+  const beginVoiceInput = useCallback(async () => {
+    if (voiceStatusRef.current !== 'idle') return;
+
+    clearVoiceStopFallback();
+    const operationId = voiceOperationIdRef.current + 1;
+    voiceOperationIdRef.current = operationId;
+    voiceBaselineTitleRef.current = draftTitleRef.current;
+    voiceCommittedTranscriptRef.current = '';
+    voiceReceivedTextRef.current = false;
+    explicitVoiceAbortRef.current = false;
+    setTitleNotice(null);
+    invalidateTitleFocusRequest();
+    Keyboard.dismiss();
+    setVoiceStatusValue('starting');
+
+    try {
+      let availability = await voiceInput.getAvailability();
+      if (availability.status === 'permission-required') {
+        const permission = await voiceInput.requestMicrophonePermission();
+        if (!permission.granted) {
+          availability = {
+            status: 'permission-denied',
+            canAskAgain: permission.canAskAgain,
+          };
+        } else {
+          availability = await voiceInput.getAvailability();
+        }
+      }
+
+      if (voiceOperationIdRef.current !== operationId) return;
+
+      if (availability.status === 'model-download-required') {
+        await voiceInput.downloadJapaneseModel();
+        if (voiceOperationIdRef.current !== operationId) return;
+        setTitleNotice('日本語の音声モデルを準備後、もう一度マイクを押してください。');
+        setVoiceStatusValue('idle');
+        completeVoiceInput();
+        return;
+      }
+
+      if (availability.status === 'permission-denied') {
+        setVoiceStatusValue('idle');
+        completeVoiceInput();
+        Alert.alert('マイクを利用できません', '端末の設定でマイクを許可してください。', [
+          { text: 'あとで', style: 'cancel' },
+          ...(availability.canAskAgain
+            ? []
+            : [{ text: '設定を開く', onPress: () => void Linking.openSettings() }]),
+        ]);
+        return;
+      }
+
+      if (availability.status !== 'ready') {
+        setTitleNotice('この端末では日本語の端末内音声認識を利用できません。');
+        setVoiceStatusValue('idle');
+        completeVoiceInput();
+        return;
+      }
+
+      voiceInput.start();
+    } catch {
+      if (voiceOperationIdRef.current !== operationId) return;
+      setTitleNotice('音声入力を開始できませんでした。手入力をお試しください。');
+      setVoiceStatusValue('idle');
+      completeVoiceInput();
+    }
+  }, [
+    clearVoiceStopFallback,
+    completeVoiceInput,
+    invalidateTitleFocusRequest,
+    setVoiceStatusValue,
+    voiceInput,
+  ]);
+
+  beginVoiceInputRef.current = () => void beginVoiceInput();
+  stopVoiceInputRef.current = stopVoiceInput;
+
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotionEnabled);
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      setReduceMotionEnabled,
+    );
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const subscription = voiceInput.subscribe((event) => {
+      if (event.type === 'start') {
+        setVoiceStatusValue('listening');
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        AccessibilityInfo.announceForAccessibility('音声入力を開始しました');
+        return;
+      }
+
+      if (event.type === 'result') {
+        const transcript = normalizeVoiceText(event.transcript);
+        if (!transcript) return;
+        voiceReceivedTextRef.current = true;
+        if (event.isFinal) {
+          voiceCommittedTranscriptRef.current = joinVoiceText(
+            voiceCommittedTranscriptRef.current,
+            transcript,
+          );
+        }
+        const currentTranscript = event.isFinal
+          ? voiceCommittedTranscriptRef.current
+          : joinVoiceText(voiceCommittedTranscriptRef.current, transcript);
+        updateDraftTitle(joinVoiceText(voiceBaselineTitleRef.current, currentTranscript));
+        return;
+      }
+
+      if (event.type === 'volume') {
+        if (voiceStatusRef.current === 'listening') {
+          setVoiceVolume(Math.max(0, Math.min(1, (event.value + 2) / 12)));
+        }
+        return;
+      }
+
+      if (event.type === 'nomatch') {
+        setTitleNotice('音声を聞き取れませんでした。もう一度お試しください。');
+        return;
+      }
+
+      if (event.type === 'error') {
+        clearVoiceStopFallback();
+        const wasExplicitAbort = explicitVoiceAbortRef.current && event.error === 'aborted';
+        explicitVoiceAbortRef.current = false;
+        setVoiceVolume(0);
+        setVoiceStatusValue('idle');
+        completeVoiceInput();
+        if (!wasExplicitAbort) {
+          setTitleNotice(voiceErrorMessage(event.error));
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        }
+        return;
+      }
+
+      if (event.type === 'end') {
+        clearVoiceStopFallback();
+        const shouldConfirmEnd = voiceStatusRef.current !== 'idle';
+        explicitVoiceAbortRef.current = false;
+        setVoiceVolume(0);
+        setVoiceStatusValue('idle');
+        completeVoiceInput();
+        if (shouldConfirmEnd) {
+          void Haptics.selectionAsync().catch(() => {});
+          AccessibilityInfo.announceForAccessibility(
+            voiceReceivedTextRef.current
+              ? '音声入力を終了しました。内容を確認してください'
+              : '音声入力を終了しました',
+          );
+        }
+      }
+    });
+
+    return () => {
+      clearVoiceStopFallback();
+      subscription.remove();
+      if (voiceStatusRef.current !== 'idle') voiceInput.abort();
+    };
+  }, [
+    clearVoiceStopFallback,
+    completeVoiceInput,
+    setVoiceStatusValue,
+    updateDraftTitle,
+    voiceInput,
+  ]);
+
   const handleSheetChange = useCallback(
     (index: number) => {
       if (index < 0) {
         invalidateTitleFocusRequest();
         Keyboard.dismiss();
+        return;
+      }
+
+      if (
+        quickAddInputMode === 'voice' &&
+        handledVoiceInputRequestIdRef.current !== voiceInputRequestId
+      ) {
+        handledVoiceInputRequestIdRef.current = voiceInputRequestId;
+        beginVoiceInputRef.current();
         return;
       }
 
@@ -187,8 +479,29 @@ export function ReminderInputSheet({
       pendingTitleFocusRequestIdRef.current = null;
       titleInputRef.current?.focus();
     },
-    [invalidateTitleFocusRequest],
+    [invalidateTitleFocusRequest, quickAddInputMode, voiceInputRequestId],
   );
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !isPresentedRef.current ||
+      isClosingRef.current ||
+      quickAddInputMode !== 'voice' ||
+      handledVoiceInputRequestIdRef.current === voiceInputRequestId
+    ) {
+      return;
+    }
+
+    handledVoiceInputRequestIdRef.current = voiceInputRequestId;
+    beginVoiceInputRef.current();
+  }, [isOpen, quickAddInputMode, voiceInputRequestId]);
+
+  useEffect(() => {
+    if (handledVoiceInputStopRequestIdRef.current === voiceInputStopRequestId) return;
+    handledVoiceInputStopRequestIdRef.current = voiceInputStopRequestId;
+    stopVoiceInputRef.current();
+  }, [voiceInputStopRequestId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -239,15 +552,32 @@ export function ReminderInputSheet({
     };
   }, [invalidateTitleFocusRequest]);
 
+  const closeDatePicker = useCallback(() => {
+    setIsDatePickerOpen(false);
+    setQuickAddPickerOpen(false);
+  }, [setQuickAddPickerOpen]);
+
+  const closeTimePicker = useCallback(() => {
+    setIsTimePickerOpen(false);
+    setQuickAddPickerOpen(false);
+  }, [setQuickAddPickerOpen]);
+
   const requestClose = useCallback(() => {
     isClosingRef.current = true;
+    cancelVoiceInput(false);
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
     closeQuickAdd();
-    setIsDatePickerOpen(false);
-    setIsTimePickerOpen(false);
+    closeDatePicker();
+    closeTimePicker();
     sheetRef.current?.dismiss();
-  }, [closeQuickAdd, invalidateTitleFocusRequest]);
+  }, [
+    cancelVoiceInput,
+    closeDatePicker,
+    closeQuickAdd,
+    closeTimePicker,
+    invalidateTitleFocusRequest,
+  ]);
 
   const handleClosePress = useCallback(() => {
     requestClose();
@@ -261,8 +591,9 @@ export function ReminderInputSheet({
     Keyboard.dismiss();
     isPresentedRef.current = false;
     isSaveRequestedRef.current = false;
-    setIsDatePickerOpen(false);
-    setIsTimePickerOpen(false);
+    cancelVoiceInput(false);
+    closeDatePicker();
+    closeTimePicker();
     resetDraftTitle();
     setTitleNotice(null);
 
@@ -271,19 +602,30 @@ export function ReminderInputSheet({
     } else {
       closeQuickAdd();
     }
-  }, [closeQuickAdd, invalidateTitleFocusRequest, resetDraftTitle]);
+  }, [
+    cancelVoiceInput,
+    closeDatePicker,
+    closeQuickAdd,
+    closeTimePicker,
+    invalidateTitleFocusRequest,
+    resetDraftTitle,
+  ]);
 
   const openDatePicker = useCallback(() => {
+    stopVoiceInput();
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
+    setQuickAddPickerOpen(true);
     setIsDatePickerOpen(true);
-  }, [invalidateTitleFocusRequest]);
+  }, [invalidateTitleFocusRequest, setQuickAddPickerOpen, stopVoiceInput]);
 
   const openTimePicker = useCallback(() => {
+    stopVoiceInput();
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
+    setQuickAddPickerOpen(true);
     setIsTimePickerOpen(true);
-  }, [invalidateTitleFocusRequest]);
+  }, [invalidateTitleFocusRequest, setQuickAddPickerOpen, stopVoiceInput]);
 
   const handleSave = useCallback(async () => {
     if (isSaving || isSaveRequestedRef.current) {
@@ -319,7 +661,7 @@ export function ReminderInputSheet({
   const handleDatePickerChange = useCallback(
     (event: DateTimePickerEvent, selectedDate?: Date) => {
       if (event.type === 'dismissed') {
-        setIsDatePickerOpen(false);
+        closeDatePicker();
         return;
       }
 
@@ -337,10 +679,10 @@ export function ReminderInputSheet({
       setCustomTargetDate(format(nextDate, 'yyyy-MM-dd'));
 
       if (Platform.OS === 'android') {
-        setIsDatePickerOpen(false);
+        closeDatePicker();
       }
     },
-    [minCustomDate, presets, setCustomTargetDate, setTargetTime, time],
+    [closeDatePicker, minCustomDate, presets, setCustomTargetDate, setTargetTime, time],
   );
 
   const handleDateOffsetChange = useCallback(
@@ -414,24 +756,55 @@ export function ReminderInputSheet({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.inputHeader}>
-            <BottomSheetTextInput
-              ref={titleInputRef}
-              defaultValue=""
-              onChangeText={(text) => {
-                draftTitleRef.current = text;
-                setTitleLength(text.length);
+            <View style={styles.inputField}>
+              <BottomSheetTextInput
+                ref={titleInputRef}
+                value={draftTitle}
+                onChangeText={updateDraftTitle}
+                placeholder="忘れたくないことを入力"
+                placeholderTextColor="#A6B2CE"
+                style={styles.input}
+                keyboardType="default"
+                autoCorrect
+                spellCheck={false}
+                autoCapitalize="none"
+                returnKeyType="done"
+                blurOnSubmit={false}
+                multiline={false}
+                editable={voiceStatus === 'idle'}
+              />
+              <Text
+                accessibilityRole="text"
+                accessibilityLabel={titleCountAccessibilityLabel}
+                style={[
+                  styles.titleCountText,
+                  isTitleCountWarning ? styles.titleCountTextWarning : null,
+                  isTitleOverLimit ? styles.titleCountTextOverLimit : null,
+                ]}
+              >
+                {titleLength} / {REMINDER_TITLE_MAX_LENGTH}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={voiceStatus === 'idle' ? '音声入力を開始' : '音声入力を終了'}
+              accessibilityState={{
+                busy: voiceStatus === 'starting' || voiceStatus === 'stopping',
               }}
-              placeholder="忘れたくないことを入力"
-              placeholderTextColor="#A6B2CE"
-              style={styles.input}
-              keyboardType="default"
-              autoCorrect
-              spellCheck={false}
-              autoCapitalize="none"
-              returnKeyType="done"
-              blurOnSubmit={false}
-              multiline={false}
-            />
+              hitSlop={8}
+              onPress={voiceStatus === 'idle' ? beginVoiceInput : stopVoiceInput}
+              style={({ pressed }) => [
+                styles.voiceButton,
+                voiceStatus !== 'idle' ? styles.voiceButtonActive : null,
+                pressed ? styles.voiceButtonPressed : null,
+              ]}
+            >
+              <Ionicons
+                name={voiceStatus === 'idle' ? 'mic-outline' : 'stop'}
+                size={20}
+                color={voiceStatus === 'idle' ? palette.lavenderDeep : palette.white}
+              />
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="入力を閉じる"
@@ -443,17 +816,62 @@ export function ReminderInputSheet({
             </Pressable>
           </View>
 
-          <Text
-            accessibilityRole="text"
-            accessibilityLabel={titleCountAccessibilityLabel}
-            style={[
-              styles.titleCountText,
-              isTitleCountWarning ? styles.titleCountTextWarning : null,
-              isTitleOverLimit ? styles.titleCountTextOverLimit : null,
-            ]}
-          >
-            {titleLength} / {REMINDER_TITLE_MAX_LENGTH}
-          </Text>
+          {voiceStatus !== 'idle' ? (
+            <View style={styles.voiceStatusPanel}>
+              <View
+                style={[
+                  styles.voiceMeter,
+                  {
+                    transform: [
+                      { scale: reduceMotionEnabled ? 1 : 1 + Math.max(0.04, voiceVolume * 0.2) },
+                    ],
+                  },
+                ]}
+              >
+                <Ionicons name="mic" size={18} color={palette.white} />
+              </View>
+              <View style={styles.voiceStatusCopy}>
+                <Text accessibilityLiveRegion="polite" style={styles.voiceStatusTitle}>
+                  {voiceStatus === 'listening'
+                    ? '聞いています…'
+                    : voiceStatus === 'stopping'
+                      ? '文字にしています…'
+                      : '準備しています…'}
+                </Text>
+                <Text style={styles.voiceStatusHint}>スマホを下げると終了します</Text>
+              </View>
+              <View style={styles.voiceStatusActions}>
+                {voiceStatus === 'listening' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="音声入力を完了"
+                    hitSlop={8}
+                    onPress={stopVoiceInput}
+                    style={({ pressed }) => [
+                      styles.voiceFinishButton,
+                      pressed ? styles.voiceButtonPressed : null,
+                    ]}
+                  >
+                    <Text style={styles.voiceFinishText}>完了</Text>
+                  </Pressable>
+                ) : null}
+                {voiceStatus !== 'stopping' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="音声入力をキャンセル"
+                    hitSlop={8}
+                    onPress={() => cancelVoiceInput(true)}
+                    style={({ pressed }) => [
+                      styles.voiceCancelButton,
+                      pressed ? styles.voiceButtonPressed : null,
+                    ]}
+                  >
+                    <Text style={styles.voiceCancelText}>キャンセル</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
           {titleNotice ? <Text style={styles.titleNoticeText}>{titleNotice}</Text> : null}
 
@@ -491,7 +909,7 @@ export function ReminderInputSheet({
               label={isSaving ? '追加中' : '追加'}
               icon="cloud-outline"
               onPress={handleSave}
-              disabled={isSaving || !isTimeValid || !isTargetFuture}
+              disabled={isSaving || voiceStatus !== 'idle' || !isTimeValid || !isTargetFuture}
               style={styles.saveButton}
             />
           </View>
@@ -514,7 +932,7 @@ export function ReminderInputSheet({
           visible={isDatePickerOpen}
           transparent
           animationType="fade"
-          onRequestClose={() => setIsDatePickerOpen(false)}
+          onRequestClose={closeDatePicker}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.pickerPanel}>
@@ -524,7 +942,7 @@ export function ReminderInputSheet({
                   accessibilityRole="button"
                   accessibilityLabel="日付選択を閉じる"
                   hitSlop={8}
-                  onPress={() => setIsDatePickerOpen(false)}
+                  onPress={closeDatePicker}
                   style={styles.closeButton}
                 >
                   <Ionicons name="close" size={20} color={palette.ink} />
@@ -543,7 +961,7 @@ export function ReminderInputSheet({
               <PrimaryButton
                 label="この日付にする"
                 icon="calendar-outline"
-                onPress={() => setIsDatePickerOpen(false)}
+                onPress={closeDatePicker}
                 style={styles.pickerButton}
               />
             </View>
@@ -556,7 +974,7 @@ export function ReminderInputSheet({
         value={time}
         hint="選んだ時刻に当日のお知らせが届きます"
         onConfirm={handleTargetTimeChange}
-        onClose={() => setIsTimePickerOpen(false)}
+        onClose={closeTimePicker}
       />
     </>
   );
@@ -581,6 +999,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
+  inputField: {
+    flex: 1,
+    position: 'relative',
+  },
   closeButton: {
     width: 34,
     height: 34,
@@ -589,11 +1011,91 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F3F6FC',
   },
+  voiceButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F2EDFF',
+    borderWidth: 1,
+    borderColor: 'rgba(168,145,245,0.34)',
+  },
+  voiceButtonActive: {
+    backgroundColor: palette.lavenderDeep,
+  },
+  voiceButtonPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.96 }],
+  },
+  voiceStatusPanel: {
+    minHeight: 58,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 18,
+    backgroundColor: 'rgba(237,230,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,145,245,0.28)',
+  },
+  voiceMeter: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.lavenderDeep,
+  },
+  voiceStatusCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  voiceStatusTitle: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  voiceStatusHint: {
+    marginTop: 2,
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  voiceCancelButton: {
+    minHeight: 34,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  voiceStatusActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  voiceFinishButton: {
+    minHeight: 34,
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    backgroundColor: palette.lavenderDeep,
+  },
+  voiceFinishText: {
+    color: palette.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  voiceCancelText: {
+    color: palette.lavenderDeep,
+    fontSize: 11,
+    fontWeight: '900',
+  },
   input: {
     flex: 1,
     height: 46,
     borderRadius: 16,
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 64,
     color: palette.ink,
     fontSize: 16,
     fontWeight: '700',
@@ -602,10 +1104,9 @@ const styles = StyleSheet.create({
     borderColor: palette.line,
   },
   titleCountText: {
-    alignSelf: 'flex-end',
-    marginTop: -4,
-    marginRight: 42,
-    marginBottom: 4,
+    position: 'absolute',
+    right: 12,
+    bottom: 5,
     color: palette.muted,
     fontSize: 11,
     lineHeight: 16,

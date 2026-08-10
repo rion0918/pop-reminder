@@ -64,7 +64,7 @@ type LegalDocument = {
 
 const privacyPolicyDocument: LegalDocument = {
   title: 'プライバシーポリシー',
-  updatedAt: '2026年8月9日',
+  updatedAt: '2026年8月10日',
   sections: [
     {
       title: '1. 基本方針',
@@ -79,23 +79,27 @@ const privacyPolicyDocument: LegalDocument = {
       body: '本アプリは、お知らせを届けるために端末の通知権限を利用します。通知権限は端末の設定からいつでも変更できます。',
     },
     {
-      title: '4. 匿名の利用状況について',
+      title: '4. 音声入力とセンサーについて',
+      body: '音声入力ではマイクを、左右に傾けて音声入力ではモーションを利用します。音声認識は端末内で行い、音声、録音、モーション値を保存、分析、外部送信しません。文字起こしは追加画面にだけ入り、ユーザーが「追加」を押した場合にタイトルとして端末内へ保存されます。文字起こしを分析、外部送信することはありません。これらの権限は端末の設定からいつでも変更できます。',
+    },
+    {
+      title: '5. 匿名の利用状況について',
       body: '品質改善のため、SDKが生成する匿名ID、アプリ・端末の技術情報、ホーム・一覧・設定の画面表示、リマインダー操作、通知、Pro購入導線の結果を PostHog の US Cloud へ送信します。タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません。',
     },
     {
-      title: '5. 利用状況計測の停止',
+      title: '6. 利用状況計測の停止',
       body: '匿名の利用状況は初期状態で有効です。設定画面の「匿名の利用状況を共有」からいつでも停止・再開でき、選択は端末内に保存されます。タッチ操作の自動収集、セッションリプレイ、位置情報の推定、リモートFeature Flagは使用しません。',
     },
     {
-      title: '6. アプリ内購入について',
+      title: '7. アプリ内購入について',
       body: '買い切りの「Pro版ふわっと。」を提供するため RevenueCat、Apple App Store、Google Play を利用します。RevenueCatにはSDKが生成する匿名購入ID、購入商品、購入・復元・権利状態、アプリ・端末の技術情報が送信されます。リマインダーの内容は送信しません。',
     },
     {
-      title: '7. データの削除',
+      title: '8. データの削除',
       body: 'アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。',
     },
     {
-      title: '8. お問い合わせ',
+      title: '9. お問い合わせ',
       body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
     },
   ],
@@ -145,6 +149,7 @@ const termsDocument: LegalDocument = {
 export function SettingsScreen() {
   const router = useRouter();
   const { reminders: reminderServices, analytics, purchases } = useAppServices();
+  const raiseToSpeak = useAppServices().raiseToSpeak;
   const { proAccessState, isProAccessLoading, refreshProAccess } = useProAccessQuery();
   const { settings, loading, update, updatePreviousNotifyTime, isUpdatingPreviousNotifyTime } =
     useAppSettings();
@@ -172,6 +177,7 @@ export function SettingsScreen() {
   const [isAnalyticsEnabled, setIsAnalyticsEnabled] = useState(false);
   const [isAnalyticsPreferenceLoading, setIsAnalyticsPreferenceLoading] = useState(true);
   const [isPurchaseActionPending, setIsPurchaseActionPending] = useState(false);
+  const [isRaiseToSpeakUpdatePending, setIsRaiseToSpeakUpdatePending] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
   const isNativePurchasePlatform = Platform.OS === 'android' || Platform.OS === 'ios';
@@ -313,6 +319,59 @@ export function SettingsScreen() {
     const enabled = await analytics.setCaptureEnabled(value);
     setIsAnalyticsEnabled(enabled);
     setIsAnalyticsPreferenceLoading(false);
+  };
+
+  const handleRaiseToSpeakEnabledChange = async (enabled: boolean) => {
+    if (isRaiseToSpeakUpdatePending) return;
+
+    setIsRaiseToSpeakUpdatePending(true);
+    try {
+      if (!enabled) {
+        await update({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: true });
+        return;
+      }
+
+      const result = await raiseToSpeak.prepare();
+      if (result.status === 'ready') {
+        await update({ raiseToSpeakEnabled: true, raiseToSpeakIntroSeen: true });
+        return;
+      }
+
+      if (result.status === 'model-download-started') {
+        Alert.alert(
+          '日本語モデルを準備しています',
+          'OSの案内に沿ってダウンロードし、完了後にもう一度オンにしてください。',
+        );
+        return;
+      }
+
+      if (result.status === 'permission-denied') {
+        const actions = result.canAskAgain
+          ? [{ text: 'OK' }]
+          : [
+              { text: 'あとで', style: 'cancel' as const },
+              { text: '設定を開く', onPress: () => void handleOpenAppSettings() },
+            ];
+        Alert.alert(
+          '権限が必要です',
+          'マイクとモーションの権限を許可すると利用できます。',
+          actions,
+        );
+        return;
+      }
+
+      const message = {
+        'motion-unavailable': 'この端末ではモーション検出を利用できません。',
+        'speech-unavailable':
+          'この端末では日本語の端末内音声認識を利用できません。手入力をご利用ください。',
+      }[result.status];
+      Alert.alert('左右に傾けて音声入力を利用できません', message);
+    } catch (error) {
+      console.warn('Failed to update raise-to-speak setting', error);
+      Alert.alert('設定を変更できませんでした', '時間をおいてもう一度お試しください。');
+    } finally {
+      setIsRaiseToSpeakUpdatePending(false);
+    }
   };
 
   const handleOpenProPaywall = async () => {
@@ -598,6 +657,29 @@ export function SettingsScreen() {
                 thumbColor={settings.autoDeleteEnabled ? palette.mintDeep : palette.white}
               />
             </SettingRow>
+          </View>
+
+          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
+            <SettingRow
+              icon="mic-outline"
+              title="左右に傾けて音声入力"
+              onPress={() => void handleRaiseToSpeakEnabledChange(!settings.raiseToSpeakEnabled)}
+            >
+              {isRaiseToSpeakUpdatePending ? (
+                <ActivityIndicator size="small" color={palette.lavenderDeep} />
+              ) : (
+                <Switch
+                  accessibilityLabel="左右に傾けて音声入力"
+                  value={settings.raiseToSpeakEnabled}
+                  onValueChange={(value) => void handleRaiseToSpeakEnabledChange(value)}
+                  trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
+                  thumbColor={settings.raiseToSpeakEnabled ? palette.lavenderDeep : palette.white}
+                />
+              )}
+            </SettingRow>
+            <Text className="mb-[12px] ml-[46px] text-[11px] font-semibold leading-[17px] text-app-muted">
+              音声は端末内で処理し、録音を保存しません
+            </Text>
           </View>
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">

@@ -11,6 +11,8 @@ export type AppSettings = {
   nightTargetTime: string;
   autoDeleteEnabled: boolean;
   notificationSoundEnabled: boolean;
+  raiseToSpeakEnabled: boolean;
+  raiseToSpeakIntroSeen: boolean;
   theme: AppTheme;
 };
 
@@ -27,6 +29,11 @@ export const DEFAULT_QUICK_ADD_PRESET_TIMES: QuickAddPresetTimes = {
   eveningTargetTime: '18:00',
   nightTargetTime: '20:00',
 };
+
+export const DEFAULT_RAISE_TO_SPEAK_SETTINGS = {
+  raiseToSpeakEnabled: false,
+  raiseToSpeakIntroSeen: false,
+} as const;
 
 export const QUICK_ADD_PRESET_VALIDATION_MESSAGE =
   '朝・昼・夕・夜の順に、異なる時刻を設定してください';

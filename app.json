@@ -53,6 +53,24 @@
       ],
       "expo-font",
       [
+        "expo-sensors",
+        {
+          "motionPermission": "ふわっと。が端末を左右へ傾けた動きを検出するために、モーションデータを使用します。"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。",
+          "speechRecognitionPermission": "ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。",
+          "androidSpeechServicePackages": [
+            "com.google.android.as",
+            "com.google.android.tts",
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      [
         "react-native-android-widget",
         {
           "widgets": [

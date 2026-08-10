@@ -63,6 +63,29 @@ test('widget quick add uses the same pro gate as the home button', () => {
   ]);
 });
 
+test('raise-to-speak enters voice quick add only after the shared Pro gate succeeds', () => {
+  const dismissIntroBlock = source.slice(
+    source.indexOf('const handleDismissRaiseToSpeakIntro'),
+    source.indexOf('const handlePrepareRaiseToSpeak'),
+  );
+
+  assertSourceIncludes(source, [
+    /type QuickAddSource = 'home_button' \| 'widget_deep_link' \| 'raise_to_speak';/,
+    /source === 'raise_to_speak' && !raiseSessionActiveRef\.current/,
+    /requestQuickAdd\('raise_to_speak', \{ inputMode: 'voice' \}\)/,
+    /requestVoiceInputStop\(\)/,
+    /raiseToSpeakEnabled: true/,
+    /raiseToSpeakIntroSeen: true/,
+    /setIsRaiseToSpeakCalibrating\(false\);/,
+    /Linking\.openSettings\(\)/,
+    /<RaiseToSpeakIntroModal/,
+    /useRaiseToSpeakGesture\(\{/,
+    /const isQuickAddPickerOpen = useReminderUiStore\(\(state\) => state\.isQuickAddPickerOpen\);/,
+    /blocked:[\s\S]*isQuickAddPickerOpen/,
+  ]);
+  assertSourceIncludes(dismissIntroBlock, [/setIsRaiseToSpeakCalibrating\(false\);/]);
+});
+
 test('home replaces bottom controls with the add bubble only for a settled empty query', () => {
   assertSourceIncludes(source, [
     /const isEmptyHome = !loading && !error && reminders\.length === 0;/,
@@ -241,7 +264,7 @@ test('settings button gives immediate pressed feedback without delaying navigati
 
 test('home refreshes app settings when returning to focus', () => {
   assertSourceIncludes(source, [
-    /const \{ settings, refresh: refreshSettings \} = useAppSettings\(\);/,
+    /const \{ settings, refresh: refreshSettings, update: updateSettings \} = useAppSettings\(\);/,
     /useFocusEffect\(\s*useCallback\(\(\) => \{\s*void refreshSettings\(\);\s*\}, \[refreshSettings\]\),\s*\);/,
   ]);
 });

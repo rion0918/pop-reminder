@@ -13,7 +13,7 @@ export type AnalyticsClient = {
   optOut(): unknown;
 };
 
-type QuickAddSource = 'home_button' | 'widget_deep_link';
+type QuickAddSource = 'home_button' | 'widget_deep_link' | 'raise_to_speak';
 type ReminderSurface = 'home' | 'reminders_list';
 type NotificationStatus = 'scheduled' | 'partial' | 'not-scheduled' | 'unchanged';
 type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined';

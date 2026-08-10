@@ -29,10 +29,54 @@ test('quick add shows a live accessible title character count from the validatio
     /const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;/,
     /const titleCountAccessibilityLabel = isTitleOverLimit/,
     /normalizedTitle\.length > REMINDER_TITLE_MAX_LENGTH/,
+    /<View style=\{styles\.inputField\}>[\s\S]*accessibilityLabel=\{titleCountAccessibilityLabel\}/,
+    /inputField: \{[\s\S]*position: 'relative'/,
+    /titleCountText: \{[\s\S]*position: 'absolute'/,
     /accessibilityLabel=\{titleCountAccessibilityLabel\}/,
     /styles\.titleCountText/,
     /\{titleLength\} \/ \{REMINDER_TITLE_MAX_LENGTH\}/,
   ]);
+});
+
+test('quick add supports cancellable on-device voice input without truncating the draft', () => {
+  assertSourceIncludes(source, [
+    /voiceStatus === 'idle' \? '音声入力を開始' : '音声入力を終了'/,
+    /voiceInput\.start\(\)/,
+    /voiceInput\.stop\(\)/,
+    /voiceInput\.abort\(\)/,
+    /voiceBaselineTitleRef\.current/,
+    /updateDraftTitle\(voiceBaselineTitleRef\.current\)/,
+    /joinVoiceText\(voiceBaselineTitleRef\.current, currentTranscript\)/,
+    /AccessibilityInfo\.isReduceMotionEnabled\(\)/,
+    /reduceMotionEnabled \? 1 :/,
+    /音声入力を開始しました/,
+    /内容を確認してください/,
+  ]);
+  assertSourceIncludes(source, [
+    /await voiceInput\.downloadJapaneseModel\(\);\s*if \(voiceOperationIdRef\.current !== operationId\) return;/,
+  ]);
+  assertSourceContract(source, {
+    excludes: [
+      /slice\(0, REMINDER_TITLE_MAX_LENGTH\)/,
+      /substring\(0, REMINDER_TITLE_MAX_LENGTH\)/,
+    ],
+  });
+});
+
+test('voice input always exposes a labeled finish action and escapes a stuck native stop', () => {
+  assertSourceIncludes(source, [
+    /const VOICE_STOP_FALLBACK_MS = 1_500;/,
+    /const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> \| null>\(null\);/,
+    /voiceStopFallbackRef\.current = setTimeout\(/,
+    /voiceStatusRef\.current !== 'stopping'/,
+    /voiceInput\.abort\(\);/,
+    /AccessibilityInfo\.announceForAccessibility\(\s*'音声入力を終了しました。内容を確認してください'/,
+    /accessibilityLabel="音声入力を完了"/,
+    />完了</,
+  ]);
+  assertSourceContract(source, {
+    excludes: [/<View\s+accessible\s+accessibilityLiveRegion="polite"/],
+  });
 });
 
 test('successful quick add does not focus the title input again', () => {
@@ -61,7 +105,7 @@ test('widget quick add waits for the sheet to open before focusing the title inp
     /const focusRequestId = titleFocusRequestIdRef\.current \+ 1;[\s\S]*pendingTitleFocusRequestIdRef\.current = shouldFocusTitleOnOpen \? focusRequestId : null;[\s\S]*sheetRef\.current\?\.present\(\);/,
   ]);
   assert.equal(openBlock.includes('titleInputRef.current?.focus()'), false);
-  assert.equal(source.includes('setTimeout'), false);
+  assert.equal(openBlock.includes('setTimeout'), false);
   assert.equal(source.includes('requestAnimationFrame'), false);
 });
 
@@ -118,8 +162,10 @@ test('pending focus is invalidated and keyboard is dismissed on every competing 
 
 test('date and time pickers dismiss the keyboard before opening', () => {
   assertSourceIncludes(source, [
-    /const openDatePicker = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);[\s\S]*setIsDatePickerOpen\(true\);/,
-    /const openTimePicker = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);[\s\S]*setIsTimePickerOpen\(true\);/,
+    /const openDatePicker = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);[\s\S]*setQuickAddPickerOpen\(true\);[\s\S]*setIsDatePickerOpen\(true\);/,
+    /const openTimePicker = useCallback\(\(\) => \{[\s\S]*invalidateTitleFocusRequest\(\);[\s\S]*Keyboard\.dismiss\(\);[\s\S]*setQuickAddPickerOpen\(true\);[\s\S]*setIsTimePickerOpen\(true\);/,
+    /const closeDatePicker = useCallback\(\(\) => \{[\s\S]*setQuickAddPickerOpen\(false\);/,
+    /const closeTimePicker = useCallback\(\(\) => \{[\s\S]*setQuickAddPickerOpen\(false\);/,
     /onSelectCustomDate=\{openDatePicker\}/,
     /onSelectCustomTime=\{openTimePicker\}/,
   ]);

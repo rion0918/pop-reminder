@@ -7,11 +7,18 @@ export type ReminderDateOffset = 0 | 1 | 2;
 
 type QuickAddOptions = {
   focusTitle?: boolean;
+  inputMode?: QuickAddInputMode;
 };
+
+export type QuickAddInputMode = 'text' | 'voice';
 
 type ReminderUiState = {
   isQuickAddOpen: boolean;
   shouldFocusTitleOnOpen: boolean;
+  quickAddInputMode: QuickAddInputMode;
+  isQuickAddPickerOpen: boolean;
+  voiceInputRequestId: number;
+  voiceInputStopRequestId: number;
   title: string;
   dateOffset: ReminderDateOffset;
   datePreset: ReminderDatePreset;
@@ -20,6 +27,9 @@ type ReminderUiState = {
   timeTouched: boolean;
   openQuickAdd: (defaultTime?: string, options?: QuickAddOptions) => void;
   closeQuickAdd: () => void;
+  requestVoiceInputStop: () => void;
+  completeVoiceInput: () => void;
+  setQuickAddPickerOpen: (isOpen: boolean) => void;
   setTitle: (title: string) => void;
   resetTitle: () => void;
   setDateOffset: (dateOffset: ReminderDateOffset) => void;
@@ -32,6 +42,10 @@ type ReminderUiState = {
 const initialState = {
   isQuickAddOpen: false,
   shouldFocusTitleOnOpen: false,
+  quickAddInputMode: 'text' as QuickAddInputMode,
+  isQuickAddPickerOpen: false,
+  voiceInputRequestId: 0,
+  voiceInputStopRequestId: 0,
   title: '',
   dateOffset: 0 as ReminderDateOffset,
   datePreset: 'today' as ReminderDatePreset,
@@ -45,14 +59,24 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
   openQuickAdd: (defaultTime = '08:00', options) =>
     set((state) => {
       const shouldFocusTitleOnOpen = Boolean(options?.focusTitle);
+      const quickAddInputMode = options?.inputMode ?? 'text';
+      const voiceInputRequestId =
+        quickAddInputMode === 'voice' ? state.voiceInputRequestId + 1 : state.voiceInputRequestId;
 
       if (state.isQuickAddOpen) {
-        return shouldFocusTitleOnOpen ? { shouldFocusTitleOnOpen } : {};
+        return {
+          shouldFocusTitleOnOpen,
+          quickAddInputMode,
+          voiceInputRequestId,
+        };
       }
 
       return {
         isQuickAddOpen: true,
         shouldFocusTitleOnOpen,
+        quickAddInputMode,
+        isQuickAddPickerOpen: false,
+        voiceInputRequestId,
         title: '',
         dateOffset: 0,
         datePreset: 'today',
@@ -61,7 +85,17 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
         timeTouched: false,
       };
     }),
-  closeQuickAdd: () => set({ isQuickAddOpen: false, shouldFocusTitleOnOpen: false }),
+  closeQuickAdd: () =>
+    set({
+      isQuickAddOpen: false,
+      shouldFocusTitleOnOpen: false,
+      quickAddInputMode: 'text',
+      isQuickAddPickerOpen: false,
+    }),
+  requestVoiceInputStop: () =>
+    set((state) => ({ voiceInputStopRequestId: state.voiceInputStopRequestId + 1 })),
+  completeVoiceInput: () => set({ quickAddInputMode: 'text' }),
+  setQuickAddPickerOpen: (isQuickAddPickerOpen) => set({ isQuickAddPickerOpen }),
   setTitle: (title) => set({ title }),
   resetTitle: () => set({ title: '' }),
   setDateOffset: (dateOffset) =>
@@ -83,6 +117,7 @@ export const useReminderUiStore = create<ReminderUiState>((set) => ({
       timeDigits: timeToDigits(defaultTime),
       timeTouched: false,
       shouldFocusTitleOnOpen: false,
+      isQuickAddPickerOpen: false,
     }),
 }));
 

@@ -27,6 +27,12 @@ export const appSettings = sqliteTable('app_settings', {
   notificationSoundEnabled: integer('notification_sound_enabled', { mode: 'boolean' })
     .notNull()
     .default(true),
+  raiseToSpeakEnabled: integer('raise_to_speak_enabled', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  raiseToSpeakIntroSeen: integer('raise_to_speak_intro_seen', { mode: 'boolean' })
+    .notNull()
+    .default(false),
   theme: text('theme', { enum: ['sky', 'lavender', 'mint'] })
     .notNull()
     .default('sky'),
