@@ -313,6 +313,7 @@ export function ReminderInputSheet({
 
       if (availability.status === 'model-download-required') {
         await voiceInput.downloadJapaneseModel();
+        if (voiceOperationIdRef.current !== operationId) return;
         setTitleNotice('日本語の音声モデルを準備後、もう一度マイクを押してください。');
         setVoiceStatusValue('idle');
         completeVoiceInput();

@@ -45,7 +45,7 @@ export function RaiseToSpeakIntroModal({
       visible={visible}
       transparent
       animationType={reduceMotionEnabled ? 'none' : 'fade'}
-      onRequestClose={busy || calibrating ? undefined : onDismiss}
+      onRequestClose={busy ? undefined : onDismiss}
     >
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
@@ -75,29 +75,11 @@ export function RaiseToSpeakIntroModal({
             </Text>
           ) : null}
 
-          {!calibrating ? (
-            <View style={styles.actions}>
+          <View style={styles.actions}>
+            {calibrating ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="左右に傾けて音声入力を使ってみる"
-                accessibilityState={{ disabled: busy, busy }}
-                disabled={busy}
-                onPress={onEnable}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed ? styles.buttonPressed : null,
-                ]}
-              >
-                {busy ? (
-                  <ActivityIndicator size="small" color={palette.white} />
-                ) : (
-                  <Ionicons name="sparkles-outline" size={18} color={palette.white} />
-                )}
-                <Text style={styles.primaryLabel}>{busy ? '確認中…' : '使ってみる'}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="今は音声入力を使わない"
+                accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
                 disabled={busy}
                 onPress={onDismiss}
                 style={({ pressed }) => [
@@ -105,10 +87,43 @@ export function RaiseToSpeakIntroModal({
                   pressed ? styles.buttonPressed : null,
                 ]}
               >
-                <Text style={styles.secondaryLabel}>今はしない</Text>
+                <Text style={styles.secondaryLabel}>キャンセル</Text>
               </Pressable>
-            </View>
-          ) : null}
+            ) : (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="左右に傾けて音声入力を使ってみる"
+                  accessibilityState={{ disabled: busy, busy }}
+                  disabled={busy}
+                  onPress={onEnable}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed ? styles.buttonPressed : null,
+                  ]}
+                >
+                  {busy ? (
+                    <ActivityIndicator size="small" color={palette.white} />
+                  ) : (
+                    <Ionicons name="sparkles-outline" size={18} color={palette.white} />
+                  )}
+                  <Text style={styles.primaryLabel}>{busy ? '確認中…' : '使ってみる'}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="今は音声入力を使わない"
+                  disabled={busy}
+                  onPress={onDismiss}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed ? styles.buttonPressed : null,
+                  ]}
+                >
+                  <Text style={styles.secondaryLabel}>今はしない</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
         </View>
       </View>
     </Modal>

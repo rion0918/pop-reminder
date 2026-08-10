@@ -621,6 +621,7 @@ export function HomeScreen() {
 
   const handleDismissRaiseToSpeakIntro = useCallback(() => {
     setRaiseToSpeakSetupMessage(null);
+    setIsRaiseToSpeakCalibrating(false);
     void updateSettings({ raiseToSpeakIntroSeen: true });
   }, [updateSettings]);
 

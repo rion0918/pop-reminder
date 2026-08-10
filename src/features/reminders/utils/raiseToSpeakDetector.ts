@@ -33,7 +33,12 @@ export function isSideTiltedVoicePose(
 
   const horizontalRatio = Math.abs(gravity.x) / magnitude;
   const verticalRatio = gravity.y / magnitude;
-  return horizontalRatio >= SIDE_TILT_GRAVITY_RATIO && horizontalRatio >= Math.abs(verticalRatio);
+  const depthRatio = Math.abs(gravity.z) / magnitude;
+  return (
+    horizontalRatio >= SIDE_TILT_GRAVITY_RATIO &&
+    horizontalRatio >= Math.abs(verticalRatio) &&
+    horizontalRatio >= depthRatio
+  );
 }
 
 export function createRaiseToSpeakDetectorState(): RaiseToSpeakDetectorState {

@@ -1,3 +1,5 @@
+/* global __dirname */
+
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const { existsSync, readFileSync } = require('node:fs');
@@ -176,10 +178,22 @@ test('side-tilt voice native dependencies and permissions are synced without pro
     'com.google.android.tts',
     'com.google.android.googlequicksearchbox',
   ]);
-  assert.match(iosInfoPlist, /NSMicrophoneUsageDescription/);
-  assert.match(iosInfoPlist, /NSMotionUsageDescription/);
-  assert.match(iosInfoPlist, /NSSpeechRecognitionUsageDescription/);
-  assert.match(androidManifest, /android\.permission\.RECORD_AUDIO/);
+  assert.match(
+    iosInfoPlist,
+    /<key>NSMicrophoneUsageDescription<\/key>\s*<string>ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。<\/string>/,
+  );
+  assert.match(
+    iosInfoPlist,
+    /<key>NSMotionUsageDescription<\/key>\s*<string>ふわっと。が端末を左右へ傾けた動きを検出するために、モーションデータを使用します。<\/string>/,
+  );
+  assert.match(
+    iosInfoPlist,
+    /<key>NSSpeechRecognitionUsageDescription<\/key>\s*<string>ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。<\/string>/,
+  );
+  assert.match(
+    androidManifest,
+    /<uses-permission\b[^>]*android:name="android\.permission\.RECORD_AUDIO"/,
+  );
   assert.equal(
     existsSync(
       join(

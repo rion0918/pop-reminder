@@ -113,6 +113,17 @@ test('availability distinguishes permission, model, and unsupported states', asy
     { status: 'model-download-required', canAskAgain: true },
   );
 
+  const unsupportedLocale = makeModule({
+    getSupportedLocales: async () => ({ locales: ['en-US'], installedLocales: [] }),
+  });
+  assert.deepEqual(
+    await createVoiceInputService(unsupportedLocale.module, {
+      os: 'android',
+      apiLevel: 34,
+    }).getAvailability(),
+    { status: 'unsupported', canAskAgain: false },
+  );
+
   const unsupported = makeModule({ supportsOnDeviceRecognition: () => false });
   assert.deepEqual(
     await createVoiceInputService(unsupported.module, {

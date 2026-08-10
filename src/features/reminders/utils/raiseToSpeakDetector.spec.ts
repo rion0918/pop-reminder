@@ -34,6 +34,7 @@ test('voice pose accepts left and right rotation symmetrically', () => {
   assert.equal(isSideTiltedVoicePose({ x: 9.8, y: 0, z: 0 }), true);
   assert.equal(isSideTiltedVoicePose({ x: -7.2, y: -6.8, z: 0 }), true);
   assert.equal(isSideTiltedVoicePose({ x: -9.8, y: 0, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: 7, y: 0, z: 8 }), false);
   assert.equal(isSideTiltedVoicePose({ x: 0, y: -7, z: -7 }), false);
   assert.equal(isSideTiltedVoicePose({ x: 0, y: 0, z: -9.8 }), false);
 });

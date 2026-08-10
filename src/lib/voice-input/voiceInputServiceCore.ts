@@ -83,6 +83,9 @@ export function createVoiceInputService(
           const locales = await speechRecognition.getSupportedLocales({
             androidRecognitionServicePackage: ANDROID_ON_DEVICE_SERVICE,
           });
+          if (!hasJapaneseLocale(locales.locales)) {
+            return { status: 'unsupported', canAskAgain: false };
+          }
           if (!hasJapaneseLocale(locales.installedLocales)) {
             return { status: 'model-download-required', canAskAgain: true };
           }

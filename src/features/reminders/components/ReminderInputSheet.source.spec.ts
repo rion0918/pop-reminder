@@ -52,6 +52,9 @@ test('quick add supports cancellable on-device voice input without truncating th
     /音声入力を開始しました/,
     /内容を確認してください/,
   ]);
+  assertSourceIncludes(source, [
+    /await voiceInput\.downloadJapaneseModel\(\);\s*if \(voiceOperationIdRef\.current !== operationId\) return;/,
+  ]);
   assertSourceContract(source, {
     excludes: [
       /slice\(0, REMINDER_TITLE_MAX_LENGTH\)/,
