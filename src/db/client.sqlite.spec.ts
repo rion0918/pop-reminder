@@ -42,6 +42,6 @@ test('database startup applies notification permission compatibility after migra
     /async function initializeNotificationPermissionCompatibility\(database: MigrationDatabase\)/,
     /ADD COLUMN notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0/,
     /PRAGMA user_version = 5/,
-    /await runDatabaseMigrations\(sqlite\);\s+await initializeNotificationPermissionCompatibility\(sqlite\);/,
+    /await runDatabaseMigrations\(database\);\s+await initializeNotificationPermissionCompatibility\(database\);/,
   ]);
 });

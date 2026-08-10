@@ -60,10 +60,10 @@ async function initializeNotificationPermissionCompatibility(database: Migration
   `);
 }
 
-export async function initializeDatabase() {
+export async function initializeDatabase(database: MigrationDatabase = sqlite) {
   try {
-    await runDatabaseMigrations(sqlite);
-    await initializeNotificationPermissionCompatibility(sqlite);
+    await runDatabaseMigrations(database);
+    await initializeNotificationPermissionCompatibility(database);
   } catch (error) {
     console.warn('[DB] Failed to initialize database', {
       ...getPopReminderDatabaseInfo(),
