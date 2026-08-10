@@ -155,10 +155,8 @@ export function HomeScreen() {
   const [raiseToSpeakSetupMessage, setRaiseToSpeakSetupMessage] = useState<string | null>(null);
   const [isNotificationPermissionIntroVisible, setIsNotificationPermissionIntroVisible] =
     useState(false);
-  const [isNotificationPermissionIntroBusy, setIsNotificationPermissionIntroBusy] =
-    useState(false);
-  const [notificationPermissionCanAskAgain, setNotificationPermissionCanAskAgain] =
-    useState(true);
+  const [isNotificationPermissionIntroBusy, setIsNotificationPermissionIntroBusy] = useState(false);
+  const [notificationPermissionCanAskAgain, setNotificationPermissionCanAskAgain] = useState(true);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
   const visibleReminderIds = useMemo(

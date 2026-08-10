@@ -42,10 +42,7 @@ type TiltPhoneIllustrationProps = {
   reduceMotionEnabled: boolean;
 };
 
-function TiltPhoneIllustration({
-  active,
-  reduceMotionEnabled,
-}: TiltPhoneIllustrationProps) {
+function TiltPhoneIllustration({ active, reduceMotionEnabled }: TiltPhoneIllustrationProps) {
   const rotation = useSharedValue(0);
 
   useEffect(() => {
@@ -139,10 +136,7 @@ export function RaiseToSpeakIntroModal({
     >
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
-          <TiltPhoneIllustration
-            active={visible}
-            reduceMotionEnabled={reduceMotionEnabled}
-          />
+          <TiltPhoneIllustration active={visible} reduceMotionEnabled={reduceMotionEnabled} />
           <Text style={styles.title}>
             {calibrating ? '試しに左右どちらかへ傾けてください' : '左右に傾けて音声入力'}
           </Text>
@@ -187,9 +181,7 @@ export function RaiseToSpeakIntroModal({
                   onPress={onEnable}
                   style={[styles.choiceButton, styles.primaryButton]}
                 >
-                  {busy ? (
-                    <ActivityIndicator size="small" color={palette.white} />
-                  ) : null}
+                  {busy ? <ActivityIndicator size="small" color={palette.white} /> : null}
                   <Text style={styles.primaryLabel}>{busy ? '確認中…' : '使ってみる'}</Text>
                 </Pressable>
               </>

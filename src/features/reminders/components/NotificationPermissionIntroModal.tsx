@@ -27,7 +27,12 @@ export function NotificationPermissionIntroModal({
     >
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
-          <View accessible accessibilityRole="image" accessibilityLabel="通知ベル" style={styles.iconCircle}>
+          <View
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="通知ベル"
+            style={styles.iconCircle}
+          >
             <Ionicons name="notifications-outline" size={26} color={palette.lavenderDeep} />
           </View>
           <Text style={styles.title}>通知でお知らせします</Text>
