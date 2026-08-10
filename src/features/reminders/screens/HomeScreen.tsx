@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import {
   Alert,
   BackHandler,
   Image,
   ImageBackground,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -19,11 +21,16 @@ import type { BubbleDeleteMotionPhase } from '../components/ReminderBubble';
 import { ReminderBubbleBoard, type BubbleDeleteMotion } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
+import { RaiseToSpeakIntroModal } from '../components/RaiseToSpeakIntroModal';
 import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
 import { makeBulkDeleteMotions } from '../components/reminderBulkDeleteMotion';
 import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import { useNotificationDevStore } from '../stores/notificationDevStore';
-import { selectFormattedTime, useReminderUiStore } from '../stores/reminderUiStore';
+import {
+  selectFormattedTime,
+  type QuickAddInputMode,
+  useReminderUiStore,
+} from '../stores/reminderUiStore';
 import type { Reminder } from '../types/reminder';
 import { useAppServices } from '../../../bootstrap/AppProviders';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
@@ -37,6 +44,7 @@ import {
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { triggerReminderSelectionHaptic } from '../utils/reminderSelectionFeedback';
 import { FREE_ACTIVE_REMINDER_LIMIT } from '../../purchases/domain/proAccess';
+import { useRaiseToSpeakGesture } from '../hooks/useRaiseToSpeakGesture';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
@@ -47,8 +55,8 @@ const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =
   HOME_ADD_BUTTON_SIZE + HOME_BOTTOM_CONTROLS_OFFSET + HOME_BUBBLE_CONTROLS_GAP;
 const MAX_VISIBLE_HOME_BUBBLES = 12;
 
-type QuickAddSource = 'home_button' | 'widget_deep_link';
-type QuickAddOptions = { focusTitle?: boolean };
+type QuickAddSource = 'home_button' | 'widget_deep_link' | 'raise_to_speak';
+type QuickAddOptions = { focusTitle?: boolean; inputMode?: QuickAddInputMode };
 
 function makeDeleteMotionKey(reminderId: string, phase: BubbleDeleteMotionPhase) {
   return `${reminderId}:${phase}`;
@@ -64,6 +72,7 @@ const dueLegendItems = [
 export function HomeScreen() {
   const router = useRouter();
   const { analytics, purchases } = useAppServices();
+  const raiseToSpeak = useAppServices().raiseToSpeak;
   const routeParams = useLocalSearchParams<{ action?: string; id?: string; intent?: string }>();
   const { width: windowWidth } = useWindowDimensions();
   const {
@@ -82,8 +91,10 @@ export function HomeScreen() {
     isDeletingReminders,
   } = useReminders();
   const isQuickAddOpen = useReminderUiStore((state) => state.isQuickAddOpen);
+  const isQuickAddPickerOpen = useReminderUiStore((state) => state.isQuickAddPickerOpen);
   const openQuickAdd = useReminderUiStore((state) => state.openQuickAdd);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
+  const requestVoiceInputStop = useReminderUiStore((state) => state.requestVoiceInputStop);
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
   const datePreset = useReminderUiStore((state) => state.datePreset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
@@ -91,7 +102,7 @@ export function HomeScreen() {
   const isNotificationTestModeEnabled = useNotificationDevStore(
     (state) => state.isNotificationTestModeEnabled,
   );
-  const { settings, refresh: refreshSettings } = useAppSettings();
+  const { settings, refresh: refreshSettings, update: updateSettings } = useAppSettings();
   const quickAddPresets = useMemo(
     () =>
       settings
@@ -112,6 +123,8 @@ export function HomeScreen() {
   const isSavingRef = useRef(false);
   const isQuickAddRequestPendingRef = useRef(false);
   const quickAddSourceRef = useRef<QuickAddSource>('home_button');
+  const raiseSessionActiveRef = useRef(false);
+  const raiseCalibrationSessionRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
   const isSelectionModeRef = useRef(false);
@@ -124,6 +137,9 @@ export function HomeScreen() {
   const [isBulkDeletionInProgress, setIsBulkDeletionInProgress] = useState(false);
   const [bulkDeleteMotions, setBulkDeleteMotions] = useState<readonly BubbleDeleteMotion[]>([]);
   const consumedIntentRef = useRef<string | null>(null);
+  const [isRaiseToSpeakSetupBusy, setIsRaiseToSpeakSetupBusy] = useState(false);
+  const [isRaiseToSpeakCalibrating, setIsRaiseToSpeakCalibrating] = useState(false);
+  const [raiseToSpeakSetupMessage, setRaiseToSpeakSetupMessage] = useState<string | null>(null);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
   const visibleReminderIds = useMemo(
@@ -171,7 +187,11 @@ export function HomeScreen() {
   const requestQuickAdd = useCallback(
     async (source: QuickAddSource, options?: QuickAddOptions) => {
       if (isQuickAddOpenRef.current || isSavingRef.current || isQuickAddRequestPendingRef.current) {
-        return;
+        if (isQuickAddOpenRef.current && options?.inputMode === 'voice') {
+          openQuickAddForSource(source, options);
+          return true;
+        }
+        return false;
       }
 
       isQuickAddRequestPendingRef.current = true;
@@ -179,11 +199,14 @@ export function HomeScreen() {
         if (reminders.length >= FREE_ACTIVE_REMINDER_LIMIT) {
           const accessState = await purchases.getProAccessState();
           if (accessState === 'free' && !(await showActiveLimitPaywall(source))) {
-            return;
+            return false;
           }
         }
 
+        if (source === 'raise_to_speak' && !raiseSessionActiveRef.current) return false;
+
         openQuickAddForSource(source, options);
+        return true;
       } finally {
         isQuickAddRequestPendingRef.current = false;
       }
@@ -596,6 +619,105 @@ export function HomeScreen() {
     [analytics, updateReminderSchedule],
   );
 
+  const handleDismissRaiseToSpeakIntro = useCallback(() => {
+    setRaiseToSpeakSetupMessage(null);
+    void updateSettings({ raiseToSpeakIntroSeen: true });
+  }, [updateSettings]);
+
+  const handlePrepareRaiseToSpeak = useCallback(async () => {
+    if (isRaiseToSpeakSetupBusy) return;
+
+    setIsRaiseToSpeakSetupBusy(true);
+    setRaiseToSpeakSetupMessage(null);
+    try {
+      const result = await raiseToSpeak.prepare();
+      if (result.status === 'ready') {
+        setIsRaiseToSpeakCalibrating(true);
+        return;
+      }
+
+      if (result.status === 'model-download-started') {
+        setRaiseToSpeakSetupMessage(
+          '日本語モデルの準備後、もう一度「使ってみる」を押してください。',
+        );
+        return;
+      }
+
+      if (result.status === 'permission-denied') {
+        const message = result.canAskAgain
+          ? 'マイクとモーションの権限を許可してください。'
+          : '端末の設定でマイクとモーションの権限を許可してください。';
+        setRaiseToSpeakSetupMessage(message);
+        if (!result.canAskAgain) {
+          Alert.alert('権限が必要です', message, [
+            { text: 'あとで', style: 'cancel' },
+            { text: '設定を開く', onPress: () => void Linking.openSettings() },
+          ]);
+        }
+        return;
+      }
+
+      const message = {
+        'motion-unavailable': 'この端末ではモーション検出を利用できません。',
+        'proximity-unavailable':
+          'この端末では近接センサーを利用できません。マイクボタンは利用できます。',
+        'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
+      }[result.status];
+      setRaiseToSpeakSetupMessage(message);
+    } catch {
+      setRaiseToSpeakSetupMessage('音声入力の準備を完了できませんでした。');
+    } finally {
+      setIsRaiseToSpeakSetupBusy(false);
+    }
+  }, [isRaiseToSpeakSetupBusy, raiseToSpeak]);
+
+  const handleRaiseToSpeakStart = useCallback(() => {
+    raiseSessionActiveRef.current = true;
+
+    if (isRaiseToSpeakCalibrating) {
+      raiseCalibrationSessionRef.current = true;
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      void updateSettings({
+        raiseToSpeakEnabled: true,
+        raiseToSpeakIntroSeen: true,
+      })
+        .then(() => setIsRaiseToSpeakCalibrating(false))
+        .catch(() => {
+          raiseCalibrationSessionRef.current = false;
+          raiseSessionActiveRef.current = false;
+          setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
+          setIsRaiseToSpeakCalibrating(false);
+        });
+      return;
+    }
+
+    void requestQuickAdd('raise_to_speak', { inputMode: 'voice' }).then((opened) => {
+      if (!opened) raiseSessionActiveRef.current = false;
+    });
+  }, [isRaiseToSpeakCalibrating, requestQuickAdd, updateSettings]);
+
+  const handleRaiseToSpeakStop = useCallback(() => {
+    raiseSessionActiveRef.current = false;
+    if (raiseCalibrationSessionRef.current) {
+      raiseCalibrationSessionRef.current = false;
+      return;
+    }
+    requestVoiceInputStop();
+  }, [requestVoiceInputStop]);
+
+  useRaiseToSpeakGesture({
+    enabled: Boolean(settings?.raiseToSpeakEnabled) || isRaiseToSpeakCalibrating,
+    blocked:
+      isRaiseToSpeakSetupBusy ||
+      isSelectionMode ||
+      isSelectionBusy ||
+      selectedReminder !== null ||
+      isQuickAddPickerOpen ||
+      isSaving,
+    onStart: handleRaiseToSpeakStart,
+    onStop: handleRaiseToSpeakStop,
+  });
+
   const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled = isSaving;
   const isEmptyHome = !loading && !error && reminders.length === 0;
@@ -818,6 +940,15 @@ export function HomeScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      <RaiseToSpeakIntroModal
+        visible={Boolean(settings && !settings.raiseToSpeakIntroSeen)}
+        busy={isRaiseToSpeakSetupBusy}
+        calibrating={isRaiseToSpeakCalibrating}
+        message={raiseToSpeakSetupMessage}
+        onEnable={() => void handlePrepareRaiseToSpeak()}
+        onDismiss={handleDismissRaiseToSpeakIntro}
+      />
     </AppScreen>
   );
 }

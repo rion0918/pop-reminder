@@ -7,6 +7,12 @@ import {
   type QuickAddPresetTimes,
 } from './appSettings';
 
+test('raise-to-speak settings are explicit persisted booleans', async () => {
+  const module = await import('./appSettings');
+  assert.equal(module.DEFAULT_RAISE_TO_SPEAK_SETTINGS.raiseToSpeakEnabled, false);
+  assert.equal(module.DEFAULT_RAISE_TO_SPEAK_SETTINGS.raiseToSpeakIntroSeen, false);
+});
+
 const validTimes: QuickAddPresetTimes = {
   defaultTargetTime: '08:00',
   noonTargetTime: '12:00',

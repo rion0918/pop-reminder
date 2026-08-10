@@ -104,6 +104,8 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         nightTargetTime: '20:00',
         autoDeleteEnabled: true,
         notificationSoundEnabled: true,
+        raiseToSpeakEnabled: false,
+        raiseToSpeakIntroSeen: false,
         theme: 'sky',
       }),
       updatePreviousNotifyTime: async (nextPreviousNotifyTime) => {
@@ -118,6 +120,8 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
           nightTargetTime: '20:00',
           autoDeleteEnabled: true,
           notificationSoundEnabled: true,
+          raiseToSpeakEnabled: false,
+          raiseToSpeakIntroSeen: false,
           theme: 'sky',
         };
       },

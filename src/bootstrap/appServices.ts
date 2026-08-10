@@ -11,6 +11,8 @@ import {
 import { posthogAnalytics } from '../lib/analytics/posthogAnalytics';
 import { updateWidget } from '../widget/widgetUpdateService';
 import { revenueCatPurchaseService } from '../features/purchases/infrastructure/revenueCatPurchaseService';
+import { prepareRaiseToSpeak } from '../lib/voice-input/prepareRaiseToSpeak';
+import { voiceInputService } from '../lib/voice-input/voiceInputService';
 
 const widgetGateway = {
   async sync() {
@@ -25,6 +27,10 @@ const widgetGateway = {
 export const appServices = {
   analytics: posthogAnalytics,
   purchases: revenueCatPurchaseService,
+  voiceInput: voiceInputService,
+  raiseToSpeak: {
+    prepare: prepareRaiseToSpeak,
+  },
   reminders: createReminderUseCases({
     reminders: sqliteReminderRepository,
     settings: {
