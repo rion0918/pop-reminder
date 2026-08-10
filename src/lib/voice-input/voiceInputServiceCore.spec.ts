@@ -135,6 +135,17 @@ test('older Android uses the platform recognizer without forcing the Android 13 
   assert.deepEqual(fake.starts[0].recordingOptions, { persist: false });
 });
 
+test('Android 13 avoids segmented continuous recording so stop can finish reliably', () => {
+  const fake = makeModule();
+  const service = createVoiceInputService(fake.module, { os: 'android', apiLevel: 33 });
+
+  service.start();
+
+  assert.equal(fake.starts[0].continuous, false);
+  assert.equal(fake.starts[0].androidRecognitionServicePackage, 'com.google.android.as');
+  assert.deepEqual(fake.starts[0].recordingOptions, { persist: false });
+});
+
 test('voice input normalizes no-match, interruption, result, and lifecycle events', () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });

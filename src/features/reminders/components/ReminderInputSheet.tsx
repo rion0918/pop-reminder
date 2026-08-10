@@ -52,6 +52,7 @@ export type ReminderInputSheetProps = {
 };
 
 const QUICK_ADD_BOTTOM_CLEARANCE = 24;
+const VOICE_STOP_FALLBACK_MS = 1_500;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
   android: 'default',
@@ -115,6 +116,7 @@ export function ReminderInputSheet({
   const voiceCommittedTranscriptRef = useRef('');
   const voiceReceivedTextRef = useRef(false);
   const explicitVoiceAbortRef = useRef(false);
+  const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const beginVoiceInputRef = useRef<() => void>(() => {});
   const stopVoiceInputRef = useRef<() => void>(() => {});
   const isOpenRef = useRef(false);
@@ -225,8 +227,15 @@ export function ReminderInputSheet({
     setVoiceStatus(status);
   }, []);
 
+  const clearVoiceStopFallback = useCallback(() => {
+    if (voiceStopFallbackRef.current === null) return;
+    clearTimeout(voiceStopFallbackRef.current);
+    voiceStopFallbackRef.current = null;
+  }, []);
+
   const cancelVoiceInput = useCallback(
     (restoreBaseline: boolean) => {
+      clearVoiceStopFallback();
       voiceOperationIdRef.current += 1;
       explicitVoiceAbortRef.current = true;
       if (voiceStatusRef.current !== 'idle') voiceInput.abort();
@@ -237,12 +246,13 @@ export function ReminderInputSheet({
       setVoiceStatusValue('idle');
       completeVoiceInput();
     },
-    [completeVoiceInput, setVoiceStatusValue, updateDraftTitle, voiceInput],
+    [clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, updateDraftTitle, voiceInput],
   );
 
   const stopVoiceInput = useCallback(() => {
     if (voiceStatusRef.current === 'idle' || voiceStatusRef.current === 'stopping') return;
 
+    clearVoiceStopFallback();
     if (voiceStatusRef.current === 'starting') {
       voiceOperationIdRef.current += 1;
       explicitVoiceAbortRef.current = true;
@@ -256,11 +266,24 @@ export function ReminderInputSheet({
     setVoiceVolume(0);
     voiceInput.stop();
     completeVoiceInput();
-  }, [completeVoiceInput, setVoiceStatusValue, voiceInput]);
+    voiceStopFallbackRef.current = setTimeout(() => {
+      voiceStopFallbackRef.current = null;
+      if (voiceStatusRef.current !== 'stopping') return;
+
+      explicitVoiceAbortRef.current = true;
+      voiceInput.abort();
+      setVoiceVolume(0);
+      setVoiceStatusValue('idle');
+      completeVoiceInput();
+      void Haptics.selectionAsync().catch(() => {});
+      AccessibilityInfo.announceForAccessibility('音声入力を終了しました。内容を確認してください');
+    }, VOICE_STOP_FALLBACK_MS);
+  }, [clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, voiceInput]);
 
   const beginVoiceInput = useCallback(async () => {
     if (voiceStatusRef.current !== 'idle') return;
 
+    clearVoiceStopFallback();
     const operationId = voiceOperationIdRef.current + 1;
     voiceOperationIdRef.current = operationId;
     voiceBaselineTitleRef.current = draftTitleRef.current;
@@ -322,7 +345,13 @@ export function ReminderInputSheet({
       setVoiceStatusValue('idle');
       completeVoiceInput();
     }
-  }, [completeVoiceInput, invalidateTitleFocusRequest, setVoiceStatusValue, voiceInput]);
+  }, [
+    clearVoiceStopFallback,
+    completeVoiceInput,
+    invalidateTitleFocusRequest,
+    setVoiceStatusValue,
+    voiceInput,
+  ]);
 
   beginVoiceInputRef.current = () => void beginVoiceInput();
   stopVoiceInputRef.current = stopVoiceInput;
@@ -375,6 +404,7 @@ export function ReminderInputSheet({
       }
 
       if (event.type === 'error') {
+        clearVoiceStopFallback();
         const wasExplicitAbort = explicitVoiceAbortRef.current && event.error === 'aborted';
         explicitVoiceAbortRef.current = false;
         setVoiceVolume(0);
@@ -388,6 +418,7 @@ export function ReminderInputSheet({
       }
 
       if (event.type === 'end') {
+        clearVoiceStopFallback();
         const shouldConfirmEnd = voiceStatusRef.current !== 'idle';
         explicitVoiceAbortRef.current = false;
         setVoiceVolume(0);
@@ -405,10 +436,17 @@ export function ReminderInputSheet({
     });
 
     return () => {
+      clearVoiceStopFallback();
       subscription.remove();
       if (voiceStatusRef.current !== 'idle') voiceInput.abort();
     };
-  }, [completeVoiceInput, setVoiceStatusValue, updateDraftTitle, voiceInput]);
+  }, [
+    clearVoiceStopFallback,
+    completeVoiceInput,
+    setVoiceStatusValue,
+    updateDraftTitle,
+    voiceInput,
+  ]);
 
   const handleSheetChange = useCallback(
     (index: number) => {
@@ -778,16 +816,7 @@ export function ReminderInputSheet({
           </View>
 
           {voiceStatus !== 'idle' ? (
-            <View
-              accessible
-              accessibilityLiveRegion="polite"
-              accessibilityLabel={
-                voiceStatus === 'listening'
-                  ? '音声入力中。スマートフォンを下げると終了します'
-                  : '音声入力を準備しています'
-              }
-              style={styles.voiceStatusPanel}
-            >
+            <View style={styles.voiceStatusPanel}>
               <View
                 style={[
                   styles.voiceMeter,
@@ -801,7 +830,7 @@ export function ReminderInputSheet({
                 <Ionicons name="mic" size={18} color={palette.white} />
               </View>
               <View style={styles.voiceStatusCopy}>
-                <Text style={styles.voiceStatusTitle}>
+                <Text accessibilityLiveRegion="polite" style={styles.voiceStatusTitle}>
                   {voiceStatus === 'listening'
                     ? '聞いています…'
                     : voiceStatus === 'stopping'
@@ -810,18 +839,36 @@ export function ReminderInputSheet({
                 </Text>
                 <Text style={styles.voiceStatusHint}>スマホを下げると終了します</Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="音声入力をキャンセル"
-                hitSlop={8}
-                onPress={() => cancelVoiceInput(true)}
-                style={({ pressed }) => [
-                  styles.voiceCancelButton,
-                  pressed ? styles.voiceButtonPressed : null,
-                ]}
-              >
-                <Text style={styles.voiceCancelText}>キャンセル</Text>
-              </Pressable>
+              <View style={styles.voiceStatusActions}>
+                {voiceStatus === 'listening' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="音声入力を完了"
+                    hitSlop={8}
+                    onPress={stopVoiceInput}
+                    style={({ pressed }) => [
+                      styles.voiceFinishButton,
+                      pressed ? styles.voiceButtonPressed : null,
+                    ]}
+                  >
+                    <Text style={styles.voiceFinishText}>完了</Text>
+                  </Pressable>
+                ) : null}
+                {voiceStatus !== 'stopping' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="音声入力をキャンセル"
+                    hitSlop={8}
+                    onPress={() => cancelVoiceInput(true)}
+                    style={({ pressed }) => [
+                      styles.voiceCancelButton,
+                      pressed ? styles.voiceButtonPressed : null,
+                    ]}
+                  >
+                    <Text style={styles.voiceCancelText}>キャンセル</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           ) : null}
 
@@ -1019,6 +1066,23 @@ const styles = StyleSheet.create({
     minHeight: 34,
     justifyContent: 'center',
     paddingHorizontal: 8,
+  },
+  voiceStatusActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  voiceFinishButton: {
+    minHeight: 34,
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    backgroundColor: palette.lavenderDeep,
+  },
+  voiceFinishText: {
+    color: palette.white,
+    fontSize: 11,
+    fontWeight: '900',
   },
   voiceCancelText: {
     color: palette.lavenderDeep,

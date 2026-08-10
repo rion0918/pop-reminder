@@ -107,7 +107,7 @@ export function createVoiceInputService(
         lang: VOICE_INPUT_LOCALE,
         interimResults: true,
         maxAlternatives: 1,
-        continuous: platform.os !== 'android' || platform.apiLevel >= 33,
+        continuous: platform.os !== 'android',
         requiresOnDeviceRecognition: true,
         recordingOptions: { persist: false },
         volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },

@@ -26,6 +26,18 @@ function rotationMagnitude(rotationRate: RaiseToSpeakSample['rotationRate'] | nu
   return rotationRate ?? 0;
 }
 
+function vectorMagnitude(vector: { x: number; y: number; z: number } | null) {
+  if (!vector) return 0;
+  return Math.sqrt(vector.x ** 2 + vector.y ** 2 + vector.z ** 2);
+}
+
+function isSpeakingPose(gravity: { x: number; y: number; z: number }) {
+  const magnitude = vectorMagnitude(gravity);
+  if (magnitude < 1) return false;
+
+  return Math.abs(gravity.y) / magnitude >= 0.35;
+}
+
 export function useRaiseToSpeakGesture({
   enabled,
   blocked,
@@ -79,11 +91,13 @@ export function useRaiseToSpeakGesture({
       processSample({
         timestamp: Date.now(),
         upwardAcceleration: measurement.acceleration?.y ?? 0,
+        motionAcceleration: vectorMagnitude(measurement.acceleration),
         rotationRate: rotationMagnitude(
           rate ? Math.max(Math.abs(rate.alpha), Math.abs(rate.beta), Math.abs(rate.gamma)) : null,
         ),
         orientation: measurement.orientation,
         near: nearRef.current,
+        speakingPose: isSpeakingPose(measurement.accelerationIncludingGravity),
       });
     });
 

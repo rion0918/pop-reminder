@@ -10,17 +10,21 @@ function sample(
   timestamp: number,
   overrides: Partial<{
     upwardAcceleration: number;
+    motionAcceleration: number;
     rotationRate: number;
     orientation: number;
     near: boolean;
+    speakingPose: boolean;
   }> = {},
 ) {
   return {
     timestamp,
     upwardAcceleration: 0,
+    motionAcceleration: 0,
     rotationRate: 0,
     orientation: 0,
     near: false,
+    speakingPose: false,
     ...overrides,
   };
 }
@@ -54,6 +58,37 @@ test('proximity alone and motion alone never start listening', () => {
   result = reduceRaiseToSpeakDetector(state, sample(1_201));
   assert.equal(result.action, 'none');
   assert.equal(result.state.phase, 'idle');
+});
+
+test('raise-to-speak starts from a stable speaking pose when bottom-up use leaves proximity far', () => {
+  let state = createRaiseToSpeakDetectorState();
+
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { motionAcceleration: 1.3 })));
+  assert.equal(state.phase, 'armed');
+
+  let result = reduceRaiseToSpeakDetector(state, sample(300, { speakingPose: true }));
+  state = result.state;
+  assert.equal(result.action, 'none');
+
+  result = reduceRaiseToSpeakDetector(state, sample(650, { speakingPose: true }));
+  assert.equal(result.action, 'start');
+  assert.equal(result.state.phase, 'listening');
+  assert.equal(result.state.activation, 'pose');
+});
+
+test('pose-triggered listening stops after the phone is lowered away from speaking pose', () => {
+  let state = createRaiseToSpeakDetectorState();
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { motionAcceleration: 1.3 })));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(200, { speakingPose: true })));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(550, { speakingPose: true })));
+
+  let result = reduceRaiseToSpeakDetector(state, sample(800, { speakingPose: false }));
+  state = result.state;
+  assert.equal(result.action, 'none');
+
+  result = reduceRaiseToSpeakDetector(state, sample(1_150, { speakingPose: false }));
+  assert.equal(result.action, 'stop');
+  assert.equal(result.state.phase, 'cooldown');
 });
 
 test('unstable proximity and excessive rotation cancel the pending trigger', () => {
@@ -110,8 +145,10 @@ test('listening stops at the safety timeout and reset drops all pending state', 
     phase: 'idle',
     liftDetectedAt: null,
     nearSince: null,
+    speakingPoseSince: null,
     farSince: null,
     listeningStartedAt: null,
     cooldownUntil: null,
+    activation: null,
   });
 });

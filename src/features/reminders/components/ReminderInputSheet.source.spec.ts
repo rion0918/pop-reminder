@@ -60,6 +60,22 @@ test('quick add supports cancellable on-device voice input without truncating th
   });
 });
 
+test('voice input always exposes a labeled finish action and escapes a stuck native stop', () => {
+  assertSourceIncludes(source, [
+    /const VOICE_STOP_FALLBACK_MS = 1_500;/,
+    /const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> \| null>\(null\);/,
+    /voiceStopFallbackRef\.current = setTimeout\(/,
+    /voiceStatusRef\.current !== 'stopping'/,
+    /voiceInput\.abort\(\);/,
+    /AccessibilityInfo\.announceForAccessibility\(\s*'音声入力を終了しました。内容を確認してください'/,
+    /accessibilityLabel="音声入力を完了"/,
+    />完了</,
+  ]);
+  assertSourceContract(source, {
+    excludes: [/<View\s+accessible\s+accessibilityLiveRegion="polite"/],
+  });
+});
+
 test('successful quick add does not focus the title input again', () => {
   const saveSuccessBlock = source.slice(
     source.indexOf('await onSave?.(normalizedTitle);'),
@@ -86,7 +102,7 @@ test('widget quick add waits for the sheet to open before focusing the title inp
     /const focusRequestId = titleFocusRequestIdRef\.current \+ 1;[\s\S]*pendingTitleFocusRequestIdRef\.current = shouldFocusTitleOnOpen \? focusRequestId : null;[\s\S]*sheetRef\.current\?\.present\(\);/,
   ]);
   assert.equal(openBlock.includes('titleInputRef.current?.focus()'), false);
-  assert.equal(source.includes('setTimeout'), false);
+  assert.equal(openBlock.includes('setTimeout'), false);
   assert.equal(source.includes('requestAnimationFrame'), false);
 });
 
