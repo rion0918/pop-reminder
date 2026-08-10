@@ -9,6 +9,10 @@ import {
 
 const source = readSource(import.meta.url, './SettingsScreen.tsx');
 
+test('settings uses the dream theme before a persisted theme is available', () => {
+  assertSourceIncludes(source, [/settings\?\.theme \?\? 'lavender'/]);
+});
+
 test('settings back button responds immediately without delaying navigation', () => {
   assertSourceContract(source, {
     includes: [
@@ -32,6 +36,13 @@ test('settings exposes notification permission controls outside the dev-only sec
     /handleRequestNotificationPermission/,
     /handleOpenAppSettings/,
   ]);
+});
+
+test('auto-delete uses a distinct expiration icon from the Pro upgrade', () => {
+  assertSourceContract(source, {
+    includes: [/icon="hourglass-outline"\s+title="自動消滅"/],
+    excludes: [/icon="sparkles-outline"\s+title="自動消滅"/],
+  });
 });
 
 test('settings exposes native Pro purchase and independent restore actions', () => {
@@ -152,15 +163,26 @@ test('settings legal copy supports both Google Play and App Store release pages'
   });
 });
 
-test('settings explicitly prepares and persists side-tilt voice input while keeping it off by default', () => {
+test('settings shows the side-tilt voice intro on the first enable before preparing it', () => {
   assertSourceIncludes(source, [
     /title="左右に傾けて音声入力"/,
     /settings\.raiseToSpeakEnabled/,
+    /if \(!settings\.raiseToSpeakIntroSeen\)/,
+    /await update\(\{ raiseToSpeakEnabled: true \}\)/,
+    /return;/,
     /raiseToSpeak\.prepare\(\)/,
     /raiseToSpeakEnabled: true, raiseToSpeakIntroSeen: true/,
-    /raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: true/,
+    /raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false/,
+    /<RaiseToSpeakIntroModal/,
+    /visible=\{Boolean\(settings\?\.raiseToSpeakEnabled && !settings\.raiseToSpeakIntroSeen\)\}/,
+    /onEnable=\{\(\) => void handlePrepareRaiseToSpeak\(\)\}/,
+    /onDismiss=\{handleDismissRaiseToSpeakIntro\}/,
     /音声は端末内で処理し、録音を保存しません/,
   ]);
+  assert.doesNotMatch(
+    source,
+    /if \(!settings\.raiseToSpeakIntroSeen\) \{\s*await update\(\{ raiseToSpeakEnabled: true \}\);\s*router\.replace\(['"]\/['"]\)/,
+  );
   assert.doesNotMatch(source, /proximity-unavailable|近接センサー|近接情報/);
 });
 

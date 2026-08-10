@@ -33,6 +33,8 @@ test('fresh database runs sequential migrations and records the current version'
   assert.match(fake.statements.join('\n'), /ADD COLUMN night_target_time/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN raise_to_speak_enabled/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN raise_to_speak_intro_seen/);
+  assert.match(fake.statements.join('\n'), /theme TEXT NOT NULL DEFAULT 'lavender'/);
+  assert.match(fake.statements.join('\n'), /0, 0, 'lavender'/);
 });
 
 test('legacy database adds the notification sound column once', async () => {
@@ -60,6 +62,7 @@ test('migration rerun is idempotent', async () => {
     'night_target_time',
     'raise_to_speak_enabled',
     'raise_to_speak_intro_seen',
+    'notification_permission_intro_seen',
   ]);
   await runDatabaseMigrations(fake.database);
   assert.deepEqual(fake.statements, []);
@@ -90,4 +93,24 @@ test('v3 database adds raise-to-speak settings disabled by default', async () =>
   const migration = fake.statements.join('\n');
   assert.match(migration, /ADD COLUMN raise_to_speak_enabled INTEGER NOT NULL DEFAULT 0/);
   assert.match(migration, /ADD COLUMN raise_to_speak_intro_seen INTEGER NOT NULL DEFAULT 0/);
+});
+
+test('v4 database leaves notification permission compatibility to database startup', async () => {
+  const fake = makeDatabase(4, [
+    'id',
+    'notification_sound_enabled',
+    'noon_target_time',
+    'evening_target_time',
+    'night_target_time',
+    'raise_to_speak_enabled',
+    'raise_to_speak_intro_seen',
+  ]);
+  await runDatabaseMigrations(fake.database);
+
+  assert.equal(fake.getVersion(), 4);
+  assert.doesNotMatch(
+    fake.statements.join('\n'),
+    /ADD COLUMN notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0/,
+  );
+  assert.doesNotMatch(fake.statements.join('\n'), /PRAGMA user_version = 5/);
 });

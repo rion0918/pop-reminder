@@ -44,5 +44,5 @@ export function digitsToTime(value: string) {
 }
 
 export function coerceTheme(value: string): AppTheme {
-  return themeOptions.includes(value as AppTheme) ? (value as AppTheme) : 'sky';
+  return themeOptions.includes(value as AppTheme) ? (value as AppTheme) : 'lavender';
 }

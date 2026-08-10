@@ -11,6 +11,7 @@ export type AppSettings = {
   nightTargetTime: string;
   autoDeleteEnabled: boolean;
   notificationSoundEnabled: boolean;
+  notificationPermissionIntroSeen: boolean;
   raiseToSpeakEnabled: boolean;
   raiseToSpeakIntroSeen: boolean;
   theme: AppTheme;
@@ -33,6 +34,10 @@ export const DEFAULT_QUICK_ADD_PRESET_TIMES: QuickAddPresetTimes = {
 export const DEFAULT_RAISE_TO_SPEAK_SETTINGS = {
   raiseToSpeakEnabled: false,
   raiseToSpeakIntroSeen: false,
+} as const;
+
+export const DEFAULT_NOTIFICATION_PERMISSION_SETTINGS = {
+  notificationPermissionIntroSeen: false,
 } as const;
 
 export const QUICK_ADD_PRESET_VALIDATION_MESSAGE =

@@ -6,6 +6,7 @@ import { coerceTheme, isTimeString } from '../../../shared/utils/time';
 import type { SettingsRepository } from '../application/settingsRepository';
 import {
   DEFAULT_QUICK_ADD_PRESET_TIMES,
+  DEFAULT_NOTIFICATION_PERMISSION_SETTINGS,
   DEFAULT_RAISE_TO_SPEAK_SETTINGS,
   resolveQuickAddPresetTimes,
   type AppSettings,
@@ -19,8 +20,9 @@ const defaultSettings: NewAppSettingsRow = {
   ...DEFAULT_QUICK_ADD_PRESET_TIMES,
   autoDeleteEnabled: true,
   notificationSoundEnabled: true,
+  ...DEFAULT_NOTIFICATION_PERMISSION_SETTINGS,
   ...DEFAULT_RAISE_TO_SPEAK_SETTINGS,
-  theme: 'sky',
+  theme: 'lavender',
 };
 
 function toDomain(row: AppSettingsRow): AppSettings {
@@ -33,6 +35,7 @@ function toDomain(row: AppSettingsRow): AppSettings {
     nightTargetTime: row.nightTargetTime,
     autoDeleteEnabled: row.autoDeleteEnabled,
     notificationSoundEnabled: row.notificationSoundEnabled,
+    notificationPermissionIntroSeen: row.notificationPermissionIntroSeen,
     raiseToSpeakEnabled: row.raiseToSpeakEnabled,
     raiseToSpeakIntroSeen: row.raiseToSpeakIntroSeen,
     theme: coerceTheme(row.theme),
@@ -79,6 +82,8 @@ export const sqliteSettingsRepository: SettingsRepository = {
       ...nextPresetTimes,
       autoDeleteEnabled: input.autoDeleteEnabled ?? current.autoDeleteEnabled,
       notificationSoundEnabled: input.notificationSoundEnabled ?? current.notificationSoundEnabled,
+      notificationPermissionIntroSeen:
+        input.notificationPermissionIntroSeen ?? current.notificationPermissionIntroSeen,
       raiseToSpeakEnabled: input.raiseToSpeakEnabled ?? current.raiseToSpeakEnabled,
       raiseToSpeakIntroSeen: input.raiseToSpeakIntroSeen ?? current.raiseToSpeakIntroSeen,
       theme: input.theme ?? current.theme,
@@ -93,6 +98,7 @@ export const sqliteSettingsRepository: SettingsRepository = {
         nightTargetTime: next.nightTargetTime,
         autoDeleteEnabled: next.autoDeleteEnabled,
         notificationSoundEnabled: next.notificationSoundEnabled,
+        notificationPermissionIntroSeen: next.notificationPermissionIntroSeen,
         raiseToSpeakEnabled: next.raiseToSpeakEnabled,
         raiseToSpeakIntroSeen: next.raiseToSpeakIntroSeen,
         theme: next.theme,

@@ -5,7 +5,11 @@ import {
   buildReminderSchedule,
   validateReminderScheduleInput,
 } from '../domain/reminderSchedule';
-import type { ReminderApplicationDependencies, ReminderNotificationScheduleResult } from './ports';
+import type {
+  ReminderApplicationDependencies,
+  ReminderNotificationScheduleResult,
+  ReminderNotificationScheduleOptions,
+} from './ports';
 
 export type CreateReminderInput = {
   title: string;
@@ -16,6 +20,7 @@ export type CreateReminderInput = {
 
 type CreateReminderOptions = {
   useTestNotifications?: boolean;
+  permissionMode?: ReminderNotificationScheduleOptions['permissionMode'];
   now?: Date;
 };
 
@@ -105,9 +110,11 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
         notification = options?.useTestNotifications
           ? await notifications.scheduleTest(reminder, {
               soundEnabled: currentSettings.notificationSoundEnabled,
+              permissionMode: options?.permissionMode,
             })
           : await notifications.schedule(reminder, {
               soundEnabled: currentSettings.notificationSoundEnabled,
+              permissionMode: options?.permissionMode,
             });
 
         if (

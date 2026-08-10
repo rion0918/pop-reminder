@@ -35,7 +35,8 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
         default_target_time TEXT NOT NULL DEFAULT '08:00',
         auto_delete_enabled INTEGER NOT NULL DEFAULT 1,
         notification_sound_enabled INTEGER NOT NULL DEFAULT 1,
-        theme TEXT NOT NULL DEFAULT 'sky'
+        notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0,
+        theme TEXT NOT NULL DEFAULT 'lavender'
       );
 
       PRAGMA user_version = 1;
@@ -111,6 +112,6 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
       raise_to_speak_enabled,
       raise_to_speak_intro_seen,
       theme
-    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 0, 0, 'sky');
+    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 0, 0, 'lavender');
   `);
 }
