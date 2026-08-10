@@ -39,7 +39,7 @@ test('reminder list captures only successful edit and delete outcomes', () => {
   ]);
 });
 
-test('settings captures permission results and exposes persisted analytics opt-out', () => {
+test('settings captures permission results and exposes persisted analytics consent controls', () => {
   assertSourceContract(settingsSource, {
     includes: [
       /const \{ reminders: reminderServices, analytics, purchases \} = useAppServices\(\);/,
@@ -47,10 +47,15 @@ test('settings captures permission results and exposes persisted analytics opt-o
       /analytics\.captureNotificationPermissionUpdated\(\{/,
       /status: permission\.status/,
       /canAskAgain: permission\.canAskAgain/,
-      /await analytics\.getCaptureEnabled\(\)/,
-      /await analytics\.setCaptureEnabled\(value\)/,
+      /settings\.analyticsConsent === 'granted'/,
+      /await analytics\.setCaptureEnabled\(true\)/,
+      /await analytics\.setCaptureEnabled\(false\)/,
+      /analyticsConsent: 'granted'/,
+      /analyticsConsent: 'denied'/,
       /title="匿名の利用状況を共有"/,
       /value=\{isAnalyticsEnabled\}/,
+      /handleAnalyticsDeletionRequest/,
+      /getDeletionRequestId/,
       /captureProPaywallResult\(\{ placement: 'settings', outcome: result \}\)/,
       /captureProRestoreResult\(\{ outcome: result \}\)/,
     ],

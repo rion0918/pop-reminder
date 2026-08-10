@@ -50,5 +50,9 @@ test('published terms document the lifetime Pro purchase contract', () => {
   assert.match(terms, /自動更新はありません/);
   assert.match(terms, /同じストアアカウントで復元/);
   assert.match(terms, /返金や取消/);
+  assert.match(
+    terms,
+    /OSのバックアップ設定によっては端末バックアップの対象となり、復元される場合があります/,
+  );
   assert.match(terms, /href="\.\.\/privacy\/"/);
 });

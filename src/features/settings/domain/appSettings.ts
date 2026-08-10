@@ -1,6 +1,7 @@
 import { isTimeString } from '../../../shared/utils/time';
 
 export type AppTheme = 'sky' | 'lavender' | 'mint';
+export type AnalyticsConsent = 'unknown' | 'granted' | 'denied';
 
 export type AppSettings = {
   id: string;
@@ -14,6 +15,7 @@ export type AppSettings = {
   notificationPermissionIntroSeen: boolean;
   raiseToSpeakEnabled: boolean;
   raiseToSpeakIntroSeen: boolean;
+  analyticsConsent: AnalyticsConsent;
   theme: AppTheme;
 };
 
@@ -39,6 +41,10 @@ export const DEFAULT_RAISE_TO_SPEAK_SETTINGS = {
 export const DEFAULT_NOTIFICATION_PERMISSION_SETTINGS = {
   notificationPermissionIntroSeen: false,
 } as const;
+
+export const DEFAULT_ANALYTICS_SETTINGS = {
+  analyticsConsent: 'unknown' as const,
+};
 
 export const QUICK_ADD_PRESET_VALIDATION_MESSAGE =
   '朝・昼・夕・夜の順に、異なる時刻を設定してください';

@@ -156,10 +156,15 @@ test('settings legal copy supports both Google Play and App Store release pages'
       /音声、録音、モーション値を保存、分析、外部送信しません/,
       /文字起こしを分析、外部送信することはありません/,
       /PostHog の US Cloud/,
+      /明示的な同意後に/,
+      /通常保持期間は12か月/,
       /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
       /RevenueCatにはSDKが生成する匿名購入ID/,
+      /利用状況データの削除を依頼/,
+      /settings\.analyticsConsent/,
+      /handleAnalyticsDeletionRequest/,
     ],
-    excludes: [/App Storeの配布ページ/, /ポップ・リマインダー/],
+    excludes: [/ポップ・リマインダー/],
   });
 });
 

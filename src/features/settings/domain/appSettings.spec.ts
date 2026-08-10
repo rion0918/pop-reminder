@@ -17,6 +17,11 @@ test('raise-to-speak settings are explicit persisted booleans', async () => {
   );
 });
 
+test('analytics consent is explicit and starts unselected', async () => {
+  const module = await import('./appSettings');
+  assert.equal(module.DEFAULT_ANALYTICS_SETTINGS.analyticsConsent, 'unknown');
+});
+
 const validTimes: QuickAddPresetTimes = {
   defaultTargetTime: '08:00',
   noonTargetTime: '12:00',

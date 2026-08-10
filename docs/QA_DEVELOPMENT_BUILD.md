@@ -12,7 +12,7 @@ EAS Build による development build（`.ipa` / `.apk`）を実機にインス�
 | 配布方法       | internal distribution（`.ipa` / `.apk`）                                                                           |
 | 対象 OS        | iOS / Android                                                                                                      |
 | 前提条件       | 通知権限のリクエスト、日本語 IME、SQLite、Expo Notifications が実機ネイティブ環境で動作することを確認              |
-| リリース方針   | Android を先行し、App Store は後追いで同じ機能セットを確認する。Widget は Android Development Build で確認する     |
+| リリース方針   | Android を先行し、App Store は後追いで同じ機能セットを確認する。Android Widgetも初回リリース機能として確認する     |
 | バージョン管理 | ユーザー向けは `expo.version`、Android提出番号は `android.versionCode`、iOS提出番号は `ios.buildNumber` を更新する |
 
 ## Android 実機でQR検証する手順
@@ -409,11 +409,12 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 
 ### 15.1 匿名の利用状況（PostHog）
 
-Development Build に検証用の `EXPO_PUBLIC_POSTHOG_API_KEY` と US Cloud host を設定し、PostHog Live Events を開いて確認する。
+Development Build に検証用の `EXPO_PUBLIC_POSTHOG_API_KEY` と US Cloud host を設定し、PostHog Live Events を開いて確認する。初回起動時は同意モーダルが表示され、共有しない選択でもアプリの機能を利用できることを確認する。
 
 - [ ] ホーム、一覧、設定へ移動すると、`/`、`/reminders-list`、`/settings` の `$screen` が各遷移につき1回だけ届く
 - [ ] クイック追加を開く、リマインダーを作成・編集・削除する、通知権限を更新すると、計画した5種類のカスタムイベントが成功後にだけ届く
 - [ ] タイトル、リマインダーID、具体的な日付・時刻、設定値、検索パラメータ、ディープリンクURLがイベントに含まれない
+- [ ] 同意前はPostHogへの通信がなく、共有しない選択後も新しいイベントが届かない
 - [ ] 「匿名の利用状況を共有」をOFFにすると新しいイベントが届かず、アプリを再起動してもOFFが維持される
 - [ ] スイッチをONに戻すとイベント送信が再開する
 - [ ] API key 未設定ではスイッチがOFF・操作不可になり、起動、画面遷移、リマインダー操作は通常どおり動作する
@@ -573,7 +574,7 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 **期待される結果**
 
 - Android 先行リリースに必要な実機挙動とストア提出前チェックが完了する
-- Android WidgetがDevelopment Buildで動作し、iOS Widgetが未実装であることはAndroid先行リリースのブロッカーにならない
+- Android WidgetがDevelopment Buildで動作し、iOS Widgetが未実装であることをAndroid先行リリースの機能差としてストア文言へ反映する
 
 ---
 

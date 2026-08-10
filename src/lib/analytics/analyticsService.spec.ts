@@ -17,6 +17,9 @@ function makeClient() {
   const calls = { optIn: 0, optOut: 0, ready: 0 };
   const client: AnalyticsClient = {
     optedOut: false,
+    getDistinctId() {
+      return 'anonymous-test-id';
+    },
     capture(event, properties) {
       captured.push({ event, properties });
     },
@@ -197,6 +200,52 @@ test('analytics persists opt-in and opt-out through the SDK client', async () =>
   assert.deepEqual(fake.calls, { optIn: 1, optOut: 1, ready: 3 });
 });
 
+test('analytics fails closed when SDK opt-out fails', async () => {
+  const fake = makeClient();
+  fake.client.optOut = () => {
+    throw new Error('opt out failed');
+  };
+  const analytics = createAnalyticsService(fake.client);
+
+  assert.equal(await analytics.setCaptureEnabled(false), false);
+  analytics.captureQuickAddOpened({ source: 'home_button' });
+  assert.deepEqual(fake.captured, []);
+});
+
+test('lazy analytics does not create a client or capture before explicit consent', async () => {
+  const fake = makeClient();
+  let factoryCalls = 0;
+  const analytics = createAnalyticsService(
+    () => {
+      factoryCalls += 1;
+      return fake.client;
+    },
+    { configured: true },
+  );
+
+  analytics.captureScreen('/');
+  analytics.captureQuickAddOpened({ source: 'home_button' });
+  assert.equal(factoryCalls, 0);
+  assert.deepEqual(fake.captured, []);
+  assert.deepEqual(fake.screens, []);
+
+  assert.equal(await analytics.setCaptureEnabled(true), true);
+  assert.equal(factoryCalls, 1);
+  analytics.captureScreen('/');
+  assert.deepEqual(fake.screens, [{ event: '/', properties: undefined }]);
+
+  assert.equal(await analytics.setCaptureEnabled(false), false);
+  analytics.captureQuickAddOpened({ source: 'home_button' });
+  assert.deepEqual(fake.captured, []);
+});
+
+test('analytics exposes a deletion request identifier from the consented client', async () => {
+  const fake = makeClient();
+  const analytics = createAnalyticsService(fake.client);
+
+  assert.equal(await analytics.getDeletionRequestId(), 'anonymous-test-id');
+});
+
 test('PostHog client configuration disables sensitive and unused automatic capture', () => {
   const source = readSource(import.meta.url, './posthogAnalytics.ts');
 
@@ -205,10 +254,23 @@ test('PostHog client configuration disables sensitive and unused automatic captu
   assert.match(source, /https:\/\/us\.i\.posthog\.com/);
   assert.match(source, /if \(!posthogApiKey\) return null;/);
   assert.match(source, /try \{[\s\S]*new PostHog[\s\S]*\} catch \{[\s\S]*return null;/);
+  assert.match(source, /defaultOptIn: false/);
   assert.match(source, /captureAppLifecycleEvents: false/);
   assert.match(source, /disableGeoip: true/);
   assert.match(source, /enableSessionReplay: false/);
   assert.match(source, /disableRemoteFeatureFlags: true/);
+  assert.match(source, /disableSurveys: true/);
+  assert.match(source, /capturePushNotificationSubscriptions: false/);
+  assert.match(source, /capturePushNotificationOpened: false/);
+  assert.match(source, /uncaughtExceptions: false/);
+  assert.match(source, /unhandledRejections: false/);
+  assert.match(source, /nativeCrashes: false/);
+  assert.match(source, /exceptionSteps: \{ enabled: false \}/);
+  assert.match(source, /customAppProperties: \(\) => \(\{\}\)/);
+  assert.match(source, /posthog-consent-v2:/);
+  assert.match(source, /expo-file-system\/legacy/);
+  assert.match(source, /\.posthog-rn-logs\.json/);
+  assert.match(source, /deleteAsync/);
   assert.match(source, /before_send:/);
   assert.match(source, /isAllowedAnalyticsEvent/);
 });

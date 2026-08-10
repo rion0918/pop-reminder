@@ -38,6 +38,11 @@ export const appSettings = sqliteTable('app_settings', {
   raiseToSpeakIntroSeen: integer('raise_to_speak_intro_seen', { mode: 'boolean' })
     .notNull()
     .default(false),
+  analyticsConsent: text('analytics_consent', {
+    enum: ['unknown', 'granted', 'denied'],
+  })
+    .notNull()
+    .default('unknown'),
   theme: text('theme', { enum: ['sky', 'lavender', 'mint'] })
     .notNull()
     .default('lavender'),

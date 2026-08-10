@@ -4,7 +4,7 @@
 
 - Android を先に Google Play へリリースする。
 - App Store は Android と同じ主要機能を確認してから後追いでリリースする。
-- Widget は別タスクとして扱い、このリリース手順のブロッカーにしない。
+- Android Widgetを初回リリースの正式機能としてこの手順に含める。
 
 ## 共通の事前確認
 
@@ -42,6 +42,7 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 
 - EAS の対象環境に `EXPO_PUBLIC_POSTHOG_API_KEY` を設定し、`EXPO_PUBLIC_POSTHOG_HOST` は US Cloud (`https://us.i.posthog.com`) を使用する。
 - Development Build と PostHog Live Events で、3画面、主要5イベント、opt out / opt in、機微情報が含まれないことを確認する。
+- PostHog project側のイベント保持期間を12か月に設定し、設定画面の削除依頼に対応できることを確認する。
 - project token を `.env` やリポジトリへコミットしない。
 
 5. RevenueCatとストア商品を確認する。
@@ -50,6 +51,12 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 - EASの対象environmentへ `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` と `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` を設定する。
 - RevenueCatのpublic SDK key以外のsecret、Google service account、App Store Connect private keyをアプリへ含めない。
 - Development Buildまたはストアテスト版で購入と復元を確認する。Expo Goの購入UIは実購入の確認に使用しない。
+
+6. プライバシー同意と削除依頼を確認する。
+
+- 初回起動時は匿名計測が未選択・無効で、共有しない選択でも機能を利用できることを確認する。
+- 同意後だけPostHogに許可されたイベントが送信され、設定からOFFにすると送信が止まることを確認する。
+- `EXPO_PUBLIC_SUPPORT_EMAIL` に専用サポートメールを設定し、利用状況データ削除依頼の導線を確認する。
 
 ## Android 先行リリース
 
@@ -74,6 +81,7 @@ eas build --profile preview --platform android
 - 追加Sheetと詳細Sheetを開いた状態でBackキーを押すと、画面離脱ではなくSheetだけ閉じること
 - Android小画面でHome、追加Sheet、設定、一覧が崩れないこと
 - 無料6件、7件目のPaywall、買い切りPro購入、購入復元、返金後の権利取消
+- Android Widgetの追加、リサイズ、データ更新、削除、Widgetからのdeep link
 
 3. Google Play向けAABを作る。
 
@@ -86,6 +94,8 @@ eas build --profile production --platform android
 - 内部テストまたはクローズドテストに配布する。
 - 個人開発者アカウントでクローズドテスト要件が出る場合は、必要なテスター数と期間を満たす。
 - Google Play提出前に `expo.android.versionCode` が前回提出版より大きいことを確認する。
+- AABのmerged manifestに不要なストレージ、オーバーレイ、身体活動権限が含まれないことを確認する。
+- AABのネイティブライブラリがAndroid 15以降の16KB page size要件を満たすことを確認する。
 - Google Play Console のデータ安全性を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
 - 非消耗型商品 `fuwatto_pro_lifetime` が800円で有効であり、RevenueCatの`pro` entitlementへ接続されていることを確認する。
 - プライバシーポリシーとデータ安全性をRevenueCatによる匿名購入情報の処理と一致させる。
@@ -123,7 +133,7 @@ eas build --profile production --platform ios
 
 - ストアページの問い合わせ導線を確認する。
 - 通知が届かない端末報告があれば、OSバージョン、通知権限、通知チャンネル、バッテリー最適化の状態を記録する。
-- Widget 実装は別タスクで設計し、Android/iOSそれぞれのネイティブ制約を確認してから進める。
+- Android Widgetは初回リリース機能として、更新失敗・再起動・deep linkの報告を記録する。
 - RevenueCatでPaywall到達、購入、復元、返金を確認し、PostHogで上限到達後の継続率と購入結果を確認する。
 - AndroidクローズドテストではPaywall到達率、購入率、キャンセル・エラー率、到達後の継続利用、復元失敗を確認する。
 - 初期段階ではA/Bテストを行わず、6件制限による離脱が強い場合だけ10件への緩和を検討する。

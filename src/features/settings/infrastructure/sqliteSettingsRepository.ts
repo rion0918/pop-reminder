@@ -5,6 +5,7 @@ import { appSettings, type AppSettingsRow, type NewAppSettingsRow } from '../../
 import { coerceTheme, isTimeString } from '../../../shared/utils/time';
 import type { SettingsRepository } from '../application/settingsRepository';
 import {
+  DEFAULT_ANALYTICS_SETTINGS,
   DEFAULT_QUICK_ADD_PRESET_TIMES,
   DEFAULT_NOTIFICATION_PERMISSION_SETTINGS,
   DEFAULT_RAISE_TO_SPEAK_SETTINGS,
@@ -22,6 +23,7 @@ const defaultSettings: NewAppSettingsRow = {
   notificationSoundEnabled: true,
   ...DEFAULT_NOTIFICATION_PERMISSION_SETTINGS,
   ...DEFAULT_RAISE_TO_SPEAK_SETTINGS,
+  ...DEFAULT_ANALYTICS_SETTINGS,
   theme: 'lavender',
 };
 
@@ -38,6 +40,7 @@ function toDomain(row: AppSettingsRow): AppSettings {
     notificationPermissionIntroSeen: row.notificationPermissionIntroSeen,
     raiseToSpeakEnabled: row.raiseToSpeakEnabled,
     raiseToSpeakIntroSeen: row.raiseToSpeakIntroSeen,
+    analyticsConsent: row.analyticsConsent,
     theme: coerceTheme(row.theme),
   };
 }
@@ -86,6 +89,7 @@ export const sqliteSettingsRepository: SettingsRepository = {
         input.notificationPermissionIntroSeen ?? current.notificationPermissionIntroSeen,
       raiseToSpeakEnabled: input.raiseToSpeakEnabled ?? current.raiseToSpeakEnabled,
       raiseToSpeakIntroSeen: input.raiseToSpeakIntroSeen ?? current.raiseToSpeakIntroSeen,
+      analyticsConsent: input.analyticsConsent ?? current.analyticsConsent,
       theme: input.theme ?? current.theme,
     };
     await db
@@ -101,6 +105,7 @@ export const sqliteSettingsRepository: SettingsRepository = {
         notificationPermissionIntroSeen: next.notificationPermissionIntroSeen,
         raiseToSpeakEnabled: next.raiseToSpeakEnabled,
         raiseToSpeakIntroSeen: next.raiseToSpeakIntroSeen,
+        analyticsConsent: next.analyticsConsent,
         theme: next.theme,
       })
       .where(eq(appSettings.id, DEFAULT_SETTINGS_ID));

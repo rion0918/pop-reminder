@@ -37,6 +37,8 @@ import {
 } from '../domain/appSettings';
 
 const appIcon = require('../../../../assets/app-icon.png');
+const supportEmail = process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim() ?? '';
+const supportContact = supportEmail || '専用サポートメール';
 
 type QuickAddPresetKey = keyof QuickAddPresetTimes;
 type QuickAddPresetIcon = ComponentProps<typeof Ionicons>['name'];
@@ -75,7 +77,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '2. 保存する情報',
-      body: '登録したリマインダーのタイトル、日時、通知ID、アプリ設定などを、お使いの端末内に保存します。現時点ではログイン機能や登録データの外部サーバーへの同期はありません。',
+      body: '登録したリマインダーのタイトル、日時、通知ID、アプリ設定などを、お使いの端末内に保存します。ログイン機能や登録データの外部サーバーへの同期はありません。OSのバックアップ設定によっては、端末バックアップの対象になり、復元される場合があります。',
     },
     {
       title: '3. 通知権限について',
@@ -87,23 +89,23 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '5. 匿名の利用状況について',
-      body: '品質改善のため、SDKが生成する匿名ID、アプリ・端末の技術情報、ホーム・一覧・設定の画面表示、リマインダー操作、通知、Pro購入導線の結果を PostHog の US Cloud へ送信します。タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません。',
+      body: '品質改善のため、明示的な同意後に、SDKが生成する匿名ID、ホーム・一覧・設定の画面表示、リマインダー操作、通知、Pro購入導線の結果を PostHog の US Cloud へ送信します。タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません。端末モデル、OS、ロケール、位置情報も送信しません。',
     },
     {
       title: '6. 利用状況計測の停止',
-      body: '匿名の利用状況は初期状態で有効です。設定画面の「匿名の利用状況を共有」からいつでも停止・再開でき、選択は端末内に保存されます。タッチ操作の自動収集、セッションリプレイ、位置情報の推定、リモートFeature Flagは使用しません。',
+      body: '匿名の利用状況は初期状態で無効・未選択です。初回起動時に「共有する」または「共有しない」を選び、設定画面からいつでも停止・再開できます。収集したイベントの通常保持期間は12か月です。タッチ操作の自動収集、セッションリプレイ、位置情報の推定、リモートFeature Flagは使用しません。',
     },
     {
       title: '7. アプリ内購入について',
-      body: '買い切りの「Pro版ふわっと。」を提供するため RevenueCat、Apple App Store、Google Play を利用します。RevenueCatにはSDKが生成する匿名購入ID、購入商品、購入・復元・権利状態、アプリ・端末の技術情報が送信されます。リマインダーの内容は送信しません。',
+      body: '買い切りの「Pro版ふわっと。」を提供するため RevenueCat、Apple App Store、Google Play を利用します。RevenueCatにはSDKが生成する匿名購入ID、購入商品、購入・復元・権利状態、課金に必要な技術情報が送信されます。リマインダーの内容は送信しません。購入記録は権利確認、不正防止、会計・法令対応に必要な期間、各サービスのポリシーに従って保持されます。',
     },
     {
       title: '8. データの削除',
-      body: 'アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。',
+      body: `アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。匿名の利用状況データの削除は${supportContact}へ依頼できます。過去に同意した場合は、設定画面の削除依頼から匿名分析IDを添えてください。OSのバックアップや復元機能を利用している場合は、OSやストアの仕様により一部のデータが復元されることがあります。`,
     },
     {
       title: '9. お問い合わせ',
-      body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
+      body: `不具合やご意見、データ削除の依頼は、${supportContact}、またはGoogle PlayやApp Storeの配布ページからお問い合わせください。`,
     },
   ],
 };
@@ -119,7 +121,7 @@ const termsSections = [
   },
   {
     title: '3. データの取り扱い',
-    body: '登録したリマインダーや設定は、お使いの端末内に保存されます。現時点ではログイン機能や登録データの外部サーバーへの同期はありません。アプリの削除や端末の初期化により、保存データが失われる場合があります。',
+    body: '登録したリマインダーや設定は、お使いの端末内に保存されます。ログイン機能や登録データの外部サーバーへの同期はありません。OSのバックアップ設定によっては、端末バックアップの対象になり、復元される場合があります。',
   },
   {
     title: '4. 通知について',
@@ -139,7 +141,7 @@ const termsSections = [
   },
   {
     title: '8. お問い合わせ',
-    body: '不具合やご意見がある場合は、Google PlayやApp Storeなどの配布ページ、または開発者が案内する連絡先からお問い合わせください。',
+    body: `不具合やご意見がある場合は、${supportContact}、またはGoogle PlayやApp Storeなどの配布ページからお問い合わせください。`,
   },
 ];
 
@@ -154,8 +156,14 @@ export function SettingsScreen() {
   const { reminders: reminderServices, analytics, purchases } = useAppServices();
   const raiseToSpeak = useAppServices().raiseToSpeak;
   const { proAccessState, isProAccessLoading, refreshProAccess } = useProAccessQuery();
-  const { settings, loading, update, updatePreviousNotifyTime, isUpdatingPreviousNotifyTime } =
-    useAppSettings();
+  const {
+    settings,
+    loading,
+    refresh: refreshSettings,
+    update,
+    updatePreviousNotifyTime,
+    isUpdatingPreviousNotifyTime,
+  } = useAppSettings();
   const {
     cancelAllScheduledNotifications,
     getNotificationPermissionStatus,
@@ -214,22 +222,10 @@ export function SettingsScreen() {
   }, [refreshNotificationPermissionStatus]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadAnalyticsPreference = async () => {
-      const enabled = await analytics.getCaptureEnabled();
-      if (cancelled) return;
-
-      setIsAnalyticsEnabled(enabled);
-      setIsAnalyticsPreferenceLoading(false);
-    };
-
-    void loadAnalyticsPreference();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [analytics]);
+    if (!settings) return;
+    setIsAnalyticsEnabled(settings.analyticsConsent === 'granted');
+    setIsAnalyticsPreferenceLoading(false);
+  }, [settings]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -319,12 +315,45 @@ export function SettingsScreen() {
   };
 
   const handleAnalyticsEnabledChange = async (value: boolean) => {
-    if (!analytics.configured || isAnalyticsPreferenceLoading) return;
+    if (!analytics.configured || isAnalyticsPreferenceLoading || !settings) return;
 
     setIsAnalyticsPreferenceLoading(true);
-    const enabled = await analytics.setCaptureEnabled(value);
-    setIsAnalyticsEnabled(enabled);
-    setIsAnalyticsPreferenceLoading(false);
+    try {
+      if (value) {
+        const enabled = await analytics.setCaptureEnabled(true);
+        if (!enabled) throw new Error('Analytics could not be enabled');
+        await update({ analyticsConsent: 'granted' });
+      } else {
+        await analytics.setCaptureEnabled(false);
+        await update({ analyticsConsent: 'denied' });
+      }
+      setIsAnalyticsEnabled(value);
+    } catch {
+      await refreshSettings();
+      Alert.alert('設定を変更できませんでした', '時間をおいてもう一度お試しください。');
+    } finally {
+      setIsAnalyticsPreferenceLoading(false);
+    }
+  };
+
+  const handleAnalyticsDeletionRequest = async () => {
+    if (!supportEmail) {
+      Alert.alert('連絡先を準備中です', '専用サポートメールの準備後にご利用いただけます。');
+      return;
+    }
+
+    const analyticsId = await analytics.getDeletionRequestId();
+    const subject = encodeURIComponent('ふわっと。利用状況データの削除依頼');
+    const body = encodeURIComponent(
+      analyticsId
+        ? `匿名分析ID: ${analyticsId}\n\n利用状況データの削除を依頼します。`
+        : '利用状況データの削除を依頼します。匿名分析IDは取得できませんでした。',
+    );
+    try {
+      await Linking.openURL(`mailto:${supportEmail}?subject=${subject}&body=${body}`);
+    } catch {
+      Alert.alert('メールを開けませんでした', 'メールアプリからお問い合わせください。');
+    }
   };
 
   const handleRaiseToSpeakEnabledChange = async (enabled: boolean) => {
@@ -910,6 +939,14 @@ export function SettingsScreen() {
                   thumbColor={isAnalyticsEnabled ? palette.lavenderDeep : palette.white}
                 />
               )}
+            </SettingRow>
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
+            <SettingRow
+              icon="trash-outline"
+              title="利用状況データの削除を依頼"
+              onPress={() => void handleAnalyticsDeletionRequest()}
+            >
+              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>
             <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow

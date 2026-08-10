@@ -41,6 +41,7 @@ test('database startup applies notification permission compatibility after migra
     /const NOTIFICATION_PERMISSION_DATABASE_VERSION = 5/,
     /async function initializeNotificationPermissionCompatibility\(database: MigrationDatabase\)/,
     /ADD COLUMN notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0/,
+    /ADD COLUMN analytics_consent TEXT NOT NULL DEFAULT 'unknown'/,
     /PRAGMA user_version = 5/,
     /await runDatabaseMigrations\(database\);\s+await initializeNotificationPermissionCompatibility\(database\);/,
   ]);
