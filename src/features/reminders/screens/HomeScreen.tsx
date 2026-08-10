@@ -812,7 +812,7 @@ export function HomeScreen() {
   useRaiseToSpeakGesture({
     enabled: Boolean(settings?.raiseToSpeakEnabled) || isRaiseToSpeakCalibrating,
     blocked:
-      !settings?.raiseToSpeakIntroSeen ||
+      (!settings?.raiseToSpeakIntroSeen && !isRaiseToSpeakCalibrating) ||
       isRaiseToSpeakSetupBusy ||
       isSelectionMode ||
       isSelectionBusy ||

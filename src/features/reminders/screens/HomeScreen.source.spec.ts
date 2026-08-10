@@ -95,7 +95,7 @@ test('raise-to-speak enters voice quick add only after the shared Pro gate succe
     /useRaiseToSpeakGesture\(\{/,
     /const isQuickAddPickerOpen = useReminderUiStore\(\(state\) => state\.isQuickAddPickerOpen\);/,
     /blocked:[\s\S]*isQuickAddPickerOpen/,
-    /blocked:[\s\S]*!settings\?\.raiseToSpeakIntroSeen/,
+    /blocked:\s*\(!settings\?\.raiseToSpeakIntroSeen && !isRaiseToSpeakCalibrating\)/,
     /visible=\{Boolean\(settings\?\.raiseToSpeakEnabled && !settings\.raiseToSpeakIntroSeen\)\}/,
   ]);
   assertSourceIncludes(dismissIntroBlock, [/setIsRaiseToSpeakCalibrating\(false\);/]);
