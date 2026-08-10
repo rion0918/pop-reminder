@@ -9,8 +9,24 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { palette } from '../../../constants/colors';
+
+const TILT_PHONE_ROTATION_DEGREES = 9;
+const TILT_PHONE_SPRING = {
+  damping: 16,
+  stiffness: 90,
+  mass: 0.85,
+  overshootClamping: false,
+} as const;
 
 type RaiseToSpeakIntroModalProps = {
   visible: boolean;
@@ -20,6 +36,80 @@ type RaiseToSpeakIntroModalProps = {
   onEnable: () => void;
   onDismiss: () => void;
 };
+
+type TiltPhoneIllustrationProps = {
+  active: boolean;
+  reduceMotionEnabled: boolean;
+};
+
+function TiltPhoneIllustration({
+  active,
+  reduceMotionEnabled,
+}: TiltPhoneIllustrationProps) {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    cancelAnimation(rotation);
+
+    if (!active) {
+      rotation.value = 0;
+      return;
+    }
+
+    rotation.value = reduceMotionEnabled
+      ? 0
+      : withRepeat(
+          withSequence(
+            withSpring(-TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING),
+            withSpring(0, TILT_PHONE_SPRING),
+            withSpring(TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING),
+            withSpring(0, TILT_PHONE_SPRING),
+          ),
+          -1,
+          false,
+        );
+
+    return () => cancelAnimation(rotation);
+  }, [active, reduceMotionEnabled, rotation]);
+
+  const animatedPhoneStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="スマートフォンが左右に傾く動き"
+      style={styles.tiltIllustration}
+    >
+      <Ionicons
+        name="arrow-back-outline"
+        size={24}
+        color={palette.lavenderDeep}
+        style={styles.leftTiltArrow}
+      />
+      <Ionicons
+        name="arrow-forward-outline"
+        size={24}
+        color={palette.lavenderDeep}
+        style={styles.rightTiltArrow}
+      />
+      <Animated.View style={[styles.phoneFrame, animatedPhoneStyle]}>
+        <View style={styles.phoneScreen}>
+          <View style={styles.phoneSpeaker} />
+          <View style={styles.phoneCamera} />
+          <View style={styles.phoneScreenContent}>
+            <View style={styles.phoneScreenLineWide} />
+            <View style={styles.phoneScreenLine} />
+            <View style={styles.phoneScreenBubble} />
+          </View>
+          <View style={styles.phoneHomeIndicator} />
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
 
 export function RaiseToSpeakIntroModal({
   visible,
@@ -49,13 +139,10 @@ export function RaiseToSpeakIntroModal({
     >
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
-          <View style={styles.iconWrap}>
-            <Ionicons
-              name={calibrating ? 'phone-portrait-outline' : 'mic'}
-              size={28}
-              color={palette.lavenderDeep}
-            />
-          </View>
+          <TiltPhoneIllustration
+            active={visible}
+            reduceMotionEnabled={reduceMotionEnabled}
+          />
           <Text style={styles.title}>
             {calibrating ? '試しに左右どちらかへ傾けてください' : '左右に傾けて音声入力'}
           </Text>
@@ -64,11 +151,6 @@ export function RaiseToSpeakIntroModal({
               ? 'スマホを縦向きから左右どちらかへ傾けます。振動したら設定完了です。'
               : 'スマホを左右どちらかへ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。'}
           </Text>
-          <View style={styles.privacyRow}>
-            <Ionicons name="shield-checkmark-outline" size={17} color={palette.mintDeep} />
-            <Text style={styles.privacyText}>音声は端末内で処理し、録音を保存しません</Text>
-          </View>
-
           {message ? (
             <Text accessibilityLiveRegion="polite" style={styles.message}>
               {message}
@@ -82,10 +164,7 @@ export function RaiseToSpeakIntroModal({
                 accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
                 disabled={busy}
                 onPress={onDismiss}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  pressed ? styles.buttonPressed : null,
-                ]}
+                style={[styles.choiceButton, styles.secondaryButton]}
               >
                 <Text style={styles.secondaryLabel}>キャンセル</Text>
               </Pressable>
@@ -93,36 +172,32 @@ export function RaiseToSpeakIntroModal({
               <>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel="今は音声入力を使わない"
+                  disabled={busy}
+                  onPress={onDismiss}
+                  style={[styles.choiceButton, styles.secondaryButton]}
+                >
+                  <Text style={styles.secondaryLabel}>今はしない</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel="左右に傾けて音声入力を使ってみる"
                   accessibilityState={{ disabled: busy, busy }}
                   disabled={busy}
                   onPress={onEnable}
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    pressed ? styles.buttonPressed : null,
-                  ]}
+                  style={[styles.choiceButton, styles.primaryButton]}
                 >
                   {busy ? (
                     <ActivityIndicator size="small" color={palette.white} />
-                  ) : (
-                    <Ionicons name="sparkles-outline" size={18} color={palette.white} />
-                  )}
+                  ) : null}
                   <Text style={styles.primaryLabel}>{busy ? '確認中…' : '使ってみる'}</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="今は音声入力を使わない"
-                  disabled={busy}
-                  onPress={onDismiss}
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    pressed ? styles.buttonPressed : null,
-                  ]}
-                >
-                  <Text style={styles.secondaryLabel}>今はしない</Text>
                 </Pressable>
               </>
             )}
+          </View>
+          <View style={styles.privacyRow}>
+            <Ionicons name="shield-checkmark-outline" size={14} color={palette.mintDeep} />
+            <Text style={styles.privacyText}>音声は端末内で処理し、録音を保存しません</Text>
           </View>
         </View>
       </View>
@@ -148,13 +223,98 @@ const styles = StyleSheet.create({
     shadowRadius: 28,
     elevation: 9,
   },
-  iconWrap: {
-    width: 58,
-    height: 58,
+  tiltIllustration: {
+    width: 190,
+    height: 132,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 29,
-    backgroundColor: '#F2EDFF',
+  },
+  leftTiltArrow: {
+    position: 'absolute',
+    left: 14,
+    top: 54,
+    opacity: 0.58,
+  },
+  rightTiltArrow: {
+    position: 'absolute',
+    right: 14,
+    top: 54,
+    opacity: 0.58,
+  },
+  phoneFrame: {
+    width: 64,
+    height: 112,
+    borderWidth: 2,
+    borderColor: '#B9A6F1',
+    borderRadius: 21,
+    padding: 5,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    shadowColor: palette.lavenderDeep,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  phoneScreen: {
+    flex: 1,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E7DEFF',
+    borderRadius: 15,
+    padding: 5,
+    backgroundColor: '#F6F1FF',
+  },
+  phoneSpeaker: {
+    width: 18,
+    height: 3,
+    marginTop: 1,
+    borderRadius: 2,
+    backgroundColor: '#C8B9F2',
+  },
+  phoneCamera: {
+    position: 'absolute',
+    top: 5,
+    right: 7,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#A58BEA',
+  },
+  phoneScreenContent: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 6,
+  },
+  phoneScreenLineWide: {
+    width: 30,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#D7CBFA',
+  },
+  phoneScreenLine: {
+    width: 22,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2D9FC',
+  },
+  phoneScreenBubble: {
+    width: 28,
+    height: 28,
+    marginTop: 7,
+    borderWidth: 1,
+    borderColor: '#D1C0F5',
+    borderRadius: 14,
+    backgroundColor: '#EDE5FF',
+  },
+  phoneHomeIndicator: {
+    position: 'absolute',
+    bottom: 6,
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#B9A6F1',
   },
   title: {
     marginTop: 16,
@@ -173,21 +333,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   privacyRow: {
-    marginTop: 16,
-    minHeight: 40,
+    marginTop: 12,
+    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    borderRadius: 15,
-    paddingHorizontal: 12,
+    gap: 5,
+    borderRadius: 12,
+    paddingHorizontal: 9,
     backgroundColor: '#EFFAF5',
   },
   privacyText: {
     minWidth: 0,
     flexShrink: 1,
     color: palette.mintDeep,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 10,
+    lineHeight: 14,
     fontWeight: '800',
   },
   message: {
@@ -200,16 +360,19 @@ const styles = StyleSheet.create({
   },
   actions: {
     width: '100%',
+    flexDirection: 'row',
+    alignItems: 'stretch',
     marginTop: 20,
     gap: 8,
   },
-  primaryButton: {
+  choiceButton: {
+    flex: 1,
     minHeight: 50,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     borderRadius: 17,
+  },
+  primaryButton: {
     backgroundColor: palette.lavenderDeep,
   },
   primaryLabel: {
@@ -218,17 +381,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   secondaryButton: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E3D9FF',
+    backgroundColor: '#F8F6FF',
   },
   secondaryLabel: {
     color: palette.muted,
     fontSize: 13,
     fontWeight: '800',
-  },
-  buttonPressed: {
-    opacity: 0.76,
-    transform: [{ scale: 0.98 }],
   },
 });

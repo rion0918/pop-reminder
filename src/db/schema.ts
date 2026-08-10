@@ -27,6 +27,11 @@ export const appSettings = sqliteTable('app_settings', {
   notificationSoundEnabled: integer('notification_sound_enabled', { mode: 'boolean' })
     .notNull()
     .default(true),
+  notificationPermissionIntroSeen: integer('notification_permission_intro_seen', {
+    mode: 'boolean',
+  })
+    .notNull()
+    .default(false),
   raiseToSpeakEnabled: integer('raise_to_speak_enabled', { mode: 'boolean' })
     .notNull()
     .default(false),
@@ -35,7 +40,7 @@ export const appSettings = sqliteTable('app_settings', {
     .default(false),
   theme: text('theme', { enum: ['sky', 'lavender', 'mint'] })
     .notNull()
-    .default('sky'),
+    .default('lavender'),
 });
 
 export type ReminderRow = typeof reminders.$inferSelect;

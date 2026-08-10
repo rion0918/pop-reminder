@@ -4,7 +4,7 @@ export type MigrationDatabase = {
   getAllAsync<T>(sql: string): Promise<T[]>;
 };
 
-const CURRENT_DATABASE_VERSION = 4;
+const CURRENT_DATABASE_VERSION = 5;
 
 export async function runDatabaseMigrations(database: MigrationDatabase) {
   const result = await database.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -35,7 +35,8 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
         default_target_time TEXT NOT NULL DEFAULT '08:00',
         auto_delete_enabled INTEGER NOT NULL DEFAULT 1,
         notification_sound_enabled INTEGER NOT NULL DEFAULT 1,
-        theme TEXT NOT NULL DEFAULT 'sky'
+        notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0,
+        theme TEXT NOT NULL DEFAULT 'lavender'
       );
 
       PRAGMA user_version = 1;
@@ -98,6 +99,18 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
     version = 4;
   }
 
+  if (version < 5) {
+    const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(app_settings)');
+    if (!columns.some((column) => column.name === 'notification_permission_intro_seen')) {
+      await database.execAsync(`
+        ALTER TABLE app_settings
+        ADD COLUMN notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0;
+      `);
+    }
+    await database.execAsync(`PRAGMA user_version = 5;`);
+    version = 5;
+  }
+
   await database.execAsync(`
     INSERT OR IGNORE INTO app_settings (
       id,
@@ -108,9 +121,10 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
       night_target_time,
       auto_delete_enabled,
       notification_sound_enabled,
+      notification_permission_intro_seen,
       raise_to_speak_enabled,
       raise_to_speak_intro_seen,
       theme
-    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 0, 0, 'sky');
+    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 0, 0, 0, 'lavender');
   `);
 }

@@ -63,6 +63,18 @@ test('widget quick add uses the same pro gate as the home button', () => {
   ]);
 });
 
+test('home asks for notification permission in context before the first reminder save', () => {
+  assertSourceIncludes(source, [
+    /notificationSettings\.getNotificationPermissionStatus\(\)/,
+    /settings\?\.notificationPermissionIntroSeen/,
+    /setIsNotificationPermissionIntroVisible\(true\)/,
+    /permissionMode: 'check-only'/,
+    /<NotificationPermissionIntroModal/,
+    /onAllow=\{handleAllowNotificationPermission\}/,
+    /onDismiss=\{handleDismissNotificationPermission\}/,
+  ]);
+});
+
 test('raise-to-speak enters voice quick add only after the shared Pro gate succeeds', () => {
   const dismissIntroBlock = source.slice(
     source.indexOf('const handleDismissRaiseToSpeakIntro'),
@@ -76,12 +88,15 @@ test('raise-to-speak enters voice quick add only after the shared Pro gate succe
     /requestVoiceInputStop\(\)/,
     /raiseToSpeakEnabled: true/,
     /raiseToSpeakIntroSeen: true/,
+    /raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false/,
     /setIsRaiseToSpeakCalibrating\(false\);/,
     /Linking\.openSettings\(\)/,
     /<RaiseToSpeakIntroModal/,
     /useRaiseToSpeakGesture\(\{/,
     /const isQuickAddPickerOpen = useReminderUiStore\(\(state\) => state\.isQuickAddPickerOpen\);/,
     /blocked:[\s\S]*isQuickAddPickerOpen/,
+    /blocked:[\s\S]*!settings\?\.raiseToSpeakIntroSeen/,
+    /visible=\{Boolean\(settings\?\.raiseToSpeakEnabled && !settings\.raiseToSpeakIntroSeen\)\}/,
   ]);
   assertSourceIncludes(dismissIntroBlock, [/setIsRaiseToSpeakCalibrating\(false\);/]);
 });
@@ -99,7 +114,7 @@ test('home replaces bottom controls with the add bubble only for a settled empty
 
 test('home keeps the selected theme background without a fixed atmospheric overlay', () => {
   assertSourceContract(source, {
-    includes: [/<AppScreen theme=\{settings\?\.theme \?\? 'sky'\}>/, /ambientThree: \{/],
+    includes: [/<AppScreen theme=\{settings\?\.theme \?\? 'lavender'\}>/, /ambientThree: \{/],
     excludes: [/HOME_BACKGROUND_COLORS/, /ambientBubble:/, /ambientSparkle:/],
   });
 });

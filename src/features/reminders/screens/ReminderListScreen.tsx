@@ -237,7 +237,7 @@ export function ReminderListScreen() {
   );
 
   return (
-    <AppScreen theme={settings?.theme ?? 'sky'}>
+    <AppScreen theme={settings?.theme ?? 'lavender'}>
       <View pointerEvents="none" className="absolute inset-0">
         <View
           className="absolute rounded-full border border-[rgba(255,255,255,0.46)] bg-[rgba(255,255,255,0.22)]"

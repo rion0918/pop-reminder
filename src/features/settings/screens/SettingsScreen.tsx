@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +20,8 @@ import {
 } from 'react-native';
 
 import { useNotificationDevStore } from '../../reminders/stores/notificationDevStore';
+import { RaiseToSpeakIntroModal } from '../../reminders/components/RaiseToSpeakIntroModal';
+import { useRaiseToSpeakGesture } from '../../reminders/hooks/useRaiseToSpeakGesture';
 import { useAppServices } from '../../../bootstrap/AppProviders';
 import { SettingRow } from '../components/SettingRow';
 import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
@@ -178,6 +181,9 @@ export function SettingsScreen() {
   const [isAnalyticsPreferenceLoading, setIsAnalyticsPreferenceLoading] = useState(true);
   const [isPurchaseActionPending, setIsPurchaseActionPending] = useState(false);
   const [isRaiseToSpeakUpdatePending, setIsRaiseToSpeakUpdatePending] = useState(false);
+  const [isRaiseToSpeakSetupBusy, setIsRaiseToSpeakSetupBusy] = useState(false);
+  const [isRaiseToSpeakCalibrating, setIsRaiseToSpeakCalibrating] = useState(false);
+  const [raiseToSpeakSetupMessage, setRaiseToSpeakSetupMessage] = useState<string | null>(null);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
   const isNativePurchasePlatform = Platform.OS === 'android' || Platform.OS === 'ios';
@@ -323,11 +329,19 @@ export function SettingsScreen() {
 
   const handleRaiseToSpeakEnabledChange = async (enabled: boolean) => {
     if (isRaiseToSpeakUpdatePending) return;
+    if (!settings) return;
 
     setIsRaiseToSpeakUpdatePending(true);
     try {
       if (!enabled) {
+        setIsRaiseToSpeakCalibrating(false);
+        setRaiseToSpeakSetupMessage(null);
         await update({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: true });
+        return;
+      }
+
+      if (!settings.raiseToSpeakIntroSeen) {
+        await update({ raiseToSpeakEnabled: true });
         return;
       }
 
@@ -373,6 +387,84 @@ export function SettingsScreen() {
       setIsRaiseToSpeakUpdatePending(false);
     }
   };
+
+  const handleDismissRaiseToSpeakIntro = useCallback(() => {
+    setRaiseToSpeakSetupMessage(null);
+    setIsRaiseToSpeakCalibrating(false);
+    void update({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false });
+  }, [update]);
+
+  const handlePrepareRaiseToSpeak = useCallback(async () => {
+    if (isRaiseToSpeakSetupBusy) return;
+
+    setIsRaiseToSpeakSetupBusy(true);
+    setRaiseToSpeakSetupMessage(null);
+    try {
+      const result = await raiseToSpeak.prepare();
+      if (result.status === 'ready') {
+        setIsRaiseToSpeakCalibrating(true);
+        return;
+      }
+
+      if (result.status === 'model-download-started') {
+        setRaiseToSpeakSetupMessage(
+          '日本語モデルの準備後、もう一度「使ってみる」を押してください。',
+        );
+        return;
+      }
+
+      if (result.status === 'permission-denied') {
+        const message = result.canAskAgain
+          ? 'マイクとモーションの権限を許可してください。'
+          : '端末の設定でマイクとモーションの権限を許可してください。';
+        setRaiseToSpeakSetupMessage(message);
+        if (!result.canAskAgain) {
+          Alert.alert('権限が必要です', message, [
+            { text: 'あとで', style: 'cancel' },
+            { text: '設定を開く', onPress: () => void Linking.openSettings() },
+          ]);
+        }
+        return;
+      }
+
+      const message = {
+        'motion-unavailable': 'この端末ではモーション検出を利用できません。',
+        'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
+      }[result.status];
+      setRaiseToSpeakSetupMessage(message);
+    } catch {
+      setRaiseToSpeakSetupMessage('音声入力の準備を完了できませんでした。');
+    } finally {
+      setIsRaiseToSpeakSetupBusy(false);
+    }
+  }, [isRaiseToSpeakSetupBusy, raiseToSpeak]);
+
+  const handleRaiseToSpeakCalibrationStart = useCallback(() => {
+    if (!isRaiseToSpeakCalibrating || isRaiseToSpeakSetupBusy) return;
+
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    void update({
+      raiseToSpeakEnabled: true,
+      raiseToSpeakIntroSeen: true,
+    })
+      .then(() => {
+        setRaiseToSpeakSetupMessage(null);
+        setIsRaiseToSpeakCalibrating(false);
+      })
+      .catch(() => {
+        setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
+        setIsRaiseToSpeakCalibrating(false);
+      });
+  }, [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, update]);
+
+  const handleRaiseToSpeakCalibrationStop = useCallback(() => {}, []);
+
+  useRaiseToSpeakGesture({
+    enabled: isRaiseToSpeakCalibrating,
+    blocked: isRaiseToSpeakSetupBusy,
+    onStart: handleRaiseToSpeakCalibrationStart,
+    onStop: handleRaiseToSpeakCalibrationStop,
+  });
 
   const handleOpenProPaywall = async () => {
     if (isPurchaseActionPending) return;
@@ -469,7 +561,7 @@ export function SettingsScreen() {
     : null;
 
   return (
-    <AppScreen theme={settings?.theme ?? 'sky'}>
+    <AppScreen theme={settings?.theme ?? 'lavender'}>
       <View className="h-[52px] flex-row items-center justify-between">
         <Pressable
           accessibilityRole="button"
@@ -642,7 +734,7 @@ export function SettingsScreen() {
               <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             )}
             <SettingRow
-              icon="sparkles-outline"
+              icon="hourglass-outline"
               title="自動消滅"
               onPress={() => {
                 void update({ autoDeleteEnabled: !settings.autoDeleteEnabled });
@@ -916,6 +1008,14 @@ export function SettingsScreen() {
         onClose={() => setQuickAddPresetPickerKey(null)}
       />
       <LegalDocumentModal document={legalDocument} onClose={() => setLegalDocument(null)} />
+      <RaiseToSpeakIntroModal
+        visible={Boolean(settings?.raiseToSpeakEnabled && !settings.raiseToSpeakIntroSeen)}
+        busy={isRaiseToSpeakSetupBusy}
+        calibrating={isRaiseToSpeakCalibrating}
+        message={raiseToSpeakSetupMessage}
+        onEnable={() => void handlePrepareRaiseToSpeak()}
+        onDismiss={handleDismissRaiseToSpeakIntro}
+      />
     </AppScreen>
   );
 }

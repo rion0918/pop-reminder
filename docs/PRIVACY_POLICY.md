@@ -45,7 +45,7 @@
 
 ## アプリ内購入
 
-本アプリは、買い切りの「ふわっと。Pro」を提供するため RevenueCat の購入管理SDKと、Apple App Store または Google Play のアプリ内購入を利用します。
+本アプリは、買い切りの「Pro版ふわっと。」を提供するため RevenueCat の購入管理SDKと、Apple App Store または Google Play のアプリ内購入を利用します。
 
 RevenueCat には、SDKが生成する匿名の購入用ID、購入商品、購入・復元・権利状態、OS・端末種別・アプリバージョンなどの技術情報が送信されます。リマインダーのタイトル、ID、日時などの内容は RevenueCat、Apple、Google へ送信しません。
 

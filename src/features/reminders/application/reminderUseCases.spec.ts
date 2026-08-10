@@ -104,6 +104,7 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         nightTargetTime: '20:00',
         autoDeleteEnabled: true,
         notificationSoundEnabled: true,
+        notificationPermissionIntroSeen: false,
         raiseToSpeakEnabled: false,
         raiseToSpeakIntroSeen: false,
         theme: 'sky',
@@ -120,6 +121,7 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
           nightTargetTime: '20:00',
           autoDeleteEnabled: true,
           notificationSoundEnabled: true,
+          notificationPermissionIntroSeen: false,
           raiseToSpeakEnabled: false,
           raiseToSpeakIntroSeen: false,
           theme: 'sky',
@@ -313,6 +315,23 @@ test('create returns the persisted reminder and reason when notification permiss
   assert.equal(result.notification.status, 'not-scheduled');
   assert.equal(result.notification.reason, 'notification-permission-denied');
   assert.deepEqual(events, ['insert', 'schedule', 'widget']);
+});
+
+test('create forwards an explicit notification permission mode', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  let permissionMode: 'request' | 'check-only' | undefined;
+  dependencies.notifications.schedule = async (_reminder, options) => {
+    permissionMode = options.permissionMode;
+    return scheduledNotification;
+  };
+
+  await createReminderUseCases(dependencies).create(
+    { title: 'Pay rent', dateOffset: 2, targetTime: '08:00' },
+    { permissionMode: 'check-only', now: new Date('2026-07-12T09:00:00+09:00') },
+  );
+
+  assert.equal(permissionMode, 'check-only');
 });
 
 test('create converts an unexpected notification scheduling exception into an observable result', async () => {

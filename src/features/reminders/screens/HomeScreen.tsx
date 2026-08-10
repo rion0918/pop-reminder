@@ -21,6 +21,7 @@ import type { BubbleDeleteMotionPhase } from '../components/ReminderBubble';
 import { ReminderBubbleBoard, type BubbleDeleteMotion } from '../components/ReminderBubbleBoard';
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
+import { NotificationPermissionIntroModal } from '../components/NotificationPermissionIntroModal';
 import { RaiseToSpeakIntroModal } from '../components/RaiseToSpeakIntroModal';
 import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
 import { makeBulkDeleteMotions } from '../components/reminderBulkDeleteMotion';
@@ -57,6 +58,14 @@ const MAX_VISIBLE_HOME_BUBBLES = 12;
 
 type QuickAddSource = 'home_button' | 'widget_deep_link' | 'raise_to_speak';
 type QuickAddOptions = { focusTitle?: boolean; inputMode?: QuickAddInputMode };
+type NotificationPermissionMode = 'request' | 'check-only';
+type PendingReminderSaveInput = {
+  title: string;
+  dateOffset: 0 | 1 | 2;
+  customTargetDate: string | null;
+  targetTime: string;
+  useTestNotifications: boolean;
+};
 
 function makeDeleteMotionKey(reminderId: string, phase: BubbleDeleteMotionPhase) {
   return `${reminderId}:${phase}`;
@@ -71,7 +80,7 @@ const dueLegendItems = [
 
 export function HomeScreen() {
   const router = useRouter();
-  const { analytics, purchases } = useAppServices();
+  const { analytics, notificationSettings, purchases } = useAppServices();
   const raiseToSpeak = useAppServices().raiseToSpeak;
   const routeParams = useLocalSearchParams<{ action?: string; id?: string; intent?: string }>();
   const { width: windowWidth } = useWindowDimensions();
@@ -131,6 +140,10 @@ export function HomeScreen() {
   const deleteMotionWaitersRef = useRef(new Map<string, () => void>());
   const isReminderDeletionInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
+  const pendingReminderSaveRef = useRef<{
+    input: PendingReminderSaveInput;
+    resolve: (permissionMode: NotificationPermissionMode) => void;
+  } | null>(null);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedReminderIds, setSelectedReminderIds] = useState<Set<string>>(() => new Set());
@@ -140,6 +153,12 @@ export function HomeScreen() {
   const [isRaiseToSpeakSetupBusy, setIsRaiseToSpeakSetupBusy] = useState(false);
   const [isRaiseToSpeakCalibrating, setIsRaiseToSpeakCalibrating] = useState(false);
   const [raiseToSpeakSetupMessage, setRaiseToSpeakSetupMessage] = useState<string | null>(null);
+  const [isNotificationPermissionIntroVisible, setIsNotificationPermissionIntroVisible] =
+    useState(false);
+  const [isNotificationPermissionIntroBusy, setIsNotificationPermissionIntroBusy] =
+    useState(false);
+  const [notificationPermissionCanAskAgain, setNotificationPermissionCanAskAgain] =
+    useState(true);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
   const visibleReminderIds = useMemo(
@@ -363,7 +382,13 @@ export function HomeScreen() {
     }, [cancelSelection, closeQuickAdd]),
   );
 
-  const handleSave = async (title: string) => {
+  const saveReminder = async (
+    input: PendingReminderSaveInput,
+    options: {
+      permissionMode?: NotificationPermissionMode;
+      suppressPermissionDeniedAlert?: boolean;
+    } = {},
+  ) => {
     if (isSavingRef.current) {
       throw new Error('Reminder save is already in progress');
     }
@@ -372,13 +397,14 @@ export function HomeScreen() {
     try {
       const result = await createReminder(
         {
-          title,
-          dateOffset,
-          customTargetDate,
-          targetTime,
+          title: input.title,
+          dateOffset: input.dateOffset,
+          customTargetDate: input.customTargetDate,
+          targetTime: input.targetTime,
         },
         {
-          useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
+          useTestNotifications: input.useTestNotifications,
+          permissionMode: options.permissionMode,
         },
       );
       analytics.captureReminderCreated({
@@ -389,7 +415,13 @@ export function HomeScreen() {
           'reason' in result.notification ? result.notification.reason : undefined,
       });
 
-      if (result.notification.status === 'not-scheduled') {
+      if (
+        result.notification.status === 'not-scheduled' &&
+        !(
+          result.notification.reason === 'notification-permission-denied' &&
+          options.suppressPermissionDeniedAlert
+        )
+      ) {
         const failureMessage = {
           'notification-permission-denied': '端末の通知権限が許可されていません。',
           'target-time-passed': '保存中に指定時刻を過ぎたため、通知を予約できませんでした。',
@@ -435,6 +467,81 @@ export function HomeScreen() {
       isSavingRef.current = false;
     }
   };
+
+  const handleSave = async (title: string) => {
+    const input: PendingReminderSaveInput = {
+      title,
+      dateOffset,
+      customTargetDate,
+      targetTime,
+      useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
+    };
+
+    if (settings?.notificationPermissionIntroSeen) {
+      return saveReminder(input, { permissionMode: 'check-only' });
+    }
+
+    try {
+      const permission = await notificationSettings.getNotificationPermissionStatus();
+      if (permission.status === 'granted') {
+        return saveReminder(input, { permissionMode: 'check-only' });
+      }
+
+      setNotificationPermissionCanAskAgain(permission.canAskAgain);
+      const permissionMode = await new Promise<NotificationPermissionMode>((resolve) => {
+        pendingReminderSaveRef.current = { input, resolve };
+        setIsNotificationPermissionIntroVisible(true);
+      });
+
+      return saveReminder(input, {
+        permissionMode,
+        suppressPermissionDeniedAlert: true,
+      });
+    } catch (error) {
+      console.warn('Failed to prepare notification permission prompt', error);
+      return saveReminder(input, { permissionMode: 'check-only' });
+    }
+  };
+
+  const resolveNotificationPermissionIntro = useCallback(
+    async (requestPermission: boolean) => {
+      const pending = pendingReminderSaveRef.current;
+      if (!pending || isNotificationPermissionIntroBusy) return;
+
+      setIsNotificationPermissionIntroBusy(true);
+      try {
+        if (requestPermission) {
+          if (notificationPermissionCanAskAgain) {
+            await notificationSettings.requestNotificationPermissions();
+          } else {
+            await Linking.openSettings();
+          }
+        }
+        await updateSettings({ notificationPermissionIntroSeen: true });
+      } catch (error) {
+        console.warn('Failed to resolve notification permission intro', error);
+      } finally {
+        pendingReminderSaveRef.current = null;
+        setIsNotificationPermissionIntroVisible(false);
+        setIsNotificationPermissionIntroBusy(false);
+        pending.resolve('check-only');
+      }
+    },
+    [
+      isNotificationPermissionIntroBusy,
+      notificationPermissionCanAskAgain,
+      notificationSettings,
+      updateSettings,
+    ],
+  );
+
+  const handleAllowNotificationPermission = useCallback(() => {
+    void resolveNotificationPermissionIntro(true);
+  }, [resolveNotificationPermissionIntro]);
+
+  const handleDismissNotificationPermission = useCallback(() => {
+    void resolveNotificationPermissionIntro(false);
+  }, [resolveNotificationPermissionIntro]);
 
   const handlePressAdd = useCallback(() => {
     void requestQuickAdd('home_button');
@@ -622,7 +729,7 @@ export function HomeScreen() {
   const handleDismissRaiseToSpeakIntro = useCallback(() => {
     setRaiseToSpeakSetupMessage(null);
     setIsRaiseToSpeakCalibrating(false);
-    void updateSettings({ raiseToSpeakIntroSeen: true });
+    void updateSettings({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false });
   }, [updateSettings]);
 
   const handlePrepareRaiseToSpeak = useCallback(async () => {
@@ -707,6 +814,7 @@ export function HomeScreen() {
   useRaiseToSpeakGesture({
     enabled: Boolean(settings?.raiseToSpeakEnabled) || isRaiseToSpeakCalibrating,
     blocked:
+      !settings?.raiseToSpeakIntroSeen ||
       isRaiseToSpeakSetupBusy ||
       isSelectionMode ||
       isSelectionBusy ||
@@ -730,7 +838,7 @@ export function HomeScreen() {
   const isCompactPhoneWidth = windowWidth <= 360;
 
   return (
-    <AppScreen theme={settings?.theme ?? 'sky'}>
+    <AppScreen theme={settings?.theme ?? 'lavender'}>
       <View pointerEvents="none" className="absolute inset-0">
         <View
           className="absolute rounded-full border border-[rgba(255,255,255,0.42)] bg-[rgba(255,255,255,0.22)]"
@@ -941,12 +1049,19 @@ export function HomeScreen() {
       ) : null}
 
       <RaiseToSpeakIntroModal
-        visible={Boolean(settings && !settings.raiseToSpeakIntroSeen)}
+        visible={Boolean(settings?.raiseToSpeakEnabled && !settings.raiseToSpeakIntroSeen)}
         busy={isRaiseToSpeakSetupBusy}
         calibrating={isRaiseToSpeakCalibrating}
         message={raiseToSpeakSetupMessage}
         onEnable={() => void handlePrepareRaiseToSpeak()}
         onDismiss={handleDismissRaiseToSpeakIntro}
+      />
+      <NotificationPermissionIntroModal
+        visible={isNotificationPermissionIntroVisible}
+        busy={isNotificationPermissionIntroBusy}
+        canAskAgain={notificationPermissionCanAskAgain}
+        onAllow={handleAllowNotificationPermission}
+        onDismiss={handleDismissNotificationPermission}
       />
     </AppScreen>
   );

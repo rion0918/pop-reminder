@@ -8,7 +8,7 @@ type AppScreenProps = PropsWithChildren<{
   theme?: AppTheme;
 }>;
 
-export function AppScreen({ children, theme = 'sky' }: AppScreenProps) {
+export function AppScreen({ children, theme = 'lavender' }: AppScreenProps) {
   const colors = appThemes[theme];
   const { width } = useWindowDimensions();
   const horizontalPadding = width <= 360 ? 16 : 20;

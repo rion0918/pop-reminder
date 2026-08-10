@@ -26,19 +26,25 @@ function makeDatabase(userVersion: number, columns: string[] = []) {
 test('fresh database runs sequential migrations and records the current version', async () => {
   const fake = makeDatabase(0);
   await runDatabaseMigrations(fake.database);
-  assert.equal(fake.getVersion(), 4);
+  assert.equal(fake.getVersion(), 5);
   assert.match(fake.statements.join('\n'), /CREATE TABLE IF NOT EXISTS reminders/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN noon_target_time/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN evening_target_time/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN night_target_time/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN raise_to_speak_enabled/);
   assert.match(fake.statements.join('\n'), /ADD COLUMN raise_to_speak_intro_seen/);
+  assert.match(
+    fake.statements.join('\n'),
+    /notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0/,
+  );
+  assert.match(fake.statements.join('\n'), /theme TEXT NOT NULL DEFAULT 'lavender'/);
+  assert.match(fake.statements.join('\n'), /0, 0, 'lavender'/);
 });
 
 test('legacy database adds the notification sound column once', async () => {
   const fake = makeDatabase(1, ['id', 'theme']);
   await runDatabaseMigrations(fake.database);
-  assert.equal(fake.getVersion(), 4);
+  assert.equal(fake.getVersion(), 5);
   assert.equal(
     fake.statements.filter((statement) =>
       statement.includes('ADD COLUMN notification_sound_enabled'),
@@ -52,7 +58,7 @@ test('legacy database adds the notification sound column once', async () => {
 });
 
 test('migration rerun is idempotent', async () => {
-  const fake = makeDatabase(4, [
+  const fake = makeDatabase(5, [
     'id',
     'notification_sound_enabled',
     'noon_target_time',
@@ -60,6 +66,7 @@ test('migration rerun is idempotent', async () => {
     'night_target_time',
     'raise_to_speak_enabled',
     'raise_to_speak_intro_seen',
+    'notification_permission_intro_seen',
   ]);
   await runDatabaseMigrations(fake.database);
   assert.deepEqual(fake.statements, []);
@@ -69,7 +76,7 @@ test('v2 database adds all quick-add preset columns with current defaults', asyn
   const fake = makeDatabase(2, ['id', 'notification_sound_enabled']);
   await runDatabaseMigrations(fake.database);
 
-  assert.equal(fake.getVersion(), 4);
+  assert.equal(fake.getVersion(), 5);
   const migration = fake.statements.join('\n');
   assert.match(migration, /ADD COLUMN noon_target_time TEXT NOT NULL DEFAULT '12:00'/);
   assert.match(migration, /ADD COLUMN evening_target_time TEXT NOT NULL DEFAULT '18:00'/);
@@ -86,8 +93,27 @@ test('v3 database adds raise-to-speak settings disabled by default', async () =>
   ]);
   await runDatabaseMigrations(fake.database);
 
-  assert.equal(fake.getVersion(), 4);
+  assert.equal(fake.getVersion(), 5);
   const migration = fake.statements.join('\n');
   assert.match(migration, /ADD COLUMN raise_to_speak_enabled INTEGER NOT NULL DEFAULT 0/);
   assert.match(migration, /ADD COLUMN raise_to_speak_intro_seen INTEGER NOT NULL DEFAULT 0/);
+});
+
+test('v4 database adds the notification permission intro state', async () => {
+  const fake = makeDatabase(4, [
+    'id',
+    'notification_sound_enabled',
+    'noon_target_time',
+    'evening_target_time',
+    'night_target_time',
+    'raise_to_speak_enabled',
+    'raise_to_speak_intro_seen',
+  ]);
+  await runDatabaseMigrations(fake.database);
+
+  assert.equal(fake.getVersion(), 5);
+  assert.match(
+    fake.statements.join('\n'),
+    /ADD COLUMN notification_permission_intro_seen INTEGER NOT NULL DEFAULT 0/,
+  );
 });

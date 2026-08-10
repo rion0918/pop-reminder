@@ -352,7 +352,7 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.match(storeDraft, /左右に傾けて音声入力/);
   assert.match(storeDraft, /音声認識は端末内/);
   assert.match(storeDraft, /録音、文字起こし、モーション値は外部送信しません/);
-  assert.match(storeDraft, /買い切りの「ふわっと。Pro」/);
+  assert.match(storeDraft, /買い切りの「Pro版ふわっと。」/);
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
   assert.match(storeDraft, /Widgetは別タスク/);

@@ -12,7 +12,7 @@ const settingsSource = readSource(import.meta.url, '../../settings/screens/Setti
 
 test('home captures quick-add entry and successful reminder outcomes', () => {
   assertSourceIncludes(homeSource, [
-    /const \{ analytics, purchases \} = useAppServices\(\);/,
+    /const \{ analytics, notificationSettings, purchases \} = useAppServices\(\);/,
     /const datePreset = useReminderUiStore\(\(state\) => state\.datePreset\);/,
     /quickAddSourceRef\.current = source;/,
     /captureQuickAddOpened\(\{ source \}\)/,
