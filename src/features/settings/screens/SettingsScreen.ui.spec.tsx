@@ -13,6 +13,7 @@ const mockEvents: string[] = [];
 let mockSettingsState: AppSettings;
 let mockCalibrationDeferred: Promise<void> | null = null;
 let mockResolveCalibration: (() => void) | null = null;
+let mockRejectCalibration: (() => void) | null = null;
 let mockRaiseGestureOptions: {
   enabled: boolean;
   blocked: boolean;
@@ -170,6 +171,7 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockEvents.length = 0;
     mockSettingsState = makeSettings();
     mockResolveCalibration = null;
+    mockRejectCalibration = null;
     mockCalibrationDeferred = new Promise<void>((resolve) => {
       mockResolveCalibration = resolve;
     });
@@ -178,6 +180,55 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockHapticsNotificationAsync.mockImplementation(async () => {
       mockEvents.push('haptic');
     });
+  });
+
+  it('releases the setup lock when preparation fails', async () => {
+    mockRaiseToSpeakPrepare.mockRejectedValue(new Error('preparation failed'));
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent(view.getByLabelText('左右に傾けて音声入力'), 'valueChange', true);
+    await waitFor(() =>
+      expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).toBeOnTheScreen(),
+    );
+    await fireEvent.press(view.getByLabelText('左右に傾けて音声入力を使ってみる'));
+
+    await waitFor(() => {
+      expect(mockRaiseToSpeakPrepare).toHaveBeenCalledTimes(1);
+      expect(mockRaiseGestureOptions?.blocked).toBe(false);
+      expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).not.toBeDisabled();
+    });
+    expect(view.queryByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeNull();
+  });
+
+  it('releases the setup lock when calibration persistence fails', async () => {
+    mockCalibrationDeferred = new Promise<void>((_, reject) => {
+      mockRejectCalibration = () => reject(new Error('calibration persistence failed'));
+    });
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent(view.getByLabelText('左右に傾けて音声入力'), 'valueChange', true);
+    await waitFor(() =>
+      expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).toBeOnTheScreen(),
+    );
+    await fireEvent.press(view.getByLabelText('左右に傾けて音声入力を使ってみる'));
+    await waitFor(() => expect(mockRaiseGestureOptions?.enabled).toBe(true));
+
+    await act(async () => {
+      void mockRaiseGestureOptions?.onStart();
+    });
+    await waitFor(() => {
+      expect(mockRaiseGestureOptions?.blocked).toBe(true);
+      expect(view.getByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeDisabled();
+    });
+
+    await act(async () => {
+      mockRejectCalibration?.();
+    });
+    await waitFor(() => {
+      expect(mockRaiseGestureOptions?.blocked).toBe(false);
+      expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).not.toBeDisabled();
+    });
+    expect(view.queryByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeNull();
   });
 
   it('persists the first enable, prepares the gesture, and blocks cancellation while saving', async () => {

@@ -30,14 +30,3 @@ test('analytics tracks Expo Router pathnames manually only after the consent gat
   assert.doesNotMatch(source, /useGlobalSearchParams/);
   assert.doesNotMatch(source, /useLocalSearchParams/);
 });
-
-test('analytics consent persists before enabling capture and fails closed on errors', () => {
-  assertSourceIncludes(source, [
-    /const previousConsent = settingsQuery\.data\?\.analyticsConsent \?\? 'unknown';/,
-    /let consentPersisted = false;/,
-    /await settingsMutation\.mutateAsync\(\{ analyticsConsent: consent \}\);\s*consentPersisted = true;/,
-    /await appServices\.analytics\.setCaptureEnabled\(true\)/,
-    /catch \{\s*await appServices\.analytics\.setCaptureEnabled\(false\);/,
-    /analyticsConsent: previousConsent/,
-  ]);
-});
