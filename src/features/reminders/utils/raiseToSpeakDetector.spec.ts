@@ -3,152 +3,112 @@ import { test } from 'node:test';
 
 import {
   createRaiseToSpeakDetectorState,
+  isRightTiltedVoicePose,
   reduceRaiseToSpeakDetector,
 } from './raiseToSpeakDetector';
 
-function sample(
-  timestamp: number,
-  overrides: Partial<{
-    upwardAcceleration: number;
-    motionAcceleration: number;
-    rotationRate: number;
-    orientation: number;
-    near: boolean;
-    speakingPose: boolean;
-  }> = {},
-) {
-  return {
-    timestamp,
-    upwardAcceleration: 0,
-    motionAcceleration: 0,
-    rotationRate: 0,
-    orientation: 0,
-    near: false,
-    speakingPose: false,
-    ...overrides,
-  };
+function sample(timestamp: number, rightTilted = false) {
+  return { timestamp, rightTilted };
 }
 
-test('raise-to-speak starts only after a stable near signal follows a valid lift', () => {
+test('right tilt starts voice input after the orientation is briefly stable', () => {
   let state = createRaiseToSpeakDetectorState();
 
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { upwardAcceleration: 1.3 })));
-  assert.equal(state.phase, 'armed');
-
-  let result = reduceRaiseToSpeakDetector(state, sample(500, { near: true }));
+  let result = reduceRaiseToSpeakDetector(state, sample(0, true));
   state = result.state;
   assert.equal(result.action, 'none');
 
-  result = reduceRaiseToSpeakDetector(state, sample(700, { near: true }));
+  result = reduceRaiseToSpeakDetector(state, sample(199, true));
+  state = result.state;
+  assert.equal(result.action, 'none');
+
+  result = reduceRaiseToSpeakDetector(state, sample(200, true));
   assert.equal(result.action, 'start');
   assert.equal(result.state.phase, 'listening');
 });
 
-test('proximity alone and motion alone never start listening', () => {
+test('voice pose accepts right rotation only', () => {
+  assert.equal(isRightTiltedVoicePose(undefined), false);
+  assert.equal(isRightTiltedVoicePose({ x: 0, y: -9.8, z: 0 }), false);
+  assert.equal(isRightTiltedVoicePose({ x: 7.2, y: -6.8, z: 0 }), true);
+  assert.equal(isRightTiltedVoicePose({ x: 9.8, y: 0, z: 0 }), true);
+  assert.equal(isRightTiltedVoicePose({ x: -7.2, y: -6.8, z: 0 }), false);
+  assert.equal(isRightTiltedVoicePose({ x: 0, y: -7, z: -7 }), false);
+  assert.equal(isRightTiltedVoicePose({ x: 0, y: 0, z: -9.8 }), false);
+});
+
+test('left tilt and a brief right-tilt bounce never start voice input', () => {
   let state = createRaiseToSpeakDetectorState();
 
-  let result = reduceRaiseToSpeakDetector(state, sample(0, { near: true }));
-  state = result.state;
-  result = reduceRaiseToSpeakDetector(state, sample(500, { near: true }));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, false)));
+  let result = reduceRaiseToSpeakDetector(state, sample(500, false));
   assert.equal(result.action, 'none');
   assert.equal(result.state.phase, 'idle');
 
   state = createRaiseToSpeakDetectorState();
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { upwardAcceleration: 1.3 })));
-  result = reduceRaiseToSpeakDetector(state, sample(1_201));
-  assert.equal(result.action, 'none');
-  assert.equal(result.state.phase, 'idle');
-});
-
-test('raise-to-speak starts from a stable speaking pose when bottom-up use leaves proximity far', () => {
-  let state = createRaiseToSpeakDetectorState();
-
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { motionAcceleration: 1.3 })));
-  assert.equal(state.phase, 'armed');
-
-  let result = reduceRaiseToSpeakDetector(state, sample(300, { speakingPose: true }));
-  state = result.state;
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, true)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(150, false)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(200, true)));
+  result = reduceRaiseToSpeakDetector(state, sample(399, true));
   assert.equal(result.action, 'none');
 
-  result = reduceRaiseToSpeakDetector(state, sample(650, { speakingPose: true }));
+  result = reduceRaiseToSpeakDetector(result.state, sample(400, true));
   assert.equal(result.action, 'start');
-  assert.equal(result.state.phase, 'listening');
-  assert.equal(result.state.activation, 'pose');
 });
 
-test('pose-triggered listening stops after the phone is lowered away from speaking pose', () => {
+test('returning to portrait stops listening after hysteresis', () => {
   let state = createRaiseToSpeakDetectorState();
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { motionAcceleration: 1.3 })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(200, { speakingPose: true })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(550, { speakingPose: true })));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, true)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(200, true)));
 
-  let result = reduceRaiseToSpeakDetector(state, sample(800, { speakingPose: false }));
+  let result = reduceRaiseToSpeakDetector(state, sample(500, false));
   state = result.state;
   assert.equal(result.action, 'none');
 
-  result = reduceRaiseToSpeakDetector(state, sample(1_150, { speakingPose: false }));
+  result = reduceRaiseToSpeakDetector(state, sample(849, false));
+  state = result.state;
+  assert.equal(result.action, 'none');
+
+  result = reduceRaiseToSpeakDetector(state, sample(850, false));
   assert.equal(result.action, 'stop');
   assert.equal(result.state.phase, 'cooldown');
 });
 
-test('unstable proximity and excessive rotation cancel the pending trigger', () => {
+test('cooldown prevents a duplicate start until the phone returns to portrait', () => {
   let state = createRaiseToSpeakDetectorState();
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, true)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(200, true)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(500, false)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(850, false)));
 
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { upwardAcceleration: 1.3 })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(300, { near: true })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(400, { near: false })));
-
-  const bounced = reduceRaiseToSpeakDetector(state, sample(500, { near: true }));
-  assert.equal(bounced.action, 'none');
-
-  const rotating = reduceRaiseToSpeakDetector(
-    bounced.state,
-    sample(700, { near: true, rotationRate: 46 }),
-  );
-  assert.equal(rotating.action, 'none');
-});
-
-test('lowering stops listening after hysteresis and cooldown prevents duplicate starts', () => {
-  let state = createRaiseToSpeakDetectorState();
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { upwardAcceleration: 1.3 })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(100, { near: true })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(300, { near: true })));
-
-  let result = reduceRaiseToSpeakDetector(state, sample(500, { near: false }));
+  let result = reduceRaiseToSpeakDetector(state, sample(2_350, true));
   state = result.state;
   assert.equal(result.action, 'none');
-
-  result = reduceRaiseToSpeakDetector(state, sample(850, { near: false }));
-  state = result.state;
-  assert.equal(result.action, 'stop');
   assert.equal(state.phase, 'cooldown');
 
-  result = reduceRaiseToSpeakDetector(state, sample(900, { upwardAcceleration: 2, near: true }));
-  assert.equal(result.action, 'none');
-  assert.equal(result.state.phase, 'cooldown');
+  result = reduceRaiseToSpeakDetector(state, sample(2_400, false));
+  state = result.state;
+  assert.equal(state.phase, 'idle');
 
-  result = reduceRaiseToSpeakDetector(result.state, sample(2_350, { near: false }));
-  assert.equal(result.state.phase, 'idle');
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(2_500, true)));
+  result = reduceRaiseToSpeakDetector(state, sample(2_700, true));
+  assert.equal(result.action, 'start');
 });
 
 test('listening stops at the safety timeout and reset drops all pending state', () => {
   let state = createRaiseToSpeakDetectorState();
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, { upwardAcceleration: 1.3 })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(100, { near: true })));
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(300, { near: true })));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(0, true)));
+  ({ state } = reduceRaiseToSpeakDetector(state, sample(200, true)));
 
-  const result = reduceRaiseToSpeakDetector(state, sample(30_300, { near: true }));
+  const result = reduceRaiseToSpeakDetector(state, sample(30_200, true));
   assert.equal(result.action, 'stop');
   assert.equal(result.state.phase, 'cooldown');
 
   assert.deepEqual(createRaiseToSpeakDetectorState(), {
     phase: 'idle',
-    liftDetectedAt: null,
-    nearSince: null,
-    speakingPoseSince: null,
-    farSince: null,
+    rightTiltedSince: null,
+    portraitSince: null,
     listeningStartedAt: null,
     cooldownUntil: null,
-    activation: null,
   });
 });

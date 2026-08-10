@@ -28,9 +28,10 @@ test('published privacy policy documents local data, analytics, and purchases', 
   assert.match(privacy, /端末内に保存/);
   assert.match(privacy, /PostHog US\s+Cloud/);
   assert.match(privacy, /RevenueCat/);
-  assert.match(privacy, /マイク、モーション、近接センサー/);
+  assert.match(privacy, /マイクとモーション/);
   assert.match(privacy, /音声認識は端末内/);
-  assert.match(privacy, /音声、録音、モーション値、近接情報は保存、分析、外部送信しません/);
+  assert.match(privacy, /音声、録音、モーション値は保存、分析、外部送信しません/);
+  assert.doesNotMatch(privacy, /近接センサー|近接情報/);
   assert.match(privacy, /文字起こしは、ユーザーが確認して追加した場合だけ/);
   assert.match(privacy, /AndroidとiOSの間で購入権利は共有されません/);
   assert.match(privacy, /href="\.\.\/terms\/"/);

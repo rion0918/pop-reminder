@@ -659,8 +659,6 @@ export function HomeScreen() {
 
       const message = {
         'motion-unavailable': 'この端末ではモーション検出を利用できません。',
-        'proximity-unavailable':
-          'この端末では近接センサーを利用できません。マイクボタンは利用できます。',
         'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
       }[result.status];
       setRaiseToSpeakSetupMessage(message);

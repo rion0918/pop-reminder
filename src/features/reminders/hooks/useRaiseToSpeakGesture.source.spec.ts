@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAssertions';
@@ -12,13 +13,10 @@ test('raise-to-speak sensors run only on the focused foreground home screen and 
     /enabled && !blocked && isFocused && appState === 'active'/,
     /DeviceMotion\.setUpdateInterval\(RAISE_TO_SPEAK_UPDATE_INTERVAL_MS\)/,
     /DeviceMotion\.addListener/,
-    /addProximityListener/,
-    /motionAcceleration: vectorMagnitude\(measurement\.acceleration\)/,
-    /speakingPose: isSpeakingPose\(measurement\.accelerationIncludingGravity\)/,
-    /Math\.abs\(gravity\.y\) \/ magnitude >= 0\.35/,
+    /rightTilted: isRightTiltedVoicePose\(gravity\)/,
     /if \(detectorRef\.current\.phase === 'listening'\) onStopRef\.current\(\);/,
     /detectorRef\.current = createRaiseToSpeakDetectorState\(\);/,
     /motionSubscription\.remove\(\);/,
-    /proximitySubscription\.remove\(\);/,
   ]);
+  assert.doesNotMatch(source, /Proximity|proximity|nearRef/);
 });

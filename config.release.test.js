@@ -151,7 +151,7 @@ test('native release dependencies include vector icon peer dependencies', () => 
   assert.match(packageConfig.dependencies['expo-font'], /^~14\./);
 });
 
-test('raise-to-speak native dependencies, permissions, and local proximity module are synced', () => {
+test('right-tilt voice native dependencies and permissions are synced without proximity', () => {
   const sensorPlugin = appConfig.expo.plugins.find(
     (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-sensors',
   );
@@ -167,7 +167,7 @@ test('raise-to-speak native dependencies, permissions, and local proximity modul
   assert.equal(packageConfig.dependencies['expo-sensors'], '~15.0.8');
   assert.equal(packageConfig.dependencies['expo-speech-recognition'], '3.1.3');
   assert.ok(sensorPlugin);
-  assert.match(sensorPlugin[1].motionPermission, /口元へ持ち上げた動き/);
+  assert.match(sensorPlugin[1].motionPermission, /右へ傾けた動き/);
   assert.ok(speechPlugin);
   assert.match(speechPlugin[1].microphonePermission, /端末内で文字にする/);
   assert.match(speechPlugin[1].speechRecognitionPermission, /端末内で文字に変換/);
@@ -187,13 +187,13 @@ test('raise-to-speak native dependencies, permissions, and local proximity modul
         'modules/expo-proximity-sensor/android/src/main/java/expo/modules/proximitysensor/ExpoProximitySensorModule.kt',
       ),
     ),
-    true,
+    false,
   );
   assert.equal(
     existsSync(
       join(__dirname, 'modules/expo-proximity-sensor/ios/ExpoProximitySensorModule.swift'),
     ),
-    true,
+    false,
   );
 });
 
@@ -337,9 +337,9 @@ test('store listing draft documents privacy and platform release notes', () => {
     /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
   );
   assert.match(storeDraft, /RevenueCat/);
-  assert.match(storeDraft, /持ち上げて音声入力/);
+  assert.match(storeDraft, /右に傾けて音声入力/);
   assert.match(storeDraft, /音声認識は端末内/);
-  assert.match(storeDraft, /録音、文字起こし、モーション値、近接情報は外部送信しません/);
+  assert.match(storeDraft, /録音、文字起こし、モーション値は外部送信しません/);
   assert.match(storeDraft, /買い切りの「ふわっと。Pro」/);
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
@@ -367,9 +367,10 @@ test('privacy policy draft is ready to publish for store review', () => {
   assert.match(privacyPolicy, /RevenueCat/);
   assert.match(privacyPolicy, /AndroidとiOSの間で購入権利は共有されません/);
   assert.match(privacyPolicy, /通知権限/);
-  assert.match(privacyPolicy, /マイク、モーション、近接センサー/);
+  assert.match(privacyPolicy, /マイクとモーション/);
   assert.match(privacyPolicy, /音声認識は端末内/);
-  assert.match(privacyPolicy, /音声、録音、モーション値、近接情報は保存、分析、外部送信しません/);
+  assert.match(privacyPolicy, /音声、録音、モーション値は保存、分析、外部送信しません/);
+  assert.doesNotMatch(privacyPolicy, /近接センサー|近接情報/);
   assert.match(privacyPolicy, /文字起こしを分析、外部送信することはありません/);
   assert.match(privacyPolicy, /データの削除/);
   assert.match(privacyPolicy, /Google PlayやApp Store/);

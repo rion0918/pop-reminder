@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
@@ -141,7 +142,7 @@ test('settings legal copy supports both Google Play and App Store release pages'
       /body: '「ふわっと。」は/,
       /updatedAt: '2026年8月10日'/,
       /音声入力とセンサーについて/,
-      /音声、録音、モーション値、近接情報を保存、分析、外部送信しません/,
+      /音声、録音、モーション値を保存、分析、外部送信しません/,
       /文字起こしを分析、外部送信することはありません/,
       /PostHog の US Cloud/,
       /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
@@ -151,17 +152,16 @@ test('settings legal copy supports both Google Play and App Store release pages'
   });
 });
 
-test('settings explicitly prepares and persists raise-to-speak while keeping it off by default', () => {
+test('settings explicitly prepares and persists right-tilt voice input while keeping it off by default', () => {
   assertSourceIncludes(source, [
-    /title="持ち上げて音声入力"/,
+    /title="右に傾けて音声入力"/,
     /settings\.raiseToSpeakEnabled/,
     /raiseToSpeak\.prepare\(\)/,
     /raiseToSpeakEnabled: true, raiseToSpeakIntroSeen: true/,
     /raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: true/,
     /音声は端末内で処理し、録音を保存しません/,
-    /proximity-unavailable/,
-    /入力画面のマイクボタンは利用できます/,
   ]);
+  assert.doesNotMatch(source, /proximity-unavailable|近接センサー|近接情報/);
 });
 
 test('settings refreshes notification permission after returning from OS settings', () => {

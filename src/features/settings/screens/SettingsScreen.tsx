@@ -80,7 +80,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '4. 音声入力とセンサーについて',
-      body: '音声入力ではマイクを、持ち上げて音声入力ではモーションと近接センサーを利用します。音声認識は端末内で行い、音声、録音、モーション値、近接情報を保存、分析、外部送信しません。文字起こしは追加画面にだけ入り、ユーザーが「追加」を押した場合にタイトルとして端末内へ保存されます。文字起こしを分析、外部送信することはありません。これらの権限は端末の設定からいつでも変更できます。',
+      body: '音声入力ではマイクを、右に傾けて音声入力ではモーションを利用します。音声認識は端末内で行い、音声、録音、モーション値を保存、分析、外部送信しません。文字起こしは追加画面にだけ入り、ユーザーが「追加」を押した場合にタイトルとして端末内へ保存されます。文字起こしを分析、外部送信することはありません。これらの権限は端末の設定からいつでも変更できます。',
     },
     {
       title: '5. 匿名の利用状況について',
@@ -362,12 +362,10 @@ export function SettingsScreen() {
 
       const message = {
         'motion-unavailable': 'この端末ではモーション検出を利用できません。',
-        'proximity-unavailable':
-          'この端末には対応する近接センサーがありません。入力画面のマイクボタンは利用できます。',
         'speech-unavailable':
           'この端末では日本語の端末内音声認識を利用できません。手入力をご利用ください。',
       }[result.status];
-      Alert.alert('持ち上げて音声入力を利用できません', message);
+      Alert.alert('右に傾けて音声入力を利用できません', message);
     } catch (error) {
       console.warn('Failed to update raise-to-speak setting', error);
       Alert.alert('設定を変更できませんでした', '時間をおいてもう一度お試しください。');
@@ -664,14 +662,14 @@ export function SettingsScreen() {
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow
               icon="mic-outline"
-              title="持ち上げて音声入力"
+              title="右に傾けて音声入力"
               onPress={() => void handleRaiseToSpeakEnabledChange(!settings.raiseToSpeakEnabled)}
             >
               {isRaiseToSpeakUpdatePending ? (
                 <ActivityIndicator size="small" color={palette.lavenderDeep} />
               ) : (
                 <Switch
-                  accessibilityLabel="持ち上げて音声入力"
+                  accessibilityLabel="右に傾けて音声入力"
                   value={settings.raiseToSpeakEnabled}
                   onValueChange={(value) => void handleRaiseToSpeakEnabledChange(value)}
                   trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}

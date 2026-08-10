@@ -1,6 +1,5 @@
 import DeviceMotion from 'expo-sensors/build/DeviceMotion';
 
-import { isProximitySensorAvailable } from '../../../modules/expo-proximity-sensor/src';
 import { voiceInputService } from './voiceInputService';
 
 export type RaiseToSpeakPreparationResult =
@@ -8,17 +7,12 @@ export type RaiseToSpeakPreparationResult =
   | { status: 'model-download-started' }
   | { status: 'permission-denied'; canAskAgain: boolean }
   | { status: 'motion-unavailable' }
-  | { status: 'proximity-unavailable' }
   | { status: 'speech-unavailable' };
 
 export async function prepareRaiseToSpeak(): Promise<RaiseToSpeakPreparationResult> {
-  const [motionAvailable, proximityAvailable] = await Promise.all([
-    DeviceMotion.isAvailableAsync(),
-    isProximitySensorAvailable(),
-  ]);
+  const motionAvailable = await DeviceMotion.isAvailableAsync();
 
   if (!motionAvailable) return { status: 'motion-unavailable' };
-  if (!proximityAvailable) return { status: 'proximity-unavailable' };
 
   const motionPermission = await DeviceMotion.requestPermissionsAsync();
   if (!motionPermission.granted) {
