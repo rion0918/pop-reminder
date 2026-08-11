@@ -22,11 +22,14 @@
     },
     "production": {
       "channel": "production",
+      "environment": "production",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "sdk-54"
       },
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "image": "macos-sequoia-15.6-xcode-26.0"
       }
     }
   }

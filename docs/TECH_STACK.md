@@ -92,15 +92,15 @@ graph TB
 
 ## 5. ネイティブ統合・Widget (Native Features)
 
-| 技術 / ライブラリ               | バージョン | 用途・説明                                               |
-| :------------------------------ | :--------- | :------------------------------------------------------- |
-| **expo-notifications**          | `~0.32.17` | ローカル通知予約・キャンセル、Android 通知チャンネル構築 |
-| **react-native-android-widget** | `^0.20.3`  | Android ホーム画面 Widget の描画・タスク同期             |
-| **expo-linking**                | `~8.0.12`  | 通知や Widget からの Deep Link 処理                      |
-| **expo-haptics**                | `~15.0.8`  | 泡が破裂する際の物理ハプティクスフィードバック           |
-| **posthog-react-native**        | `^4.62.0`  | 匿名イベント計測、手動画面追跡、永続的な opt in / out    |
-| **react-native-purchases**      | `^10.7.0`  | Android / iOSのRevenueCat購入権利取得・復元              |
-| **react-native-purchases-ui**   | `^10.7.0`  | RevenueCat管理Paywallの表示                              |
+| 技術 / ライブラリ               | バージョン | 用途・説明                                                   |
+| :------------------------------ | :--------- | :----------------------------------------------------------- |
+| **expo-notifications**          | `~0.32.17` | ローカル通知予約・キャンセル、Android 通知チャンネル構築     |
+| **react-native-android-widget** | `^0.20.3`  | Android ホーム画面 Widget の描画・タスク同期                 |
+| **expo-linking**                | `~8.0.12`  | 通知や Widget からの Deep Link 処理                          |
+| **expo-haptics**                | `~15.0.8`  | 泡が破裂する際の物理ハプティクスフィードバック               |
+| **posthog-react-native**        | `^4.62.0`  | 明示同意後の匿名イベント計測、手動画面追跡、永続的な同意状態 |
+| **react-native-purchases**      | `^10.7.0`  | Android / iOSのRevenueCat購入権利取得・復元                  |
+| **react-native-purchases-ui**   | `^10.7.0`  | RevenueCat管理Paywallの表示                                  |
 
 ---
 

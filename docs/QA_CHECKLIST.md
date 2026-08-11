@@ -61,4 +61,4 @@
 - [ ] Google Playのクローズドテスト要件を満たすテスターを確保する
 - [ ] App Store後追い用にiPhone実機でも同じQAを実施する
 - [ ] 初回App StoreリリースはiPhone対象として扱い、iPad最適化は別タスクにする
-- [ ] Widget実装は別タスクとして扱い、このQAでは対象外にする
+- [ ] Android Widgetの追加、リサイズ、更新、削除、deep linkを初回リリースQAで確認する

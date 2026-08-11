@@ -11,6 +11,14 @@ export type AnalyticsClient = {
   ready?(): unknown;
   optIn(): unknown;
   optOut(): unknown;
+  getDistinctId?(): string;
+};
+
+export type AnalyticsClientFactory<TClient extends AnalyticsClient = AnalyticsClient> = () =>
+  TClient | null | Promise<TClient | null>;
+
+export type AnalyticsServiceOptions = {
+  configured?: boolean;
 };
 
 type QuickAddSource = 'home_button' | 'widget_deep_link' | 'raise_to_speak';
@@ -44,13 +52,28 @@ function ignoreAsyncFailure(result: unknown) {
 }
 
 export function createAnalyticsService<TClient extends AnalyticsClient = AnalyticsClient>(
-  client: TClient | null,
+  source: TClient | null | AnalyticsClientFactory<TClient>,
+  options: AnalyticsServiceOptions = {},
 ) {
+  const factory = typeof source === 'function' ? (source as AnalyticsClientFactory<TClient>) : null;
+  let client: TClient | null = factory ? null : (source as TClient | null);
+  let factoryPromise: Promise<TClient | null> | null = null;
+  let captureDisabled = false;
+
+  const ensureClient = async () => {
+    if (client || !factory) return client;
+    if (!factoryPromise) {
+      factoryPromise = Promise.resolve(factory()).catch(() => null);
+    }
+    client = await factoryPromise;
+    return client;
+  };
+
   const capture = (
     event: (typeof ALLOWED_ANALYTICS_EVENTS)[number],
     properties?: Record<string, unknown>,
   ) => {
-    if (!client) return;
+    if (captureDisabled || !client || client.optedOut) return;
 
     try {
       ignoreAsyncFailure(client.capture(event, properties));
@@ -60,11 +83,13 @@ export function createAnalyticsService<TClient extends AnalyticsClient = Analyti
   };
 
   return {
-    client,
-    configured: client !== null,
+    get client() {
+      return client;
+    },
+    configured: options.configured ?? source !== null,
 
     captureScreen(pathname: string) {
-      if (!client) return;
+      if (captureDisabled || !client || client.optedOut) return;
 
       try {
         ignoreAsyncFailure(client.screen(pathname));
@@ -146,7 +171,7 @@ export function createAnalyticsService<TClient extends AnalyticsClient = Analyti
     },
 
     async getCaptureEnabled() {
-      if (!client) return false;
+      if (captureDisabled || !client) return false;
 
       try {
         await client.ready?.();
@@ -157,18 +182,41 @@ export function createAnalyticsService<TClient extends AnalyticsClient = Analyti
     },
 
     async setCaptureEnabled(enabled: boolean) {
-      if (!client) return false;
+      if (!enabled) {
+        captureDisabled = true;
+        if (!client) return false;
+
+        try {
+          await client.ready?.();
+          await client.optOut();
+          return !client.optedOut;
+        } catch {
+          return false;
+        }
+      }
+
+      const activeClient = await ensureClient();
+      if (!activeClient) return false;
+
+      try {
+        await activeClient.ready?.();
+        await activeClient.optIn();
+        captureDisabled = activeClient.optedOut;
+        return !captureDisabled;
+      } catch {
+        captureDisabled = true;
+        return false;
+      }
+    },
+
+    async getDeletionRequestId() {
+      if (!client?.getDistinctId) return null;
 
       try {
         await client.ready?.();
-        if (enabled) {
-          await client.optIn();
-        } else {
-          await client.optOut();
-        }
-        return !client.optedOut;
+        return client.getDistinctId() || null;
       } catch {
-        return false;
+        return null;
       }
     },
   };

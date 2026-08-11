@@ -103,7 +103,39 @@ test('first App Store release stays scoped to iPhone devices', () => {
 test('eas config makes Android preview installable and production store-ready', () => {
   assert.equal(easConfig.build.preview.android.buildType, 'apk');
   assert.equal(easConfig.build.production.android.buildType, 'app-bundle');
+  assert.equal(easConfig.build.production.environment, 'production');
+  assert.equal(easConfig.build.production.android.image, 'sdk-54');
   assert.equal(easConfig.build.production.ios.simulator, false);
+  assert.equal(easConfig.build.production.ios.image, 'macos-sequoia-15.6-xcode-26.0');
+});
+
+test('release configuration removes Android permissions outside the feature scope', () => {
+  const blockedPermissions = [
+    'android.permission.READ_EXTERNAL_STORAGE',
+    'android.permission.WRITE_EXTERNAL_STORAGE',
+    'android.permission.SYSTEM_ALERT_WINDOW',
+    'android.permission.ACTIVITY_RECOGNITION',
+  ];
+  const androidManifest = readFileSync(
+    join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
+    'utf8',
+  );
+
+  assert.deepEqual(appConfig.expo.android.blockedPermissions, blockedPermissions);
+  assert.match(androidManifest, /xmlns:tools="http:\/\/schemas\.android\.com\/tools"/);
+  for (const permission of blockedPermissions) {
+    assert.match(
+      androidManifest,
+      new RegExp(`<uses-permission android:name="${permission}" tools:node="remove"`),
+    );
+    assert.doesNotMatch(
+      androidManifest,
+      new RegExp(`<uses-permission android:name="${permission}"(?! tools:node="remove")[^>]*\\/>`),
+    );
+  }
+  assert.match(androidManifest, /android\.permission\.RECORD_AUDIO/);
+  assert.match(androidManifest, /android\.permission\.INTERNET/);
+  assert.match(androidManifest, /android\.permission\.VIBRATE/);
 });
 
 test('package scripts expose release regression checks', () => {
@@ -326,7 +358,9 @@ test('release runbook documents Android-first and iOS-later commands', () => {
   assert.match(runbook, /eas build --profile production --platform android/);
   assert.match(runbook, /eas build --profile production --platform ios/);
   assert.match(runbook, /Widget/);
-  assert.match(runbook, /別タスク/);
+  assert.match(runbook, /保持期間を12か月/);
+  assert.match(runbook, /初回リリースの正式機能/);
+  assert.doesNotMatch(runbook, /Widgetは別タスク/);
 });
 
 test('store listing draft documents privacy and platform release notes', () => {
@@ -355,7 +389,53 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.match(storeDraft, /買い切りの「Pro版ふわっと。」/);
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
-  assert.match(storeDraft, /Widgetは別タスク/);
+  assert.match(storeDraft, /Android Widgetを初回Androidリリースの正式機能/);
+  assert.doesNotMatch(storeDraft, /Widgetは別タスク/);
+  assert.match(storeDraft, /Google Play Data safety 下書き/);
+  assert.match(storeDraft, /Device or other IDs、App interactions、Purchase history/);
+  const postHogSection = storeDraft.match(/- PostHog:[\s\S]*?(?=\n- RevenueCat:)/)?.[0];
+  const revenueCatSection = storeDraft.match(/- RevenueCat:[\s\S]*?(?=\n- リマインダー本文)/)?.[0];
+  assert.ok(postHogSection, 'PostHog Data safety section is missing');
+  assert.ok(revenueCatSection, 'RevenueCat Data safety section is missing');
+  assert.match(postHogSection, /収集/);
+  assert.match(postHogSection, /共有/);
+  assert.match(revenueCatSection, /収集/);
+  assert.match(revenueCatSection, /共有/);
+  assert.doesNotMatch(postHogSection, /第三者との共有はありません/);
+  assert.doesNotMatch(revenueCatSection, /第三者との共有はありません/);
+  assert.match(storeDraft, /App Store Connect App Privacy 下書き/);
+  assert.match(storeDraft, /ATT \/ IDFA は使用しません/);
+});
+
+test('iOS privacy manifest matches the declared anonymous collection', () => {
+  const privacyManifestPath = join(__dirname, 'ios/app/PrivacyInfo.xcprivacy');
+  const privacyManifest = readFileSync(privacyManifestPath, 'utf8');
+
+  assert.equal(existsSync(privacyManifestPath), true);
+  assert.match(privacyManifest, /<key>NSPrivacyTracking<\/key>\s*<false\/>/);
+  const expectedPurposes = {
+    NSPrivacyCollectedDataTypeDeviceID: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+    NSPrivacyCollectedDataTypeProductInteraction: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+    NSPrivacyCollectedDataTypePurchaseHistory: [
+      'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+      'NSPrivacyCollectedDataTypePurposeAnalytics',
+    ],
+  };
+  for (const [dataType, purposes] of Object.entries(expectedPurposes)) {
+    const entry = privacyManifest.match(
+      new RegExp(
+        `<dict>\\s*<key>NSPrivacyCollectedDataType<\\/key>\\s*<string>${dataType}<\\/string>[\\s\\S]*?<\\/dict>`,
+      ),
+    )?.[0];
+    assert.ok(entry, `Privacy manifest entry is missing for ${dataType}`);
+    assert.match(
+      entry,
+      /<key>NSPrivacyCollectedDataTypeLinked<\/key>\s*<false\/>[\s\S]*?<key>NSPrivacyCollectedDataTypeTracking<\/key>\s*<false\/>/,
+    );
+    for (const purpose of purposes) {
+      assert.match(entry, new RegExp(`<string>${purpose}<\\/string>`));
+    }
+  }
 });
 
 test('privacy policy draft is ready to publish for store review', () => {

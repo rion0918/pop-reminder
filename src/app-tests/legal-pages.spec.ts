@@ -42,7 +42,7 @@ test('published terms document the lifetime Pro purchase contract', () => {
 
   assert.match(terms, /<meta name="viewport"/);
   assert.match(terms, /利用規約/);
-  assert.match(terms, /最終更新日：2026年8月9日/);
+  assert.match(terms, /最終更新日：2026年8月10日/);
   assert.match(terms, /同時に6件まで/);
   assert.match(terms, /買い切り商品/);
   assert.match(terms, /忘れたくないことを無制限に追加できる/);
@@ -50,5 +50,9 @@ test('published terms document the lifetime Pro purchase contract', () => {
   assert.match(terms, /自動更新はありません/);
   assert.match(terms, /同じストアアカウントで復元/);
   assert.match(terms, /返金や取消/);
+  assert.match(
+    terms,
+    /OSのバックアップ設定によっては端末バックアップの対象となり、復元される場合があります/,
+  );
   assert.match(terms, /href="\.\.\/privacy\/"/);
 });

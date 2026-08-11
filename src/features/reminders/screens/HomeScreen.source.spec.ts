@@ -96,9 +96,15 @@ test('raise-to-speak enters voice quick add only after the shared Pro gate succe
     /const isQuickAddPickerOpen = useReminderUiStore\(\(state\) => state\.isQuickAddPickerOpen\);/,
     /blocked:[\s\S]*isQuickAddPickerOpen/,
     /blocked:\s*\(!settings\?\.raiseToSpeakIntroSeen && !isRaiseToSpeakCalibrating\)/,
+    /if \(isRaiseToSpeakCalibrating && isRaiseToSpeakSetupBusy\) return;/,
+    /setIsRaiseToSpeakSetupBusy\(true\);\s*try \{\s*await updateSettings\(\{[\s\S]*raiseToSpeakEnabled: true/,
+    /finally \{\s*setIsRaiseToSpeakSetupBusy\(false\);\s*\}/,
     /visible=\{Boolean\(settings\?\.raiseToSpeakEnabled && !settings\.raiseToSpeakIntroSeen\)\}/,
   ]);
-  assertSourceIncludes(dismissIntroBlock, [/setIsRaiseToSpeakCalibrating\(false\);/]);
+  assertSourceIncludes(dismissIntroBlock, [
+    /if \(isRaiseToSpeakSetupBusy\) return;/,
+    /setIsRaiseToSpeakCalibrating\(false\);/,
+  ]);
 });
 
 test('home replaces bottom controls with the add bubble only for a settled empty query', () => {

@@ -14,16 +14,19 @@ test('app resume retries pending reminder notifications without prompting for pe
   ]);
 });
 
-test('PostHog tracks Expo Router pathnames manually without route parameters', () => {
+test('analytics tracks Expo Router pathnames manually only after the consent gate', () => {
   assertSourceIncludes(source, [
     /import \{ usePathname \} from 'expo-router';/,
-    /import \{ PostHogProvider \} from 'posthog-react-native';/,
     /const pathname = usePathname\(\);/,
     /const previousPathnameRef = useRef<string \| null>\(null\);/,
     /if \(previousPathnameRef\.current === pathname\) return;/,
     /appServices\.analytics\.captureScreen\(pathname\);/,
-    /autocapture=\{false\}/,
+    /AnalyticsConsentGate/,
+    /共有する/,
+    /共有しない/,
+    /analyticsConsent === 'unknown'/,
   ]);
+  assert.doesNotMatch(source, /PostHogProvider/);
   assert.doesNotMatch(source, /useGlobalSearchParams/);
   assert.doesNotMatch(source, /useLocalSearchParams/);
 });

@@ -1,1 +1,6 @@
-export type { AppSettings, AppTheme, UpdateAppSettingsInput } from '../domain/appSettings';
+export type {
+  AnalyticsConsent,
+  AppSettings,
+  AppTheme,
+  UpdateAppSettingsInput,
+} from '../domain/appSettings';

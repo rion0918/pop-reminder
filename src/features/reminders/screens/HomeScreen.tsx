@@ -725,10 +725,12 @@ export function HomeScreen() {
   );
 
   const handleDismissRaiseToSpeakIntro = useCallback(() => {
+    if (isRaiseToSpeakSetupBusy) return;
+
     setRaiseToSpeakSetupMessage(null);
     setIsRaiseToSpeakCalibrating(false);
     void updateSettings({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false });
-  }, [updateSettings]);
+  }, [isRaiseToSpeakSetupBusy, updateSettings]);
 
   const handlePrepareRaiseToSpeak = useCallback(async () => {
     if (isRaiseToSpeakSetupBusy) return;
@@ -775,30 +777,36 @@ export function HomeScreen() {
     }
   }, [isRaiseToSpeakSetupBusy, raiseToSpeak]);
 
-  const handleRaiseToSpeakStart = useCallback(() => {
+  const handleRaiseToSpeakStart = useCallback(async () => {
+    if (isRaiseToSpeakCalibrating && isRaiseToSpeakSetupBusy) return;
+
     raiseSessionActiveRef.current = true;
 
     if (isRaiseToSpeakCalibrating) {
       raiseCalibrationSessionRef.current = true;
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      void updateSettings({
-        raiseToSpeakEnabled: true,
-        raiseToSpeakIntroSeen: true,
-      })
-        .then(() => setIsRaiseToSpeakCalibrating(false))
-        .catch(() => {
-          raiseCalibrationSessionRef.current = false;
-          raiseSessionActiveRef.current = false;
-          setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
-          setIsRaiseToSpeakCalibrating(false);
+      setIsRaiseToSpeakSetupBusy(true);
+      try {
+        await updateSettings({
+          raiseToSpeakEnabled: true,
+          raiseToSpeakIntroSeen: true,
         });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        setIsRaiseToSpeakCalibrating(false);
+      } catch {
+        raiseCalibrationSessionRef.current = false;
+        raiseSessionActiveRef.current = false;
+        setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
+        setIsRaiseToSpeakCalibrating(false);
+      } finally {
+        setIsRaiseToSpeakSetupBusy(false);
+      }
       return;
     }
 
     void requestQuickAdd('raise_to_speak', { inputMode: 'voice' }).then((opened) => {
       if (!opened) raiseSessionActiveRef.current = false;
     });
-  }, [isRaiseToSpeakCalibrating, requestQuickAdd, updateSettings]);
+  }, [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, requestQuickAdd, updateSettings]);
 
   const handleRaiseToSpeakStop = useCallback(() => {
     raiseSessionActiveRef.current = false;

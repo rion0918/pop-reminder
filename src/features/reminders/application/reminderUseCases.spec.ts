@@ -107,6 +107,7 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         notificationPermissionIntroSeen: false,
         raiseToSpeakEnabled: false,
         raiseToSpeakIntroSeen: false,
+        analyticsConsent: 'unknown',
         theme: 'sky',
       }),
       updatePreviousNotifyTime: async (nextPreviousNotifyTime) => {
@@ -124,6 +125,7 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
           notificationPermissionIntroSeen: false,
           raiseToSpeakEnabled: false,
           raiseToSpeakIntroSeen: false,
+          analyticsConsent: 'unknown',
           theme: 'sky',
         };
       },
