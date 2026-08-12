@@ -1146,7 +1146,7 @@ const styles = StyleSheet.create({
     paddingRight: 64,
     paddingVertical: 14,
     color: palette.ink,
-    fontSize: 17,
+    fontSize: 14,
     lineHeight: 22,
     fontWeight: '700',
     backgroundColor: palette.white,
@@ -1159,7 +1159,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
-    elevation: 2,
   },
   titleCountText: {
     position: 'absolute',

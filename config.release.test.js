@@ -36,7 +36,7 @@ test('app config has store release numbers for Android and iOS', () => {
     appConfig.expo.description,
     '忘れる前に、数秒だけ。ふわっと残せるシンプルなリマインダーアプリです。',
   );
-  assert.equal(appConfig.expo.android.versionCode, 1);
+  assert.equal(appConfig.expo.android.versionCode, 2);
   assert.equal(appConfig.expo.ios.buildNumber, '1');
 });
 

@@ -37,6 +37,21 @@ test('quick add shows a live accessible title character count from the validatio
   ]);
 });
 
+test('quick add keeps the title input at the standard body text size', () => {
+  assertSourceIncludes(source, [
+    /input: \{[\s\S]*?fontSize: 14,[\s\S]*?lineHeight: 22,[\s\S]*?fontWeight: '700',/,
+  ]);
+});
+
+test('quick add keeps the character count visible while the title input is focused', () => {
+  const focusedInputStyle = source.slice(
+    source.indexOf('  inputFocused: {'),
+    source.indexOf('  titleCountText: {'),
+  );
+
+  assert.equal(focusedInputStyle.includes('elevation:'), false);
+});
+
 test('quick add supports cancellable on-device voice input without truncating the draft', () => {
   assertSourceIncludes(source, [
     /voiceStatus === 'idle' \? '音声入力を開始' : '音声入力を終了'/,
