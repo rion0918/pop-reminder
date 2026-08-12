@@ -55,7 +55,6 @@ jest.mock('../../../bootstrap/AppProviders', () => ({
     analytics: {
       configured: true,
       setCaptureEnabled: jest.fn(async () => true),
-      getDeletionRequestId: jest.fn(async () => null),
       captureNotificationPermissionUpdated: jest.fn(),
       captureProPaywallResult: jest.fn(),
       captureProRestoreResult: jest.fn(),
@@ -180,6 +179,12 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockHapticsNotificationAsync.mockImplementation(async () => {
       mockEvents.push('haptic');
     });
+  });
+
+  it('does not show a dedicated analytics deletion request row', async () => {
+    const view = await render(<SettingsScreen />);
+
+    expect(view.queryByText('利用状況データの削除を依頼')).toBeNull();
   });
 
   it('releases the setup lock when preparation fails', async () => {

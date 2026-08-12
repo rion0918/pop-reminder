@@ -361,6 +361,7 @@ test('release runbook documents Android-first and iOS-later commands', () => {
   assert.match(runbook, /保持期間を12か月/);
   assert.match(runbook, /初回リリースの正式機能/);
   assert.doesNotMatch(runbook, /Widgetは別タスク/);
+  assert.doesNotMatch(runbook, /削除依頼/);
 });
 
 test('store listing draft documents privacy and platform release notes', () => {
@@ -393,6 +394,8 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.doesNotMatch(storeDraft, /Widgetは別タスク/);
   assert.match(storeDraft, /Google Play Data safety 下書き/);
   assert.match(storeDraft, /Device or other IDs、App interactions、Purchase history/);
+  assert.match(storeDraft, /削除リクエスト手段: なし/);
+  assert.match(storeDraft, /通常保持期間12か月後に削除/);
   const postHogSection = storeDraft.match(/- PostHog:[\s\S]*?(?=\n- RevenueCat:)/)?.[0];
   const revenueCatSection = storeDraft.match(/- RevenueCat:[\s\S]*?(?=\n- リマインダー本文)/)?.[0];
   assert.ok(postHogSection, 'PostHog Data safety section is missing');
@@ -403,6 +406,7 @@ test('store listing draft documents privacy and platform release notes', () => {
   assert.match(revenueCatSection, /共有/);
   assert.doesNotMatch(postHogSection, /第三者との共有はありません/);
   assert.doesNotMatch(revenueCatSection, /第三者との共有はありません/);
+  assert.doesNotMatch(storeDraft, /設定画面の削除依頼|匿名分析ID|専用サポートメールから削除/);
   assert.match(storeDraft, /App Store Connect App Privacy 下書き/);
   assert.match(storeDraft, /ATT \/ IDFA は使用しません/);
 });
@@ -465,5 +469,8 @@ test('privacy policy draft is ready to publish for store review', () => {
   assert.doesNotMatch(privacyPolicy, /近接センサー|近接情報/);
   assert.match(privacyPolicy, /文字起こしを分析、外部送信することはありません/);
   assert.match(privacyPolicy, /データの削除/);
+  assert.match(privacyPolicy, /収集済みイベントは通常保持期間12か月後に削除/);
+  assert.match(privacyPolicy, /個別削除依頼の受付は提供していません/);
+  assert.doesNotMatch(privacyPolicy, /設定画面の削除依頼|匿名分析ID/);
   assert.match(privacyPolicy, /Google PlayやApp Store/);
 });

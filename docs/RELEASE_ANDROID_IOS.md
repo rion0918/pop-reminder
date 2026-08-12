@@ -1,139 +1,480 @@
-# Android / iOS Release Runbook
+# Android / iOS リリース手順書
 
-## 方針
+この文書は、`pop-reminder` を Google Play の内部テストへ配布した後、クローズドテスト、製品版アクセス申請、Android 本番公開、iOS 公開までを同じ順番で進めるための運用手順です。
 
-- Android を先に Google Play へリリースする。
-- App Store は Android と同じ主要機能を確認してから後追いでリリースする。
-- Android Widgetを初回リリースの正式機能としてこの手順に含める。
+画面名は 2026 年 8 月時点の Google Play Console / App Store Connect の日本語表示を基準にしています。画面の文言が変わった場合も、各手順の目的と確認条件を優先してください。
 
-## 共通の事前確認
+## 0. このプロジェクトの前提と公開停止ルール
 
-1. 依存関係とExpo設定を確認する。
+- 配信地域は日本、言語は日本語です。
+- アプリ名は `ふわっと。`、アプリ種別はアプリ、カテゴリは Productivity です。
+- ログイン機能・アプリ内アカウントはありません。Google アカウントはストアのテスト参加・購入に使うだけです。
+- 対象年齢は 13 歳以上です。子ども向けアプリとしては扱いません。
+- Android を先に進め、iOS は Android の内部テストとクローズドテスト準備が完了してから進めます。
+- Android Widget は初回リリースの正式機能です。iOS Widget は共通機能として案内しません。
+- 現行版には広告 SDK がありません。Pro 版の現在のメリットは「リマインダーを無制限に追加できること」であり、広告削除はまだ案内しません。
+- 本番公開、Google Play の製品版アクセス申請、外部 TestFlight 審査、App Review 提出は、各チェックポイントで明示的な確認を得るまで実行しません。
+
+### 0.1 現在地を確認する
+
+今回の Android 内部テストで確認できる状態は次のとおりです。
+
+| 項目                   | 現在の値 / 完了条件                                    |
+| ---------------------- | ------------------------------------------------------ |
+| Android package        | `com.rion0918.popreminder`                             |
+| ユーザー向けバージョン | `0.1.0`                                                |
+| Android versionCode    | `1`                                                    |
+| target API             | `36`                                                   |
+| AAB                    | EAS production build で作成した App Bundle             |
+| テストトラック         | 内部テスト（一般公開ではない）                         |
+| テスター               | 自分の Google アカウントを含むテスターリスト           |
+| 次に行うこと           | テスト参加リンクから Android 実機へインストールして QA |
+
+Play Console の内部テスト画面で、リリースが「下書き」または「未公開」のままなら、まず [6.2 内部テストのリリースを作成する](#62-内部テストのリリースを作成する) の 7 番まで完了してください。公開済みでも、テスト参加リンクが表示されるまで初回は数時間かかることがあります。
+
+## 1. 変更前に固定して確認する値
+
+| 項目                          | 値                                                              |
+| ----------------------------- | --------------------------------------------------------------- |
+| アプリ名                      | `ふわっと。`                                                    |
+| package / Bundle ID           | `com.rion0918.popreminder`                                      |
+| EAS project                   | `8663b7fe-5742-42cf-9ada-86d70b2c31dd`                          |
+| Google Play 商品 ID           | `fuwatto_pro_lifetime`                                          |
+| RevenueCat entitlement        | `pro`                                                           |
+| RevenueCat offering / package | `default` / `$rc_lifetime`                                      |
+| 日本価格                      | 800 円                                                          |
+| プライバシーポリシー          | `https://rion0918.github.io/pop-reminder/privacy/`              |
+| 利用規約                      | `https://rion0918.github.io/pop-reminder/terms/`                |
+| サポートメール                | Play Console、アプリ内、Privacy Policy に同じ専用アドレスを設定 |
+
+`package.json`、`pnpm-lock.yaml` は保護対象です。依存関係を変更する必要がある場合は、先に明示的な承認を取り、変更後に `pnpm install --frozen-lockfile` と全検証をやり直します。
+
+## 2. リリース全体の順番
+
+```text
+コード検証
+  ↓
+EAS production AAB 作成
+  ↓
+Google Play 内部テスト（少人数・実機 QA）
+  ↓
+Google Play クローズドテスト（12 人以上・14 日以上）
+  ↓
+製品版アクセス申請（新規個人アカウントの場合）
+  ↓
+Android 製品版公開（確認後のみ）
+  ↓
+iOS TestFlight 内部テスト → App Review（確認後のみ）
+```
+
+内部テストは最終公開ではありません。内部テストを公開しても、一般ユーザーの検索結果や本番ストアページには公開されません。
+
+## 3. 毎回のローカル検証
+
+リリース対象のコミットをチェックアウトした状態で実行します。
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm run format:check
+pnpm run mvh:verify
+pnpm run verify:release
+```
+
+`verify:release` は、テスト、型チェック、Lint、Expo Doctor、Android / iOS の export まで実行します。失敗した場合は、失敗を無視して AAB を配布しません。
+
+必要に応じて個別に確認します。
+
+```bash
 pnpm test
 pnpm run typecheck
 pnpm run lint
 pnpm run doctor
-```
-
-まとめて確認する場合:
-
-```bash
-pnpm run verify:release
-```
-
-2. JavaScript bundle が Android / iOS の両方で作れることを確認する。
-
-```bash
 pnpm exec expo export --platform android --output-dir /private/tmp/pop-reminder-export-android
 pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-export-ios
 ```
 
-3. リリース番号を確認する。
+### 3.1 ビルド前の確認
 
-- ユーザー向けバージョン: `app.json` の `expo.version`
-- Android 提出番号: `app.json` の `expo.android.versionCode`
-- iOS 提出番号: `app.json` の `expo.ios.buildNumber`
+- `app.json` と `android/app/build.gradle` の package が `com.rion0918.popreminder` で一致している。
+- Android の versionCode は、Play Console に既にアップロードした値より大きい。今回の初回値は `1` です。
+- iOS の buildNumber は、App Store Connect に既にアップロードした値より大きい。
+- PostHog は同意前にクライアントを作成せず、同意前に通信しない。
+- Google Play Data safety、Privacy Policy、アプリ内同意文言が実装と一致している。
+- `fuwatto_pro_lifetime` の商品、RevenueCat の `pro` entitlement、`default` offering が存在する。
+- Android Widget、通知、端末内音声入力、無料 6 件制限、購入・復元を実機で確認できる。
 
-4. PostHog のリリース設定と匿名計測を確認する。
+## 4. EAS build（Android）
 
-- EAS の対象環境に `EXPO_PUBLIC_POSTHOG_API_KEY` を設定し、`EXPO_PUBLIC_POSTHOG_HOST` は US Cloud (`https://us.i.posthog.com`) を使用する。
-- Development Build と PostHog Live Events で、3画面、主要5イベント、opt out / opt in、機微情報が含まれないことを確認する。
-- PostHog project側のイベント保持期間を12か月に設定し、設定画面の削除依頼に対応できることを確認する。
-- project token を `.env` やリポジトリへコミットしない。
+### 4.1 実機確認用 APK
 
-5. RevenueCatとストア商品を確認する。
-
-- [RevenueCatセットアップ](REVENUECAT_SETUP.md) に従い、`pro` entitlement、default offering、`$rc_lifetime` packageを設定する。
-- EASの対象environmentへ `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` と `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` を設定する。
-- RevenueCatのpublic SDK key以外のsecret、Google service account、App Store Connect private keyをアプリへ含めない。
-- Development Buildまたはストアテスト版で購入と復元を確認する。Expo Goの購入UIは実購入の確認に使用しない。
-
-6. プライバシー同意と削除依頼を確認する。
-
-- 初回起動時は匿名計測が未選択・無効で、共有しない選択でも機能を利用できることを確認する。
-- 同意後だけPostHogに許可されたイベントが送信され、設定からOFFにすると送信が止まることを確認する。
-- `EXPO_PUBLIC_SUPPORT_EMAIL` に専用サポートメールを設定し、利用状況データ削除依頼の導線を確認する。
-
-## Android 先行リリース
-
-1. 実機確認用APKを作る。
+内部テストへ進む前に、必要に応じて Development Build 相当の APK を作成します。通知、SQLite、Android Widget などのネイティブ機能は Expo Go では確認しません。
 
 ```bash
 eas build --profile preview --platform android
 ```
 
-2. APKをAndroid実機に入れて確認する。
+APK を実機へインストールし、[7. 内部テストで実機 QA を行う](#7-内部テストで実機-qa-を行う) の項目を確認します。
 
-- 初回起動
-- Androidランチャーで丸/角丸などのマスクがかかってもアイコンが欠けないこと
-- Androidナビゲーションバーが淡い背景色で、ボタン/ジェスチャー表示が読めること
-- リマインダー追加
-- SQLiteの再起動後保持
-- 通知権限の許可 / 拒否
-- 拒否後に「端末の通知設定を開く」から設定へ移動し、戻った時に表示が更新されること
-- 通知ドロワーの小アイコンが白い泡として表示され、アクセント色が不自然でないこと
-- 通知音ONの通知チャンネル: `リマインダー`
-- 通知音OFFの通知チャンネル: `リマインダー（通知音なし）`
-- 追加Sheetと詳細Sheetを開いた状態でBackキーを押すと、画面離脱ではなくSheetだけ閉じること
-- Android小画面でHome、追加Sheet、設定、一覧が崩れないこと
-- 無料6件、7件目のPaywall、買い切りPro購入、購入復元、返金後の権利取消
-- Android Widgetの追加、リサイズ、データ更新、削除、Widgetからのdeep link
-
-3. Google Play向けAABを作る。
+### 4.2 production AAB を作成する
 
 ```bash
 eas build --profile production --platform android
 ```
 
-4. Google Play Consoleへアップロードする。
+`eas.json` の production profile は Android App Bundle（`buildType: app-bundle`）と SDK 54 用の `sdk-54` イメージを使用します。ビルドが完了したら、EAS が表示するダウンロード URL から `.aab` を保存します。
 
-- 内部テストまたはクローズドテストに配布する。
-- 個人開発者アカウントでクローズドテスト要件が出る場合は、必要なテスター数と期間を満たす。
-- Google Play提出前に `expo.android.versionCode` が前回提出版より大きいことを確認する。
-- AABのmerged manifestに不要なストレージ、オーバーレイ、身体活動権限が含まれないことを確認する。
-- AABのネイティブライブラリがAndroid 15以降の16KB page size要件を満たすことを確認する。
-- Google Play Console のデータ安全性を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
-- 非消耗型商品 `fuwatto_pro_lifetime` が800円で有効であり、RevenueCatの`pro` entitlementへ接続されていることを確認する。
-- プライバシーポリシーとデータ安全性をRevenueCatによる匿名購入情報の処理と一致させる。
+### 4.3 EAS の表示をどう判断するか
 
-## App Store 後追いリリース
+| 表示                                                          | 対応                                                                                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `eas-cli` の新バージョン案内                                  | 情報表示です。今回のビルド失敗ではありません。更新は別作業として扱います。                                                      |
+| `cli.appVersionSource` が未設定                               | 将来必須になる可能性の案内です。今回の AAB 作成を止めるものではありません。                                                     |
+| `android.package` は native code の値を使う                   | `android/` が存在するため正常です。`android/app/build.gradle` の `applicationId` が正しいことを確認します。                     |
+| `expo-updates` がないのに production channel が指定されている | 現行版で EAS Update を使わない場合は、インストール確認で `n` を選びます。依存関係を追加する場合は別途承認を取り、再検証します。 |
+| ビルドが `Build finished` / 成功 URL を返す                   | AAB 作成完了です。Play Console へのアップロードへ進みます。                                                                     |
 
-1. iOS実機向けproduction buildを作る。
+### 4.4 AAB をアップロードする前の確認
+
+Play Console の App Bundle 詳細で、次を確認します。
+
+- ファイル形式が App Bundle。
+- version が `1 (0.1.0)`（初回）である。
+- target SDK が `36` である。
+- package が `com.rion0918.popreminder` である。
+- Google Play App Signing が有効である。
+- 不要な `READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE`、`SYSTEM_ALERT_WINDOW`、`ACTIVITY_RECOGNITION` が最終 AAB にない。
+- Widget、通知、マイク、ネットワークに必要な機能が欠けていない。
+
+## 5. Google Play Console のアプリ設定
+
+左メニューの「アプリのコンテンツ」と「アプリの構成と表示」を、公開するビルドの実態に合わせて完了します。下書き保存だけではテストリリースを公開できないことがあります。
+
+### 5.1 プライバシーポリシー
+
+- URL: `https://rion0918.github.io/pop-reminder/privacy/`
+- HTTPS で実際に開けることを確認する。
+- 明示的な分析同意、同意撤回、収集項目、PostHog / RevenueCat の処理、12 か月保持、OS バックアップを記載する。
+- 収集済みイベントは保持期間を12か月とし、OFF 後は新規送信しないことを記載する。
+
+### 5.2 ログインの詳細（アプリアクセス）
+
+このアプリにはアプリ内ログインがないため、**「いいえ」**を選びます。
+
+「はい」を選ぶと、審査用アカウントのユーザー名、パスワード、追加情報が必須になり、今回のアプリには存在しないアカウントを作る必要が出ます。Google Play 購入に使う Google アカウントは、アプリのログインではありません。
+
+### 5.3 広告
+
+現行 AAB に広告 SDK・広告表示がないため、**「いいえ、このアプリには広告が含まれていません」**を選びます。
+
+将来広告を追加する場合は、広告 SDK を実装した AAB を作り直し、広告申告、Data safety、Privacy Policy、ストア説明、Pro の「広告削除」説明を同じリリースで更新します。
+
+### 5.4 コンテンツのレーティング
+
+IARC の質問は、次の現行仕様に沿って回答します。
+
+- アプリ種別は「その他のすべてのアプリの種類」（ゲームではない）。
+- ダウンロード済みの性的・暴力的・差別的コンテンツはない。
+- ユーザー間のコンテンツ共有はない。
+- オンラインブラウザ、検索エンジン、ニュース、教育コンテンツではない。
+- ギャンブル、暗号資産、金融サービス、現金報酬はない。
+- デジタル商品は購入できる（Pro の買い切り IAP）。
+- ランダムなアイテムやルートボックスはない。
+
+質問の内容が変わった場合は、実装の実態を優先し、回答をスクリーンショットで記録します。
+
+### 5.5 ターゲットユーザー
+
+配信方針が 13 歳以上の場合は、実際の対象に含める年齢帯（13～15 歳、16～17 歳、18 歳以上）だけを選び、5 歳以下、6～8 歳、9～12 歳は選びません。子ども向けプログラムとして申告しません。
+
+### 5.6 金融取引機能
+
+このアプリは金融サービスや送金を提供しないため、**「このアプリは金融取引機能を提供していません」**を選びます。アプリ内課金の有無と金融サービスの有無を混同しません。
+
+### 5.7 アプリのカテゴリと連絡先
+
+- アプリ / ゲーム: アプリ
+- カテゴリ: Productivity
+- ストア掲載用サポートメール: 専用サポートメール
+- ウェブサイト: 必要に応じて GitHub Pages URL
+
+サポートメールは、Privacy Policy、アプリ内設定、Play Console の連絡先で同じものを使用します。
+
+Play Console のログインに使うメールアドレスをサポート窓口として兼用しても構いません。ただし、ストアに公開してよいアドレスで、ユーザーからの問い合わせを継続して受信・返信できることを確認します。ログイン専用にしたい場合は、公開用サポートアドレスを別に用意します。
+
+### 5.8 ストアの掲載情報
+
+`docs/STORE_LISTING_DRAFT.md` の内容を転記します。
+
+- アプリ名: `ふわっと。`
+- 短い説明: `忘れる前に、数秒だけ。`
+- 詳しい説明: リマインダー、通知、端末内音声入力、Android Widget、Pro の買い切りを記載する。
+- Google Play アイコン: 512 × 512、アルファなし。
+- Feature Graphic: 1024 × 500、アルファなし。
+- スマートフォン用スクリーンショット: 日本語の実画面を 5 枚以上。個人情報は架空データにする。
+- iOS Widget が未実装であるため、Android Widget を iOS 共通機能のように書かない。
+
+### 5.9 Data safety
+
+現行版の申告は次の内容です。最終的には Play Console の質問文に合わせて、実際の PostHog / RevenueCat プロジェクト設定を確認してから保存します。
+
+| データ種類                                 | 収集                         | 目的                          | 共有                                       |
+| ------------------------------------------ | ---------------------------- | ----------------------------- | ------------------------------------------ |
+| Device or other IDs                        | あり（任意、分析同意後のみ） | Analytics                     | 現在の連携設定に第三者共有がない場合はなし |
+| App interactions                           | あり（任意、分析同意後のみ） | Analytics                     | 現在の連携設定に第三者共有がない場合はなし |
+| Purchase history                           | あり                         | App functionality / Analytics | RevenueCat の連携設定を確認したうえで判定  |
+| 音声・録音・文字起こし                     | なし                         | —                             | —                                          |
+| リマインダー本文・具体的日時・モーション値 | なし                         | —                             | —                                          |
+
+回答時の共通条件:
+
+- 収集するデータは転送時に暗号化される: はい。
+- アカウント作成: なし。
+- 収集済みイベントは保持期間を12か月とし、OFF 後は新たな分析データを送信しない。
+- PostHog の広告連携、Data Pipeline、外部 CDP、AI 機能を設定した場合は「共有なし」をそのまま使用しない。提供者ごとに収集と共有を再判定する。
+- 内部テストでは Data safety の表示が免除される場合があるが、クローズドテスト・製品版へ進む前に回答を完成させる。
+
+## 6. Google Play 内部テスト（今回の AAB を配布する）
+
+### 6.1 内部テストトラックを開く
+
+1. Play Console で対象アプリ `ふわっと。` を開く。
+2. 左メニューの **テストとリリース → テスト → 内部テスト** を開く。
+3. 「テスター」タブでメールリストを作成する。
+4. 自分の Google Play Console アカウントのメールアドレスを追加する。
+5. テスターからのフィードバック用メールアドレスを入力する。
+6. メールリストを選択し、「変更を保存」する。
+
+内部テストは最大 100 人の小規模 QA 用です。今回の確認は 1 人でも開始できます。12 人以上・14 日以上の条件は、次のクローズドテストで満たします。
+
+### 6.2 内部テストのリリースを作成する
+
+1. 「リリース」タブで「新しいリリースを作成」を押す。
+2. EAS で作成した `.aab` を「App Bundle のアップロード」へアップロードする。
+3. App Bundle の詳細で package、versionCode、target SDK、署名を確認する。
+4. リリース名に `1.0.0 (内部テスト)` を入力する（ユーザーには表示されない管理用名称）。
+5. リリースノートに次を入力する。
+
+```xml
+<ja-JP>
+内部テスト版です。リマインダー、通知、端末内音声入力、Android Widget、Pro版の購入・復元を確認します。
+</ja-JP>
+```
+
+6. 「保存」→「プレビューして確認する」→内容を確認する。
+7. 問題がなければ **「保存して公開」** を押す。
+
+### 6.3 よく出る警告
+
+| 警告                                       | どうするか                                                                                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 対象テスターを指定していない               | テスタータブでメールリストを選び、先に保存する。未指定のままではテスターに配信されない。                                                                   |
+| R8 / ProGuard の mapping file がない       | 現行 build でコード縮小を有効化していない場合は警告のみ。公開を止めるエラーではない。将来 `minifyEnabled` を有効にしたら mapping file をアップロードする。 |
+| App Bundle は Google Play で署名されている | 正常。Play App Signing が有効であることを確認する。                                                                                                        |
+| 自動保護がオン                             | 通常はそのままでよい。                                                                                                                                     |
+
+### 6.4 テスト参加リンクからインストールする
+
+1. 内部テスト画面の「テスター」タブを開く。
+2. 「テストへの参加方法」に表示されるリンクをコピーする。
+3. Android 実機のブラウザでリンクを開く。
+4. Play Console のメールリストに登録した **同じ Google アカウント** でログインする。
+5. 「テストに参加」または「Become a tester」を押す。
+6. Google Play のリンクからインストールする。Play Store 検索では見つからないことがあります。
+
+初回公開後にリンクが出ない、またはインストールできない場合は、公開状態、Google アカウントの一致、国、Play Store の反映時間を確認します。Google の案内では初回公開や更新の反映に数時間かかる場合があります。
+
+## 7. 内部テストで実機 QA を行う
+
+テスト結果は、端末名・Android バージョン・Google アカウント・アプリ versionCode・結果・再現手順の組で記録します。
+
+### 7.1 初回起動と同意
+
+- [ ] 初回起動で分析同意モーダルが表示される。
+- [ ] 「共有しない」を選んでもアプリの主要機能を利用できる。
+- [ ] 未選択・拒否状態では PostHog クライアントが生成されず、HTTP 通信と画面イベントがない。
+- [ ] 「共有する」を選んだ後だけ許可済みの匿名イベントが送信される。
+- [ ] 設定で OFF にした後、新しいイベント送信が止まる。
+- [ ] 端末再起動後も同意状態が正しく復元される。
+
+### 7.2 権限と基本機能
+
+- [ ] 通知を許可した場合、前日・当日の通知が届く。
+- [ ] 通知を拒否した場合、アプリが壊れず、端末設定を開く導線が動く。
+- [ ] マイク許可時に端末内音声入力が動く。録音・音声・文字起こしが外部送信されない。
+- [ ] マイク拒否時も手入力で利用できる。
+- [ ] 左右に傾けて音声入力を明示的に有効化した場合だけモーション検出が動く。
+- [ ] リマインダーを追加・編集・削除でき、再起動後も SQLite の内容が残る。
+- [ ] 無料版は同時に 6 件まで、7 件目で Paywall が表示される。
+
+### 7.3 購入・復元
+
+- [ ] `fuwatto_pro_lifetime` が Play Console で有効である。
+- [ ] Paywall が `pro` entitlement の状態を正しく反映する。
+- [ ] Pro 購入後、7 件以上のリマインダーを追加できる。
+- [ ] アプリ再起動後も Pro 状態が残る。
+- [ ] 購入復元が動く。
+- [ ] 返金・権利取消後は既存データを残したまま、無料上限が再び適用される。
+
+実購入の確認は、Play Store からインストールした内部テスト版で行います。Expo Go や APK のサイドロードを購入確認に使いません。ライセンステスターの設定と RevenueCat の接続は [RevenueCat セットアップ](REVENUECAT_SETUP.md) を参照します。
+
+### 7.4 Android Widget
+
+- [ ] ホーム画面へ追加できる。
+- [ ] 横方向・縦方向にリサイズできる。
+- [ ] リマインダー追加・編集・削除後に Widget が更新される。
+- [ ] Widget の追加ボタンからアプリの追加画面へ deep link できる。
+- [ ] アプリと端末を再起動しても Widget が壊れない。
+- [ ] Widget を削除してもアプリ内のデータが消えない。
+
+### 7.5 QA の判定
+
+- 重大なクラッシュ、データ消失、購入・復元不能、通知不能があれば公開を停止し、修正版の versionCode を上げて再ビルドします。
+- 表示文言・スクリーンショット・Data safety と実装が一致しない場合も公開を停止します。
+- 警告が残っていても、内容を確認し、ブロッカーでない理由を記録してから次へ進みます。
+
+## 8. クローズドテスト（新規個人アカウントの必須工程）
+
+2023 年 11 月 13 日以降に作成した個人用デベロッパーアカウントでは、製品版アクセスを申請する前に、**12 人以上のテスターが 14 日以上連続でクローズドテストへオプトイン**している必要があります。内部テストだけではこの条件を満たしません。
+
+### 8.1 開始条件
+
+- [ ] 内部テストの実機 QA が完了している。
+- [ ] アプリの設定、ストア掲載情報、Privacy Policy、Data safety が完成している。
+- [ ] `fuwatto_pro_lifetime` の購入・復元をテスターが実行できる。
+- [ ] 12 人以上を確保できる。離脱・アカウント不一致に備えて 15 人程度募集する。
+- [ ] テスターには 14 日以上連続でオプトインを維持する必要があることを説明する。
+
+### 8.2 Console 操作
+
+1. **テストとリリース → テスト → クローズドテスト** を開く。
+2. 初回トラックを作成する。トラック名は `初回クローズドテスト` など、用途が分かる名前にする。
+3. メールリストを作成し、12 人以上のテスターを登録する。
+4. テストトラックのリリースを作成し、内部テストで確認済みの AAB をアップロードする。
+5. versionCode、リリースノート、対象国、日本語のストア情報を確認する。
+6. 保存・プレビュー後、「保存して公開」を押す。
+7. テスターへオプトインリンクを送る。
+8. 各テスターが登録した Google アカウントでオプトインし、Play Store からインストールする。
+
+### 8.3 14 日間の記録
+
+次の表をリポジトリ外の安全な場所で管理します。メールアドレスを公開リポジトリへ保存しません。
+
+| 日付    | オプトイン人数 | インストール確認 | 主なフィードバック | 対応 |
+| ------- | -------------: | ---------------- | ------------------ | ---- |
+| 開始日  |                |                  |                    |      |
+| 2 日目  |                |                  |                    |      |
+| …       |                |                  |                    |      |
+| 14 日目 |                |                  |                    |      |
+
+テスターがオプトアウトした場合、そのテスターは 14 日連続の要件を満たさなくなります。12 人を下回らないよう補充し、**12 人以上が連続 14 日になった日**を要件達成日として扱います。テスト中に修正版を配布しても、テスト期間は止めずに継続します。
+
+テスターのフィードバック、実施した修正、製品版へ進める判断理由を記録します。製品版アクセス申請でこの内容を説明する必要があります。
+
+## 9. 製品版アクセス申請（確認を得てから）
+
+クローズドテストの条件を満たした後、すぐに申請せず、次のチェックを行います。
+
+- [ ] 12 人以上が連続 14 日以上オプトインしている。
+- [ ] 主要機能、通知、Widget、音声、購入、復元、拒否経路を QA 済み。
+- [ ] クラッシュ・重大な不具合が解消されている。
+- [ ] Data safety、Privacy Policy、ストア情報、価格、連絡先が一致している。
+- [ ] 本番公開を進めてよいという確認を得ている。
+
+申請手順:
+
+1. Play Console のダッシュボードで **「製品版へのアクセスを申請」** を開く。
+2. クローズドテストについて、募集方法、テスターが行った操作、フィードバックの収集方法と修正内容を正確に回答する。
+3. アプリについて、対象ユーザー、アプリの価値、初年度の見込みインストール数を実態に沿って回答する。
+4. 製品版の準備状況について、テストで分かったことと、公開可能と判断した根拠を回答する。
+5. 申請を送信する。
+
+Google の審査・回答待ちの間も、クローズドテストを継続します。承認前に製品版を公開しません。
+
+## 10. Android 製品版公開（最終確認後のみ）
+
+製品版アクセスが承認された後に実施します。
+
+1. **テストとリリース → 製品版** を開く。
+2. クローズドテストで検証済みの AAB、または versionCode を増やした最終 AAB を選ぶ。
+3. 公開国が日本だけになっていることを確認する。
+4. アプリ名、短い説明、詳しい説明、アイコン、Feature Graphic、スクリーンショットを確認する。
+5. Data safety、コンテンツレーティング、対象年齢、広告、アプリアクセス、価格、Privacy Policy URL を再確認する。
+6. リリースノートを入力し、審査前レポート・エラー・ブロッカーを確認する。
+7. 「保存して公開」または相当する公開操作は、明示的な最終確認を得てから押す。
+8. 公開後、公開地域、インストール、ストア表示、問い合わせメール、購入導線を確認する。
+
+本番公開後の更新では、必ず `versionCode` を増やし、内部テストまたはクローズドテストを経てから製品版へ進めます。
+
+## 11. iOS の後続手順
+
+Android のクローズドテスト工程を完了してから、iOS を開始します。
+
+### 11.1 iOS production build
 
 ```bash
 eas build --profile production --platform ios
 ```
 
-2. iPhone実機で確認する。
+production profile は `macos-sequoia-15.6-xcode-26.0` を使用します。ビルドログで Xcode 26 / iOS 26 SDK、Distribution 署名、entitlements、集約 Privacy Manifest を確認します。
 
-- 初回App Storeリリースは `ios.supportsTablet = false` のiPhone対象として扱う。
-- iPhone SE系
-- 標準サイズ
-- Pro Max系
-- 通知権限の許可 / 拒否
-- 通知音ON/OFF
-- 通知タップ後のアプリ復帰
-- Home、追加Sheet、設定、一覧が崩れないこと
-- App Store Sandboxで買い切りProの購入、復元、返金後の権利取消
+### 11.2 App Store Connect 設定
 
-3. App Store Connectへ提出する。
+- Bundle ID: `com.rion0918.popreminder`
+- SKU: `pop-reminder-ios`
+- iPhone 専用（`supportsTablet: false`）
+- 日本語、無料ダウンロード、Productivity
+- Privacy Policy URL と利用規約 URL を HTTPS で登録
+- App Privacy: Device ID、Product Interaction、Purchase History を本人非紐付け・トラッキングなしで申告
+- ATT / IDFA は導入しない
+- 非消耗型 IAP `fuwatto_pro_lifetime` を 800 円で作成し、RevenueCat の `pro` entitlement へ接続
+- Paid Apps Agreement、税務、銀行情報を確認
 
-- App Store提出前に `expo.ios.buildNumber` が前回提出版より大きいことを確認する。
-- `ITSAppUsesNonExemptEncryption = false` と暗号化申告が一致していることを確認する。
-- プライバシーポリシーと利用規約の問い合わせ文言がApp Storeでも不自然でないことを確認する。
-- App Store Connect の App Privacy を、PostHog による任意の匿名利用状況計測と一致するよう更新する。
-- 非消耗型商品 `fuwatto_pro_lifetime` がRevenueCatの`pro` entitlementへ接続されていることを確認する。
-- App PrivacyをRevenueCatによる匿名購入情報の処理と一致させる。
+### 11.3 TestFlight と提出
 
-## リリース後
+1. production archive を TestFlight 内部テストへ配布する。
+2. iPhone SE 系、標準サイズ、Pro Max 系で通知、音声入力、購入、復元を確認する。
+3. 返金後の権利取消、通知拒否、アプリ再起動、端末バックアップ文言を確認する。
+4. 外部 TestFlight 審査、App Review 提出は明示的な確認を得てから実行する。
 
-- ストアページの問い合わせ導線を確認する。
-- 通知が届かない端末報告があれば、OSバージョン、通知権限、通知チャンネル、バッテリー最適化の状態を記録する。
-- Android Widgetは初回リリース機能として、更新失敗・再起動・deep linkの報告を記録する。
-- RevenueCatでPaywall到達、購入、復元、返金を確認し、PostHogで上限到達後の継続率と購入結果を確認する。
-- AndroidクローズドテストではPaywall到達率、購入率、キャンセル・エラー率、到達後の継続利用、復元失敗を確認する。
-- 初期段階ではA/Bテストを行わず、6件制限による離脱が強い場合だけ10件への緩和を検討する。
+## 12. トラブルシューティング
+
+| 症状                                         | 確認すること                                                                                                                              |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 「他に必要な情報はありますか？」と表示される | アプリアクセスで「はい」を選んでいます。ログイン機能がないため「いいえ」に戻します。                                                      |
+| 内部テストの「追加」ボタンを押せない         | メールリスト名、テスターのメールアドレス、必須の同意チェック、フィードバック先を確認します。                                              |
+| 「対象テスターが指定されていない」           | テスタータブでメールリストを選び、「変更を保存」してからリリースを再確認します。                                                          |
+| テスト参加リンクがない                       | リリースが Published ではなく Draft / Pending publication の可能性があります。公開状態を確認し、初回は数時間待ちます。                    |
+| テスターがアプリを見つけられない             | Play Store 検索ではなく参加リンクを使い、登録した Google アカウントと端末のアカウントを一致させます。                                     |
+| AAB がアップロードできない                   | package が `com.rion0918.popreminder`、versionCode が未使用の値、AAB が production build かを確認します。                                 |
+| versionCode が重複する                       | `app.json` と `android/app/build.gradle` の versionCode を増やして再ビルドします。                                                        |
+| R8 / ProGuard mapping 警告                   | 現行版でコード縮小を使っていない場合は警告のみです。縮小を有効にしたビルドでは mapping file を追加します。                                |
+| Pro 商品が購入できない                       | 商品が有効か、Product ID が一致するか、RevenueCat の offering / entitlement が接続されているか、Play Store 版を使っているかを確認します。 |
+| EAS が `expo-updates` のインストールを聞く   | 現行版で EAS Update を使わない場合は `n`。依存関係を変更して導入する場合は、別途承認後に lockfile を更新します。                          |
+
+## 13. リリース完了の判定
+
+### Android 内部テスト完了
+
+- [ ] AAB が内部テストへ公開済み。
+- [ ] テスターが参加リンクから Play Store 版をインストールできる。
+- [ ] 通知、音声、Widget、SQLite、無料制限、購入・復元を実機確認済み。
+- [ ] 同意前の無通信、同意後の許可イベント、OFF 後の送信停止を確認済み。
+- [ ] 重大な不具合がない、または修正版の計画が記録されている。
+
+### Android 本番公開へ進める条件
+
+- [ ] クローズドテストで 12 人以上が 14 日以上連続オプトイン。
+- [ ] フィードバックと修正履歴を記録済み。
+- [ ] 製品版アクセス申請が承認済み。
+- [ ] 最終 AAB、ストア情報、Data safety、Privacy Policy、価格が一致。
+- [ ] 本番公開の明示確認済み。
+
+### 公式資料
+
+- [新しい個人用デベロッパー アカウント向けのアプリテスト要件（Google Play）](https://support.google.com/googleplay/android-developer/answer/14151465?hl=ja)
+- [内部・クローズド・オープンテストの設定（Google Play）](https://support.google.com/googleplay/android-developer/answer/9845334?hl=ja)
+- [Google Play 対象 API レベル要件](https://support.google.com/googleplay/android-developer/answer/11926878)
+- [Android 16 KB page size](https://developer.android.com/guide/practices/page-sizes?hl=ja)
+- [Google Play Data safety](https://support.google.com/googleplay/android-developer/answer/10787469)
+- [Google Play Billing ポリシー](https://support.google.com/googleplay/android-developer/answer/9858738)
+- [Expo EAS Build インフラストラクチャ](https://docs.expo.dev/build-reference/infrastructure/)
+- [RevenueCat Expo integration](https://www.revenuecat.com/docs/getting-started/installation/expo)

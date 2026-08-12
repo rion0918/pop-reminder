@@ -101,11 +101,11 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '8. データの削除',
-      body: `アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。匿名の利用状況データの削除は${supportContact}へ依頼できます。過去に同意した場合は、設定画面の削除依頼から匿名分析IDを添えてください。OSのバックアップや復元機能を利用している場合は、OSやストアの仕様により一部のデータが復元されることがあります。`,
+      body: `アプリ内の削除操作、期限切れデータの整理、またはアプリのアンインストールにより、端末内のデータは削除されます。匿名の利用状況は設定画面から送信を停止できます。収集済みイベントは通常保持期間12か月後に削除され、個別削除依頼の受付は提供していません。OSのバックアップや復元機能を利用している場合は、OSやストアの仕様により一部のデータが復元されることがあります。`,
     },
     {
       title: '9. お問い合わせ',
-      body: `不具合やご意見、データ削除の依頼は、${supportContact}、またはGoogle PlayやApp Storeの配布ページからお問い合わせください。`,
+      body: `不具合やご意見がある場合は、${supportContact}、またはGoogle PlayやApp Storeの配布ページからお問い合わせください。`,
     },
   ],
 };
@@ -336,26 +336,6 @@ export function SettingsScreen() {
       Alert.alert('設定を変更できませんでした', '時間をおいてもう一度お試しください。');
     } finally {
       setIsAnalyticsPreferenceLoading(false);
-    }
-  };
-
-  const handleAnalyticsDeletionRequest = async () => {
-    if (!supportEmail) {
-      Alert.alert('連絡先を準備中です', '専用サポートメールの準備後にご利用いただけます。');
-      return;
-    }
-
-    const analyticsId = await analytics.getDeletionRequestId();
-    const subject = encodeURIComponent('ふわっと。利用状況データの削除依頼');
-    const body = encodeURIComponent(
-      analyticsId
-        ? `匿名分析ID: ${analyticsId}\n\n利用状況データの削除を依頼します。`
-        : '利用状況データの削除を依頼します。匿名分析IDは取得できませんでした。',
-    );
-    try {
-      await Linking.openURL(`mailto:${supportEmail}?subject=${subject}&body=${body}`);
-    } catch {
-      Alert.alert('メールを開けませんでした', 'メールアプリからお問い合わせください。');
     }
   };
 
@@ -945,14 +925,6 @@ export function SettingsScreen() {
                   thumbColor={isAnalyticsEnabled ? palette.lavenderDeep : palette.white}
                 />
               )}
-            </SettingRow>
-            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-            <SettingRow
-              icon="trash-outline"
-              title="利用状況データの削除を依頼"
-              onPress={() => void handleAnalyticsDeletionRequest()}
-            >
-              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>
             <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow

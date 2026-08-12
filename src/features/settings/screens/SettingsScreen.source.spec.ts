@@ -160,11 +160,14 @@ test('settings legal copy supports both Google Play and App Store release pages'
       /通常保持期間は12か月/,
       /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
       /RevenueCatにはSDKが生成する匿名購入ID/,
-      /利用状況データの削除を依頼/,
       /settings\.analyticsConsent/,
-      /handleAnalyticsDeletionRequest/,
     ],
-    excludes: [/ポップ・リマインダー/],
+    excludes: [
+      /ポップ・リマインダー/,
+      /利用状況データの削除を依頼/,
+      /handleAnalyticsDeletionRequest/,
+      /getDeletionRequestId/,
+    ],
   });
 });
 

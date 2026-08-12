@@ -17,9 +17,6 @@ function makeClient() {
   const calls = { optIn: 0, optOut: 0, ready: 0 };
   const client: AnalyticsClient = {
     optedOut: false,
-    getDistinctId() {
-      return 'anonymous-test-id';
-    },
     capture(event, properties) {
       captured.push({ event, properties });
     },
@@ -239,11 +236,11 @@ test('lazy analytics does not create a client or capture before explicit consent
   assert.deepEqual(fake.captured, []);
 });
 
-test('analytics exposes a deletion request identifier from the consented client', async () => {
+test('analytics does not expose a deletion request identifier', () => {
   const fake = makeClient();
   const analytics = createAnalyticsService(fake.client);
 
-  assert.equal(await analytics.getDeletionRequestId(), 'anonymous-test-id');
+  assert.equal('getDeletionRequestId' in analytics, false);
 });
 
 test('PostHog client configuration disables sensitive and unused automatic capture', () => {

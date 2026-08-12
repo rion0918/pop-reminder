@@ -57,11 +57,13 @@ test('settings captures permission results and exposes persisted analytics conse
       /analyticsConsent: previousConsent/,
       /title="匿名の利用状況を共有"/,
       /value=\{isAnalyticsEnabled\}/,
-      /handleAnalyticsDeletionRequest/,
-      /getDeletionRequestId/,
       /captureProPaywallResult\(\{ placement: 'settings', outcome: result \}\)/,
       /captureProRestoreResult\(\{ outcome: result \}\)/,
     ],
-    excludes: [/captureReminderCreated\([^)]*title/, /captureScreen\([^)]*routeParams/],
+    excludes: [
+      /captureReminderCreated\([^)]*title/,
+      /captureScreen\([^)]*routeParams/,
+      /getDeletionRequestId/,
+    ],
   });
 });

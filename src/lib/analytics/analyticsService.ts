@@ -11,7 +11,6 @@ export type AnalyticsClient = {
   ready?(): unknown;
   optIn(): unknown;
   optOut(): unknown;
-  getDistinctId?(): string;
 };
 
 export type AnalyticsClientFactory<TClient extends AnalyticsClient = AnalyticsClient> = () =>
@@ -206,17 +205,6 @@ export function createAnalyticsService<TClient extends AnalyticsClient = Analyti
       } catch {
         captureDisabled = true;
         return false;
-      }
-    },
-
-    async getDeletionRequestId() {
-      if (!client?.getDistinctId) return null;
-
-      try {
-        await client.ready?.();
-        return client.getDistinctId() || null;
-      } catch {
-        return null;
       }
     },
   };
