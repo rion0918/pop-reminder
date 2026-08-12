@@ -8,6 +8,7 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './ReminderInputSheet.tsx');
+const imeSafeTitleInputSource = readSource(import.meta.url, './ImeSafeReminderTitleInput.tsx');
 const dateChipsSource = readSource(import.meta.url, './DateChips.tsx');
 const rootLayoutSource = readSource(import.meta.url, '../../../app/_layout.tsx');
 const timeSelectorSource = readSource(
@@ -21,20 +22,18 @@ test('quick add shows a live accessible title character count from the validatio
     /export const REMINDER_TITLE_MAX_LENGTH = 40;/,
     /\.max\(REMINDER_TITLE_MAX_LENGTH, 'タイトルは40文字以内で保存できます'\)/,
   ]);
-  assertSourceIncludes(source, [
+  assertSourceIncludes(imeSafeTitleInputSource, [
     /import \{ REMINDER_TITLE_MAX_LENGTH \} from '\.\.\/schemas\/reminderSchema';/,
-    /const \[titleLength, setTitleLength\] = useState\(0\);/,
-    /setTitleLength\(0\);/,
-    /draftTitleRef\.current = text;\s*setTitleLength\(text\.length\);/,
+    /const \[titleLength, setTitleLength\] = useState/,
+    /setTitleLength\(text\.length\);/,
     /const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;/,
     /const titleCountAccessibilityLabel = isTitleOverLimit/,
-    /normalizedTitle\.length > REMINDER_TITLE_MAX_LENGTH/,
-    /<View style=\{styles\.inputField\}>[\s\S]*accessibilityLabel=\{titleCountAccessibilityLabel\}/,
-    /inputField: \{[\s\S]*position: 'relative'/,
-    /titleCountText: \{[\s\S]*position: 'absolute'/,
     /accessibilityLabel=\{titleCountAccessibilityLabel\}/,
-    /styles\.titleCountText/,
     /\{titleLength\} \/ \{REMINDER_TITLE_MAX_LENGTH\}/,
+  ]);
+  assertSourceIncludes(source, [
+    /normalizedTitle\.length > REMINDER_TITLE_MAX_LENGTH/,
+    /<ImeSafeReminderTitleInput/,
   ]);
 });
 
@@ -45,8 +44,11 @@ test('quick add supports cancellable on-device voice input without truncating th
     /voiceInput\.stop\(\)/,
     /voiceInput\.abort\(\)/,
     /voiceBaselineTitleRef\.current/,
-    /updateDraftTitle\(voiceBaselineTitleRef\.current\)/,
+    /replaceDraftTitle\(voiceBaselineTitleRef\.current\)/,
     /joinVoiceText\(voiceBaselineTitleRef\.current, currentTranscript\)/,
+    /const pendingVoiceStartAfterEndEditingRef = useRef\(false\);/,
+    /if \(titleInputRef\.current\?\.isFocused\(\)\) \{[\s\S]*pendingVoiceStartAfterEndEditingRef\.current = true;[\s\S]*titleInputRef\.current\.blur\(\);[\s\S]*return;/,
+    /if \(pendingVoiceStartAfterEndEditingRef\.current\) \{[\s\S]*beginVoiceInputRef\.current\(\);[\s\S]*return;/,
     /AccessibilityInfo\.isReduceMotionEnabled\(\)/,
     /reduceMotionEnabled \? 1 :/,
     /音声入力を開始しました/,
@@ -86,6 +88,19 @@ test('successful quick add does not focus the title input again', () => {
   );
 
   assert.equal(saveSuccessBlock.includes('focus()'), false);
+});
+
+test('quick add waits for native end editing before saving an active IME session', () => {
+  assertSourceContract(source, {
+    includes: [
+      /const pendingSaveAfterEndEditingRef = useRef\(false\);/,
+      /if \(titleInputRef\.current\?\.isFocused\(\)\) \{[\s\S]*pendingSaveAfterEndEditingRef\.current = true;[\s\S]*titleInputRef\.current\.blur\(\);[\s\S]*return;/,
+      /const handleTitleEndEditing = useCallback\([\s\S]*pendingSaveAfterEndEditingRef\.current[\s\S]*void commitSave\(text\);/,
+      /onEndEditing=\{handleTitleEndEditing\}/,
+    ],
+    excludes: [/value=\{draftTitle\}/, /const \[draftTitle, setDraftTitleText\]/],
+  });
+  assertSourceIncludes(imeSafeTitleInputSource, [/submitBehavior="blurAndSubmit"/]);
 });
 
 test('widget quick add waits for the sheet to open before focusing the title input', () => {

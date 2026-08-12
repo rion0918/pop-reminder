@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAssertions';
+import {
+  assertSourceContract,
+  assertSourceIncludes,
+  readSource,
+} from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './SearchScreen.tsx');
 
@@ -32,4 +36,22 @@ test('search reflects edited titles without resetting the current result set', (
     /const updatedReminder = await updateReminderTitle\(reminder\.id, title\);/,
     /onUpdateTitle=\{handleUpdateReminderTitle\}/,
   ]);
+});
+
+test('search keeps native IME text uncontrolled and defers expensive result updates', () => {
+  assertSourceContract(source, {
+    includes: [
+      /useDeferredValue/,
+      /const searchInputRef = useRef<TextInput>\(null\);/,
+      /const deferredQuery = useDeferredValue\(query\);/,
+      /filterReminders\(reminders, deferredQuery, filter\)/,
+      /ref=\{searchInputRef\}/,
+      /defaultValue=""/,
+      /returnKeyType="search"/,
+      /submitBehavior="blurAndSubmit"/,
+      /onSubmitEditing=\{Keyboard\.dismiss\}/,
+      /searchInputRef\.current\?\.clear\(\);/,
+    ],
+    excludes: [/value=\{query\}/],
+  });
 });

@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -51,7 +52,9 @@ export function SearchScreen() {
     updateReminderTitle,
     updateReminderSchedule,
   } = useReminders();
+  const searchInputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [filter, setFilter] = useState<SearchFilter>('all');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
@@ -64,16 +67,21 @@ export function SearchScreen() {
   );
 
   const filteredReminders = useMemo(
-    () => filterReminders(reminders, query, filter),
-    [filter, query, reminders],
+    () => filterReminders(reminders, deferredQuery, filter),
+    [deferredQuery, filter, reminders],
   );
   const hasActiveCondition = query.trim().length > 0 || filter !== 'all';
   const resultLabel = hasActiveCondition ? '見つかった泡' : '浮いている泡';
 
-  const resetConditions = useCallback(() => {
+  const clearSearchQuery = useCallback(() => {
+    searchInputRef.current?.clear();
     setQuery('');
-    setFilter('all');
   }, []);
+
+  const resetConditions = useCallback(() => {
+    clearSearchQuery();
+    setFilter('all');
+  }, [clearSearchQuery]);
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
@@ -171,22 +179,28 @@ export function SearchScreen() {
       >
         <Ionicons name="search-outline" size={19} color={palette.muted} />
         <TextInput
-          value={query}
+          ref={searchInputRef}
+          accessibilityLabel="リマインダーを検索"
+          defaultValue=""
           onChangeText={setQuery}
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setIsSearchFocused(false)}
+          onSubmitEditing={Keyboard.dismiss}
           placeholder="タイトルで探す"
           placeholderTextColor="#A6B2CE"
           autoCapitalize="none"
           autoCorrect={false}
-          className="min-w-0 flex-1 py-[12px] text-[16px] font-extrabold text-app-ink"
+          spellCheck={false}
+          returnKeyType="search"
+          submitBehavior="blurAndSubmit"
+          className="min-h-[56px] min-w-0 flex-1 py-[14px] text-[17px] font-extrabold leading-[22px] text-app-ink"
         />
         {query.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="検索文字を消す"
             hitSlop={8}
-            onPress={() => setQuery('')}
+            onPress={clearSearchQuery}
             className="h-[28px] w-[28px] items-center justify-center rounded-[14px] bg-[#F3F6FC]"
           >
             <Ionicons name="close" size={16} color={palette.muted} />

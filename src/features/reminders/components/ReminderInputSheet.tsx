@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ComponentProps, ElementRef } from 'react';
+import type { ComponentProps } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -18,12 +18,7 @@ import type { DateTimePickerEvent } from '@react-native-community/datetimepicker
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { addDays, format, set, startOfDay } from 'date-fns';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
@@ -40,6 +35,10 @@ import { REMINDER_TITLE_MAX_LENGTH } from '../schemas/reminderSchema';
 import { formatReminderInputDate } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { DateChips } from './DateChips';
+import {
+  ImeSafeReminderTitleInput,
+  type ImeSafeReminderTitleInputHandle,
+} from './ImeSafeReminderTitleInput';
 import { useAppServices } from '../../../bootstrap/AppProviders';
 
 type VoiceInputStatus = 'idle' | 'starting' | 'listening' | 'stopping';
@@ -100,12 +99,13 @@ export function ReminderInputSheet({
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
-  const titleInputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
+  const titleInputRef = useRef<ImeSafeReminderTitleInputHandle>(null);
   const draftTitleRef = useRef('');
-  const [draftTitle, setDraftTitleText] = useState('');
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
   const isSaveRequestedRef = useRef(false);
+  const pendingSaveAfterEndEditingRef = useRef(false);
+  const pendingVoiceStartAfterEndEditingRef = useRef(false);
   const titleFocusRequestIdRef = useRef(0);
   const pendingTitleFocusRequestIdRef = useRef<number | null>(null);
   const handledVoiceInputRequestIdRef = useRef(0);
@@ -122,7 +122,6 @@ export function ReminderInputSheet({
   const isOpenRef = useRef(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
-  const [titleLength, setTitleLength] = useState(0);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceInputStatus>('idle');
   const [voiceVolume, setVoiceVolume] = useState(0);
@@ -191,23 +190,21 @@ export function ReminderInputSheet({
   }, [selectedTargetDate, time]);
 
   const isTargetFuture = targetAt.getTime() > Date.now();
-  const isTitleCountWarning = titleLength >= REMINDER_TITLE_MAX_LENGTH - 5;
-  const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;
-  const titleCountAccessibilityLabel = isTitleOverLimit
-    ? `タイトルは${titleLength}文字、上限を${titleLength - REMINDER_TITLE_MAX_LENGTH}文字超えています`
-    : `タイトルは${titleLength}文字、あと${REMINDER_TITLE_MAX_LENGTH - titleLength}文字入力できます`;
+
+  const handleDraftTitleChange = useCallback((text: string) => {
+    draftTitleRef.current = text;
+  }, []);
 
   const resetDraftTitle = useCallback(() => {
     draftTitleRef.current = '';
-    setDraftTitleText('');
-    setTitleLength(0);
+    pendingSaveAfterEndEditingRef.current = false;
+    pendingVoiceStartAfterEndEditingRef.current = false;
     titleInputRef.current?.clear();
   }, []);
 
-  const updateDraftTitle = useCallback((text: string) => {
+  const replaceDraftTitle = useCallback((text: string) => {
     draftTitleRef.current = text;
-    setTitleLength(text.length);
-    setDraftTitleText(text);
+    titleInputRef.current?.replaceText(text);
   }, []);
 
   const invalidateTitleFocusRequest = useCallback(() => {
@@ -236,17 +233,24 @@ export function ReminderInputSheet({
   const cancelVoiceInput = useCallback(
     (restoreBaseline: boolean) => {
       clearVoiceStopFallback();
+      pendingVoiceStartAfterEndEditingRef.current = false;
       voiceOperationIdRef.current += 1;
       explicitVoiceAbortRef.current = true;
       if (voiceStatusRef.current !== 'idle') voiceInput.abort();
-      if (restoreBaseline) updateDraftTitle(voiceBaselineTitleRef.current);
+      if (restoreBaseline) replaceDraftTitle(voiceBaselineTitleRef.current);
       voiceCommittedTranscriptRef.current = '';
       voiceReceivedTextRef.current = false;
       setVoiceVolume(0);
       setVoiceStatusValue('idle');
       completeVoiceInput();
     },
-    [clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, updateDraftTitle, voiceInput],
+    [
+      clearVoiceStopFallback,
+      completeVoiceInput,
+      replaceDraftTitle,
+      setVoiceStatusValue,
+      voiceInput,
+    ],
   );
 
   const stopVoiceInput = useCallback(() => {
@@ -283,6 +287,14 @@ export function ReminderInputSheet({
   const beginVoiceInput = useCallback(async () => {
     if (voiceStatusRef.current !== 'idle') return;
 
+    pendingSaveAfterEndEditingRef.current = false;
+    if (titleInputRef.current?.isFocused()) {
+      pendingVoiceStartAfterEndEditingRef.current = true;
+      titleInputRef.current.blur();
+      return;
+    }
+
+    pendingVoiceStartAfterEndEditingRef.current = false;
     clearVoiceStopFallback();
     const operationId = voiceOperationIdRef.current + 1;
     voiceOperationIdRef.current = operationId;
@@ -290,6 +302,7 @@ export function ReminderInputSheet({
     voiceCommittedTranscriptRef.current = '';
     voiceReceivedTextRef.current = false;
     explicitVoiceAbortRef.current = false;
+    pendingSaveAfterEndEditingRef.current = false;
     setTitleNotice(null);
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
@@ -388,7 +401,7 @@ export function ReminderInputSheet({
         const currentTranscript = event.isFinal
           ? voiceCommittedTranscriptRef.current
           : joinVoiceText(voiceCommittedTranscriptRef.current, transcript);
-        updateDraftTitle(joinVoiceText(voiceBaselineTitleRef.current, currentTranscript));
+        replaceDraftTitle(joinVoiceText(voiceBaselineTitleRef.current, currentTranscript));
         return;
       }
 
@@ -437,6 +450,7 @@ export function ReminderInputSheet({
     });
 
     return () => {
+      pendingVoiceStartAfterEndEditingRef.current = false;
       clearVoiceStopFallback();
       subscription.remove();
       if (voiceStatusRef.current !== 'idle') voiceInput.abort();
@@ -445,7 +459,7 @@ export function ReminderInputSheet({
     clearVoiceStopFallback,
     completeVoiceInput,
     setVoiceStatusValue,
-    updateDraftTitle,
+    replaceDraftTitle,
     voiceInput,
   ]);
 
@@ -547,6 +561,8 @@ export function ReminderInputSheet({
 
   useEffect(() => {
     return () => {
+      pendingSaveAfterEndEditingRef.current = false;
+      pendingVoiceStartAfterEndEditingRef.current = false;
       invalidateTitleFocusRequest();
       Keyboard.dismiss();
     };
@@ -564,6 +580,8 @@ export function ReminderInputSheet({
 
   const requestClose = useCallback(() => {
     isClosingRef.current = true;
+    pendingSaveAfterEndEditingRef.current = false;
+    pendingVoiceStartAfterEndEditingRef.current = false;
     cancelVoiceInput(false);
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
@@ -591,6 +609,8 @@ export function ReminderInputSheet({
     Keyboard.dismiss();
     isPresentedRef.current = false;
     isSaveRequestedRef.current = false;
+    pendingSaveAfterEndEditingRef.current = false;
+    pendingVoiceStartAfterEndEditingRef.current = false;
     cancelVoiceInput(false);
     closeDatePicker();
     closeTimePicker();
@@ -612,6 +632,8 @@ export function ReminderInputSheet({
   ]);
 
   const openDatePicker = useCallback(() => {
+    pendingSaveAfterEndEditingRef.current = false;
+    pendingVoiceStartAfterEndEditingRef.current = false;
     stopVoiceInput();
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
@@ -620,6 +642,8 @@ export function ReminderInputSheet({
   }, [invalidateTitleFocusRequest, setQuickAddPickerOpen, stopVoiceInput]);
 
   const openTimePicker = useCallback(() => {
+    pendingSaveAfterEndEditingRef.current = false;
+    pendingVoiceStartAfterEndEditingRef.current = false;
     stopVoiceInput();
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
@@ -627,36 +651,74 @@ export function ReminderInputSheet({
     setIsTimePickerOpen(true);
   }, [invalidateTitleFocusRequest, setQuickAddPickerOpen, stopVoiceInput]);
 
-  const handleSave = useCallback(async () => {
+  const commitSave = useCallback(
+    async (text: string) => {
+      if (isSaving || isSaveRequestedRef.current || isClosingRef.current || !isOpenRef.current) {
+        return;
+      }
+
+      pendingSaveAfterEndEditingRef.current = false;
+      const normalizedTitle = text.replace(/\n/g, ' ').trim();
+
+      if (normalizedTitle.length === 0) {
+        setTitleNotice('タイトルを入力してください');
+        titleInputRef.current?.focus();
+        return;
+      }
+
+      if (normalizedTitle.length > REMINDER_TITLE_MAX_LENGTH) {
+        setTitleNotice('タイトルは40文字以内で保存できます');
+        titleInputRef.current?.focus();
+        return;
+      }
+
+      setTitleNotice(null);
+      setTitle(normalizedTitle);
+      isSaveRequestedRef.current = true;
+      try {
+        await onSave?.(normalizedTitle);
+        resetTitle();
+        resetDraftTitle();
+        isSaveRequestedRef.current = false;
+      } catch {
+        // HomeScreen shows the user-facing error. Keep the sheet open so the title is not lost.
+        isSaveRequestedRef.current = false;
+      }
+    },
+    [isSaving, onSave, resetDraftTitle, resetTitle, setTitle],
+  );
+
+  const handleTitleEndEditing = useCallback(
+    (text: string) => {
+      draftTitleRef.current = text;
+
+      if (pendingVoiceStartAfterEndEditingRef.current) {
+        pendingVoiceStartAfterEndEditingRef.current = false;
+        beginVoiceInputRef.current();
+        return;
+      }
+
+      if (!pendingSaveAfterEndEditingRef.current) return;
+
+      pendingSaveAfterEndEditingRef.current = false;
+      void commitSave(text);
+    },
+    [commitSave],
+  );
+
+  const handleSave = useCallback(() => {
     if (isSaving || isSaveRequestedRef.current) {
       return;
     }
 
-    const normalizedTitle = draftTitleRef.current.replace(/\n/g, ' ').trim();
-
-    if (normalizedTitle.length === 0) {
-      setTitleNotice('タイトルを入力してください');
+    if (titleInputRef.current?.isFocused()) {
+      pendingSaveAfterEndEditingRef.current = true;
+      titleInputRef.current.blur();
       return;
     }
 
-    if (normalizedTitle.length > REMINDER_TITLE_MAX_LENGTH) {
-      setTitleNotice('タイトルは40文字以内で保存できます');
-      return;
-    }
-
-    setTitleNotice(null);
-    setTitle(normalizedTitle);
-    isSaveRequestedRef.current = true;
-    try {
-      await onSave?.(normalizedTitle);
-      resetTitle();
-      resetDraftTitle();
-      isSaveRequestedRef.current = false;
-    } catch {
-      // HomeScreen shows the user-facing error. Keep the sheet open so the title is not lost.
-      isSaveRequestedRef.current = false;
-    }
-  }, [isSaving, onSave, resetDraftTitle, resetTitle, setTitle]);
+    void commitSave(draftTitleRef.current);
+  }, [commitSave, isSaving]);
 
   const handleDatePickerChange = useCallback(
     (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -756,35 +818,21 @@ export function ReminderInputSheet({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.inputHeader}>
-            <View style={styles.inputField}>
-              <BottomSheetTextInput
-                ref={titleInputRef}
-                value={draftTitle}
-                onChangeText={updateDraftTitle}
-                placeholder="忘れたくないことを入力"
-                placeholderTextColor="#A6B2CE"
-                style={styles.input}
-                keyboardType="default"
-                autoCorrect
-                spellCheck={false}
-                autoCapitalize="none"
-                returnKeyType="done"
-                blurOnSubmit={false}
-                multiline={false}
-                editable={voiceStatus === 'idle'}
-              />
-              <Text
-                accessibilityRole="text"
-                accessibilityLabel={titleCountAccessibilityLabel}
-                style={[
-                  styles.titleCountText,
-                  isTitleCountWarning ? styles.titleCountTextWarning : null,
-                  isTitleOverLimit ? styles.titleCountTextOverLimit : null,
-                ]}
-              >
-                {titleLength} / {REMINDER_TITLE_MAX_LENGTH}
-              </Text>
-            </View>
+            <ImeSafeReminderTitleInput
+              ref={titleInputRef}
+              accessibilityLabel="リマインダーのタイトル"
+              initialValue=""
+              placeholder="忘れたくないことを入力"
+              editable={voiceStatus === 'idle'}
+              containerStyle={styles.inputField}
+              inputStyle={styles.input}
+              focusedInputStyle={styles.inputFocused}
+              countStyle={styles.titleCountText}
+              countWarningStyle={styles.titleCountTextWarning}
+              countOverLimitStyle={styles.titleCountTextOverLimit}
+              onTextChange={handleDraftTitleChange}
+              onEndEditing={handleTitleEndEditing}
+            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={voiceStatus === 'idle' ? '音声入力を開始' : '音声入力を終了'}
@@ -1091,27 +1139,32 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   input: {
-    flex: 1,
-    height: 46,
-    borderRadius: 16,
+    width: '100%',
+    minHeight: 56,
+    borderRadius: 18,
     paddingLeft: 16,
     paddingRight: 64,
+    paddingVertical: 14,
     color: palette.ink,
-    fontSize: 16,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '700',
     backgroundColor: palette.white,
     borderWidth: 1,
     borderColor: palette.line,
   },
+  inputFocused: {
+    borderColor: 'rgba(121,87,213,0.62)',
+    shadowColor: palette.lavenderDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 2,
+  },
   titleCountText: {
     position: 'absolute',
     right: 12,
-    bottom: 5,
-    color: palette.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+    bottom: 7,
   },
   titleCountTextWarning: {
     color: '#8B6F2D',

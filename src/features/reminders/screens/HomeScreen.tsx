@@ -542,7 +542,7 @@ export function HomeScreen() {
   }, [resolveNotificationPermissionIntro]);
 
   const handlePressAdd = useCallback(() => {
-    void requestQuickAdd('home_button');
+    void requestQuickAdd('home_button', { focusTitle: true });
   }, [requestQuickAdd]);
 
   const handleOpenReminderList = useCallback(() => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ComponentProps, ElementRef } from 'react';
+import type { ComponentProps } from 'react';
 import {
   Alert,
   ImageBackground,
@@ -10,12 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette } from '../../../constants/colors';
@@ -24,7 +19,11 @@ import type {
   UpdateReminderScheduleResult,
 } from '../application/reminderUseCases';
 import type { Reminder } from '../types/reminder';
-import { REMINDER_TITLE_MAX_LENGTH, reminderTitleSchema } from '../schemas/reminderSchema';
+import { reminderTitleSchema } from '../schemas/reminderSchema';
+import {
+  ImeSafeReminderTitleInput,
+  type ImeSafeReminderTitleInputHandle,
+} from './ImeSafeReminderTitleInput';
 import { ReminderScheduleEditorModal } from './ReminderScheduleEditorModal';
 import {
   formatReminderDetailAccessibilityDateTime,
@@ -149,7 +148,7 @@ export function ReminderDetailSheet({
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
-  const titleInputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
+  const titleInputRef = useRef<ImeSafeReminderTitleInputHandle>(null);
   const draftTitleRef = useRef(reminder?.title ?? '');
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
@@ -165,7 +164,6 @@ export function ReminderDetailSheet({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isTitleSaving, setIsTitleSaving] = useState(false);
-  const [titleLength, setTitleLength] = useState(0);
   const [titleNotice, setTitleNotice] = useState<string | null>(null);
   const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
   const [isScheduleSaving, setIsScheduleSaving] = useState(false);
@@ -184,11 +182,6 @@ export function ReminderDetailSheet({
     [safeAreaInsets.bottom],
   );
   latestReminderIdRef.current = reminder?.id ?? null;
-  const isTitleCountWarning = titleLength >= REMINDER_TITLE_MAX_LENGTH - 5;
-  const isTitleOverLimit = titleLength > REMINDER_TITLE_MAX_LENGTH;
-  const titleCountAccessibilityLabel = isTitleOverLimit
-    ? `タイトルは${titleLength}文字、上限を${titleLength - REMINDER_TITLE_MAX_LENGTH}文字超えています`
-    : `タイトルは${titleLength}文字、あと${REMINDER_TITLE_MAX_LENGTH - titleLength}文字入力できます`;
 
   const discardTitleEdit = useCallback(() => {
     titleEditSessionRef.current += 1;
@@ -310,7 +303,6 @@ export function ReminderDetailSheet({
     shouldDiscardTitleEditRef.current = false;
     isTitleSaveRequestedRef.current = false;
     draftTitleRef.current = reminder.title;
-    setTitleLength(reminder.title.length);
     setTitleNotice(null);
     setIsTitleEditing(true);
 
@@ -319,12 +311,17 @@ export function ReminderDetailSheet({
     });
   }, [isScheduleEditorOpen, isScheduleSaving, isTitleSaving, reminder]);
 
-  const handleTitleBlur = useCallback(() => {
-    const editSession = titleEditSessionRef.current;
+  const handleTitleTextChange = useCallback((text: string) => {
+    draftTitleRef.current = text;
+  }, []);
 
-    setIsTitleEditing(false);
+  const handleTitleEndEditing = useCallback(
+    (text: string) => {
+      const editSession = titleEditSessionRef.current;
 
-    requestAnimationFrame(() => {
+      draftTitleRef.current = text;
+      setIsTitleEditing(false);
+
       if (
         !reminder ||
         shouldDiscardTitleEditRef.current ||
@@ -334,7 +331,7 @@ export function ReminderDetailSheet({
         return;
       }
 
-      const normalizedTitle = draftTitleRef.current.trim();
+      const normalizedTitle = text.trim();
       const parsedTitle = reminderTitleSchema.safeParse(normalizedTitle);
 
       if (!parsedTitle.success) {
@@ -365,8 +362,9 @@ export function ReminderDetailSheet({
           isTitleSaveRequestedRef.current = false;
           setIsTitleSaving(false);
         });
-    });
-  }, [onUpdateTitle, reminder]);
+    },
+    [onUpdateTitle, reminder],
+  );
 
   const handleSchedulePress = useCallback(() => {
     if (!reminder || isTitleEditing || isTitleSaving || isScheduleSaving) {
@@ -459,37 +457,18 @@ export function ReminderDetailSheet({
             <View style={styles.headerCopy}>
               <Text style={styles.kicker}>ふわっと思い出す予定</Text>
               {isTitleEditing ? (
-                <>
-                  <BottomSheetTextInput
-                    ref={titleInputRef}
-                    accessibilityLabel="リマインダーのタイトル"
-                    defaultValue={draftTitleRef.current}
-                    onChangeText={(text) => {
-                      draftTitleRef.current = text;
-                      setTitleLength(text.length);
-                    }}
-                    onBlur={handleTitleBlur}
-                    onSubmitEditing={() => titleInputRef.current?.blur()}
-                    keyboardType="default"
-                    autoCorrect
-                    spellCheck={false}
-                    autoCapitalize="none"
-                    blurOnSubmit={false}
-                    returnKeyType="done"
-                    style={styles.titleInput}
-                  />
-                  <Text
-                    accessibilityRole="text"
-                    accessibilityLabel={titleCountAccessibilityLabel}
-                    style={[
-                      styles.titleCountText,
-                      isTitleCountWarning ? styles.titleCountTextWarning : null,
-                      isTitleOverLimit ? styles.titleCountTextOverLimit : null,
-                    ]}
-                  >
-                    {titleLength} / {REMINDER_TITLE_MAX_LENGTH}
-                  </Text>
-                </>
+                <ImeSafeReminderTitleInput
+                  ref={titleInputRef}
+                  accessibilityLabel="リマインダーのタイトル"
+                  initialValue={draftTitleRef.current}
+                  inputStyle={styles.titleInput}
+                  focusedInputStyle={styles.titleInputFocused}
+                  countStyle={styles.titleCountText}
+                  countWarningStyle={styles.titleCountTextWarning}
+                  countOverLimitStyle={styles.titleCountTextOverLimit}
+                  onTextChange={handleTitleTextChange}
+                  onEndEditing={handleTitleEndEditing}
+                />
               ) : (
                 <Pressable
                   accessibilityRole="button"
@@ -622,16 +601,17 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     borderRadius: 14,
     backgroundColor: '#F3F6FC',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  titleInputFocused: {
+    borderColor: 'rgba(121,87,213,0.58)',
+    backgroundColor: palette.white,
   },
   titleCountText: {
     alignSelf: 'flex-end',
     marginTop: 4,
     marginRight: 4,
-    color: palette.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
   },
   titleCountTextWarning: {
     color: '#8B6F2D',

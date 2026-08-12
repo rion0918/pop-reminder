@@ -59,7 +59,7 @@ test('home gates the seventh active reminder before opening quick add', () => {
 test('widget quick add uses the same pro gate as the home button', () => {
   assertSourceIncludes(source, [
     /void requestQuickAdd\('widget_deep_link', \{ focusTitle: true \}\);/,
-    /void requestQuickAdd\('home_button'\);/,
+    /void requestQuickAdd\('home_button', \{ focusTitle: true \}\);/,
   ]);
 });
 
