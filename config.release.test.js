@@ -8,6 +8,7 @@ const appConfig = JSON.parse(readFileSync(join(__dirname, 'app.json'), 'utf8'));
 const easConfig = JSON.parse(readFileSync(join(__dirname, 'eas.json'), 'utf8'));
 const packageConfig = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
 const flakeConfig = readFileSync(join(__dirname, 'flake.nix'), 'utf8');
+const androidBuildGradle = readFileSync(join(__dirname, 'android/app/build.gradle'), 'utf8');
 const nodeVersionPath = join(__dirname, '.node-version');
 
 function readPngColorType(path) {
@@ -37,6 +38,7 @@ test('app config has store release numbers for Android and iOS', () => {
     '忘れる前に、数秒だけ。ふわっと残せるシンプルなリマインダーアプリです。',
   );
   assert.equal(appConfig.expo.android.versionCode, 2);
+  assert.match(androidBuildGradle, /\bversionCode 2\b/);
   assert.equal(appConfig.expo.ios.buildNumber, '1');
 });
 
