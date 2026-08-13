@@ -10,6 +10,13 @@ import {
   type WidgetLayoutPlan,
   type WidgetRect,
 } from './widgetBubbleLayout';
+import {
+  getWidgetTypography,
+  WIDGET_DEFAULT_HEIGHT,
+  WIDGET_DEFAULT_WIDTH,
+  WIDGET_FONT_FAMILY,
+  WIDGET_ROW_ACTION_SIZE,
+} from './widgetVisuals';
 
 type WidgetReminder = {
   id: string;
@@ -23,37 +30,7 @@ type PopReminderWidgetProps = {
   widgetHeight?: number;
 };
 
-const WIDGET_DEFAULT_WIDTH = 250;
-const WIDGET_DEFAULT_HEIGHT = 180;
-const WIDGET_STATUS_DOT_SIZE = 12;
-const WIDGET_COMPACT_STATUS_DOT_SIZE = 10;
-const WIDGET_ROW_ACTION_SIZE = 36;
-const WIDGET_FONT_FAMILY = 'sans-serif-rounded';
 export const WIDGET_DELETE_REMINDER_ACTION = 'DELETE_REMINDER';
-
-function getWidgetTypography(mode: WidgetDisplayMode) {
-  if (mode === 'compact') {
-    return {
-      headerFontSize: 13,
-      titleFontSize: 13,
-      timeFontSize: 10,
-      rowHorizontalPadding: 10,
-      statusDotSize: WIDGET_COMPACT_STATUS_DOT_SIZE,
-      statusDotGap: 9,
-      timeWidth: 76,
-    };
-  }
-
-  return {
-    headerFontSize: 15,
-    titleFontSize: 14,
-    timeFontSize: 10,
-    rowHorizontalPadding: 12,
-    statusDotSize: WIDGET_STATUS_DOT_SIZE,
-    statusDotGap: 10,
-    timeWidth: 84,
-  };
-}
 
 function WidgetHeader({
   layout,

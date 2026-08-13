@@ -11,6 +11,7 @@ pnpm-debug.log*
 *.sqlite3
 .DS_Store
 result
+.rnstorybook/storybook.requires.ts
 .direnv/
 .env
 .env.*

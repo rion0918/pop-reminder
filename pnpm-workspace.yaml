@@ -3,3 +3,10 @@ onlyBuiltDependencies:
 
 allowBuilds:
   unrs-resolver: true
+
+overrides:
+  '@storybook/react': 10.4.2
+  '@storybook/react-dom-shim': 10.4.2
+  '@storybook/react-native-theming': 10.4.2
+  '@storybook/react-native-ui': 10.4.2
+  '@storybook/react-native-ui-common': 10.4.2

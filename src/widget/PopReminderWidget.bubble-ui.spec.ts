@@ -10,6 +10,7 @@ import {
 const source = readSource(import.meta.url, './PopReminderWidget.tsx');
 const layoutSource = readSource(import.meta.url, './widgetBubbleLayout.ts');
 const colorsSource = readSource(import.meta.url, './widgetColors.ts');
+const visualsSource = readSource(import.meta.url, './widgetVisuals.ts');
 const appConfigSource = readSource(import.meta.url, '../../app.json');
 const nativeWidgetConfigSource = readSource(
   import.meta.url,
@@ -28,7 +29,7 @@ test('android widget renders reminders as rounded solid list rows', () => {
     reminderListRowSource.indexOf('>', reminderListRowSource.indexOf('<OverlapWidget')) + 1,
   );
 
-  assertSourceContract(source, {
+  assertSourceContract(`${source}\n${visualsSource}`, {
     includes: [
       /function ReminderListRow/,
       /WIDGET_STATUS_DOT_SIZE/,
@@ -84,7 +85,7 @@ test('android widget exposes a per-reminder trash control on the right', () => {
     source.indexOf('function EmptyState'),
   );
 
-  assertSourceIncludes(source, [/const WIDGET_ROW_ACTION_SIZE = 36;/]);
+  assertSourceIncludes(visualsSource, [/WIDGET_ROW_ACTION_SIZE = 36/]);
   assertSourceIncludes(reminderListRowSource, [
     /const cardHeight = layout\.height;/,
     /width: WIDGET_ROW_ACTION_SIZE/,
@@ -136,7 +137,7 @@ test('android widget keeps the selected app-name header and bottom add action', 
 });
 
 test('android widget uses a restrained rounded type hierarchy without redundant guidance', () => {
-  assertSourceContract(source, {
+  assertSourceContract(`${source}\n${visualsSource}`, {
     includes: [
       /const WIDGET_FONT_FAMILY = 'sans-serif-rounded'/,
       /fontFamily: WIDGET_FONT_FAMILY/,
