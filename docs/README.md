@@ -27,6 +27,7 @@
 - **[RevenueCatセットアップ (REVENUECAT_SETUP.md)](REVENUECAT_SETUP.md)**: 買い切りPro商品、Paywall、ストア接続、購入復元の設定手順。
 - **[ストア掲載情報ドラフト (STORE_LISTING_DRAFT.md)](STORE_LISTING_DRAFT.md)**: アプリストア用の説明文、キャッチコピー、キーワード案。
 - **[プライバシーポリシー (PRIVACY_POLICY.md)](PRIVACY_POLICY.md)**: ローカルファースト思想とデータ収集方針。
+- **[第三者ライセンス (THIRD_PARTY_LICENSES.md)](THIRD_PARTY_LICENSES.md)**: 同梱Vosk日本語モデルと音声認識Bridgeの配布元、バージョン、ハッシュ、ライセンス。
 
 ### 🎨 デザイン & UX
 

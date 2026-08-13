@@ -83,8 +83,8 @@ function voiceErrorMessage(error: string) {
   }
   if (error === 'interrupted') return '通話やアラームにより音声入力が中断されました。';
   if (error === 'not-allowed') return 'マイクの使用が許可されていません。';
-  if (error === 'language-not-supported' || error === 'service-not-allowed') {
-    return 'この端末では日本語の端末内音声認識を利用できません。';
+  if (error === 'model-unavailable') {
+    return '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。';
   }
   return '音声入力を完了できませんでした。手入力をお試しください。';
 }
@@ -324,10 +324,10 @@ export function ReminderInputSheet({
 
       if (voiceOperationIdRef.current !== operationId) return;
 
-      if (availability.status === 'model-download-required') {
-        await voiceInput.downloadJapaneseModel();
-        if (voiceOperationIdRef.current !== operationId) return;
-        setTitleNotice('日本語の音声モデルを準備後、もう一度マイクを押してください。');
+      if (availability.status === 'model-unavailable') {
+        setTitleNotice(
+          '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
+        );
         setVoiceStatusValue('idle');
         completeVoiceInput();
         return;
@@ -352,7 +352,7 @@ export function ReminderInputSheet({
         return;
       }
 
-      voiceInput.start();
+      await voiceInput.start();
     } catch {
       if (voiceOperationIdRef.current !== operationId) return;
       setTitleNotice('音声入力を開始できませんでした。手入力をお試しください。');

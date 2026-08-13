@@ -101,6 +101,8 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 - Google Play Data safety、Privacy Policy、アプリ内同意文言が実装と一致している。
 - `fuwatto_pro_lifetime` の商品、RevenueCat の `pro` entitlement、`default` offering が存在する。
 - Android Widget、通知、端末内音声入力、無料 6 件制限、購入・復元を実機で確認できる。
+- Android音声入力は`react-native-vosk@2.1.7`と同梱`vosk-model-small-ja-0.22`を使用し、機内モードの初回起動でも日本語を認識できる。
+- `assets/model-ja-jp.sha256`の全ファイルが一致し、[第三者ライセンス](THIRD_PARTY_LICENSES.md)がモデルとアプリへ含まれている。
 
 ## 4. EAS build（Android）
 
@@ -301,9 +303,14 @@ Play Console のログインに使うメールアドレスをサポート窓口�
 - [ ] 通知を拒否した場合、アプリが壊れず、端末設定を開く導線が動く。
 - [ ] マイク許可時に端末内音声入力が動く。録音・音声・文字起こしが外部送信されない。
 - [ ] マイク拒否時も手入力で利用できる。
+- [ ] AQUOS zero5G basicをインストール前から機内モードにして、初回の日本語音声入力、SQLite保存、再起動後の復元、ローカル通知を確認する。
+- [ ] Android 9以上で同梱Voskモデルを使用し、OSの音声モデルダウンロードやGoogle RecognitionServiceを要求しない。
+- [ ] Android 7・8では音声入力のみ非対応となり、手入力と主要なオフライン機能が動作する。
 - [ ] 左右に傾けて音声入力を明示的に有効化した場合だけモーション検出が動く。
 - [ ] リマインダーを追加・編集・削除でき、再起動後も SQLite の内容が残る。
 - [ ] 無料版は同時に 6 件まで、7 件目で Paywall が表示される。
+- [ ] Production AABの端末別圧縮ダウンロードサイズが150MB未満を目標とし、200MB以上ならリリースを停止する。
+- [ ] `bundletool get-size total`でAQUOS相当（Android 12・arm64・日本語）のサイズを再測定し、実装時ベースライン94,350,948 bytes（約90.0MiB）から予期せず増えていない。
 
 ### 7.3 購入・復元
 

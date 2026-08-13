@@ -4,65 +4,50 @@ import type {
   ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
 
-export const VOICE_INPUT_LOCALE = 'ja-JP';
-const ANDROID_ON_DEVICE_SERVICE = 'com.google.android.as';
+import type {
+  VoiceInputError,
+  VoiceInputEvent,
+  VoiceInputPermissionResponse,
+  VoiceInputService,
+} from './voiceInputTypes';
 
+export const VOICE_INPUT_LOCALE = 'ja-JP';
 type Subscription = { remove(): void };
-type PermissionResponse = {
-  granted: boolean;
-  status: string;
-  canAskAgain: boolean;
-  expires: 'never' | number;
-};
 type VoiceNativeEventName = 'start' | 'end' | 'result' | 'error' | 'nomatch' | 'volumechange';
 
 export type NativeSpeechRecognitionModule = {
   isRecognitionAvailable(): boolean;
   supportsOnDeviceRecognition(): boolean;
-  getMicrophonePermissionsAsync(): Promise<PermissionResponse>;
-  requestMicrophonePermissionsAsync(): Promise<PermissionResponse>;
-  getSupportedLocales(options: {
-    androidRecognitionServicePackage?: string;
-  }): Promise<{ locales: string[]; installedLocales: string[] }>;
-  androidTriggerOfflineModelDownload(options: {
-    locale: string;
-  }): Promise<{ status: string; message: string }>;
+  getMicrophonePermissionsAsync(): Promise<VoiceInputPermissionResponse>;
+  requestMicrophonePermissionsAsync(): Promise<VoiceInputPermissionResponse>;
   start(options: ExpoSpeechRecognitionOptions): void;
   stop(): void;
   abort(): void;
   addListener(eventName: VoiceNativeEventName, listener: (event: unknown) => void): Subscription;
 };
 
-export type VoiceInputAvailability =
-  | { status: 'ready'; canAskAgain: true }
-  | { status: 'permission-required'; canAskAgain: true }
-  | { status: 'permission-denied'; canAskAgain: boolean }
-  | { status: 'model-download-required'; canAskAgain: true }
-  | { status: 'unsupported'; canAskAgain: false };
-
-export type VoiceInputEvent =
-  | { type: 'start' }
-  | { type: 'end' }
-  | { type: 'result'; transcript: string; isFinal: boolean }
-  | { type: 'error'; error: ExpoSpeechRecognitionErrorEvent['error']; message: string }
-  | { type: 'nomatch' }
-  | { type: 'volume'; value: number };
-
 type PlatformInfo = {
   os: 'ios' | 'android' | 'web' | 'windows' | 'macos';
   apiLevel: number;
 };
 
-function hasJapaneseLocale(locales: string[]) {
-  return locales.some((locale) => locale.toLowerCase() === VOICE_INPUT_LOCALE.toLowerCase());
+function normalizeSpeechRecognitionError(error: string): VoiceInputError {
+  if (error === 'not-allowed' || error === 'service-not-allowed') return 'not-allowed';
+  if (error === 'no-speech') return 'no-speech';
+  if (error === 'aborted') return 'aborted';
+  if (error === 'interrupted' || error === 'audio-capture') return 'interrupted';
+  if (error === 'language-not-supported' || error === 'language-unavailable') {
+    return 'model-unavailable';
+  }
+  return 'unknown';
 }
 
 export function createVoiceInputService(
   speechRecognition: NativeSpeechRecognitionModule,
   platform: PlatformInfo,
 ) {
-  return {
-    async getAvailability(): Promise<VoiceInputAvailability> {
+  const service: VoiceInputService = {
+    async getAvailability() {
       if (
         !speechRecognition.isRecognitionAvailable() ||
         !speechRecognition.supportsOnDeviceRecognition()
@@ -78,22 +63,6 @@ export function createVoiceInputService(
         return { status: 'permission-denied', canAskAgain: false };
       }
 
-      if (platform.os === 'android' && platform.apiLevel >= 33) {
-        try {
-          const locales = await speechRecognition.getSupportedLocales({
-            androidRecognitionServicePackage: ANDROID_ON_DEVICE_SERVICE,
-          });
-          if (!hasJapaneseLocale(locales.locales)) {
-            return { status: 'unsupported', canAskAgain: false };
-          }
-          if (!hasJapaneseLocale(locales.installedLocales)) {
-            return { status: 'model-download-required', canAskAgain: true };
-          }
-        } catch {
-          return { status: 'unsupported', canAskAgain: false };
-        }
-      }
-
       return { status: 'ready', canAskAgain: true };
     },
 
@@ -101,24 +70,16 @@ export function createVoiceInputService(
       return speechRecognition.requestMicrophonePermissionsAsync();
     },
 
-    downloadJapaneseModel() {
-      return speechRecognition.androidTriggerOfflineModelDownload({ locale: VOICE_INPUT_LOCALE });
-    },
-
-    start() {
+    async start() {
       const options: ExpoSpeechRecognitionOptions = {
         lang: VOICE_INPUT_LOCALE,
         interimResults: true,
         maxAlternatives: 1,
-        continuous: platform.os !== 'android',
+        continuous: true,
         requiresOnDeviceRecognition: true,
         recordingOptions: { persist: false },
         volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
-        ...(platform.os === 'ios'
-          ? { iosTaskHint: 'search' as const }
-          : platform.os === 'android' && platform.apiLevel >= 33
-            ? { androidRecognitionServicePackage: ANDROID_ON_DEVICE_SERVICE }
-            : {}),
+        ...(platform.os === 'ios' ? { iosTaskHint: 'search' as const } : {}),
       };
       speechRecognition.start(options);
     },
@@ -146,7 +107,11 @@ export function createVoiceInputService(
         }),
         speechRecognition.addListener('error', (event) => {
           const error = event as ExpoSpeechRecognitionErrorEvent;
-          listener({ type: 'error', error: error.error, message: error.message });
+          listener({
+            type: 'error',
+            error: normalizeSpeechRecognitionError(error.error),
+            message: error.message,
+          });
         }),
         speechRecognition.addListener('volumechange', (event) => {
           listener({ type: 'volume', value: (event as { value: number }).value });
@@ -160,6 +125,8 @@ export function createVoiceInputService(
       };
     },
   };
+
+  return service;
 }
 
-export type VoiceInputService = ReturnType<typeof createVoiceInputService>;
+export type { VoiceInputEvent, VoiceInputService } from './voiceInputTypes';

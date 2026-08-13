@@ -8,7 +8,7 @@ import {
 
 function makeModule(overrides: Partial<NativeSpeechRecognitionModule> = {}) {
   const starts: Record<string, unknown>[] = [];
-  const calls = { requestMicrophone: 0, downloadModel: 0, stop: 0, abort: 0 };
+  const calls = { requestMicrophone: 0, stop: 0, abort: 0 };
   const listeners = new Map<string, (event: unknown) => void>();
   const module: NativeSpeechRecognitionModule = {
     isRecognitionAvailable: () => true,
@@ -22,11 +22,6 @@ function makeModule(overrides: Partial<NativeSpeechRecognitionModule> = {}) {
     requestMicrophonePermissionsAsync: async () => {
       calls.requestMicrophone += 1;
       return { granted: true, status: 'granted', canAskAgain: true, expires: 'never' };
-    },
-    getSupportedLocales: async () => ({ locales: ['ja-JP'], installedLocales: ['ja-JP'] }),
-    androidTriggerOfflineModelDownload: async () => {
-      calls.downloadModel += 1;
-      return { status: 'download_success', message: 'downloaded' };
     },
     start: (options) => starts.push(options as Record<string, unknown>),
     stop: () => {
@@ -52,11 +47,11 @@ function makeModule(overrides: Partial<NativeSpeechRecognitionModule> = {}) {
   };
 }
 
-test('voice input starts Japanese recognition on-device without persisting audio', () => {
+test('iOS voice input starts Japanese on-device recognition without persisting audio', async () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
 
-  service.start();
+  await service.start();
 
   assert.deepEqual(fake.starts, [
     {
@@ -72,7 +67,7 @@ test('voice input starts Japanese recognition on-device without persisting audio
   ]);
 });
 
-test('availability distinguishes permission, model, and unsupported states', async () => {
+test('iOS availability distinguishes permission and unsupported states', async () => {
   const permissionRequired = makeModule({
     getMicrophonePermissionsAsync: async () => ({
       granted: false,
@@ -102,62 +97,17 @@ test('availability distinguishes permission, model, and unsupported states', asy
     { status: 'permission-denied', canAskAgain: false },
   );
 
-  const missingModel = makeModule({
-    getSupportedLocales: async () => ({ locales: ['ja-JP'], installedLocales: [] }),
-  });
-  assert.deepEqual(
-    await createVoiceInputService(missingModel.module, {
-      os: 'android',
-      apiLevel: 34,
-    }).getAvailability(),
-    { status: 'model-download-required', canAskAgain: true },
-  );
-
-  const unsupportedLocale = makeModule({
-    getSupportedLocales: async () => ({ locales: ['en-US'], installedLocales: [] }),
-  });
-  assert.deepEqual(
-    await createVoiceInputService(unsupportedLocale.module, {
-      os: 'android',
-      apiLevel: 34,
-    }).getAvailability(),
-    { status: 'unsupported', canAskAgain: false },
-  );
-
   const unsupported = makeModule({ supportsOnDeviceRecognition: () => false });
   assert.deepEqual(
     await createVoiceInputService(unsupported.module, {
-      os: 'android',
-      apiLevel: 34,
+      os: 'ios',
+      apiLevel: 18,
     }).getAvailability(),
     { status: 'unsupported', canAskAgain: false },
   );
 });
 
-test('older Android uses the platform recognizer without forcing the Android 13 service', () => {
-  const fake = makeModule();
-  const service = createVoiceInputService(fake.module, { os: 'android', apiLevel: 32 });
-
-  service.start();
-
-  assert.equal(fake.starts[0].continuous, false);
-  assert.equal('androidRecognitionServicePackage' in fake.starts[0], false);
-  assert.equal(fake.starts[0].requiresOnDeviceRecognition, true);
-  assert.deepEqual(fake.starts[0].recordingOptions, { persist: false });
-});
-
-test('Android 13 avoids segmented continuous recording so stop can finish reliably', () => {
-  const fake = makeModule();
-  const service = createVoiceInputService(fake.module, { os: 'android', apiLevel: 33 });
-
-  service.start();
-
-  assert.equal(fake.starts[0].continuous, false);
-  assert.equal(fake.starts[0].androidRecognitionServicePackage, 'com.google.android.as');
-  assert.deepEqual(fake.starts[0].recordingOptions, { persist: false });
-});
-
-test('voice input normalizes no-match, interruption, result, and lifecycle events', () => {
+test('iOS voice input normalizes results, lifecycle events, and public errors', () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
   const events: unknown[] = [];
@@ -166,14 +116,14 @@ test('voice input normalizes no-match, interruption, result, and lifecycle event
   fake.emit('start');
   fake.emit('result', { results: [{ transcript: '買い物' }], isFinal: false });
   fake.emit('nomatch');
-  fake.emit('error', { error: 'interrupted', message: 'phone call' });
+  fake.emit('error', { error: 'language-unavailable', message: 'model missing' });
   fake.emit('end');
 
   assert.deepEqual(events, [
     { type: 'start' },
     { type: 'result', transcript: '買い物', isFinal: false },
     { type: 'nomatch' },
-    { type: 'error', error: 'interrupted', message: 'phone call' },
+    { type: 'error', error: 'model-unavailable', message: 'model missing' },
     { type: 'end' },
   ]);
 
@@ -182,18 +132,16 @@ test('voice input normalizes no-match, interruption, result, and lifecycle event
   assert.equal(events.length, 5);
 });
 
-test('preparation requests only microphone permission and exposes Android model download', async () => {
+test('iOS preparation requests microphone permission and preserves stop and abort', async () => {
   const fake = makeModule();
-  const service = createVoiceInputService(fake.module, { os: 'android', apiLevel: 34 });
+  const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
 
   await service.requestMicrophonePermission();
-  await service.downloadJapaneseModel();
   service.stop();
   service.abort();
 
   assert.deepEqual(fake.calls, {
     requestMicrophone: 1,
-    downloadModel: 1,
     stop: 1,
     abort: 1,
   });

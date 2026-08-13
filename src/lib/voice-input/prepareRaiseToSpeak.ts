@@ -6,9 +6,9 @@ import { voiceInputService } from './voiceInputService';
 
 export type RaiseToSpeakPreparationResult =
   | { status: 'ready' }
-  | { status: 'model-download-started' }
   | { status: 'permission-denied'; canAskAgain: boolean }
   | { status: 'motion-unavailable' }
+  | { status: 'model-unavailable' }
   | { status: 'speech-unavailable' };
 
 export async function prepareRaiseToSpeak(): Promise<RaiseToSpeakPreparationResult> {
@@ -34,16 +34,15 @@ export async function prepareRaiseToSpeak(): Promise<RaiseToSpeakPreparationResu
     speechAvailability = await voiceInputService.getAvailability();
   }
 
-  if (speechAvailability.status === 'model-download-required') {
-    await voiceInputService.downloadJapaneseModel();
-    return { status: 'model-download-started' };
-  }
-
   if (speechAvailability.status === 'permission-denied') {
     return {
       status: 'permission-denied',
       canAskAgain: speechAvailability.canAskAgain,
     };
+  }
+
+  if (speechAvailability.status === 'model-unavailable') {
+    return { status: 'model-unavailable' };
   }
 
   if (speechAvailability.status !== 'ready') return { status: 'speech-unavailable' };

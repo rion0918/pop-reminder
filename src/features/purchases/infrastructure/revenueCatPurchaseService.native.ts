@@ -43,6 +43,7 @@ export const revenueCatPurchaseService: PurchaseService = {
   async configure() {
     const apiKey = getPlatformApiKey();
     if (!apiKey) return;
+    if (!__DEV__ && apiKey.startsWith('test_')) return;
 
     try {
       if (await Purchases.isConfigured()) {

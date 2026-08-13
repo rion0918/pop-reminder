@@ -187,31 +187,49 @@ test('native release dependencies include vector icon peer dependencies', () => 
   assert.match(packageConfig.dependencies['expo-font'], /^~14\./);
 });
 
-test('side-tilt voice native dependencies and permissions are synced without proximity', () => {
+test('side-tilt voice uses bundled Vosk on Android and the platform recognizer only on iOS', () => {
   const sensorPlugin = appConfig.expo.plugins.find(
     (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-sensors',
   );
-  const speechPlugin = appConfig.expo.plugins.find(
-    (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-speech-recognition',
+  const voskPlugin = appConfig.expo.plugins.find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === './plugins/withAndroidVoskModel',
   );
+  const voskPluginSource = readFileSync(join(__dirname, 'plugins/withAndroidVoskModel.js'), 'utf8');
   const iosInfoPlist = readFileSync(join(__dirname, 'ios/app/Info.plist'), 'utf8');
   const androidManifest = readFileSync(
     join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
     'utf8',
   );
+  const androidVoiceInput = readFileSync(
+    join(__dirname, 'src/lib/voice-input/voiceInputService.android.ts'),
+    'utf8',
+  );
+  const iosVoiceInput = readFileSync(
+    join(__dirname, 'src/lib/voice-input/voiceInputService.ios.ts'),
+    'utf8',
+  );
 
   assert.equal(packageConfig.dependencies['expo-sensors'], '~15.0.8');
   assert.equal(packageConfig.dependencies['expo-speech-recognition'], '3.1.3');
+  assert.equal(packageConfig.dependencies['react-native-vosk'], '2.1.7');
+  assert.deepEqual(packageConfig.expo.autolinking.android.exclude, ['expo-speech-recognition']);
   assert.ok(sensorPlugin);
   assert.match(sensorPlugin[1].motionPermission, /左右へ傾けた動き/);
-  assert.ok(speechPlugin);
-  assert.match(speechPlugin[1].microphonePermission, /端末内で文字にする/);
-  assert.match(speechPlugin[1].speechRecognitionPermission, /端末内で文字に変換/);
-  assert.deepEqual(speechPlugin[1].androidSpeechServicePackages, [
-    'com.google.android.as',
-    'com.google.android.tts',
-    'com.google.android.googlequicksearchbox',
-  ]);
+  assert.ok(voskPlugin);
+  assert.deepEqual(voskPlugin[1].models, ['assets/model-ja-jp']);
+  assert.match(voskPluginSource, /require\('expo\/config-plugins'\)/);
+  assert.match(voskPluginSource, /withGradleProperties/);
+  assert.match(voskPluginSource, /Vosk_models/);
+  assert.doesNotMatch(voskPluginSource, /withXcodeProject|withInfoPlist/);
+  assert.equal(existsSync(join(__dirname, 'assets/model-ja-jp/am/final.mdl')), true);
+  assert.equal(existsSync(join(__dirname, 'assets/model-ja-jp/graph/HCLr.fst')), true);
+  assert.equal(existsSync(join(__dirname, 'assets/model-ja-jp.sha256')), true);
+  assert.match(androidVoiceInput, /from 'react-native-vosk'/);
+  assert.doesNotMatch(
+    androidVoiceInput,
+    /expo-speech-recognition|RecognitionService|google\.android/,
+  );
+  assert.match(iosVoiceInput, /ExpoSpeechRecognition/);
   assert.match(
     iosInfoPlist,
     /<key>NSMicrophoneUsageDescription<\/key>\s*<string>ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。<\/string>/,
@@ -228,6 +246,8 @@ test('side-tilt voice native dependencies and permissions are synced without pro
     androidManifest,
     /<uses-permission\b[^>]*android:name="android\.permission\.RECORD_AUDIO"/,
   );
+  assert.doesNotMatch(androidManifest, /android\.speech\.RecognitionService/);
+  assert.doesNotMatch(androidManifest, /com\.google\.android\.(as|tts|googlequicksearchbox)/);
   assert.equal(
     existsSync(
       join(

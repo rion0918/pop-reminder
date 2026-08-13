@@ -14,6 +14,7 @@ test('native purchase adapter owns RevenueCat SDK access and platform keys', () 
   assert.match(nativeSource, /EXPO_PUBLIC_REVENUECAT_IOS_API_KEY/);
   assert.match(nativeSource, /requiredEntitlementIdentifier: PRO_ENTITLEMENT_ID/);
   assert.match(nativeSource, /Purchases\.restorePurchases\(\)/);
+  assert.match(nativeSource, /!__DEV__ && apiKey\.startsWith\('test_'\)/);
   assert.doesNotMatch(fallbackSource, /react-native-purchases/);
 });
 

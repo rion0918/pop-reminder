@@ -363,14 +363,6 @@ export function SettingsScreen() {
         return;
       }
 
-      if (result.status === 'model-download-started') {
-        Alert.alert(
-          '日本語モデルを準備しています',
-          'OSの案内に沿ってダウンロードし、完了後にもう一度オンにしてください。',
-        );
-        return;
-      }
-
       if (result.status === 'permission-denied') {
         const permissionLabel = Platform.OS === 'android' ? 'マイク' : 'マイクとモーション';
         const actions = result.canAskAgain
@@ -389,6 +381,8 @@ export function SettingsScreen() {
 
       const message = {
         'motion-unavailable': 'この端末ではモーション検出を利用できません。',
+        'model-unavailable':
+          '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
         'speech-unavailable':
           'この端末では日本語の端末内音声認識を利用できません。手入力をご利用ください。',
       }[result.status];
@@ -421,13 +415,6 @@ export function SettingsScreen() {
         return;
       }
 
-      if (result.status === 'model-download-started') {
-        setRaiseToSpeakSetupMessage(
-          '日本語モデルの準備後、もう一度「使ってみる」を押してください。',
-        );
-        return;
-      }
-
       if (result.status === 'permission-denied') {
         const permissionLabel = Platform.OS === 'android' ? 'マイク' : 'マイクとモーション';
         const message = result.canAskAgain
@@ -445,6 +432,8 @@ export function SettingsScreen() {
 
       const message = {
         'motion-unavailable': 'この端末ではモーション検出を利用できません。',
+        'model-unavailable':
+          '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
         'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
       }[result.status];
       setRaiseToSpeakSetupMessage(message);

@@ -18,13 +18,16 @@
       "supportsTablet": false,
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。",
+        "NSSpeechRecognitionUsageDescription": "ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。"
       },
       "bundleIdentifier": "com.rion0918.popreminder"
     },
     "android": {
       "package": "com.rion0918.popreminder",
       "versionCode": 2,
+      "permissions": ["android.permission.RECORD_AUDIO"],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -65,15 +68,9 @@
         }
       ],
       [
-        "expo-speech-recognition",
+        "./plugins/withAndroidVoskModel",
         {
-          "microphonePermission": "ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。",
-          "speechRecognitionPermission": "ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。",
-          "androidSpeechServicePackages": [
-            "com.google.android.as",
-            "com.google.android.tts",
-            "com.google.android.googlequicksearchbox"
-          ]
+          "models": ["assets/model-ja-jp"]
         }
       ],
       [

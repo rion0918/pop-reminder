@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { assertSourceIncludes, readSource } from '../../test-utils/sourceAssertions';
+import {
+  assertSourceContract,
+  assertSourceIncludes,
+  readSource,
+} from '../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './prepareRaiseToSpeak.ts');
 
@@ -14,5 +18,8 @@ test('side-tilt voice setup uses the Android accelerometer and requests motion p
     /voiceInputService\.getAvailability\(\)/,
     /voiceInputService\.requestMicrophonePermission\(\)/,
   ]);
+  assertSourceContract(source, {
+    excludes: [/downloadJapaneseModel/, /model-download-required/, /model-download-started/],
+  });
   assert.doesNotMatch(source, /Proximity|proximity/);
 });
