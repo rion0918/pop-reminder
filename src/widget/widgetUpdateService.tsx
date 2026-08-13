@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 
 import { PopReminderWidget } from './PopReminderWidget';
-import { getWidgetReminders } from './widgetReminderSnapshot';
+import { getWidgetSnapshot } from './widgetReminderSnapshot';
 
 const WIDGET_NAME = 'PopReminderWidget';
 let widgetUpdateQueue: Promise<void> = Promise.resolve();
@@ -25,12 +25,17 @@ export async function updateWidget(): Promise<void> {
 
 async function runWidgetUpdate(): Promise<void> {
   try {
-    const reminders = await getWidgetReminders();
+    const snapshot = await getWidgetSnapshot();
 
     await requestWidgetUpdate({
       widgetName: WIDGET_NAME,
       renderWidget: ({ width, height }) => (
-        <PopReminderWidget reminders={reminders} widgetWidth={width} widgetHeight={height} />
+        <PopReminderWidget
+          reminders={snapshot.reminders}
+          theme={snapshot.theme}
+          widgetWidth={width}
+          widgetHeight={height}
+        />
       ),
       widgetNotFound: () => {
         // Widget not added to home screen — nothing to do

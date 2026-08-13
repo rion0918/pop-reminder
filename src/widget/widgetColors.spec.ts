@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { bubbleDueColors } from '../constants/colors';
+import { appThemes, bubbleDueColors } from '../constants/colors';
 import { getReminderDueColor } from '../features/reminders/utils/reminderDueColor';
-import { widgetTheme } from './widgetColors';
+import { getWidgetTheme, widgetThemes } from './widgetColors';
 
 const currentDate = new Date(2026, 6, 13, 9);
 
-test('widget list uses the shared app deadline color mapping', () => {
+test('widget hero and queue reuse the shared app deadline color mapping', () => {
   assert.equal(getReminderDueColor(new Date(2026, 6, 13, 18), currentDate), bubbleDueColors.today);
   assert.equal(
     getReminderDueColor(new Date(2026, 6, 14, 10, 30), currentDate),
@@ -17,25 +17,20 @@ test('widget list uses the shared app deadline color mapping', () => {
   assert.equal(getReminderDueColor(new Date(2026, 6, 17, 20), currentDate), bubbleDueColors.later);
 });
 
-test('widget visual hierarchy uses opaque neutral surfaces without decorative scenery', () => {
-  assert.deepEqual(
-    {
-      surface: widgetTheme.surface,
-      surfaceBorder: widgetTheme.surfaceBorder,
-      cardSurface: widgetTheme.cardSurface,
-      cardBorder: widgetTheme.cardBorder,
-      cardShadow: widgetTheme.cardShadow,
-      rowActionSurface: widgetTheme.rowActionSurface,
-      plusButtonSurface: widgetTheme.plusButtonSurface,
-    },
-    {
-      surface: '#F6F7FA',
-      surfaceBorder: 'rgba(38,49,81,0.06)',
-      cardSurface: '#FFFFFF',
-      cardBorder: 'rgba(38,49,81,0.07)',
-      cardShadow: 'rgba(38,49,81,0.07)',
-      rowActionSurface: '#F2F4F8',
-      plusButtonSurface: '#E7EEF8',
-    },
-  );
+test('widget themes mirror all persisted app theme accents', () => {
+  for (const theme of ['sky', 'lavender', 'mint'] as const) {
+    assert.equal(widgetThemes[theme].accent, appThemes[theme].accent);
+    assert.equal(widgetThemes[theme].accentSoft, appThemes[theme].accentSoft);
+    assert.equal(widgetThemes[theme].surfaceGradient.from.startsWith('#'), true);
+    assert.equal(widgetThemes[theme].surfaceGradient.to.startsWith('#'), true);
+    assert.notEqual(widgetThemes[theme].ambientPrimary, widgetThemes[theme].ambientSecondary);
+  }
+});
+
+test('widget theme resolver falls back to lavender for missing or invalid persisted values', () => {
+  assert.equal(getWidgetTheme('sky'), widgetThemes.sky);
+  assert.equal(getWidgetTheme('mint'), widgetThemes.mint);
+  assert.equal(getWidgetTheme('lavender'), widgetThemes.lavender);
+  assert.equal(getWidgetTheme('unknown'), widgetThemes.lavender);
+  assert.equal(getWidgetTheme(undefined), widgetThemes.lavender);
 });

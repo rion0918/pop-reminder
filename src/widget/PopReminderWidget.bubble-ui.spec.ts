@@ -11,6 +11,7 @@ const source = readSource(import.meta.url, './PopReminderWidget.tsx');
 const layoutSource = readSource(import.meta.url, './widgetBubbleLayout.ts');
 const colorsSource = readSource(import.meta.url, './widgetColors.ts');
 const visualsSource = readSource(import.meta.url, './widgetVisuals.ts');
+const snapshotSource = readSource(import.meta.url, './widgetReminderSnapshot.ts');
 const appConfigSource = readSource(import.meta.url, '../../app.json');
 const nativeWidgetConfigSource = readSource(
   import.meta.url,
@@ -19,154 +20,141 @@ const nativeWidgetConfigSource = readSource(
 const updateSource = readSource(import.meta.url, './widgetUpdateService.tsx');
 const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx');
 
-test('android widget renders reminders as rounded solid list rows', () => {
-  const reminderListRowSource = source.slice(
-    source.indexOf('function ReminderListRow'),
-    source.indexOf('function EmptyState'),
-  );
-  const overlapOpeningTag = reminderListRowSource.slice(
-    reminderListRowSource.indexOf('<OverlapWidget'),
-    reminderListRowSource.indexOf('>', reminderListRowSource.indexOf('<OverlapWidget')) + 1,
-  );
-
-  assertSourceContract(`${source}\n${visualsSource}`, {
+test('android widget promotes the nearest reminder and renders the rest as a queue', () => {
+  assertSourceContract(source, {
     includes: [
-      /function ReminderListRow/,
-      /WIDGET_STATUS_DOT_SIZE/,
-      /backgroundColor: color\.background as ColorProp/,
-      /borderColor: color\.border as ColorProp/,
+      /function HeroReminder/,
+      /text="次のリマインド"/,
+      /function QueueReminderRow/,
+      /plan\.hero\.reminderId/,
+      /plan\.queueRows\.map/,
       /formatReminderBubbleDateTime/,
       /truncate="END"/,
       /action=view&id=\$\{reminder\.id\}/,
-      /plan\.listRows\.map/,
     ],
-    excludes: [
-      /function WidgetReminderBubble/,
-      /function OverflowBubble/,
-      /makeBubbleSvg/,
-      /getReminderBubbleTypography/,
-      /getReminderTitleVisualLength/,
-      /text=\{`\+\$\{count\}`\}/,
-    ],
+    excludes: [/function OverflowBubble/, /getReminderTitleVisualLength/, /getWidgetMotionFrame/],
   });
-  assert.doesNotMatch(overlapOpeningTag, /clickAction/);
-  assert.match(
-    reminderListRowSource,
-    /backgroundColor: widgetTheme\.cardSurface as ColorProp,[\s\S]*?clickAction="OPEN_URI"[\s\S]*?action=view&id=\$\{reminder\.id\}/,
-  );
 });
 
-test('android widget reuses the app deadline color contract for its status dots', () => {
+test('hero and queue reuse the app deadline color contract as glass bubbles', () => {
   assertSourceIncludes(source, [
     /import \{ getReminderDueColor \} from '\.\.\/features\/reminders\/utils\/reminderDueColor';/,
-    /const color = getReminderDueColor\(reminder\.targetAt\)/,
+    /const dueColor = getReminderDueColor\(reminder\.targetAt\)/,
+    /backgroundGradient: \{[\s\S]*?from: dueColor\.gradient\[0\]/,
+    /borderColor: dueColor\.border as ColorProp/,
   ]);
   assertSourceContract(colorsSource, {
-    excludes: [/differenceInCalendarDays/, /widgetDueColors/, /getWidgetDueColor/],
+    excludes: [/differenceInCalendarDays/, /getWidgetDueColor/],
   });
 });
 
-test('android widget aligns each notification date at the right edge of its card', () => {
-  const reminderListRowSource = source.slice(
-    source.indexOf('function ReminderListRow'),
-    source.indexOf('function EmptyState'),
+test('android widget keeps a dedicated low-noise delete target on every reminder', () => {
+  const deleteButtonSource = source.slice(
+    source.indexOf('function DeleteReminderButton'),
+    source.indexOf('function HeroReminder'),
   );
 
-  assertSourceIncludes(reminderListRowSource, [
-    /width: typography\.timeWidth/,
-    /textAlign: 'right'/,
-  ]);
-  assert.equal(/marginTop: mode === 'compact' \? 0 : 1/.test(reminderListRowSource), false);
-});
-
-test('android widget exposes a per-reminder trash control on the right', () => {
-  const reminderListRowSource = source.slice(
-    source.indexOf('function ReminderListRow'),
-    source.indexOf('function EmptyState'),
-  );
-
-  assertSourceIncludes(visualsSource, [/WIDGET_ROW_ACTION_SIZE = 36/]);
-  assertSourceIncludes(reminderListRowSource, [
-    /const cardHeight = layout\.height;/,
-    /width: WIDGET_ROW_ACTION_SIZE/,
-    /height: WIDGET_ROW_ACTION_SIZE/,
-    /text="🗑"/,
-    /accessibilityLabel=\{`「\$\{reminder\.title\}」を削除`\}/,
+  assertSourceIncludes(`${deleteButtonSource}\n${visualsSource}`, [
+    /WIDGET_ROW_ACTION_SIZE = 32/,
+    /makeWidgetTrashSvg/,
     /clickAction=\{WIDGET_DELETE_REMINDER_ACTION\}/,
     /clickActionData=\{\{ id: reminder\.id \}\}/,
+    /accessibilityLabel=\{`「\$\{reminder\.title\}」を削除`\}/,
   ]);
+  assert.doesNotMatch(deleteButtonSource, /text="🗑"/);
 });
 
-test('android widget explains the total count and reminder row actions', () => {
-  const reminderListRowSource = source.slice(
-    source.indexOf('function ReminderListRow'),
-    source.indexOf('function EmptyState'),
-  );
-
+test('header groups the brand, count chip, and top-right add action', () => {
   assertSourceIncludes(source, [
-    /totalCount: number;/,
-    /justifyContent: 'space-between'/,
+    /function WidgetHeader/,
+    /text="ふわっと。"/,
     /text=\{`\$\{totalCount\}件`\}/,
-    /<WidgetHeader layout=\{plan\.header\} mode=\{plan\.mode\} totalCount=\{reminders\.length\} \/>/,
-  ]);
-  assertSourceIncludes(reminderListRowSource, [
-    /accessibilityLabel=\{`\$\{reminder\.title\}、\$\{timeText\}、詳細を開く`\}/,
-  ]);
-});
-
-test('android widget keeps the selected app-name header and bottom add action', () => {
-  assertSourceContract(source, {
-    includes: [
-      /function WidgetHeader/,
-      /text="ふわっと。"/,
-      /function AddReminderButton/,
-      /text="＋"/,
-      /accessibilityLabel="リマインダーを追加"/,
-      /backgroundColor: widgetTheme\.plusButtonSurface as ColorProp/,
-      /popreminder:\/\/\?action=add/,
-      /plan\.addButton/,
-    ],
-    excludes: [/text="次の予定"/, /checkbox/i, /checkmark/i, /チェック/],
-  });
-  assertSourceIncludes(colorsSource, [
-    /surface: '#F6F7FA'/,
-    /cardSurface: '#FFFFFF'/,
-    /rowActionSurface: '#F2F4F8'/,
-    /plusButtonSurface: '#E7EEF8'/,
+    /function AddReminderButton/,
+    /backgroundGradient: widgetGradient\(theme\.addButtonGradient\)/,
+    /accessibilityLabel="リマインダーを追加"/,
+    /popreminder:\/\/\?action=add/,
+    /layout=\{plan\.addButton\}/,
   ]);
 });
 
-test('android widget uses a restrained rounded type hierarchy without redundant guidance', () => {
-  assertSourceContract(`${source}\n${visualsSource}`, {
+test('widget uses theme-aware lightweight material without bitmap scenery', () => {
+  assertSourceContract(`${source}\n${colorsSource}\n${visualsSource}`, {
     includes: [
-      /const WIDGET_FONT_FAMILY = 'sans-serif-rounded'/,
-      /fontFamily: WIDGET_FONT_FAMILY/,
-      /text="ふわっと。"[\s\S]*?fontWeight: '800'/,
-      /text=\{reminder\.title\}[\s\S]*?fontWeight: '700'/,
-      /text=\{timeText\}[\s\S]*?fontWeight: '600'/,
-      /text="＋"[\s\S]*?fontSize: 22/,
+      /theme\?: AppTheme/,
+      /getWidgetTheme\(theme\)/,
+      /widgetThemes: Record<AppTheme, WidgetThemeTokens>/,
+      /surfaceGradient/,
+      /heroGradient/,
+      /SvgWidget/,
+      /makeWidgetBackdropSvg/,
+      /radialGradient/,
     ],
-    excludes: [/text="右下から"/, /text="↓"/],
+    excludes: [
+      /ImageWidget/,
+      /ImageRequireSource/,
+      /widgetSky/,
+      /widget-sky-/,
+      /getWidgetSkyPeriod/,
+    ],
   });
 });
 
-test('android widget add button uses one solid action surface without ornamental effects', () => {
-  const addButtonSource = source.slice(
-    source.indexOf('function AddReminderButton'),
-    source.indexOf('export function PopReminderWidget'),
-  );
+test('empty widget offers a clear full-surface quick-add state', () => {
+  assertSourceIncludes(source, [
+    /function EmptyState/,
+    /text="最初のリマインドを残そう"/,
+    /text="タップして追加"/,
+    /accessibilityLabel="最初のリマインダーを追加"/,
+    /<EmptyState bounds=\{plan\.queueBounds\} theme=\{theme\} \/>/,
+    /reminders\.length > 0 \?\s*<AddReminderButton[\s\S]*?: null/,
+  ]);
+});
 
-  assertSourceContract(addButtonSource, {
+test('android widget layout contract defines hero, queue, overflow, and eight-item maximum', () => {
+  assertSourceContract(layoutSource, {
     includes: [
-      /backgroundColor: widgetTheme\.plusButtonSurface as ColorProp/,
-      /borderColor: widgetTheme\.plusButtonBorder as ColorProp/,
-      /color: widgetTheme\.plusButtonText as ColorProp/,
+      /hero: WidgetReminderLayout \| null/,
+      /queueBounds: WidgetRect/,
+      /queueRows: WidgetReminderLayout\[\]/,
+      /overflowCount: number/,
+      /WIDGET_MAX_VISIBLE_REMINDERS = 8/,
+      /WIDGET_QUEUE_ROW_HEIGHT = 40/,
+      /makeQueueRows/,
     ],
-    excludes: [/backgroundGradient/, /textShadowColor/, /textShadowOffset/, /textShadowRadius/],
+    excludes: [/reminderBubbles:/, /bubbleSlots:/, /getBubbleSlots/],
   });
 });
 
-test('android widget clips native click feedback to rounded controls', () => {
+test('widget snapshot carries persisted theme through every refresh path', () => {
+  assertSourceIncludes(snapshotSource, [
+    /export type WidgetSnapshot/,
+    /reminders: WidgetReminder\[\]/,
+    /theme: AppTheme/,
+    /SELECT theme/,
+    /FROM app_settings/,
+    /coerceTheme\(row\?\.theme \?\? 'lavender'\)/,
+    /return \{ reminders: \[\], theme: 'lavender' \}/,
+  ]);
+  assertSourceIncludes(updateSource, [
+    /import \{ getWidgetSnapshot \} from '\.\/widgetReminderSnapshot';/,
+    /const snapshot = await getWidgetSnapshot\(\)/,
+    /reminders=\{snapshot\.reminders\}/,
+    /theme=\{snapshot\.theme\}/,
+    /renderWidget: \(\{ width, height \}\) =>/,
+    /widgetWidth=\{width\}/,
+    /widgetHeight=\{height\}/,
+    /let widgetUpdateQueue: Promise<void> = Promise\.resolve\(\);/,
+  ]);
+  assertSourceIncludes(taskHandlerSource, [
+    /import \{ getWidgetSnapshot \} from '\.\/widgetReminderSnapshot';/,
+    /theme=\{snapshot\.theme\}/,
+    /WIDGET_DELETE_REMINDER_ACTION/,
+    /appServices\.reminders\.delete\(reminderId\)/,
+  ]);
+  assertSourceContract(updateSource, { excludes: [/expo-sqlite/, /expo-file-system/] });
+});
+
+test('android widget retains rounded native click feedback', () => {
   const nativeClickableLayoutSource = readSource(
     import.meta.url,
     '../../android/app/src/main/res/layout/rn_widget_clickable.xml',
@@ -191,85 +179,13 @@ test('android widget clips native click feedback to rounded controls', () => {
   ]);
 });
 
-test('android widget uses one neutral material without decorative background layers', () => {
-  assertSourceContract(source, {
-    includes: [
-      /backgroundColor: widgetTheme\.surface as ColorProp/,
-      /borderColor: widgetTheme\.surfaceBorder as ColorProp/,
-    ],
-    excludes: [
-      /ImageWidget/,
-      /ImageRequireSource/,
-      /widgetSky/,
-      /widget-sky-/,
-      /skyPresentation/,
-      /textShadowColor/,
-      /SvgWidget/,
-      /makeFrostedGlassSurfaceSvg/,
-    ],
-  });
-});
-
 test('native periodic updates keep expired reminders out while the app is closed', () => {
   assertSourceIncludes(appConfigSource, [
     /"name": "PopReminderWidget"[\s\S]*"updatePeriodMillis": 1800000/,
   ]);
   assertSourceIncludes(nativeWidgetConfigSource, [/android:updatePeriodMillis="1800000"/]);
-});
-
-test('android widget layout source defines dense rows with a maximum of eight reminders', () => {
-  assertSourceContract(layoutSource, {
-    includes: [
-      /export type WidgetListRowLayout/,
-      /listRows:/,
-      /listBounds:/,
-      /header:/,
-      /addButton:/,
-      /WIDGET_MAX_VISIBLE_REMINDERS = 8/,
-      /WIDGET_LIST_ROW_MIN_HEIGHT = 39/,
-      /getListRows/,
-    ],
-    excludes: [
-      /WidgetReminderBubbleLayout/,
-      /reminderBubbles:/,
-      /bubbleSlots:/,
-      /overflowBubble/,
-      /getBubbleSlots/,
-    ],
-  });
-  assertSourceIncludes(source, [/paddingVertical: 0/]);
-});
-
-test('widget refresh paths keep the actual widget size, snapshot, and contracts', () => {
-  assertSourceIncludes(updateSource, [
-    /renderWidget: \(\{ width, height \}\) =>/,
-    /widgetWidth=\{width\}/,
-    /widgetHeight=\{height\}/,
-    /import \{ getWidgetReminders \} from '\.\/widgetReminderSnapshot';/,
-    /let widgetUpdateQueue: Promise<void> = Promise\.resolve\(\);/,
-    /widgetUpdateQueue = widgetUpdateQueue\.then\(runWidgetUpdate, runWidgetUpdate\);/,
+  assertSourceIncludes(snapshotSource, [
+    /WHERE status = 'active' AND target_notify_at > \?/,
+    /ORDER BY target_at ASC/,
   ]);
-  assertSourceIncludes(taskHandlerSource, [
-    /import \{ getWidgetReminders \} from '\.\/widgetReminderSnapshot';/,
-    /import \{ appServices \} from '\.\.\/bootstrap\/appServices';/,
-    /WIDGET_DELETE_REMINDER_ACTION/,
-    /appServices\.reminders\.delete\(reminderId\)/,
-  ]);
-  assertSourceContract(updateSource, {
-    excludes: [/expo-sqlite/, /expo-file-system/],
-  });
-  assertSourceContract(taskHandlerSource, {
-    excludes: [/function getActiveReminders/, /SELECT id, title, target_at/, /action=delete/],
-  });
-});
-
-test('widget empty state matches the app copy without extra add-button guidance', () => {
-  assertSourceContract(source, {
-    includes: [
-      /text="まだ泡はひとつも浮いていません"/,
-      /text="忘れたくないこと、右下からふわっとどうぞ"/,
-      /<EmptyState listBounds=\{plan\.listBounds\} \/>/,
-    ],
-    excludes: [/text="右下から"/, /text="↓"/],
-  });
 });

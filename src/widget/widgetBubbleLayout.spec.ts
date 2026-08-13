@@ -3,7 +3,6 @@ import { test } from 'node:test';
 
 import {
   getWidgetLayoutPlan,
-  WIDGET_PLUS_TOUCH_HEIGHT,
   type WidgetLayoutReminder,
   type WidgetRect,
 } from './widgetBubbleLayout';
@@ -21,12 +20,6 @@ const reminderTitles = [
   '週報をまとめる',
 ];
 
-type ExpectedListPlan = ReturnType<typeof getWidgetLayoutPlan> & {
-  header: WidgetRect;
-  listBounds: WidgetRect;
-  listRows: (WidgetRect & { reminderId: string })[];
-};
-
 function makeReminders(count = reminderTitles.length): WidgetLayoutReminder[] {
   return reminderTitles.slice(0, count).map((title, index) => ({
     id: `reminder-${index + 1}`,
@@ -35,14 +28,7 @@ function makeReminders(count = reminderTitles.length): WidgetLayoutReminder[] {
   }));
 }
 
-function asListPlan(plan: ReturnType<typeof getWidgetLayoutPlan>): ExpectedListPlan {
-  return plan as ExpectedListPlan;
-}
-
-function assertInside(
-  rect: { left: number; top: number; right: number; bottom: number },
-  bounds: { left: number; top: number; right: number; bottom: number },
-) {
+function assertInside(rect: WidgetRect, bounds: WidgetRect) {
   assert.ok(rect.left >= bounds.left, `left ${rect.left} < ${bounds.left}`);
   assert.ok(rect.top >= bounds.top, `top ${rect.top} < ${bounds.top}`);
   assert.ok(rect.right <= bounds.right, `right ${rect.right} > ${bounds.right}`);
@@ -55,7 +41,7 @@ function assertRowsDoNotOverlap(rows: WidgetRect[]) {
   }
 }
 
-test('android widget chooses deterministic list capacities by available size', () => {
+test('android widget preserves capacity while promoting the first reminder to hero', () => {
   const cases = [
     { width: 250, height: 180, mode: 'compact', visible: 2 },
     { width: 320, height: 220, mode: 'compact', visible: 3 },
@@ -68,20 +54,24 @@ test('android widget chooses deterministic list capacities by available size', (
   ] as const;
 
   for (const expected of cases) {
-    const plan = asListPlan(
-      getWidgetLayoutPlan(makeReminders(expected.visible), expected.width, expected.height),
-    );
+    const plan = getWidgetLayoutPlan(makeReminders(), expected.width, expected.height);
 
     assert.equal(plan.mode, expected.mode);
     assert.equal(plan.visibleReminderCount, expected.visible);
-    assert.equal(plan.listRows.length, expected.visible);
+    assert.equal(plan.hero?.reminderId, 'reminder-1');
+    assert.equal(plan.queueRows.length, expected.visible - 1);
+    assert.deepEqual(
+      plan.queueRows.map((row) => row.reminderId),
+      plan.visibleReminderIds.slice(1),
+    );
   }
 });
 
-test('android widget shows only the nearest eight reminders in DB order', () => {
-  const plan = asListPlan(getWidgetLayoutPlan(makeReminders(10), 360, 460));
+test('android widget reports overflow after the nearest eight reminders', () => {
+  const plan = getWidgetLayoutPlan(makeReminders(10), 360, 460);
 
   assert.equal(plan.visibleReminderCount, 8);
+  assert.equal(plan.overflowCount, 2);
   assert.deepEqual(plan.visibleReminderIds, [
     'reminder-1',
     'reminder-2',
@@ -92,15 +82,9 @@ test('android widget shows only the nearest eight reminders in DB order', () => 
     'reminder-7',
     'reminder-8',
   ]);
-  assert.deepEqual(
-    plan.listRows.map((row) => row.reminderId),
-    plan.visibleReminderIds,
-  );
 });
 
-test('android widget keeps rows, header, and a circular right-aligned add button inside the surface', () => {
-  assert.equal(WIDGET_PLUS_TOUCH_HEIGHT, 44);
-
+test('android widget keeps header, add action, hero, and queue inside every surface', () => {
   for (const { width, height } of [
     { width: 250, height: 180 },
     { width: 320, height: 220 },
@@ -111,27 +95,40 @@ test('android widget keeps rows, header, and a circular right-aligned add button
     { width: 360, height: 420 },
     { width: 360, height: 460 },
   ]) {
-    const plan = asListPlan(getWidgetLayoutPlan(makeReminders(), width, height));
-    const surfaceBounds = { left: 0, top: 0, right: width, bottom: height };
+    const plan = getWidgetLayoutPlan(makeReminders(), width, height);
+    const surfaceBounds = { left: 0, top: 0, right: width, bottom: height, width, height };
 
     assertInside(plan.header, surfaceBounds);
-    assertInside(plan.listBounds, surfaceBounds);
     assertInside(plan.addButton, surfaceBounds);
-    assertRowsDoNotOverlap(plan.listRows);
-    assert.equal(plan.addButton.height, WIDGET_PLUS_TOUCH_HEIGHT);
-    assert.equal(plan.addButton.width, WIDGET_PLUS_TOUCH_HEIGHT);
-    assert.equal(plan.addButton.right, width - plan.header.left);
+    assert.ok(plan.hero);
+    assertInside(plan.hero, surfaceBounds);
+    assertInside(plan.queueBounds, surfaceBounds);
+    assert.equal(plan.addButton.top, plan.header.top);
+    assert.equal(plan.addButton.bottom, plan.header.bottom);
+    assert.ok(plan.header.right < plan.addButton.left);
+    assert.ok(plan.hero.bottom <= plan.queueBounds.top);
+    assertRowsDoNotOverlap(plan.queueRows);
 
-    for (const row of plan.listRows) {
-      assertInside(row, plan.listBounds);
-      assert.equal(row.left, plan.listBounds.left);
-      assert.equal(row.width, plan.listBounds.width);
-      assert.equal(row.height, 39);
+    for (const row of plan.queueRows) {
+      assertInside(row, plan.queueBounds);
+      assert.equal(row.left, plan.queueBounds.left);
+      assert.equal(row.width, plan.queueBounds.width);
     }
   }
 });
 
-test('android widget list layout is stable for the same size and reminder order', () => {
+test('empty widget reserves the complete content area for its add state', () => {
+  const plan = getWidgetLayoutPlan([], 250, 180);
+
+  assert.equal(plan.hero, null);
+  assert.deepEqual(plan.queueRows, []);
+  assert.equal(plan.queueBounds.left, 8);
+  assert.equal(plan.queueBounds.right, 242);
+  assert.equal(plan.queueBounds.bottom, 172);
+  assert.equal(plan.header.right, 242);
+});
+
+test('hero and queue layout stays deterministic for the same size and reminder order', () => {
   const first = getWidgetLayoutPlan(makeReminders(), 480, 320);
   const second = getWidgetLayoutPlan(makeReminders(), 480, 320);
 

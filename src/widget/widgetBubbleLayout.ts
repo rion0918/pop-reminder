@@ -13,7 +13,7 @@ export type WidgetRect = {
   bottom: number;
 };
 
-export type WidgetListRowLayout = WidgetRect & {
+export type WidgetReminderLayout = WidgetRect & {
   reminderId: string;
 };
 
@@ -23,26 +23,33 @@ export type WidgetLayoutPlan = {
   mode: WidgetDisplayMode;
   visibleReminderCount: number;
   visibleReminderIds: string[];
+  overflowCount: number;
   header: WidgetRect;
-  listBounds: WidgetRect;
-  listRows: WidgetListRowLayout[];
   addButton: WidgetRect;
+  hero: WidgetReminderLayout | null;
+  queueBounds: WidgetRect;
+  queueRows: WidgetReminderLayout[];
 };
 
 export const WIDGET_SURFACE_PADDING = 12;
-export const WIDGET_PLUS_TOUCH_HEIGHT = 44;
 export const WIDGET_MAX_VISIBLE_REMINDERS = 8;
-export const WIDGET_LIST_ROW_MIN_HEIGHT = 39;
+export const WIDGET_QUEUE_ROW_HEIGHT = 40;
 
 const WIDGET_COMPACT_SURFACE_PADDING = 8;
-const WIDGET_HEADER_HEIGHT = 26;
-const WIDGET_COMPACT_HEADER_HEIGHT = 22;
-const WIDGET_HEADER_GAP = 6;
-const WIDGET_COMPACT_HEADER_GAP = 4;
-const WIDGET_LIST_GAP = 4;
-const WIDGET_COMPACT_LIST_GAP = 4;
-const WIDGET_ADD_BUTTON_GAP = 8;
-const WIDGET_COMPACT_ADD_BUTTON_GAP = 6;
+const WIDGET_HEADER_HEIGHT = 40;
+const WIDGET_COMPACT_HEADER_HEIGHT = 34;
+const WIDGET_HEADER_GAP = 8;
+const WIDGET_COMPACT_HEADER_GAP = 6;
+const WIDGET_HEADER_ACTION_GAP = 8;
+const WIDGET_COMPACT_HEADER_ACTION_GAP = 6;
+const WIDGET_ADD_BUTTON_SIZE = 40;
+const WIDGET_COMPACT_ADD_BUTTON_SIZE = 34;
+const WIDGET_HERO_HEIGHT = 68;
+const WIDGET_LIST_HERO_HEIGHT = 64;
+const WIDGET_COMPACT_HERO_HEIGHT = 56;
+const WIDGET_HERO_QUEUE_GAP = 8;
+const WIDGET_COMPACT_HERO_QUEUE_GAP = 6;
+const WIDGET_QUEUE_GAP = 4;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -71,29 +78,21 @@ export function getWidgetDisplayMode(widgetWidth: number, widgetHeight: number):
   return 'compact';
 }
 
-function getVisibleCapacity(listHeight: number, rowGap: number) {
+function getQueueCapacity(queueHeight: number) {
   return clamp(
-    Math.floor((listHeight + rowGap) / (WIDGET_LIST_ROW_MIN_HEIGHT + rowGap)),
-    1,
-    WIDGET_MAX_VISIBLE_REMINDERS,
+    Math.floor((queueHeight + WIDGET_QUEUE_GAP) / (WIDGET_QUEUE_ROW_HEIGHT + WIDGET_QUEUE_GAP)),
+    0,
+    WIDGET_MAX_VISIBLE_REMINDERS - 1,
   );
 }
 
-function getListRows(
-  reminderIds: string[],
-  listBounds: WidgetRect,
-  rowGap: number,
-): WidgetListRowLayout[] {
-  if (reminderIds.length === 0) {
-    return [];
-  }
-
+function makeQueueRows(reminderIds: string[], bounds: WidgetRect): WidgetReminderLayout[] {
   return reminderIds.map((reminderId, index) => ({
     ...makeRect(
-      listBounds.left,
-      listBounds.top + index * (WIDGET_LIST_ROW_MIN_HEIGHT + rowGap),
-      listBounds.width,
-      WIDGET_LIST_ROW_MIN_HEIGHT,
+      bounds.left,
+      bounds.top + index * (WIDGET_QUEUE_ROW_HEIGHT + WIDGET_QUEUE_GAP),
+      bounds.width,
+      WIDGET_QUEUE_ROW_HEIGHT,
     ),
     reminderId,
   }));
@@ -109,38 +108,86 @@ export function getWidgetLayoutPlan(
   const surfacePadding = isCompact ? WIDGET_COMPACT_SURFACE_PADDING : WIDGET_SURFACE_PADDING;
   const headerHeight = isCompact ? WIDGET_COMPACT_HEADER_HEIGHT : WIDGET_HEADER_HEIGHT;
   const headerGap = isCompact ? WIDGET_COMPACT_HEADER_GAP : WIDGET_HEADER_GAP;
-  const rowGap = isCompact ? WIDGET_COMPACT_LIST_GAP : WIDGET_LIST_GAP;
-  const addButtonGap = isCompact ? WIDGET_COMPACT_ADD_BUTTON_GAP : WIDGET_ADD_BUTTON_GAP;
+  const headerActionGap = isCompact ? WIDGET_COMPACT_HEADER_ACTION_GAP : WIDGET_HEADER_ACTION_GAP;
+  const addButtonSize = isCompact ? WIDGET_COMPACT_ADD_BUTTON_SIZE : WIDGET_ADD_BUTTON_SIZE;
+  const heroHeight =
+    mode === 'compact'
+      ? WIDGET_COMPACT_HERO_HEIGHT
+      : mode === 'list'
+        ? WIDGET_LIST_HERO_HEIGHT
+        : WIDGET_HERO_HEIGHT;
+  const heroQueueGap = isCompact ? WIDGET_COMPACT_HERO_QUEUE_GAP : WIDGET_HERO_QUEUE_GAP;
+  const addButton = makeRect(
+    Math.max(surfacePadding, widgetWidth - surfacePadding - addButtonSize),
+    surfacePadding,
+    addButtonSize,
+    headerHeight,
+  );
   const header = makeRect(
     surfacePadding,
     surfacePadding,
-    Math.max(0, widgetWidth - surfacePadding * 2),
+    Math.max(0, addButton.left - headerActionGap - surfacePadding),
     headerHeight,
   );
-  const addButton = makeRect(
-    widgetWidth - surfacePadding - WIDGET_PLUS_TOUCH_HEIGHT,
-    widgetHeight - surfacePadding - WIDGET_PLUS_TOUCH_HEIGHT,
-    WIDGET_PLUS_TOUCH_HEIGHT,
-    WIDGET_PLUS_TOUCH_HEIGHT,
-  );
-  const listTop = header.bottom + headerGap;
-  const listBounds = makeRect(
+  const contentTop = header.bottom + headerGap;
+  const contentHeight = Math.max(0, widgetHeight - surfacePadding - contentTop);
+
+  if (reminders.length === 0) {
+    return {
+      mode,
+      visibleReminderCount: 0,
+      visibleReminderIds: [],
+      overflowCount: 0,
+      header: makeRect(
+        surfacePadding,
+        surfacePadding,
+        Math.max(0, widgetWidth - surfacePadding * 2),
+        headerHeight,
+      ),
+      addButton,
+      hero: null,
+      queueBounds: makeRect(
+        surfacePadding,
+        contentTop,
+        Math.max(0, widgetWidth - surfacePadding * 2),
+        contentHeight,
+      ),
+      queueRows: [],
+    };
+  }
+
+  const resolvedHeroHeight = Math.min(heroHeight, contentHeight);
+  const hero = {
+    ...makeRect(
+      surfacePadding,
+      contentTop,
+      Math.max(0, widgetWidth - surfacePadding * 2),
+      resolvedHeroHeight,
+    ),
+    reminderId: reminders[0].id,
+  };
+  const queueTop = Math.min(widgetHeight - surfacePadding, hero.bottom + heroQueueGap);
+  const queueBounds = makeRect(
     surfacePadding,
-    listTop,
+    queueTop,
     Math.max(0, widgetWidth - surfacePadding * 2),
-    Math.max(0, addButton.top - addButtonGap - listTop),
+    Math.max(0, widgetHeight - surfacePadding - queueTop),
   );
-  const capacity = getVisibleCapacity(listBounds.height, rowGap);
-  const visibleReminders = reminders.slice(0, capacity);
+  const visibleReminders = reminders.slice(
+    0,
+    Math.min(WIDGET_MAX_VISIBLE_REMINDERS, 1 + getQueueCapacity(queueBounds.height)),
+  );
   const visibleReminderIds = visibleReminders.map((reminder) => reminder.id);
 
   return {
     mode,
     visibleReminderCount: visibleReminders.length,
     visibleReminderIds,
+    overflowCount: Math.max(0, reminders.length - visibleReminders.length),
     header,
-    listBounds,
-    listRows: getListRows(visibleReminderIds, listBounds, rowGap),
     addButton,
+    hero,
+    queueBounds,
+    queueRows: makeQueueRows(visibleReminderIds.slice(1), queueBounds),
   };
 }

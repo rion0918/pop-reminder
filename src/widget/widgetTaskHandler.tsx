@@ -2,15 +2,16 @@ import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { appServices } from '../bootstrap/appServices';
 import { PopReminderWidget, WIDGET_DELETE_REMINDER_ACTION } from './PopReminderWidget';
-import { getWidgetReminders } from './widgetReminderSnapshot';
+import { getWidgetSnapshot } from './widgetReminderSnapshot';
 
 async function renderPopReminderWidget(props: WidgetTaskHandlerProps) {
   const widgetInfo = props.widgetInfo;
-  const reminders = await getWidgetReminders();
+  const snapshot = await getWidgetSnapshot();
 
   props.renderWidget(
     <PopReminderWidget
-      reminders={reminders}
+      reminders={snapshot.reminders}
+      theme={snapshot.theme}
       widgetWidth={widgetInfo.width}
       widgetHeight={widgetInfo.height}
     />,

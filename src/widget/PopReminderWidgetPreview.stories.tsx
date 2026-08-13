@@ -79,3 +79,30 @@ export const Expanded: Story = {
     widgetHeight: 460,
   },
 };
+
+export const SkyTheme: Story = {
+  args: {
+    reminders: reminders.slice(0, 5),
+    theme: 'sky',
+    widgetWidth: 360,
+    widgetHeight: 320,
+  },
+};
+
+export const LavenderTheme: Story = {
+  args: {
+    reminders: reminders.slice(0, 5),
+    theme: 'lavender',
+    widgetWidth: 360,
+    widgetHeight: 320,
+  },
+};
+
+export const MintTheme: Story = {
+  args: {
+    reminders: reminders.slice(0, 5),
+    theme: 'mint',
+    widgetWidth: 360,
+    widgetHeight: 320,
+  },
+};

@@ -48,7 +48,7 @@ test('Storybook is opt-in and keeps the normal Expo Router entry point unchanged
 test('widget stories use a React Native preview backed by production widget contracts', () => {
   assertSourceIncludes(previewSource, [
     /getWidgetLayoutPlan/,
-    /widgetTheme/,
+    /getWidgetTheme/,
     /getReminderDueColor/,
     /formatReminderBubbleDateTime/,
     /WIDGET_ROW_ACTION_SIZE/,
@@ -62,5 +62,8 @@ test('widget stories use a React Native preview backed by production widget cont
     /export const Compact/,
     /export const LongTitle/,
     /export const Expanded/,
+    /export const SkyTheme/,
+    /export const LavenderTheme/,
+    /export const MintTheme/,
   ]);
 });

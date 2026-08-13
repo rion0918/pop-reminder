@@ -24,6 +24,19 @@ const widgetGateway = {
   },
 };
 
+const settingsService = {
+  get: sqliteSettingsRepository.get,
+  async update(input: Parameters<typeof sqliteSettingsRepository.update>[0]) {
+    const settings = await sqliteSettingsRepository.update(input);
+
+    if (input.theme !== undefined) {
+      await widgetGateway.sync();
+    }
+
+    return settings;
+  },
+};
+
 export const appServices = {
   analytics: posthogAnalytics,
   purchases: revenueCatPurchaseService,
@@ -44,7 +57,7 @@ export const appServices = {
       getState: revenueCatPurchaseService.getProAccessState,
     },
   }),
-  settings: sqliteSettingsRepository,
+  settings: settingsService,
   notificationSettings: {
     cancelAllScheduledNotifications,
     getNotificationPermissionStatus,
