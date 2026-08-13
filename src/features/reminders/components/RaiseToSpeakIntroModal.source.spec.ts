@@ -14,6 +14,18 @@ test('raise-to-speak calibration can be cancelled from the intro modal', () => {
   assert.doesNotMatch(source, /onRequestClose=\{busy \|\| calibrating \? undefined : onDismiss\}/);
 });
 
+test('calibration distinguishes sensor startup failure from an unrecognized pose and can retry', () => {
+  assertSourceIncludes(source, [
+    /sensorStatus === 'unavailable'/,
+    /CALIBRATION_POSE_TIMEOUT_MS = 10_000/,
+    /センサーを確認しています/,
+    /センサーを確認できませんでした/,
+    /傾きを検出できませんでした/,
+    /accessibilityLabel="傾きセンサーをもう一度試す"/,
+    /onPress=\{handleRetry\}/,
+  ]);
+});
+
 test('intro modal uses a reduced-motion-aware spring tilt illustration', () => {
   assertSourceIncludes(source, [
     /from 'react-native-reanimated'/,

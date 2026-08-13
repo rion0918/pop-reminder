@@ -5,10 +5,11 @@ import { assertSourceIncludes, readSource } from '../../test-utils/sourceAsserti
 
 const source = readSource(import.meta.url, './prepareRaiseToSpeak.ts');
 
-test('side-tilt voice setup requests motion permission only on iOS', () => {
+test('side-tilt voice setup uses the Android accelerometer and requests motion permission only on iOS', () => {
   assertSourceIncludes(source, [
     /import \{ Platform \} from 'react-native';/,
-    /DeviceMotion\.isAvailableAsync\(\)/,
+    /import Accelerometer from 'expo-sensors\/build\/Accelerometer';/,
+    /Platform\.OS === 'android'\s*\? Accelerometer\.isAvailableAsync\(\)\s*: DeviceMotion\.isAvailableAsync\(\)/,
     /if \(Platform\.OS === 'ios'\) \{[\s\S]*DeviceMotion\.requestPermissionsAsync\(\)[\s\S]*\}/,
     /voiceInputService\.getAvailability\(\)/,
     /voiceInputService\.requestMicrophonePermission\(\)/,

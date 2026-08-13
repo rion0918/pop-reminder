@@ -19,8 +19,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { palette } from '../../../constants/colors';
+import type { RaiseToSpeakSensorStatus } from '../hooks/useRaiseToSpeakGesture';
 
 const TILT_PHONE_ROTATION_DEGREES = 9;
+const CALIBRATION_POSE_TIMEOUT_MS = 10_000;
 const TILT_PHONE_SPRING = {
   damping: 16,
   stiffness: 90,
@@ -33,8 +35,10 @@ type RaiseToSpeakIntroModalProps = {
   busy: boolean;
   calibrating: boolean;
   message: string | null;
+  sensorStatus: RaiseToSpeakSensorStatus;
   onEnable: () => void;
   onDismiss: () => void;
+  onRetry: () => void;
 };
 
 type TiltPhoneIllustrationProps = {
@@ -113,10 +117,13 @@ export function RaiseToSpeakIntroModal({
   busy,
   calibrating,
   message,
+  sensorStatus,
   onEnable,
   onDismiss,
+  onRetry,
 }: RaiseToSpeakIntroModalProps) {
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
+  const [calibrationTimedOut, setCalibrationTimedOut] = useState(false);
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotionEnabled);
@@ -126,6 +133,43 @@ export function RaiseToSpeakIntroModal({
     );
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    setCalibrationTimedOut(false);
+    if (!visible || !calibrating || sensorStatus !== 'active') return undefined;
+
+    const timeout = setTimeout(() => {
+      setCalibrationTimedOut(true);
+    }, CALIBRATION_POSE_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [calibrating, sensorStatus, visible]);
+
+  const handleRetry = () => {
+    setCalibrationTimedOut(false);
+    onRetry();
+  };
+
+  let title = '左右に傾けて音声入力';
+  let body = 'スマホを左右どちらかへ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。';
+
+  if (calibrating) {
+    if (sensorStatus === 'waiting') {
+      title = 'センサーを確認しています…';
+      body = 'スマホを縦向きに持ったまま、少しお待ちください。';
+    } else if (sensorStatus === 'unavailable') {
+      title = 'センサーを確認できませんでした';
+      body = '加速度センサーから値を取得できませんでした。もう一度お試しください。';
+    } else if (calibrationTimedOut) {
+      title = '傾きを検出できませんでした';
+      body = 'スマホを一度縦向きに戻し、画面を見たまま左右へ45度以上回転してください。';
+    } else {
+      title = '試しに左右どちらかへ傾けてください';
+      body =
+        '画面を見たまま、スマホを縦向きから左右どちらかへ45度以上回転します。振動したら設定完了です。';
+    }
+  }
+
+  const canRetry = calibrating && (sensorStatus === 'unavailable' || calibrationTimedOut);
 
   return (
     <Modal
@@ -137,14 +181,8 @@ export function RaiseToSpeakIntroModal({
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
           <TiltPhoneIllustration active={visible} reduceMotionEnabled={reduceMotionEnabled} />
-          <Text style={styles.title}>
-            {calibrating ? '試しに左右どちらかへ傾けてください' : '左右に傾けて音声入力'}
-          </Text>
-          <Text style={styles.body}>
-            {calibrating
-              ? 'スマホを縦向きから左右どちらかへ傾けます。振動したら設定完了です。'
-              : 'スマホを左右どちらかへ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。'}
-          </Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.body}>{body}</Text>
           {message ? (
             <Text accessibilityLiveRegion="polite" style={styles.message}>
               {message}
@@ -153,15 +191,29 @@ export function RaiseToSpeakIntroModal({
 
           <View style={styles.actions}>
             {calibrating ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
-                disabled={busy}
-                onPress={onDismiss}
-                style={[styles.choiceButton, styles.secondaryButton]}
-              >
-                <Text style={styles.secondaryLabel}>キャンセル</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
+                  disabled={busy}
+                  onPress={onDismiss}
+                  style={[styles.choiceButton, styles.secondaryButton]}
+                >
+                  <Text style={styles.secondaryLabel}>キャンセル</Text>
+                </Pressable>
+                {canRetry ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="傾きセンサーをもう一度試す"
+                    accessibilityState={{ disabled: busy, busy }}
+                    disabled={busy}
+                    onPress={handleRetry}
+                    style={[styles.choiceButton, styles.primaryButton]}
+                  >
+                    <Text style={styles.primaryLabel}>もう一度試す</Text>
+                  </Pressable>
+                ) : null}
+              </>
             ) : (
               <>
                 <Pressable

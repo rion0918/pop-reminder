@@ -372,6 +372,7 @@ export function SettingsScreen() {
       }
 
       if (result.status === 'permission-denied') {
+        const permissionLabel = Platform.OS === 'android' ? 'マイク' : 'マイクとモーション';
         const actions = result.canAskAgain
           ? [{ text: 'OK' }]
           : [
@@ -380,7 +381,7 @@ export function SettingsScreen() {
             ];
         Alert.alert(
           '権限が必要です',
-          'マイクとモーションの権限を許可すると利用できます。',
+          `${permissionLabel}の権限を許可すると利用できます。`,
           actions,
         );
         return;
@@ -475,12 +476,13 @@ export function SettingsScreen() {
 
   const handleRaiseToSpeakCalibrationStop = useCallback(() => {}, []);
 
-  useRaiseToSpeakGesture({
-    enabled: isRaiseToSpeakCalibrating,
-    blocked: isRaiseToSpeakSetupBusy,
-    onStart: handleRaiseToSpeakCalibrationStart,
-    onStop: handleRaiseToSpeakCalibrationStop,
-  });
+  const { sensorStatus: raiseToSpeakSensorStatus, retrySensor: retryRaiseToSpeakSensor } =
+    useRaiseToSpeakGesture({
+      enabled: isRaiseToSpeakCalibrating,
+      blocked: isRaiseToSpeakSetupBusy,
+      onStart: handleRaiseToSpeakCalibrationStart,
+      onStop: handleRaiseToSpeakCalibrationStop,
+    });
 
   const handleOpenProPaywall = async () => {
     if (isPurchaseActionPending) return;
@@ -1029,8 +1031,10 @@ export function SettingsScreen() {
         busy={isRaiseToSpeakSetupBusy}
         calibrating={isRaiseToSpeakCalibrating}
         message={raiseToSpeakSetupMessage}
+        sensorStatus={raiseToSpeakSensorStatus}
         onEnable={() => void handlePrepareRaiseToSpeak()}
         onDismiss={handleDismissRaiseToSpeakIntro}
+        onRetry={retryRaiseToSpeakSensor}
       />
     </AppScreen>
   );

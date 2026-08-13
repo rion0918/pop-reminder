@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import Accelerometer from 'expo-sensors/build/Accelerometer';
 import DeviceMotion from 'expo-sensors/build/DeviceMotion';
 
 import {
@@ -18,6 +19,13 @@ type UseRaiseToSpeakGestureOptions = {
   onStop: () => void;
 };
 
+export type RaiseToSpeakSensorStatus = 'inactive' | 'waiting' | 'active' | 'unavailable';
+
+const SENSOR_START_TIMEOUT_MS = 3_000;
+
+type MotionSubscription = { remove(): void };
+type GravityVector = { x: number; y: number; z: number };
+
 export function useRaiseToSpeakGesture({
   enabled,
   blocked,
@@ -26,6 +34,8 @@ export function useRaiseToSpeakGesture({
 }: UseRaiseToSpeakGestureOptions) {
   const [isFocused, setIsFocused] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
+  const [sensorStatus, setSensorStatus] = useState<RaiseToSpeakSensorStatus>('inactive');
+  const [retryVersion, setRetryVersion] = useState(0);
   const detectorRef = useRef<RaiseToSpeakDetectorState>(createRaiseToSpeakDetectorState());
   const onStartRef = useRef(onStart);
   const onStopRef = useRef(onStop);
@@ -47,16 +57,29 @@ export function useRaiseToSpeakGesture({
   useEffect(() => {
     const active = enabled && !blocked && isFocused && appState === 'active';
     if (!active) {
+      setSensorStatus('inactive');
       if (detectorRef.current.phase === 'listening') onStopRef.current();
       detectorRef.current = createRaiseToSpeakDetectorState();
       return undefined;
     }
 
-    DeviceMotion.setUpdateInterval(RAISE_TO_SPEAK_UPDATE_INTERVAL_MS);
+    detectorRef.current = createRaiseToSpeakDetectorState();
+    setSensorStatus('waiting');
+    let disposed = false;
+    let receivedSample = false;
+    let motionSubscription: MotionSubscription | undefined;
+    const sensorStartTimeout = setTimeout(() => {
+      if (!disposed && !receivedSample) setSensorStatus('unavailable');
+    }, SENSOR_START_TIMEOUT_MS);
 
-    const motionSubscription = DeviceMotion.addListener((measurement) => {
+    const handleGravity = (gravity: GravityVector | null | undefined) => {
+      if (disposed) return;
+      if (!receivedSample) {
+        receivedSample = true;
+        clearTimeout(sensorStartTimeout);
+        setSensorStatus('active');
+      }
       const timestamp = Date.now();
-      const gravity = measurement.accelerationIncludingGravity;
       const result = reduceRaiseToSpeakDetector(detectorRef.current, {
         timestamp,
         sideTilted: isSideTiltedVoicePose(gravity),
@@ -64,12 +87,35 @@ export function useRaiseToSpeakGesture({
       detectorRef.current = result.state;
       if (result.action === 'start') onStartRef.current();
       if (result.action === 'stop') onStopRef.current();
-    });
+    };
+
+    try {
+      if (Platform.OS === 'android') {
+        Accelerometer.setUpdateInterval(RAISE_TO_SPEAK_UPDATE_INTERVAL_MS);
+        motionSubscription = Accelerometer.addListener(handleGravity);
+      } else {
+        DeviceMotion.setUpdateInterval(RAISE_TO_SPEAK_UPDATE_INTERVAL_MS);
+        motionSubscription = DeviceMotion.addListener((measurement) => {
+          handleGravity(measurement.accelerationIncludingGravity);
+        });
+      }
+    } catch {
+      clearTimeout(sensorStartTimeout);
+      setSensorStatus('unavailable');
+    }
 
     return () => {
-      motionSubscription.remove();
+      disposed = true;
+      clearTimeout(sensorStartTimeout);
+      motionSubscription?.remove();
       if (detectorRef.current.phase === 'listening') onStopRef.current();
       detectorRef.current = createRaiseToSpeakDetectorState();
     };
-  }, [appState, blocked, enabled, isFocused]);
+  }, [appState, blocked, enabled, isFocused, retryVersion]);
+
+  const retrySensor = useCallback(() => {
+    setRetryVersion((version) => version + 1);
+  }, []);
+
+  return { sensorStatus, retrySensor };
 }

@@ -5,6 +5,7 @@ export const RAISE_TO_SPEAK_COOLDOWN_MS = 1_500;
 export const RAISE_TO_SPEAK_MAX_LISTENING_MS = 30_000;
 
 const SIDE_TILT_GRAVITY_RATIO = 0.64;
+const MIN_GRAVITY_MAGNITUDE = 0.5;
 
 type RaiseToSpeakPhase = 'idle' | 'listening' | 'cooldown';
 
@@ -29,7 +30,7 @@ export function isSideTiltedVoicePose(
   if (!gravity) return false;
 
   const magnitude = Math.sqrt(gravity.x ** 2 + gravity.y ** 2 + gravity.z ** 2);
-  if (magnitude < 1) return false;
+  if (!Number.isFinite(magnitude) || magnitude < MIN_GRAVITY_MAGNITUDE) return false;
 
   const horizontalRatio = Math.abs(gravity.x) / magnitude;
   const verticalRatio = gravity.y / magnitude;

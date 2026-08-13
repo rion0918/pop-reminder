@@ -157,6 +157,10 @@ jest.mock('../../../shared/components/TimePickerModal', () => ({
 jest.mock('../../reminders/hooks/useRaiseToSpeakGesture', () => ({
   useRaiseToSpeakGesture: (options: typeof mockRaiseGestureOptions) => {
     mockRaiseGestureOptions = options;
+    return {
+      sensorStatus: 'waiting',
+      retrySensor: jest.fn(),
+    };
   },
 }));
 

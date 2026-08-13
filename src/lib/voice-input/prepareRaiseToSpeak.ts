@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Accelerometer from 'expo-sensors/build/Accelerometer';
 import DeviceMotion from 'expo-sensors/build/DeviceMotion';
 
 import { voiceInputService } from './voiceInputService';
@@ -11,7 +12,9 @@ export type RaiseToSpeakPreparationResult =
   | { status: 'speech-unavailable' };
 
 export async function prepareRaiseToSpeak(): Promise<RaiseToSpeakPreparationResult> {
-  const motionAvailable = await DeviceMotion.isAvailableAsync();
+  const motionAvailable = await (Platform.OS === 'android'
+    ? Accelerometer.isAvailableAsync()
+    : DeviceMotion.isAvailableAsync());
 
   if (!motionAvailable) return { status: 'motion-unavailable' };
 

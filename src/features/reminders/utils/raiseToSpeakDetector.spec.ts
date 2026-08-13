@@ -29,7 +29,12 @@ test('either side tilt starts voice input after the orientation is briefly stabl
 
 test('voice pose accepts left and right rotation symmetrically', () => {
   assert.equal(isSideTiltedVoicePose(undefined), false);
+  assert.equal(isSideTiltedVoicePose({ x: 0.01, y: 0, z: 0 }), false);
   assert.equal(isSideTiltedVoicePose({ x: 0, y: -9.8, z: 0 }), false);
+  assert.equal(isSideTiltedVoicePose({ x: 0.72, y: -0.68, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: 0.98, y: 0, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: -0.72, y: -0.68, z: 0 }), true);
+  assert.equal(isSideTiltedVoicePose({ x: -0.98, y: 0, z: 0 }), true);
   assert.equal(isSideTiltedVoicePose({ x: 7.2, y: -6.8, z: 0 }), true);
   assert.equal(isSideTiltedVoicePose({ x: 9.8, y: 0, z: 0 }), true);
   assert.equal(isSideTiltedVoicePose({ x: -7.2, y: -6.8, z: 0 }), true);
