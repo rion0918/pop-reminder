@@ -752,9 +752,10 @@ export function HomeScreen() {
       }
 
       if (result.status === 'permission-denied') {
+        const permissionLabel = Platform.OS === 'android' ? 'マイク' : 'マイクとモーション';
         const message = result.canAskAgain
-          ? 'マイクとモーションの権限を許可してください。'
-          : '端末の設定でマイクとモーションの権限を許可してください。';
+          ? `${permissionLabel}の権限を許可してください。`
+          : `端末の設定で${permissionLabel}の権限を許可してください。`;
         setRaiseToSpeakSetupMessage(message);
         if (!result.canAskAgain) {
           Alert.alert('権限が必要です', message, [

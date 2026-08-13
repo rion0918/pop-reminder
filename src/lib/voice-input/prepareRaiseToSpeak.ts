@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import DeviceMotion from 'expo-sensors/build/DeviceMotion';
 
 import { voiceInputService } from './voiceInputService';
@@ -14,9 +15,11 @@ export async function prepareRaiseToSpeak(): Promise<RaiseToSpeakPreparationResu
 
   if (!motionAvailable) return { status: 'motion-unavailable' };
 
-  const motionPermission = await DeviceMotion.requestPermissionsAsync();
-  if (!motionPermission.granted) {
-    return { status: 'permission-denied', canAskAgain: motionPermission.canAskAgain };
+  if (Platform.OS === 'ios') {
+    const motionPermission = await DeviceMotion.requestPermissionsAsync();
+    if (!motionPermission.granted) {
+      return { status: 'permission-denied', canAskAgain: motionPermission.canAskAgain };
+    }
   }
 
   let speechAvailability = await voiceInputService.getAvailability();

@@ -190,6 +190,9 @@ test('settings shows the side-tilt voice intro on the first enable before prepar
     /finally \{\s*setIsRaiseToSpeakCalibrating\(false\);\s*setIsRaiseToSpeakSetupBusy\(false\);/,
     /blocked: isRaiseToSpeakSetupBusy/,
     /音声は端末内で処理し、録音を保存しません/,
+    /const permissionLabel = Platform\.OS === 'android' \? 'マイク' : 'マイクとモーション';/,
+    /`\$\{permissionLabel\}の権限を許可してください。`/,
+    /`端末の設定で\$\{permissionLabel\}の権限を許可してください。`/,
   ]);
   assert.doesNotMatch(
     source,

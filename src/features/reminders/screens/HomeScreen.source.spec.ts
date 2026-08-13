@@ -100,6 +100,9 @@ test('raise-to-speak enters voice quick add only after the shared Pro gate succe
     /setIsRaiseToSpeakSetupBusy\(true\);\s*try \{\s*await updateSettings\(\{[\s\S]*raiseToSpeakEnabled: true/,
     /finally \{\s*setIsRaiseToSpeakSetupBusy\(false\);\s*\}/,
     /visible=\{Boolean\(settings\?\.raiseToSpeakEnabled && !settings\.raiseToSpeakIntroSeen\)\}/,
+    /const permissionLabel = Platform\.OS === 'android' \? 'マイク' : 'マイクとモーション';/,
+    /`\$\{permissionLabel\}の権限を許可してください。`/,
+    /`端末の設定で\$\{permissionLabel\}の権限を許可してください。`/,
   ]);
   assertSourceIncludes(dismissIntroBlock, [
     /if \(isRaiseToSpeakSetupBusy\) return;/,
