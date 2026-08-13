@@ -103,6 +103,8 @@ test('first App Store release stays scoped to iPhone devices', () => {
 });
 
 test('eas config makes Android preview installable and production store-ready', () => {
+  assert.equal(easConfig.cli.appVersionSource, 'remote');
+  assert.equal(easConfig.build.production.autoIncrement, true);
   assert.equal(easConfig.build.preview.android.buildType, 'apk');
   assert.equal(easConfig.build.production.android.buildType, 'app-bundle');
   assert.equal(easConfig.build.production.environment, 'production');
