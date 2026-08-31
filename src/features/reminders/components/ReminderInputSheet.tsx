@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { addDays, format, set, startOfDay } from 'date-fns';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { PrimaryButton } from '../../../shared/components/PrimaryButton';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
@@ -55,6 +56,12 @@ const QUICK_ADD_BOTTOM_CLEARANCE = 24;
 // the "文字にしています…" state long enough for that inference to return; iOS keeps its
 // existing shorter escape hatch.
 const VOICE_STOP_FALLBACK_MS = Platform.OS === 'android' ? 20_000 : 5_000;
+const VOICE_METER_SPRING = {
+  damping: 22,
+  stiffness: 260,
+  mass: 0.8,
+  overshootClamping: true,
+} as const;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
   android: 'default',
@@ -130,6 +137,10 @@ export function ReminderInputSheet({
   const [voiceVolume, setVoiceVolume] = useState(0);
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   const [dismissalVersion, setDismissalVersion] = useState(0);
+  const voiceMeterScale = useSharedValue(1);
+  const voiceMeterAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: voiceMeterScale.value }],
+  }));
   const sheetTopInset = safeAreaInsets.top + 8;
   const quickAddMaxDynamicContentSize = useMemo(
     () =>
@@ -380,6 +391,11 @@ export function ReminderInputSheet({
     );
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    const targetScale = voiceStatus === 'listening' ? 1 + Math.max(0.04, voiceVolume * 0.2) : 1;
+    voiceMeterScale.value = reduceMotionEnabled ? 1 : withSpring(targetScale, VOICE_METER_SPRING);
+  }, [reduceMotionEnabled, voiceMeterScale, voiceStatus, voiceVolume]);
 
   useEffect(() => {
     const subscription = voiceInput.subscribe((event) => {
@@ -838,10 +854,14 @@ export function ReminderInputSheet({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={voiceStatus === 'idle' ? '音声入力を開始' : '音声入力を終了'}
+              accessibilityHint={
+                voiceStatus === 'idle' ? 'マイクで音声入力を開始します' : '音声入力を停止します'
+              }
               accessibilityState={{
                 busy: voiceStatus === 'starting' || voiceStatus === 'stopping',
               }}
               hitSlop={8}
+              pressRetentionOffset={12}
               onPress={voiceStatus === 'idle' ? beginVoiceInput : stopVoiceInput}
               style={({ pressed }) => [
                 styles.voiceButton,
@@ -868,18 +888,19 @@ export function ReminderInputSheet({
 
           {voiceStatus !== 'idle' ? (
             <View style={styles.voiceStatusPanel}>
-              <View
-                style={[
-                  styles.voiceMeter,
-                  {
-                    transform: [
-                      { scale: reduceMotionEnabled ? 1 : 1 + Math.max(0.04, voiceVolume * 0.2) },
-                    ],
-                  },
-                ]}
-              >
-                <Ionicons name="mic" size={18} color={palette.white} />
-              </View>
+              <Animated.View style={[styles.voiceMeter, voiceMeterAnimatedStyle]}>
+                <Ionicons
+                  name={
+                    voiceStatus === 'stopping'
+                      ? 'text-outline'
+                      : voiceStatus === 'starting'
+                        ? 'hourglass-outline'
+                        : 'mic'
+                  }
+                  size={18}
+                  color={palette.white}
+                />
+              </Animated.View>
               <View style={styles.voiceStatusCopy}>
                 <Text accessibilityLiveRegion="polite" style={styles.voiceStatusTitle}>
                   {voiceStatus === 'listening'
@@ -891,29 +912,19 @@ export function ReminderInputSheet({
                 <Text style={styles.voiceStatusHint}>
                   {voiceStatus === 'stopping'
                     ? '認識結果を待っています…'
-                    : 'スマホを下げると終了します'}
+                    : voiceStatus === 'starting'
+                      ? '準備ができるまでお待ちください'
+                      : 'スマホを縦に戻すと終了します'}
                 </Text>
               </View>
               <View style={styles.voiceStatusActions}>
-                {voiceStatus === 'listening' ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="音声入力を完了"
-                    hitSlop={8}
-                    onPress={stopVoiceInput}
-                    style={({ pressed }) => [
-                      styles.voiceFinishButton,
-                      pressed ? styles.voiceButtonPressed : null,
-                    ]}
-                  >
-                    <Text style={styles.voiceFinishText}>完了</Text>
-                  </Pressable>
-                ) : null}
                 {voiceStatus !== 'stopping' ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="音声入力をキャンセル"
+                    accessibilityHint="音声入力を取り消して元のタイトルに戻します"
                     hitSlop={8}
+                    pressRetentionOffset={12}
                     onPress={() => cancelVoiceInput(true)}
                     style={({ pressed }) => [
                       styles.voiceCancelButton,
@@ -1090,9 +1101,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderRadius: 18,
-    backgroundColor: 'rgba(237,230,255,0.72)',
+    backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: 'rgba(168,145,245,0.28)',
+    borderColor: palette.line,
+    shadowColor: palette.lavenderDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 1,
   },
   voiceMeter: {
     width: 34,
@@ -1126,18 +1142,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  voiceFinishButton: {
-    minHeight: 34,
-    justifyContent: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    backgroundColor: palette.lavenderDeep,
-  },
-  voiceFinishText: {
-    color: palette.white,
-    fontSize: 11,
-    fontWeight: '900',
   },
   voiceCancelText: {
     color: palette.lavenderDeep,
