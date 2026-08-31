@@ -10,3 +10,6 @@ overrides:
   '@storybook/react-native-theming': 10.4.2
   '@storybook/react-native-ui': 10.4.2
   '@storybook/react-native-ui-common': 10.4.2
+
+patchedDependencies:
+  react-native-sherpa-onnx@0.4.3: patches/react-native-sherpa-onnx@0.4.3.patch

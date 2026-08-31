@@ -67,6 +67,27 @@ test('iOS voice input starts Japanese on-device recognition without persisting a
   ]);
 });
 
+test('Android platform recognizer can be configured for final-only short utterances', async () => {
+  const fake = makeModule();
+  const service = createVoiceInputService(
+    fake.module,
+    { os: 'android', apiLevel: 35 },
+    { interimResults: false, continuous: false },
+  );
+
+  await service.start();
+
+  assert.deepEqual(fake.starts[0], {
+    lang: 'ja-JP',
+    interimResults: false,
+    maxAlternatives: 1,
+    continuous: false,
+    requiresOnDeviceRecognition: true,
+    recordingOptions: { persist: false },
+    volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
+  });
+});
+
 test('iOS availability distinguishes permission and unsupported states', async () => {
   const permissionRequired = makeModule({
     getMicrophonePermissionsAsync: async () => ({

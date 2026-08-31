@@ -4,18 +4,25 @@ import { assertSourceContract, readSource } from '../../test-utils/sourceAsserti
 
 const source = readSource(import.meta.url, './voiceInputService.android.ts');
 
-test('Android voice input uses Vosk, explicit microphone permission, and foreground lifecycle', () => {
+test('Android voice input uses on-device recognition with a local Moonshine fallback', () => {
   assertSourceContract(source, {
     includes: [
-      /from 'react-native-vosk'/,
+      /androidVoiceInputServiceCore/,
+      /androidOnDeviceVoiceInputServiceCore/,
+      /moonshineVoiceInputServiceCore/,
+      /requireOptionalNativeModule<AndroidOnDeviceSpeechRecognitionModule>/,
       /PermissionsAndroid\.check\(recordAudioPermission\)/,
       /PermissionsAndroid\.request\(recordAudioPermission\)/,
       /PermissionsAndroid\.RESULTS\.NEVER_ASK_AGAIN/,
-      /modelName: MODEL_NAME/,
-      /timeoutMs: RECOGNITION_TIMEOUT_MS/,
+      /createPcmLiveStream\(\{ sampleRate: SAMPLE_RATE, channelCount: 1 \}\)/,
+      /modelPath: \{ type: 'asset', path: MOONSHINE_MODEL_PATH \}/,
+      /const RECORDING_MAX_DURATION_MS = 8_000/,
+      /primaryVoiceInputService/,
+      /providerOverride/,
+      /setAndroidVoiceInputEngineForTesting/,
       /AppState\.addEventListener\('change'/,
       /releaseForBackground\(\)/,
     ],
-    excludes: [/expo-speech-recognition/, /RecognitionService/, /google\.android/],
+    excludes: [/react-native-vosk/, /Vosk/, /model-ja-jp/],
   });
 });

@@ -31,6 +31,11 @@ type PlatformInfo = {
   apiLevel: number;
 };
 
+type VoiceInputStartOptions = {
+  interimResults?: boolean;
+  continuous?: boolean;
+};
+
 function normalizeSpeechRecognitionError(error: string): VoiceInputError {
   if (error === 'not-allowed' || error === 'service-not-allowed') return 'not-allowed';
   if (error === 'no-speech') return 'no-speech';
@@ -45,6 +50,7 @@ function normalizeSpeechRecognitionError(error: string): VoiceInputError {
 export function createVoiceInputService(
   speechRecognition: NativeSpeechRecognitionModule,
   platform: PlatformInfo,
+  startOptions: VoiceInputStartOptions = {},
 ) {
   const service: VoiceInputService = {
     async getAvailability() {
@@ -73,9 +79,9 @@ export function createVoiceInputService(
     async start() {
       const options: ExpoSpeechRecognitionOptions = {
         lang: VOICE_INPUT_LOCALE,
-        interimResults: true,
+        interimResults: startOptions.interimResults ?? true,
         maxAlternatives: 1,
-        continuous: true,
+        continuous: startOptions.continuous ?? true,
         requiresOnDeviceRecognition: true,
         recordingOptions: { persist: false },
         volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },

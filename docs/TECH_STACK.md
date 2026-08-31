@@ -25,7 +25,7 @@ graph TB
         Notifications[Expo Notifications Gateway]
         Haptics[Expo Haptics Engine]
         Purchases[RevenueCat Purchase Adapter]
-        Vosk[Vosk Android Offline STT]
+        AndroidSTT[Android On-device STT]
     end
 
     AppUI --> TanStack
@@ -34,7 +34,7 @@ graph TB
     TanStack --> Drizzle
     AppUI --> Notifications
     AppUI --> Purchases
-    AppUI --> Vosk
+    AppUI --> AndroidSTT
     BubbleUI --> Haptics
     WidgetUI --> Drizzle
 ```
@@ -94,19 +94,20 @@ graph TB
 
 ## 5. ネイティブ統合・Widget (Native Features)
 
-| 技術 / ライブラリ               | バージョン | 用途・説明                                                   |
-| :------------------------------ | :--------- | :----------------------------------------------------------- |
-| **expo-notifications**          | `~0.32.17` | ローカル通知予約・キャンセル、Android 通知チャンネル構築     |
-| **react-native-android-widget** | `^0.20.3`  | Android ホーム画面 Widget の描画・タスク同期                 |
-| **expo-linking**                | `~8.0.12`  | 通知や Widget からの Deep Link 処理                          |
-| **expo-haptics**                | `~15.0.8`  | 泡が破裂する際の物理ハプティクスフィードバック               |
-| **posthog-react-native**        | `^4.62.0`  | 明示同意後の匿名イベント計測、手動画面追跡、永続的な同意状態 |
-| **react-native-purchases**      | `^10.7.0`  | Android / iOSのRevenueCat購入権利取得・復元                  |
-| **react-native-purchases-ui**   | `^10.7.0`  | RevenueCat管理Paywallの表示                                  |
-| **react-native-vosk**           | `2.1.7`    | Androidの完全オフライン日本語音声認識Adapter                 |
-| **vosk-model-small-ja**         | `0.22`     | アプリ同梱の日本語モデル。音声・文字列を外部送信しない       |
+| 技術 / ライブラリ               | バージョン                   | 用途・説明                                                     |
+| :------------------------------ | :--------------------------- | :------------------------------------------------------------- |
+| **expo-notifications**          | `~0.32.17`                   | ローカル通知予約・キャンセル、Android 通知チャンネル構築       |
+| **react-native-android-widget** | `^0.20.3`                    | Android ホーム画面 Widget の描画・タスク同期                   |
+| **expo-linking**                | `~8.0.12`                    | 通知や Widget からの Deep Link 処理                            |
+| **expo-haptics**                | `~15.0.8`                    | 泡が破裂する際の物理ハプティクスフィードバック                 |
+| **posthog-react-native**        | `^4.62.0`                    | 明示同意後の匿名イベント計測、手動画面追跡、永続的な同意状態   |
+| **react-native-purchases**      | `^10.7.0`                    | Android / iOSのRevenueCat購入権利取得・復元                    |
+| **react-native-purchases-ui**   | `^10.7.0`                    | RevenueCat管理Paywallの表示                                    |
+| **expo-speech-recognition**     | `3.1.3`                      | Android 13+のOSオンデバイス音声認識とiOS端末内認識             |
+| **react-native-sherpa-onnx**    | `0.4.3` / Android `1.13.2-1` | AndroidフォールバックのローカルSTTランタイム                   |
+| **Moonshine Tiny JA**           | `2026-02-27`                 | アプリ同梱の短文向け日本語モデル。音声・文字列を外部送信しない |
 
-Android音声入力はAndroid 9（API 28）以上を正式対応範囲とし、同梱モデルを最初の利用時に遅延ロードします。モデルは同一フォアグラウンド中に再利用し、認識終了後にアプリがバックグラウンドへ移動すると解放します。Android 7・8ではSQLite、ローカル通知、手入力を維持し、音声入力だけを非対応にします。iOSは当面`expo-speech-recognition@3.1.3`の端末内認識を使用します。
+Android音声入力はAndroid 9（API 28）以上を正式対応範囲とし、Android 13以上で日本語OSオンデバイスモデルが導入済みならそれを第一候補にします。未導入・非対応端末では、同梱Moonshineモデルを最初の利用時に遅延ロードします。モデルは同一フォアグラウンド中に再利用し、認識終了後にアプリがバックグラウンドへ移動すると解放します。Android 7・8ではSQLite、ローカル通知、手入力を維持し、音声入力だけを非対応にします。iOSは`expo-speech-recognition@3.1.3`の端末内認識を使用します。
 
 ---
 
@@ -140,7 +141,7 @@ src/
 ├── lib/
 │   ├── analytics/     # PostHog Adapter・イベント許可リスト
 │   ├── notifications/ # Expo Notifications 管理
-│   └── voice-input/   # Android Vosk / iOS端末内音声認識 Adapter
+│   └── voice-input/   # Android OS/Moonshine / iOS端末内音声認識 Adapter
 ├── shared/            # 共通 UI コンポーネントおよびユーティリティ
 ├── test-utils/        # ソース契約・テストヘルパー
 └── widget/            # Android Widget snapshot & 更新ロジック

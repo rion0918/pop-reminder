@@ -101,8 +101,8 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 - Google Play Data safety、Privacy Policy、アプリ内同意文言が実装と一致している。
 - `fuwatto_pro_lifetime` の商品、RevenueCat の `pro` entitlement、`default` offering が存在する。
 - Android Widget、通知、端末内音声入力、無料 6 件制限、購入・復元を実機で確認できる。
-- Android音声入力は`react-native-vosk@2.1.7`と同梱`vosk-model-small-ja-0.22`を使用し、機内モードの初回起動でも日本語を認識できる。
-- `assets/model-ja-jp.sha256`の全ファイルが一致し、[第三者ライセンス](THIRD_PARTY_LICENSES.md)がモデルとアプリへ含まれている。
+- Android音声入力はAndroid 13以上ではOSの日本語オンデバイス認識を優先し、それ以外のAndroid 9以上では同梱`Moonshine Tiny JA`へフォールバックする。認識時は機内モードでも動作する。
+- `assets/moonshine-tiny-ja.sha256`の全ファイルが一致し、[第三者ライセンス](THIRD_PARTY_LICENSES.md)がモデルとアプリへ含まれている。
 
 ## 4. EAS build（Android）
 
@@ -304,7 +304,7 @@ Play Console のログインに使うメールアドレスをサポート窓口�
 - [ ] マイク許可時に端末内音声入力が動く。録音・音声・文字起こしが外部送信されない。
 - [ ] マイク拒否時も手入力で利用できる。
 - [ ] AQUOS zero5G basicをインストール前から機内モードにして、初回の日本語音声入力、SQLite保存、再起動後の復元、ローカル通知を確認する。
-- [ ] Android 9以上で同梱Voskモデルを使用し、OSの音声モデルダウンロードやGoogle RecognitionServiceを要求しない。
+- [ ] Android 9以上で同梱Moonshineモデルへフォールバックでき、認識時のネットワーク通信を要求しない。Android 13以上では初回準備時にOS日本語モデルのダウンロードを案内できる。
 - [ ] Android 7・8では音声入力のみ非対応となり、手入力と主要なオフライン機能が動作する。
 - [ ] 左右に傾けて音声入力を明示的に有効化した場合だけモーション検出が動く。
 - [ ] リマインダーを追加・編集・削除でき、再起動後も SQLite の内容が残る。

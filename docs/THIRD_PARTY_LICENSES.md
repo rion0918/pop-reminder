@@ -1,48 +1,36 @@
 # Third-party licenses
 
-## Vosk Japanese speech-recognition model
+## Moonshine Tiny JA model
 
-- Model: `vosk-model-small-ja-0.22`
-- Bundled directory: `assets/model-ja-jp`
-- Publisher: Alpha Cephei
-- Source: <https://alphacephei.com/vosk/models>
-- Archive: <https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip>
-- Archive SHA-256: `efa092d280153a77615e9e0c7d7283e93e600de3d19d3bec686c57ef19d52eac`
-- License: Apache License 2.0
+- Model: `sherpa-onnx-moonshine-tiny-ja-quantized-2026-02-27`
+- Bundled directory: `assets/models/moonshine-tiny-ja`
+- Publisher: Moonshine AI / sherpa-onnx model distribution
+- Source: <https://huggingface.co/csukuangfj2/sherpa-onnx-moonshine-tiny-ja-quantized-2026-02-27>
+- License: Moonshine Community License (free research/non-commercial use and limited commercial
+  use under its terms; the full text is bundled at `assets/models/moonshine-tiny-ja/LICENSE`)
+- Distribution notice: `assets/models/moonshine-tiny-ja/NOTICE` is bundled with the model.
 
-The model is bundled so Android speech recognition can run without downloading data or sending
-recorded audio to a speech-recognition server. File-level checksums are recorded in
-`assets/model-ja-jp.sha256`.
-The full Apache License 2.0 text is bundled at `assets/model-ja-jp/LICENSE`.
+The two ONNX model files are gzip-compressed in the repository to avoid accidental secret-scanner
+matches inside opaque model bytes. The Android config plugin expands them into the native assets
+directory during prebuild; runtime still receives the original ONNX files. File-level checksums
+for the committed assets are recorded in `assets/moonshine-tiny-ja.sha256`.
 
-## react-native-vosk
+## react-native-sherpa-onnx
 
-- Version: `2.1.7`
-- Source: <https://github.com/riderodd/react-native-vosk>
+- Version: `0.4.3`
+- Android native runtime: `sherpa-onnx-android-v1.13.2-1`
+- Source: <https://github.com/XDcobra/react-native-sherpa-onnx>
 - License: MIT
 
-The package provides the React Native bridge to the Vosk on-device speech-recognition runtime.
+The Android build disables the package's optional FFmpeg and libarchive features because this
+application only uses PCM capture and offline STT. The package's native runtime and third-party
+license notices are kept with the dependency at build time.
 
-```text
-MIT License
+## expo-speech-recognition
 
-Copyright (c) 2024 riderodd
+- Version: `3.1.3`
+- Source: <https://github.com/jamsch/expo-speech-recognition>
+- License: MIT
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+Android uses this package only with `requiresOnDeviceRecognition: true`; no network speech
+recognition endpoint is used.
