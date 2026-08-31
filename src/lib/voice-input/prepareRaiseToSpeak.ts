@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
-import Accelerometer from 'expo-sensors/build/Accelerometer';
-import DeviceMotion from 'expo-sensors/build/DeviceMotion';
+import { Accelerometer, DeviceMotion } from 'expo-sensors';
 
 import { voiceInputService } from './voiceInputService';
 

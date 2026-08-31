@@ -465,13 +465,18 @@ export function SettingsScreen() {
 
   const handleRaiseToSpeakCalibrationStop = useCallback(() => {}, []);
 
-  const { sensorStatus: raiseToSpeakSensorStatus, retrySensor: retryRaiseToSpeakSensor } =
-    useRaiseToSpeakGesture({
-      enabled: isRaiseToSpeakCalibrating,
-      blocked: isRaiseToSpeakSetupBusy,
-      onStart: handleRaiseToSpeakCalibrationStart,
-      onStop: handleRaiseToSpeakCalibrationStop,
-    });
+  const {
+    sensorStatus: raiseToSpeakSensorStatus,
+    sensorFailureReason: raiseToSpeakSensorFailureReason,
+    retrySensor: retryRaiseToSpeakSensor,
+    tiltProgress: raiseToSpeakTiltProgress,
+  } = useRaiseToSpeakGesture({
+    enabled: isRaiseToSpeakCalibrating,
+    blocked: isRaiseToSpeakSetupBusy,
+    trackTiltProgress: isRaiseToSpeakCalibrating,
+    onStart: handleRaiseToSpeakCalibrationStart,
+    onStop: handleRaiseToSpeakCalibrationStop,
+  });
 
   const handleOpenProPaywall = async () => {
     if (isPurchaseActionPending) return;
@@ -1021,6 +1026,8 @@ export function SettingsScreen() {
         calibrating={isRaiseToSpeakCalibrating}
         message={raiseToSpeakSetupMessage}
         sensorStatus={raiseToSpeakSensorStatus}
+        sensorFailureReason={raiseToSpeakSensorFailureReason}
+        tiltProgress={raiseToSpeakTiltProgress}
         onEnable={() => void handlePrepareRaiseToSpeak()}
         onDismiss={handleDismissRaiseToSpeakIntro}
         onRetry={retryRaiseToSpeakSensor}

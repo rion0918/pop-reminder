@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   createRaiseToSpeakDetectorState,
+  getSideTiltMeasurement,
   isSideTiltedVoicePose,
   reduceRaiseToSpeakDetector,
 } from './raiseToSpeakDetector';
@@ -42,6 +43,36 @@ test('voice pose accepts left and right rotation symmetrically', () => {
   assert.equal(isSideTiltedVoicePose({ x: 7, y: 0, z: 8 }), false);
   assert.equal(isSideTiltedVoicePose({ x: 0, y: -7, z: -7 }), false);
   assert.equal(isSideTiltedVoicePose({ x: 0, y: 0, z: -9.8 }), false);
+  assert.deepEqual(getSideTiltMeasurement({ x: Number.NaN, y: 0, z: 0 }), {
+    sideTilted: false,
+    progress: 0,
+  });
+  assert.deepEqual(getSideTiltMeasurement({ x: Number.POSITIVE_INFINITY, y: 0, z: 0 }), {
+    sideTilted: false,
+    progress: 0,
+  });
+  assert.deepEqual(getSideTiltMeasurement({ x: 1_000, y: 0, z: 0 }), {
+    sideTilted: false,
+    progress: 0,
+  });
+});
+
+test('voice pose uses roll angle while tolerating a normal viewing pitch', () => {
+  const roll = (degrees: number) => (degrees * Math.PI) / 180;
+  const gravityAt = (rollDegrees: number, pitchDegrees: number) => ({
+    x: Math.sin(roll(rollDegrees)) * Math.cos(roll(pitchDegrees)),
+    y: Math.cos(roll(rollDegrees)) * Math.cos(roll(pitchDegrees)),
+    z: Math.sin(roll(pitchDegrees)),
+  });
+
+  assert.equal(isSideTiltedVoicePose(gravityAt(42, 30)), true);
+  assert.equal(isSideTiltedVoicePose(gravityAt(-42, 30)), true);
+  assert.equal(isSideTiltedVoicePose(gravityAt(39, 0)), false);
+  assert.equal(isSideTiltedVoicePose(gravityAt(42, 60)), false);
+
+  const measurement = getSideTiltMeasurement(gravityAt(20, 30));
+  assert.ok(measurement.progress > 0.45 && measurement.progress < 0.55);
+  assert.equal(getSideTiltMeasurement(gravityAt(-20, 30)).progress < -0.45, true);
 });
 
 test('portrait and a brief side-tilt bounce never start voice input', () => {
