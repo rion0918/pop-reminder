@@ -65,7 +65,14 @@ test('quick add supports cancellable on-device voice input without truncating th
     /if \(titleInputRef\.current\?\.isFocused\(\)\) \{[\s\S]*pendingVoiceStartAfterEndEditingRef\.current = true;[\s\S]*titleInputRef\.current\.blur\(\);[\s\S]*return;/,
     /if \(pendingVoiceStartAfterEndEditingRef\.current\) \{[\s\S]*beginVoiceInputRef\.current\(\);[\s\S]*return;/,
     /AccessibilityInfo\.isReduceMotionEnabled\(\)/,
-    /reduceMotionEnabled \? 1 :/,
+    /reduceMotionEnabled\s*\?\s*1\s*:\s*withSpring\(targetScale, VOICE_METER_SPRING\)/,
+    /const VOICE_METER_SPRING = \{/,
+    /const voiceMeterScale = useSharedValue\(1\);/,
+    /voiceMeterAnimatedStyle = useAnimatedStyle\(\(\) =>/,
+    /withSpring\(targetScale, VOICE_METER_SPRING\)/,
+    /voiceStatus === 'stopping'\s*\?\s*'text-outline'/,
+    /voiceStatus === 'starting'\s*\?\s*'hourglass-outline'/,
+    /accessibilityHint=\{\s*voiceStatus === 'idle' \? 'マイクで音声入力を開始します' : '音声入力を停止します'/,
     /音声入力を開始しました/,
     /内容を確認してください/,
   ]);
@@ -79,7 +86,7 @@ test('quick add supports cancellable on-device voice input without truncating th
   });
 });
 
-test('voice input always exposes a labeled finish action and escapes a stuck native stop', () => {
+test('voice input uses the top stop action and escapes a stuck native stop', () => {
   assertSourceIncludes(source, [
     /const VOICE_STOP_FALLBACK_MS = Platform\.OS === 'android' \? 20_000 : 5_000;/,
     /const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> \| null>\(null\);/,
@@ -88,12 +95,19 @@ test('voice input always exposes a labeled finish action and escapes a stuck nat
     /voiceInput\.abort\(\);/,
     /voiceInput\.stop\(\);\s*voiceStopFallbackRef\.current = setTimeout\(/,
     /AccessibilityInfo\.announceForAccessibility\(\s*'音声入力を終了しました。内容を確認してください'/,
-    /voiceStatus === 'stopping'\s*\?\s*'認識結果を待っています…'\s*:\s*'スマホを下げると終了します'/,
-    /accessibilityLabel="音声入力を完了"/,
-    />完了</,
+    /voiceStatus === 'stopping'\s*\?\s*'認識結果を待っています…'\s*:\s*voiceStatus === 'starting'\s*\?\s*'準備ができるまでお待ちください'\s*:\s*'スマホを縦に戻すと終了します'/,
+    /accessibilityHint="音声入力を取り消して元のタイトルに戻します"/,
+    /voiceStatusPanel:\s*\{[\s\S]*?backgroundColor: palette\.white,[\s\S]*?borderColor: palette\.line,/,
   ]);
   assertSourceContract(source, {
-    excludes: [/<View\s+accessible\s+accessibilityLiveRegion="polite"/],
+    excludes: [
+      /voiceStatusPanelProcessing/,
+      /voiceMeterProcessing/,
+      /voiceFinishButton/,
+      /voiceFinishText/,
+      /accessibilityLabel="音声入力を完了"/,
+      /<View\s+accessible\s+accessibilityLiveRegion="polite"/,
+    ],
   });
 });
 

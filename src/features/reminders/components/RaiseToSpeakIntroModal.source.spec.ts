@@ -5,6 +5,12 @@ import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAsse
 
 const source = readSource(import.meta.url, './RaiseToSpeakIntroModal.tsx');
 
+test('intro explains that returning the phone upright ends voice input', () => {
+  assertSourceIncludes(source, [
+    /let body = 'スマホを左右どちらかへ傾けると音声入力を開始し、縦に戻すと終了します。';/,
+  ]);
+});
+
 test('raise-to-speak calibration can be cancelled from the intro modal', () => {
   assertSourceIncludes(source, [
     /onRequestClose=\{busy \? undefined : onDismiss\}/,

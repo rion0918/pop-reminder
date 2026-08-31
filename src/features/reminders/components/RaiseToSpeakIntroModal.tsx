@@ -188,7 +188,7 @@ export function RaiseToSpeakIntroModal({
   };
 
   let title = '左右に傾けて音声入力';
-  let body = 'スマホを左右どちらかへ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。';
+  let body = 'スマホを左右どちらかへ傾けると音声入力を開始し、縦に戻すと終了します。';
 
   if (calibrating) {
     if (sensorStatus === 'unavailable') {
