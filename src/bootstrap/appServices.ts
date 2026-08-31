@@ -1,5 +1,6 @@
 import { createReminderUseCases } from '../features/reminders/application/reminderUseCases';
 import { sqliteReminderRepository } from '../features/reminders/infrastructure/sqliteReminderRepository';
+import { createSettingsUseCases } from '../features/settings/application/settingsUseCases';
 import { sqliteSettingsRepository } from '../features/settings/infrastructure/sqliteSettingsRepository';
 import {
   cancelAllScheduledNotifications,
@@ -24,19 +25,6 @@ const widgetGateway = {
   },
 };
 
-const settingsService = {
-  get: sqliteSettingsRepository.get,
-  async update(input: Parameters<typeof sqliteSettingsRepository.update>[0]) {
-    const settings = await sqliteSettingsRepository.update(input);
-
-    if (input.theme !== undefined) {
-      await widgetGateway.sync();
-    }
-
-    return settings;
-  },
-};
-
 export const appServices = {
   analytics: posthogAnalytics,
   purchases: revenueCatPurchaseService,
@@ -57,7 +45,11 @@ export const appServices = {
       getState: revenueCatPurchaseService.getProAccessState,
     },
   }),
-  settings: settingsService,
+  settings: createSettingsUseCases({
+    settings: sqliteSettingsRepository,
+    widget: widgetGateway,
+    analytics: posthogAnalytics,
+  }),
   notificationSettings: {
     cancelAllScheduledNotifications,
     getNotificationPermissionStatus,

@@ -1,5 +1,3 @@
-import { type AppTheme, themeOptions } from '../../constants/colors';
-
 export function isTimeString(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
@@ -41,8 +39,4 @@ export function timeToDigits(value: string) {
 
 export function digitsToTime(value: string) {
   return formatTimeInput(value);
-}
-
-export function coerceTheme(value: string): AppTheme {
-  return themeOptions.includes(value as AppTheme) ? (value as AppTheme) : 'lavender';
 }

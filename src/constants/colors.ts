@@ -1,6 +1,8 @@
-export type AppTheme = 'sky' | 'lavender' | 'mint';
+import { APP_THEME_OPTIONS, type AppTheme } from '../shared/domain/appTheme';
 
-export const themeOptions: AppTheme[] = ['sky', 'lavender', 'mint'];
+export type { AppTheme } from '../shared/domain/appTheme';
+
+export const themeOptions: AppTheme[] = [...APP_THEME_OPTIONS];
 
 export const palette = {
   ink: '#263151',

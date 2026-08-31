@@ -48,13 +48,8 @@ test('settings captures permission results and exposes persisted analytics conse
       /status: permission\.status/,
       /canAskAgain: permission\.canAskAgain/,
       /settings\.analyticsConsent === 'granted'/,
-      /const previousConsent = settings\.analyticsConsent;/,
       /const nextConsent = value \? 'granted' : 'denied';/,
-      /await update\(\{ analyticsConsent: nextConsent \}\);\s*consentPersisted = true;/,
-      /const enabled = await analytics\.setCaptureEnabled\(value\);/,
-      /await analytics\.setCaptureEnabled\(false\)/,
-      /if \(consentPersisted && previousConsent !== nextConsent\)/,
-      /analyticsConsent: previousConsent/,
+      /await updateAnalyticsConsent\(nextConsent\);/,
       /title="匿名の利用状況を共有"/,
       /value=\{isAnalyticsEnabled\}/,
       /captureProPaywallResult\(\{ placement: 'settings', outcome: result \}\)/,
@@ -64,6 +59,8 @@ test('settings captures permission results and exposes persisted analytics conse
       /captureReminderCreated\([^)]*title/,
       /captureScreen\([^)]*routeParams/,
       /getDeletionRequestId/,
+      /analytics\.setCaptureEnabled/,
+      /update\(\{ analyticsConsent/,
     ],
   });
 });

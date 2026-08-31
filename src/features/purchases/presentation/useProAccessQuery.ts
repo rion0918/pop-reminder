@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { useAppServices } from '../../../bootstrap/AppProviders';
+import { useAppServices } from '../../../bootstrap/appServicesContext';
 
 export const proAccessQueryKey = ['purchases', 'pro-access'] as const;
 

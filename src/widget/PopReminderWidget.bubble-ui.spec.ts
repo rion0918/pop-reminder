@@ -132,7 +132,7 @@ test('widget snapshot carries persisted theme through every refresh path', () =>
     /theme: AppTheme/,
     /SELECT theme/,
     /FROM app_settings/,
-    /coerceTheme\(row\?\.theme \?\? 'lavender'\)/,
+    /coerceAppTheme\(row\?\.theme \?\? 'lavender'\)/,
     /return \{ reminders: \[\], theme: 'lavender' \}/,
   ]);
   assertSourceIncludes(updateSource, [

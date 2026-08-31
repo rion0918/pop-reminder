@@ -1,7 +1,10 @@
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { assertSourceIncludes, readSource } from '../test-utils/sourceAssertions';
+import {
+  assertSourceContract,
+  assertSourceIncludes,
+  readSource,
+} from '../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './AppProviders.tsx');
 
@@ -22,11 +25,15 @@ test('analytics tracks Expo Router pathnames manually only after the consent gat
     /if \(previousPathnameRef\.current === pathname\) return;/,
     /appServices\.analytics\.captureScreen\(pathname\);/,
     /AnalyticsConsentGate/,
-    /共有する/,
-    /共有しない/,
-    /analyticsConsent === 'unknown'/,
   ]);
-  assert.doesNotMatch(source, /PostHogProvider/);
-  assert.doesNotMatch(source, /useGlobalSearchParams/);
-  assert.doesNotMatch(source, /useLocalSearchParams/);
+  assertSourceContract(source, {
+    excludes: [
+      /PostHogProvider/,
+      /useGlobalSearchParams/,
+      /useLocalSearchParams/,
+      /analyticsConsent/,
+      /settingsQuery/,
+      /<Modal/,
+    ],
+  });
 });

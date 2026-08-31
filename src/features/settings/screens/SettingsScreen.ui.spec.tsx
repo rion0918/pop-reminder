@@ -47,7 +47,7 @@ jest.mock('expo-haptics', () => ({
   notificationAsync: (...args: unknown[]) => mockHapticsNotificationAsync(...args),
 }));
 
-jest.mock('../../../bootstrap/AppProviders', () => ({
+jest.mock('../../../bootstrap/appServicesContext', () => ({
   useAppServices: () => ({
     reminders: {
       retryPendingNotifications: jest.fn(async () => undefined),
@@ -104,6 +104,8 @@ jest.mock('../presentation/useAppSettingsQuery', () => {
         loading: false,
         refresh: jest.fn(async () => ({ data: settings })),
         update,
+        updateAnalyticsConsent: (analyticsConsent: AppSettings['analyticsConsent']) =>
+          update({ analyticsConsent }),
         updatePreviousNotifyTime: jest.fn(),
         isUpdatingPreviousNotifyTime: false,
       };

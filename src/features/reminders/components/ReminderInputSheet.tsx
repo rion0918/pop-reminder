@@ -40,7 +40,7 @@ import {
   ImeSafeReminderTitleInput,
   type ImeSafeReminderTitleInputHandle,
 } from './ImeSafeReminderTitleInput';
-import { useAppServices } from '../../../bootstrap/AppProviders';
+import { useAppServices } from '../../../bootstrap/appServicesContext';
 
 type VoiceInputStatus = 'idle' | 'starting' | 'listening' | 'stopping';
 

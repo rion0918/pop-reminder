@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '../../../db/client';
 import { appSettings, type AppSettingsRow, type NewAppSettingsRow } from '../../../db/schema';
-import { coerceTheme, isTimeString } from '../../../shared/utils/time';
+import { coerceAppTheme } from '../../../shared/domain/appTheme';
+import { isTimeString } from '../../../shared/utils/time';
 import type { SettingsRepository } from '../application/settingsRepository';
 import {
   DEFAULT_ANALYTICS_SETTINGS,
@@ -41,7 +42,7 @@ function toDomain(row: AppSettingsRow): AppSettings {
     raiseToSpeakEnabled: row.raiseToSpeakEnabled,
     raiseToSpeakIntroSeen: row.raiseToSpeakIntroSeen,
     analyticsConsent: row.analyticsConsent,
-    theme: coerceTheme(row.theme),
+    theme: coerceAppTheme(row.theme),
   };
 }
 
