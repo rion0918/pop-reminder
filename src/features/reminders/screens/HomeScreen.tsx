@@ -813,20 +813,25 @@ export function HomeScreen() {
     requestVoiceInputStop();
   }, [requestVoiceInputStop]);
 
-  const { sensorStatus: raiseToSpeakSensorStatus, retrySensor: retryRaiseToSpeakSensor } =
-    useRaiseToSpeakGesture({
-      enabled: Boolean(settings?.raiseToSpeakEnabled) || isRaiseToSpeakCalibrating,
-      blocked:
-        (!settings?.raiseToSpeakIntroSeen && !isRaiseToSpeakCalibrating) ||
-        isRaiseToSpeakSetupBusy ||
-        isSelectionMode ||
-        isSelectionBusy ||
-        selectedReminder !== null ||
-        isQuickAddPickerOpen ||
-        isSaving,
-      onStart: handleRaiseToSpeakStart,
-      onStop: handleRaiseToSpeakStop,
-    });
+  const {
+    sensorStatus: raiseToSpeakSensorStatus,
+    sensorFailureReason: raiseToSpeakSensorFailureReason,
+    retrySensor: retryRaiseToSpeakSensor,
+    tiltProgress: raiseToSpeakTiltProgress,
+  } = useRaiseToSpeakGesture({
+    enabled: Boolean(settings?.raiseToSpeakEnabled) || isRaiseToSpeakCalibrating,
+    trackTiltProgress: isRaiseToSpeakCalibrating,
+    blocked:
+      (!settings?.raiseToSpeakIntroSeen && !isRaiseToSpeakCalibrating) ||
+      isRaiseToSpeakSetupBusy ||
+      isSelectionMode ||
+      isSelectionBusy ||
+      selectedReminder !== null ||
+      isQuickAddPickerOpen ||
+      isSaving,
+    onStart: handleRaiseToSpeakStart,
+    onStop: handleRaiseToSpeakStop,
+  });
 
   const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled = isSaving;
@@ -1057,6 +1062,8 @@ export function HomeScreen() {
         calibrating={isRaiseToSpeakCalibrating}
         message={raiseToSpeakSetupMessage}
         sensorStatus={raiseToSpeakSensorStatus}
+        sensorFailureReason={raiseToSpeakSensorFailureReason}
+        tiltProgress={raiseToSpeakTiltProgress}
         onEnable={() => void handlePrepareRaiseToSpeak()}
         onDismiss={handleDismissRaiseToSpeakIntro}
         onRetry={retryRaiseToSpeakSensor}

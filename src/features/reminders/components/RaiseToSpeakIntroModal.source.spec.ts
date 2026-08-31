@@ -17,13 +17,21 @@ test('raise-to-speak calibration can be cancelled from the intro modal', () => {
 test('calibration distinguishes sensor startup failure from an unrecognized pose and can retry', () => {
   assertSourceIncludes(source, [
     /sensorStatus === 'unavailable'/,
+    /sensorFailureReason/,
+    /sensor-unavailable/,
+    /subscription-error/,
+    /no-valid-sample/,
     /CALIBRATION_POSE_TIMEOUT_MS = 10_000/,
+    /calibrationAttempt/,
+    /tiltProgress/,
+    /accessibilityLiveRegion="polite"/,
     /センサーを確認しています/,
     /センサーを確認できませんでした/,
     /傾きを検出できませんでした/,
     /accessibilityLabel="傾きセンサーをもう一度試す"/,
     /onPress=\{handleRetry\}/,
   ]);
+  assert.doesNotMatch(source, /SENSOR_START_TIMEOUT_MS|startupTimeoutRef|sensorStartTimedOut/);
 });
 
 test('intro modal uses a reduced-motion-aware spring tilt illustration', () => {
@@ -36,9 +44,19 @@ test('intro modal uses a reduced-motion-aware spring tilt illustration', () => {
     /TILT_PHONE_ROTATION_DEGREES = 9/,
     /withSpring\(-TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING\)/,
     /reduceMotionEnabled\s*\?\s*0\s*:\s*withRepeat/,
+    /active=\{visible && !calibrating\}/,
     /accessible\n\s*accessibilityRole="image"/,
     /accessibilityLabel="スマートフォンが左右に傾く動き"/,
   ]);
+});
+
+test('calibration progress is applied before an inactive illustration is reset', () => {
+  const progressBranch = source.indexOf('if (tiltProgress !== null)');
+  const inactiveBranch = source.indexOf('if (!active)');
+
+  assert.ok(progressBranch >= 0);
+  assert.ok(inactiveBranch >= 0);
+  assert.ok(progressBranch < inactiveBranch);
 });
 
 test('intro actions use a side-by-side choice layout', () => {

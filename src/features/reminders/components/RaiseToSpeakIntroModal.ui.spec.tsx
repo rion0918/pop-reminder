@@ -11,6 +11,8 @@ test('calibration exposes a cancellable action', async () => {
       calibrating
       message={null}
       sensorStatus="active"
+      sensorFailureReason={null}
+      tiltProgress={0}
       onEnable={jest.fn()}
       onDismiss={onDismiss}
       onRetry={jest.fn()}
@@ -31,6 +33,8 @@ test('intro exposes the tilt illustration', async () => {
       calibrating={false}
       message={null}
       sensorStatus="inactive"
+      sensorFailureReason={null}
+      tiltProgress={0}
       onEnable={jest.fn()}
       onDismiss={jest.fn()}
       onRetry={jest.fn()}
@@ -49,6 +53,8 @@ test('intro exposes the enable action', async () => {
       calibrating={false}
       message={null}
       sensorStatus="inactive"
+      sensorFailureReason={null}
+      tiltProgress={0}
       onEnable={onEnable}
       onDismiss={jest.fn()}
       onRetry={jest.fn()}
@@ -70,6 +76,8 @@ test('intro places the defer choice before the enable choice', async () => {
       calibrating={false}
       message={null}
       sensorStatus="inactive"
+      sensorFailureReason={null}
+      tiltProgress={0}
       onEnable={jest.fn()}
       onDismiss={jest.fn()}
       onRetry={jest.fn()}
@@ -91,6 +99,8 @@ test('calibration reports missing sensor samples and offers retry', async () => 
       calibrating
       message={null}
       sensorStatus="unavailable"
+      sensorFailureReason="no-valid-sample"
+      tiltProgress={0}
       onEnable={jest.fn()}
       onDismiss={jest.fn()}
       onRetry={onRetry}
@@ -104,6 +114,101 @@ test('calibration reports missing sensor samples and offers retry', async () => 
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
 
+test.each([
+  ['sensor-unavailable', '加速度センサーを利用できません'],
+  ['subscription-error', 'センサーを開始できませんでした'],
+] as const)('calibration explains the %s failure', async (sensorFailureReason, title) => {
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      calibrating
+      message={null}
+      sensorStatus="unavailable"
+      sensorFailureReason={sensorFailureReason}
+      tiltProgress={null}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+    />,
+  );
+
+  expect(view.getByText(title)).toBeTruthy();
+  expect(view.getByLabelText('傾きセンサーをもう一度試す')).toBeTruthy();
+});
+
+test('calibration reports that an installed subscription is waiting for its first value', async () => {
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      calibrating
+      message={null}
+      sensorStatus="starting"
+      sensorFailureReason={null}
+      tiltProgress={null}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+    />,
+  );
+
+  expect(view.getByText('センサーを確認しています…')).toBeTruthy();
+  expect(view.queryByLabelText('傾きセンサーをもう一度試す')).toBeNull();
+});
+
+test('calibration does not report a sensor failure while subscription prerequisites are pending', async () => {
+  jest.useFakeTimers();
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      calibrating
+      message={null}
+      sensorStatus="waiting"
+      sensorFailureReason={null}
+      tiltProgress={0}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+    />,
+  );
+
+  await act(async () => {
+    jest.advanceTimersByTime(3_000);
+  });
+  expect(view.getByText('準備しています…')).toBeTruthy();
+  expect(view.queryByText('センサーを確認できませんでした')).toBeNull();
+  expect(view.queryByLabelText('傾きセンサーをもう一度試す')).toBeNull();
+
+  await act(async () => {
+    view.unmount();
+  });
+  jest.useRealTimers();
+});
+
+test('calibration exposes progress feedback while the phone is being tilted', async () => {
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      calibrating
+      message={null}
+      sensorStatus="active"
+      sensorFailureReason={null}
+      tiltProgress={0.8}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+    />,
+  );
+
+  expect(view.getByText('もう少し傾けてください')).toBeTruthy();
+  await act(async () => {
+    view.unmount();
+  });
+});
+
 test('calibration offers retry when an active sensor does not detect the pose', async () => {
   jest.useFakeTimers();
   const view = await render(
@@ -113,6 +218,8 @@ test('calibration offers retry when an active sensor does not detect the pose', 
       calibrating
       message={null}
       sensorStatus="active"
+      sensorFailureReason={null}
+      tiltProgress={0}
       onEnable={jest.fn()}
       onDismiss={jest.fn()}
       onRetry={jest.fn()}
@@ -125,6 +232,96 @@ test('calibration offers retry when an active sensor does not detect the pose', 
   });
   expect(view.getByText('傾きを検出できませんでした')).toBeTruthy();
   expect(view.getByLabelText('傾きセンサーをもう一度試す')).toBeTruthy();
+
+  await act(async () => {
+    view.unmount();
+  });
+  jest.useRealTimers();
+});
+
+test('calibration keeps the pose timeout deadline when sensor status briefly changes', async () => {
+  jest.useFakeTimers();
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      calibrating
+      message={null}
+      sensorStatus="active"
+      sensorFailureReason={null}
+      tiltProgress={0}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+    />,
+  );
+
+  await act(async () => {
+    jest.advanceTimersByTime(9_000);
+    await Promise.resolve();
+  });
+  await act(async () => {
+    view.rerender(
+      <RaiseToSpeakIntroModal
+        visible
+        busy={false}
+        calibrating
+        message={null}
+        sensorStatus="waiting"
+        sensorFailureReason={null}
+        tiltProgress={0}
+        onEnable={jest.fn()}
+        onDismiss={jest.fn()}
+        onRetry={jest.fn()}
+      />,
+    );
+    await Promise.resolve();
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(1_000);
+    await Promise.resolve();
+  });
+
+  expect(view.getByText('傾きを検出できませんでした')).toBeTruthy();
+  await act(async () => {
+    view.unmount();
+  });
+  jest.useRealTimers();
+});
+
+test('calibration retry starts a fresh pose timeout', async () => {
+  jest.useFakeTimers();
+  const onRetry = jest.fn();
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      calibrating
+      message={null}
+      sensorStatus="active"
+      sensorFailureReason={null}
+      tiltProgress={0}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={onRetry}
+    />,
+  );
+
+  await act(async () => {
+    jest.advanceTimersByTime(10_000);
+  });
+  await fireEvent.press(view.getByLabelText('傾きセンサーをもう一度試す'));
+  expect(onRetry).toHaveBeenCalledTimes(1);
+
+  await act(async () => {
+    jest.advanceTimersByTime(9_999);
+  });
+  expect(view.queryByText('傾きを検出できませんでした')).toBeNull();
+
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(view.getByText('傾きを検出できませんでした')).toBeTruthy();
 
   await act(async () => {
     view.unmount();

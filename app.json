@@ -27,7 +27,10 @@
     "android": {
       "package": "com.rion0918.popreminder",
       "versionCode": 2,
-      "permissions": ["android.permission.RECORD_AUDIO"],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.HIGH_SAMPLING_RATE_SENSORS"
+      ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",

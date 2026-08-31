@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -19,7 +19,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { palette } from '../../../constants/colors';
-import type { RaiseToSpeakSensorStatus } from '../hooks/useRaiseToSpeakGesture';
+import type {
+  RaiseToSpeakSensorFailureReason,
+  RaiseToSpeakSensorStatus,
+} from '../hooks/useRaiseToSpeakGesture';
 
 const TILT_PHONE_ROTATION_DEGREES = 9;
 const CALIBRATION_POSE_TIMEOUT_MS = 10_000;
@@ -36,6 +39,8 @@ type RaiseToSpeakIntroModalProps = {
   calibrating: boolean;
   message: string | null;
   sensorStatus: RaiseToSpeakSensorStatus;
+  sensorFailureReason: RaiseToSpeakSensorFailureReason | null;
+  tiltProgress: number | null;
   onEnable: () => void;
   onDismiss: () => void;
   onRetry: () => void;
@@ -44,13 +49,23 @@ type RaiseToSpeakIntroModalProps = {
 type TiltPhoneIllustrationProps = {
   active: boolean;
   reduceMotionEnabled: boolean;
+  tiltProgress: number | null;
 };
 
-function TiltPhoneIllustration({ active, reduceMotionEnabled }: TiltPhoneIllustrationProps) {
+function TiltPhoneIllustration({
+  active,
+  reduceMotionEnabled,
+  tiltProgress,
+}: TiltPhoneIllustrationProps) {
   const rotation = useSharedValue(0);
 
   useEffect(() => {
     cancelAnimation(rotation);
+
+    if (tiltProgress !== null) {
+      rotation.value = reduceMotionEnabled ? 0 : tiltProgress * TILT_PHONE_ROTATION_DEGREES;
+      return () => cancelAnimation(rotation);
+    }
 
     if (!active) {
       rotation.value = 0;
@@ -71,7 +86,7 @@ function TiltPhoneIllustration({ active, reduceMotionEnabled }: TiltPhoneIllustr
         );
 
     return () => cancelAnimation(rotation);
-  }, [active, reduceMotionEnabled, rotation]);
+  }, [active, reduceMotionEnabled, rotation, tiltProgress]);
 
   const animatedPhoneStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
@@ -118,12 +133,16 @@ export function RaiseToSpeakIntroModal({
   calibrating,
   message,
   sensorStatus,
+  sensorFailureReason,
+  tiltProgress,
   onEnable,
   onDismiss,
   onRetry,
 }: RaiseToSpeakIntroModalProps) {
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   const [calibrationTimedOut, setCalibrationTimedOut] = useState(false);
+  const [calibrationAttempt, setCalibrationAttempt] = useState(0);
+  const poseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotionEnabled);
@@ -135,16 +154,35 @@ export function RaiseToSpeakIntroModal({
   }, []);
 
   useEffect(() => {
-    setCalibrationTimedOut(false);
-    if (!visible || !calibrating || sensorStatus !== 'active') return undefined;
+    if (!visible || !calibrating) {
+      setCalibrationTimedOut(false);
+      if (poseTimeoutRef.current !== null) clearTimeout(poseTimeoutRef.current);
+      poseTimeoutRef.current = null;
+      return undefined;
+    }
 
-    const timeout = setTimeout(() => {
+    setCalibrationTimedOut(false);
+    if (poseTimeoutRef.current !== null) clearTimeout(poseTimeoutRef.current);
+    poseTimeoutRef.current = null;
+
+    return () => {
+      if (poseTimeoutRef.current !== null) clearTimeout(poseTimeoutRef.current);
+      poseTimeoutRef.current = null;
+    };
+  }, [calibrationAttempt, calibrating, visible]);
+
+  useEffect(() => {
+    if (!visible || !calibrating || sensorStatus !== 'active' || poseTimeoutRef.current !== null) {
+      return;
+    }
+
+    poseTimeoutRef.current = setTimeout(() => {
       setCalibrationTimedOut(true);
     }, CALIBRATION_POSE_TIMEOUT_MS);
-    return () => clearTimeout(timeout);
-  }, [calibrating, sensorStatus, visible]);
+  }, [calibrationAttempt, calibrating, sensorStatus, visible]);
 
   const handleRetry = () => {
+    setCalibrationAttempt((attempt) => attempt + 1);
     setCalibrationTimedOut(false);
     onRetry();
   };
@@ -153,22 +191,44 @@ export function RaiseToSpeakIntroModal({
   let body = 'スマホを左右どちらかへ傾けると聞き取りを開始し、縦に戻すと入力内容を確認できます。';
 
   if (calibrating) {
-    if (sensorStatus === 'waiting') {
-      title = 'センサーを確認しています…';
-      body = 'スマホを縦向きに持ったまま、少しお待ちください。';
-    } else if (sensorStatus === 'unavailable') {
-      title = 'センサーを確認できませんでした';
-      body = '加速度センサーから値を取得できませんでした。もう一度お試しください。';
+    if (sensorStatus === 'unavailable') {
+      if (sensorFailureReason === 'sensor-unavailable') {
+        title = '加速度センサーを利用できません';
+        body = 'この端末では加速度センサーを確認できませんでした。端末を再起動してお試しください。';
+      } else if (sensorFailureReason === 'subscription-error') {
+        title = 'センサーを開始できませんでした';
+        body = '加速度センサーの開始に失敗しました。アプリを開いたまま、もう一度お試しください。';
+      } else if (sensorFailureReason === 'no-valid-sample') {
+        title = 'センサーを確認できませんでした';
+        body = '加速度センサーから値を取得できませんでした。もう一度お試しください。';
+      } else {
+        title = 'センサーを確認できませんでした';
+        body = '加速度センサーの状態を確認できませんでした。もう一度お試しください。';
+      }
     } else if (calibrationTimedOut) {
       title = '傾きを検出できませんでした';
-      body = 'スマホを一度縦向きに戻し、画面を見たまま左右へ45度以上回転してください。';
+      body = 'スマホを一度縦向きに戻し、画面を見たまま左右へ40度以上回転してください。';
+    } else if (sensorStatus === 'waiting' || sensorStatus === 'inactive') {
+      title = '準備しています…';
+      body = '画面を開いたまま、少しお待ちください。';
+    } else if (sensorStatus === 'starting') {
+      title = 'センサーを確認しています…';
+      body = 'スマホを縦向きに持ったまま、少しお待ちください。';
     } else {
       title = '試しに左右どちらかへ傾けてください';
       body =
-        '画面を見たまま、スマホを縦向きから左右どちらかへ45度以上回転します。振動したら設定完了です。';
+        '画面を見たまま、スマホを縦向きから左右どちらかへ40度以上回転します。振動したら設定完了です。';
     }
   }
 
+  const calibrationFeedback =
+    calibrating && sensorStatus === 'active' && !calibrationTimedOut
+      ? Math.abs(tiltProgress ?? 0) >= 1
+        ? 'そのまま傾きをキープしてください'
+        : Math.abs(tiltProgress ?? 0) >= 0.65
+          ? 'もう少し傾けてください'
+          : '左右へゆっくり傾けてください'
+      : null;
   const canRetry = calibrating && (sensorStatus === 'unavailable' || calibrationTimedOut);
 
   return (
@@ -180,9 +240,18 @@ export function RaiseToSpeakIntroModal({
     >
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
-          <TiltPhoneIllustration active={visible} reduceMotionEnabled={reduceMotionEnabled} />
+          <TiltPhoneIllustration
+            active={visible && !calibrating}
+            reduceMotionEnabled={reduceMotionEnabled}
+            tiltProgress={calibrating ? tiltProgress : null}
+          />
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.body}>{body}</Text>
+          {calibrationFeedback ? (
+            <Text accessibilityLiveRegion="polite" style={styles.message}>
+              {calibrationFeedback}
+            </Text>
+          ) : null}
           {message ? (
             <Text accessibilityLiveRegion="polite" style={styles.message}>
               {message}

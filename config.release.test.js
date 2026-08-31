@@ -138,6 +138,10 @@ test('release configuration removes Android permissions outside the feature scop
     );
   }
   assert.match(androidManifest, /android\.permission\.RECORD_AUDIO/);
+  assert.ok(
+    appConfig.expo.android.permissions.includes('android.permission.HIGH_SAMPLING_RATE_SENSORS'),
+  );
+  assert.match(androidManifest, /android\.permission\.HIGH_SAMPLING_RATE_SENSORS/);
   assert.match(androidManifest, /android\.permission\.INTERNET/);
   assert.match(androidManifest, /android\.permission\.VIBRATE/);
 });

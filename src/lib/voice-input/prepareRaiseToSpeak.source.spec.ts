@@ -12,12 +12,13 @@ const source = readSource(import.meta.url, './prepareRaiseToSpeak.ts');
 test('side-tilt voice setup uses the Android accelerometer and requests motion permission only on iOS', () => {
   assertSourceIncludes(source, [
     /import \{ Platform \} from 'react-native';/,
-    /import Accelerometer from 'expo-sensors\/build\/Accelerometer';/,
+    /import \{ Accelerometer, DeviceMotion \} from 'expo-sensors';/,
     /Platform\.OS === 'android'\s*\? Accelerometer\.isAvailableAsync\(\)\s*: DeviceMotion\.isAvailableAsync\(\)/,
     /if \(Platform\.OS === 'ios'\) \{[\s\S]*DeviceMotion\.requestPermissionsAsync\(\)[\s\S]*\}/,
     /voiceInputService\.getAvailability\(\)/,
     /voiceInputService\.requestMicrophonePermission\(\)/,
   ]);
+  assert.doesNotMatch(source, /expo-sensors\/build\//);
   assertSourceContract(source, {
     excludes: [/downloadJapaneseModel/, /model-download-required/, /model-download-started/],
   });
