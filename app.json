@@ -70,12 +70,7 @@
           "motionPermission": "ふわっと。が端末を左右へ傾けた動きを検出するために、モーションデータを使用します。"
         }
       ],
-      [
-        "./plugins/withAndroidVoskModel",
-        {
-          "models": ["assets/model-ja-jp"]
-        }
-      ],
+      ["./plugins/withAndroidSherpaModel", { "modelPath": "assets/models/moonshine-tiny-ja" }],
       [
         "react-native-android-widget",
         {

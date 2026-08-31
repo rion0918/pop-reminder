@@ -81,12 +81,14 @@ test('quick add supports cancellable on-device voice input without truncating th
 
 test('voice input always exposes a labeled finish action and escapes a stuck native stop', () => {
   assertSourceIncludes(source, [
-    /const VOICE_STOP_FALLBACK_MS = 1_500;/,
+    /const VOICE_STOP_FALLBACK_MS = Platform\.OS === 'android' \? 20_000 : 5_000;/,
     /const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> \| null>\(null\);/,
     /voiceStopFallbackRef\.current = setTimeout\(/,
     /voiceStatusRef\.current !== 'stopping'/,
     /voiceInput\.abort\(\);/,
+    /voiceInput\.stop\(\);\s*voiceStopFallbackRef\.current = setTimeout\(/,
     /AccessibilityInfo\.announceForAccessibility\(\s*'音声入力を終了しました。内容を確認してください'/,
+    /voiceStatus === 'stopping'\s*\?\s*'認識結果を待っています…'\s*:\s*'スマホを下げると終了します'/,
     /accessibilityLabel="音声入力を完了"/,
     />完了</,
   ]);

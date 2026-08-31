@@ -1,0 +1,7 @@
+diff --git a/third_party/sherpa-onnx-prebuilt/ANDROID_RELEASE_TAG b/third_party/sherpa-onnx-prebuilt/ANDROID_RELEASE_TAG
+index 06fa189cb563be578f7781b61276df365c2a22a3..bbf107be649468eee745eb5964ab000a0b5c172c 100644
+--- a/third_party/sherpa-onnx-prebuilt/ANDROID_RELEASE_TAG
++++ b/third_party/sherpa-onnx-prebuilt/ANDROID_RELEASE_TAG
+@@ -1 +1 @@
+-sherpa-onnx-android-v1.12.34-2
++sherpa-onnx-android-v1.13.2-1

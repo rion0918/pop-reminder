@@ -51,7 +51,10 @@ export type ReminderInputSheetProps = {
 };
 
 const QUICK_ADD_BOTTOM_CLEARANCE = 24;
-const VOICE_STOP_FALLBACK_MS = 1_500;
+// Android Moonshine runs one final offline inference after recording stops. Keep the sheet in
+// the "文字にしています…" state long enough for that inference to return; iOS keeps its
+// existing shorter escape hatch.
+const VOICE_STOP_FALLBACK_MS = Platform.OS === 'android' ? 20_000 : 5_000;
 const datePickerDisplay = Platform.select({
   ios: 'spinner',
   android: 'default',
@@ -269,7 +272,6 @@ export function ReminderInputSheet({
     setVoiceStatusValue('stopping');
     setVoiceVolume(0);
     voiceInput.stop();
-    completeVoiceInput();
     voiceStopFallbackRef.current = setTimeout(() => {
       voiceStopFallbackRef.current = null;
       if (voiceStatusRef.current !== 'stopping') return;
@@ -886,7 +888,11 @@ export function ReminderInputSheet({
                       ? '文字にしています…'
                       : '準備しています…'}
                 </Text>
-                <Text style={styles.voiceStatusHint}>スマホを下げると終了します</Text>
+                <Text style={styles.voiceStatusHint}>
+                  {voiceStatus === 'stopping'
+                    ? '認識結果を待っています…'
+                    : 'スマホを下げると終了します'}
+                </Text>
               </View>
               <View style={styles.voiceStatusActions}>
                 {voiceStatus === 'listening' ? (

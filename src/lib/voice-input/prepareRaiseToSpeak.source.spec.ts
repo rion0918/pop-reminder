@@ -20,7 +20,7 @@ test('side-tilt voice setup uses the Android accelerometer and requests motion p
   ]);
   assert.doesNotMatch(source, /expo-sensors\/build\//);
   assertSourceContract(source, {
-    excludes: [/downloadJapaneseModel/, /model-download-required/, /model-download-started/],
+    includes: [/prepareOfflineModel/],
   });
   assert.doesNotMatch(source, /Proximity|proximity/);
 });

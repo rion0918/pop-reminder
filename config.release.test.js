@@ -7,6 +7,7 @@ const { test } = require('node:test');
 const appConfig = JSON.parse(readFileSync(join(__dirname, 'app.json'), 'utf8'));
 const easConfig = JSON.parse(readFileSync(join(__dirname, 'eas.json'), 'utf8'));
 const packageConfig = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
+const reactNativeConfig = require(join(__dirname, 'react-native.config.js'));
 const flakeConfig = readFileSync(join(__dirname, 'flake.nix'), 'utf8');
 const androidBuildGradle = readFileSync(join(__dirname, 'android/app/build.gradle'), 'utf8');
 const nodeVersionPath = join(__dirname, '.node-version');
@@ -191,14 +192,17 @@ test('native release dependencies include vector icon peer dependencies', () => 
   assert.match(packageConfig.dependencies['expo-font'], /^~14\./);
 });
 
-test('side-tilt voice uses bundled Vosk on Android and the platform recognizer only on iOS', () => {
+test('side-tilt voice uses Android on-device recognition with a bundled local fallback', () => {
   const sensorPlugin = appConfig.expo.plugins.find(
     (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-sensors',
   );
-  const voskPlugin = appConfig.expo.plugins.find(
-    (plugin) => Array.isArray(plugin) && plugin[0] === './plugins/withAndroidVoskModel',
+  const sherpaPlugin = appConfig.expo.plugins.find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === './plugins/withAndroidSherpaModel',
   );
-  const voskPluginSource = readFileSync(join(__dirname, 'plugins/withAndroidVoskModel.js'), 'utf8');
+  const sherpaPluginSource = readFileSync(
+    join(__dirname, 'plugins/withAndroidSherpaModel.js'),
+    'utf8',
+  );
   const iosInfoPlist = readFileSync(join(__dirname, 'ios/app/Info.plist'), 'utf8');
   const androidManifest = readFileSync(
     join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
@@ -215,24 +219,44 @@ test('side-tilt voice uses bundled Vosk on Android and the platform recognizer o
 
   assert.equal(packageConfig.dependencies['expo-sensors'], '~15.0.8');
   assert.equal(packageConfig.dependencies['expo-speech-recognition'], '3.1.3');
-  assert.equal(packageConfig.dependencies['react-native-vosk'], '2.1.7');
-  assert.deepEqual(packageConfig.expo.autolinking.android.exclude, ['expo-speech-recognition']);
+  assert.equal(packageConfig.dependencies['react-native-sherpa-onnx'], '0.4.3');
+  assert.equal(packageConfig.dependencies['react-native-vosk'], undefined);
+  assert.equal(reactNativeConfig.dependencies['react-native-sherpa-onnx'].platforms.ios, null);
+  assert.deepEqual(packageConfig.expo.autolinking.ios.exclude, [
+    'react-native-sherpa-onnx',
+    '@dr.pogodin/react-native-fs',
+    '@kesha-antonov/react-native-background-downloader',
+  ]);
   assert.ok(sensorPlugin);
   assert.match(sensorPlugin[1].motionPermission, /左右へ傾けた動き/);
-  assert.ok(voskPlugin);
-  assert.deepEqual(voskPlugin[1].models, ['assets/model-ja-jp']);
-  assert.match(voskPluginSource, /require\('expo\/config-plugins'\)/);
-  assert.match(voskPluginSource, /withGradleProperties/);
-  assert.match(voskPluginSource, /Vosk_models/);
-  assert.doesNotMatch(voskPluginSource, /withXcodeProject|withInfoPlist/);
-  assert.equal(existsSync(join(__dirname, 'assets/model-ja-jp/am/final.mdl')), true);
-  assert.equal(existsSync(join(__dirname, 'assets/model-ja-jp/graph/HCLr.fst')), true);
-  assert.equal(existsSync(join(__dirname, 'assets/model-ja-jp.sha256')), true);
-  assert.match(androidVoiceInput, /from 'react-native-vosk'/);
-  assert.doesNotMatch(
-    androidVoiceInput,
-    /expo-speech-recognition|RecognitionService|google\.android/,
+  assert.ok(sherpaPlugin);
+  assert.equal(sherpaPlugin[1].modelPath, 'assets/models/moonshine-tiny-ja');
+  assert.match(sherpaPluginSource, /require\('expo\/config-plugins'\)/);
+  assert.match(sherpaPluginSource, /withAppBuildGradle/);
+  assert.match(sherpaPluginSource, /withGradleProperties/);
+  assert.match(sherpaPluginSource, /gunzipSync/);
+  assert.match(sherpaPluginSource, /configureCMake/);
+  assert.match(sherpaPluginSource, /preBuild/);
+  assert.match(sherpaPluginSource, /sherpaOnnxDisableFfmpeg/);
+  assert.match(sherpaPluginSource, /sherpaOnnxDisableLibarchive/);
+  assert.doesNotMatch(sherpaPluginSource, /Vosk|vosk/);
+  assert.doesNotMatch(sherpaPluginSource, /withXcodeProject|withInfoPlist/);
+  assert.match(
+    androidBuildGradle,
+    /pop-reminder: ensure autolinked TurboModule codegen runs before CMake/,
   );
+  assert.match(androidBuildGradle, /subproject\.tasks\.matching \{ it\.name == "preBuild" \}/);
+  assert.equal(
+    existsSync(join(__dirname, 'assets/models/moonshine-tiny-ja/encoder_model.ort.gz')),
+    true,
+  );
+  assert.equal(
+    existsSync(join(__dirname, 'assets/models/moonshine-tiny-ja/decoder_model_merged.ort.gz')),
+    true,
+  );
+  assert.equal(existsSync(join(__dirname, 'assets/moonshine-tiny-ja.sha256')), true);
+  assert.match(androidVoiceInput, /react-native-sherpa-onnx/);
+  assert.match(androidVoiceInput, /ExpoSpeechRecognition/);
   assert.match(iosVoiceInput, /ExpoSpeechRecognition/);
   assert.match(
     iosInfoPlist,

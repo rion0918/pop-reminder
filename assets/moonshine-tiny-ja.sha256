@@ -1,0 +1,5 @@
+6148d7574a6554b7379b633cfd4c4fe5840c3f548d13bc83e00b52dc6fa00abd  assets/models/moonshine-tiny-ja/LICENSE
+b3ba8117814de89017816872417120afe01dfdb97d598cd45093cb6a660d0fa0  assets/models/moonshine-tiny-ja/NOTICE
+81859498a188118a042d42482bf654d07f07a59e69e9525d7f4975bed72c3e9d  assets/models/moonshine-tiny-ja/decoder_model_merged.ort.gz
+79b3590c44fbbaf5fc175d2f3a3bc928138e4d1d628b49fd1c00dcb910fdb811  assets/models/moonshine-tiny-ja/encoder_model.ort.gz
+2870d843e14c1e187bf1913a521562a63b53933814bd7f2145120468f494a049  assets/models/moonshine-tiny-ja/tokens.txt

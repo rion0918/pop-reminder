@@ -22,3 +22,6 @@ result
 
 expo-env.d.ts
 # @end expo-cli
+
+# Copied into the native project by the Android Sherpa model config plugin.
+android/app/src/main/assets/models/moonshine-tiny-ja/

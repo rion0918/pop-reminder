@@ -161,6 +161,10 @@ test('settings legal copy supports both Google Play and App Store release pages'
       /タイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません/,
       /RevenueCatにはSDKが生成する匿名購入ID/,
       /settings\.analyticsConsent/,
+      /第三者ライセンス/,
+      /Powered by Moonshine AI/,
+      /thirdPartyLicensesDocument/,
+      /information-circle-outline/,
     ],
     excludes: [
       /ポップ・リマインダー/,

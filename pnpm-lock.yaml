@@ -11,6 +11,11 @@ overrides:
   '@storybook/react-native-ui': 10.4.2
   '@storybook/react-native-ui-common': 10.4.2
 
+patchedDependencies:
+  react-native-sherpa-onnx@0.4.3:
+    hash: fba2a862fb9b74afe0beea43da38343ed914506feff377c556060a6acef4b39b
+    path: patches/react-native-sherpa-onnx@0.4.3.patch
+
 importers:
 
   .:
@@ -126,9 +131,9 @@ importers:
       react-native-screens:
         specifier: ~4.16.0
         version: 4.16.0(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      react-native-vosk:
-        specifier: 2.1.7
-        version: 2.1.7(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      react-native-sherpa-onnx:
+        specifier: 0.4.3
+        version: 0.4.3(patch_hash=fba2a862fb9b74afe0beea43da38343ed914506feff377c556060a6acef4b39b)(@dr.pogodin/react-native-fs@2.40.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       react-native-worklets:
         specifier: ^0.5.1
         version: 0.5.1(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -781,6 +786,12 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@dr.pogodin/react-native-fs@2.40.1':
+    resolution: {integrity: sha512-bVRL8lkQQD8a820Zha0vX/hZQBM3+vAuS/s7N6NKJ/zuxj2q2l789FAnxMZSfE2x95CKexxpmyZTDbQbVv0cDg==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   '@egjs/hammerjs@2.0.17':
     resolution: {integrity: sha512-XQsZgjm2EcVUiZQf11UBJQfmZeEmOW8DpI1gsFeln6w0ae0ii4dMQEQ0kjl6DspdWX1aGY1/loyXnP0JS06e/A==}
@@ -1453,6 +1464,11 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@kesha-antonov/react-native-background-downloader@4.6.1':
+    resolution: {integrity: sha512-dDVqo4eaoBYAz5bsENFqxBirx5JfAEHOh/Zb6Zv/bXni7a6pFtD5PJLEL/N6ZLcsoAmlmO56siY3nCoJV7KkGg==}
+    peerDependencies:
+      react-native: '>=0.57.0'
 
   '@legendapp/list@3.0.0-beta.38':
     resolution: {integrity: sha512-toPEL1P3nqwJHg7ycTjChQrrgnpMs9wzq59cQ2kVmC0fbRnae5EoztY2ZftB/fz3p4pLoBaQbAeFoYOUxmkmEg==}
@@ -2921,6 +2937,9 @@ packages:
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
 
+  buffer@6.0.3:
+    resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
+
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
     engines: {node: '>=18'}
@@ -4153,6 +4172,9 @@ packages:
   http-proxy-agent@5.0.0:
     resolution: {integrity: sha512-n2hY8YdoRE1i7r6M0w9DIw5GgZN0G25P8zLCRQ8rjXtTU3vsNFBI/vWK/UIeE6g5MUUz6avwAPXmL6Fy9D/90w==}
     engines: {node: '>= 6'}
+
+  http-status-codes@2.3.0:
+    resolution: {integrity: sha512-RJ8XvFvpPM/Dmc5SV+dC4y5PCeOhT3x1Hq0NU3rjGeg5a/CqlhZ7uudknPwZFz4aeAXDcbAyaeP7GAo9lvngtA==}
 
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
@@ -5752,6 +5774,13 @@ packages:
       react: '*'
       react-native: '*'
 
+  react-native-sherpa-onnx@0.4.3:
+    resolution: {integrity: sha512-fspMXBP90gZRoIvTWEFf7fLvuWPmno/RtptnUoZ3bHCrwYmZNjd4AS34KHC37WHSL1ypPltAU1yYKad8+yNfIg==}
+    peerDependencies:
+      '@dr.pogodin/react-native-fs': '*'
+      react: '*'
+      react-native: '*'
+
   react-native-svg@15.15.5:
     resolution: {integrity: sha512-L4go5jA+GWutdJ/JucuN20cjAbMg1HmMtAP+wZ+3JLCf6Jd0bhXQHxciRP/AQm/FlrIEZwkMcHNZP+FXAiic0w==}
     peerDependencies:
@@ -5761,13 +5790,6 @@ packages:
   react-native-url-polyfill@3.0.0:
     resolution: {integrity: sha512-aA5CiuUCUb/lbrliVCJ6lZ17/RpNJzvTO/C7gC/YmDQhTUoRD5q5HlJfwLWcxz4VgAhHwXKzhxH+wUN24tAdqg==}
     peerDependencies:
-      react-native: '*'
-
-  react-native-vosk@2.1.7:
-    resolution: {integrity: sha512-3nBxUzzIgOt+YaR0gYy3TSwZJQoIkCKjrFRDLJJF0RJtohZRsKwZy2UqW7Myc0InihvX9OiB3hrYSrFpiGr5VA==}
-    engines: {node: '>= 18.0.0'}
-    peerDependencies:
-      react: '*'
       react-native: '*'
 
   react-native-worklets@0.5.1:
@@ -7418,6 +7440,13 @@ snapshots:
   '@biomejs/cli-win32-x64@2.5.2':
     optional: true
 
+  '@dr.pogodin/react-native-fs@2.40.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      buffer: 6.0.3
+      http-status-codes: 2.3.0
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
+
   '@egjs/hammerjs@2.0.17':
     dependencies:
       '@types/hammerjs': 2.0.46
@@ -8271,6 +8300,10 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@kesha-antonov/react-native-background-downloader@4.6.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))':
+    dependencies:
+      react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
 
   '@legendapp/list@3.0.0-beta.38(react-dom@19.1.0(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
     dependencies:
@@ -9917,6 +9950,11 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
+  buffer@6.0.3:
+    dependencies:
+      base64-js: 1.5.1
+      ieee754: 1.2.1
+
   bundle-name@4.1.0:
     dependencies:
       run-applescript: 7.1.0
@@ -11277,6 +11315,8 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+
+  http-status-codes@2.3.0: {}
 
   https-proxy-agent@5.0.1:
     dependencies:
@@ -13231,6 +13271,14 @@ snapshots:
       react-native-is-edge-to-edge: 1.3.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       warn-once: 0.1.1
 
+  react-native-sherpa-onnx@0.4.3(patch_hash=fba2a862fb9b74afe0beea43da38343ed914506feff377c556060a6acef4b39b)(@dr.pogodin/react-native-fs@2.40.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+    dependencies:
+      '@dr.pogodin/react-native-fs': 2.40.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      '@kesha-antonov/react-native-background-downloader': 4.6.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))
+      buffer: 6.0.3
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
+
   react-native-svg@15.15.5(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       css-select: 5.2.2
@@ -13242,11 +13290,6 @@ snapshots:
     dependencies:
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
       whatwg-url-without-unicode: 8.0.0-3
-
-  react-native-vosk@2.1.7(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
-    dependencies:
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
 
   react-native-worklets@0.5.1(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:

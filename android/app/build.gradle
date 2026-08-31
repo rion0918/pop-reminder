@@ -63,6 +63,25 @@ react {
     autolinkLibrariesWithApp()
 }
 
+// pop-reminder: ensure autolinked TurboModule codegen runs before CMake.
+// React Native 0.81 can otherwise reference a library's generated JNI directory too early.
+afterEvaluate {
+    def cmakeTasks = tasks.matching {
+        it.name.startsWith("configureCMake") || it.name.startsWith("buildCMake")
+    }
+    rootProject.subprojects.each { subproject ->
+        if (subproject == project) return
+        subproject.tasks.matching { it.name == "preBuild" }.all { preBuildTask ->
+            cmakeTasks.configureEach { it.dependsOn(preBuildTask) }
+        }
+        subproject.tasks.matching {
+            it.name.startsWith("prefab") && it.name.endsWith("Package")
+        }.all { prefabTask ->
+            cmakeTasks.configureEach { it.dependsOn(prefabTask) }
+        }
+    }
+}
+
 /**
  * Set this to true in release builds to optimize the app using [R8](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization).
  */

@@ -327,7 +327,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] 「使ってみる」でiOSはマイク・モーション権限、Androidはマイク権限だけを確認し、日本語の端末内認識と左右どちらかへ傾ける操作が成功した後だけ設定がONになる
 - [ ] iOS: マイク、モーションの権限を許可／拒否した各場合にクラッシュせず、拒否時は手入力へ戻れる（端末内認識では音声認識権限を要求しない）
 - [ ] Android: 「身体活動」や「モーション」の権限を要求せず、マイク権限だけで加速度センサーの確認へ進む
-- [ ] Android: Android 9以上では同梱したVosk日本語モデルを読み込み、OSの音声モデルやGoogle音声認識サービスのダウンロードを要求しない
+- [ ] Android: Android 9以上では同梱したMoonshine日本語モデルへフォールバックでき、認識中にネットワークを要求しない。Android 13以上ではOS日本語モデルの初回ダウンロードを準備導線から案内できる
 - [ ] Android: Android 7・8では音声入力だけが非対応と表示され、手入力、SQLite保存、通知は引き続き利用できる
 - [ ] Android: インストール前から機内モードにした状態で、初回起動直後の音声入力が成功する
 - [ ] Android: モデル読込失敗時は再起動または手入力を案内し、アプリと保存済みデータは利用できる
@@ -349,7 +349,8 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] 音声入力開始イベントと同時に振動・聞き取り表示・アクセシビリティ通知が出て、終了時にも軽いフィードバックがある
 - [ ] Reduce MotionをONにすると音量表示が拡縮せず、初回案内のアニメーションも抑制される
 - [ ] Androidでは偽の音量値を生成せず、固定の聞き取り中表示になる
-- [ ] 30秒間左右どちらかへ傾けたままでも安全タイムアウトで終了し、直後1.5秒は再起動しない
+- [ ] 8秒間左右どちらかへ傾けたままでも安全タイムアウトで終了し、そのまま認識を確定して直後1.5秒は再起動しない
+- [ ] Moonshine固定時に8秒を超える連続発話・雑音・繰り返し音声を10回入力しても、`SIGABRT`、`NewStringUTF`、プロセス再起動が発生しない
 - [ ] 音声入力を10回連続実行してクラッシュ、フリーズ、マイク解放漏れ、OOMが発生しない
 - [ ] Redmi 12 5G（Android 15）で新しいdevelopment buildを使い、上記の左右・前後・通常操作を確認する
 - [ ] Redmi 12 5Gで値なしが続く場合はXiaomi CITのAccelerometerテストを開き、傾けたときX/Y/Zが変化するかを記録する
@@ -357,16 +358,27 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] 録音ファイルが端末に残らず、音声・文字起こし・センサー値がPostHogや外部通信へ送信されない
 - [ ] 分析を「共有しない」にし、Android Studio Network Inspectorで音声入力中の外部通信が0件である
 
+開発ビルドでMoonshineフォールバックを固定して実機確認する場合は、製品UIに表示されない
+テスト注入点を開発用の一時コードから呼び出す。
+
+```ts
+import { setAndroidVoiceInputEngineForTesting } from './src/lib/voice-input/voiceInputService.android';
+
+setAndroidVoiceInputEngineForTesting('moonshine');
+// 確認後に解除
+setAndroidVoiceInputEngineForTesting(null);
+```
+
 **受け入れ条件**
 
 - iPhone・Android実機で、右傾け・左傾け各20回が自然に起動し、通常操作20回の誤起動が0回である
-- Androidは`react-native-vosk@2.1.7`と同梱`vosk-model-small-ja-0.22`、iOSは既存の端末内認識だけを使用する
-- `end` イベントが返らない場合は、1.5秒の停止フォールバックで編集状態へ戻り、取得済み文字を保持する
+- AndroidはOSオンデバイス認識を優先し、非対応端末では同梱`Moonshine Tiny JA`へフォールバックする。iOSは既存の端末内認識だけを使用する
+- `end` イベントが返らない場合は、Androidでは20秒、iOSでは5秒の停止フォールバックで編集状態へ戻り、取得済み文字を保持する。認識結果が返った場合は最終結果をタイトル欄へ反映し、聞き取り不能時は次の傾き操作まで自動再開しない
 - バックグラウンド移行・権限拒否・モデル不足・モーション非対応・認識中断の全経路で手入力を維持する
 - AQUOS zero5G basic（Android 12、RAM 6GB）、Redmi 12 5G（Android 15）、Android 9のRAM 3〜4GB端末、Android 14以上の端末で、固定した日本語30文を各3回確認する
 - 正規化後の文字精度90%以上、無修正で利用できる結果85%以上、発話終了から確定表示までの中央値1秒以内を正式対応の目標とする
 - Production AABをGoogle `bundletool get-size total`で測定し、端末別圧縮ダウンロードサイズ150MB未満を合格、200MB以上をリリース停止とする。Android 12・arm64・日本語・420dpi相当の実装時ベースラインは94,350,948 bytes（約90.0MiB）
-- 上記の精度を満たさない場合はVosk音声入力を正式対応として公開せず、sherpa-onnxを次候補として再評価する
+- 上記の精度を満たさない場合はMoonshineフォールバックを正式対応として公開せず、Moonshine BaseまたはReazonSpeechを容量込みで再評価する
 
 #### 日本語音声入力の固定30文
 

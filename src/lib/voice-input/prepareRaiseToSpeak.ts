@@ -2,6 +2,11 @@ import { Platform } from 'react-native';
 import { Accelerometer, DeviceMotion } from 'expo-sensors';
 
 import { voiceInputService } from './voiceInputService';
+import type { VoiceInputService } from './voiceInputTypes';
+
+type VoiceInputPreparationService = VoiceInputService & {
+  prepareOfflineModel?: () => Promise<void>;
+};
 
 export type RaiseToSpeakPreparationResult =
   | { status: 'ready' }
@@ -38,6 +43,13 @@ export async function prepareRaiseToSpeak(): Promise<RaiseToSpeakPreparationResu
       status: 'permission-denied',
       canAskAgain: speechAvailability.canAskAgain,
     };
+  }
+
+  if (Platform.OS === 'android') {
+    const modelPreparation = (
+      voiceInputService as VoiceInputPreparationService
+    ).prepareOfflineModel?.();
+    void modelPreparation?.catch(() => {});
   }
 
   if (speechAvailability.status === 'model-unavailable') {
