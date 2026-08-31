@@ -158,7 +158,15 @@ export function createMoonshineVoiceInputService(
       // that promise would leave the quick-add sheet stuck in "文字にしています…" before the
       // actual inference even starts.
       void currentStream.stop().catch(() => {});
-      if (!isActive(sessionId) || !currentEngine) return;
+      if (!isActive(sessionId)) return;
+      if (!currentEngine) {
+        emitErrorAndEnd(sessionId, {
+          type: 'error',
+          error: 'interrupted',
+          message: 'Voice recognition engine was released',
+        });
+        return;
+      }
       const transcription = currentEngine.transcribeSamples(currentSamples, sampleRate);
       inFlightTranscription = transcription;
       const result = await transcription;
@@ -222,7 +230,15 @@ export function createMoonshineVoiceInputService(
       stream = currentStream;
       const dataUnsubscribe = currentStream.onData((chunk, chunkSampleRate) => {
         if (!isActive(sessionId)) return;
-        if (chunkSampleRate !== sampleRate) return;
+        if (chunkSampleRate !== sampleRate) {
+          emitErrorAndEnd(sessionId, {
+            type: 'error',
+            error: 'interrupted',
+            message: `Unexpected PCM sample rate: ${chunkSampleRate}`,
+          });
+          void currentStream.stop().catch(() => {});
+          return;
+        }
         const remaining = maxSamples - samples.length;
         if (remaining > 0) samples.push(...Array.from(chunk.slice(0, remaining)));
         emit({ type: 'volume', value: calculateVolume(chunk) });

@@ -151,6 +151,21 @@ const termsDocument: LegalDocument = {
   sections: termsSections,
 };
 
+const thirdPartyLicensesDocument: LegalDocument = {
+  title: '第三者ライセンス',
+  updatedAt: '2026年8月31日',
+  sections: [
+    {
+      title: 'Moonshine Tiny JA',
+      body: '短い音声入力の認識には、Moonshine Tiny JAモデルを使用しています。Powered by Moonshine AI。モデルのライセンス全文はアプリに同梱しています。',
+    },
+    {
+      title: 'react-native-sherpa-onnx',
+      body: 'Androidの端末内音声認識ランタイムには、MIT Licenseのreact-native-sherpa-onnxを使用しています。',
+    },
+  ],
+};
+
 export function SettingsScreen() {
   const router = useRouter();
   const { reminders: reminderServices, analytics, purchases } = useAppServices();
@@ -936,6 +951,14 @@ export function SettingsScreen() {
               icon="document-text-outline"
               title="利用規約"
               onPress={() => setLegalDocument(termsDocument)}
+            >
+              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+            </SettingRow>
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
+            <SettingRow
+              icon="information-circle-outline"
+              title="第三者ライセンス"
+              onPress={() => setLegalDocument(thirdPartyLicensesDocument)}
             >
               <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>

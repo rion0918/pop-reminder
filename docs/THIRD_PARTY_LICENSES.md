@@ -10,6 +10,9 @@
   use under its terms; the full text is bundled at `assets/models/moonshine-tiny-ja/LICENSE`)
 - Distribution notice: `assets/models/moonshine-tiny-ja/NOTICE` is bundled with the model.
 
+Product attribution: **Powered by Moonshine AI**. The same attribution is shown in the app's
+第三者ライセンス screen.
+
 The two ONNX model files are gzip-compressed in the repository to avoid accidental secret-scanner
 matches inside opaque model bytes. The Android config plugin expands them into the native assets
 directory during prebuild; runtime still receives the original ONNX files. File-level checksums

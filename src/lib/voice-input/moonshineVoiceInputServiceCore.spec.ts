@@ -216,6 +216,50 @@ test('Moonshine starts transcription without waiting for the PCM stream stop pro
   );
 });
 
+test('Moonshine emits an end event when the recognition engine is unavailable at stop', async () => {
+  const fake = makeNative();
+  fake.native.createEngine = async () => null as never;
+  const service = makeService(fake.native);
+  const events: VoiceInputEvent[] = [];
+  service.subscribe((event) => events.push(event));
+
+  await service.start();
+  service.stop();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(
+    events.filter((event) => event.type !== 'volume'),
+    [
+      { type: 'start' },
+      { type: 'error', error: 'interrupted', message: 'Voice recognition engine was released' },
+      { type: 'end' },
+    ],
+  );
+  assert.equal(fake.calls.stop, 1);
+});
+
+test('Moonshine reports a PCM sample-rate mismatch instead of silently discarding audio', async () => {
+  const fake = makeNative();
+  const service = makeService(fake.native);
+  const events: VoiceInputEvent[] = [];
+  service.subscribe((event) => events.push(event));
+
+  await service.start();
+  fake.emit([0.1, 0.2], 8_000);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(
+    events.filter((event) => event.type !== 'volume'),
+    [
+      { type: 'start' },
+      { type: 'error', error: 'interrupted', message: 'Unexpected PCM sample rate: 8000' },
+      { type: 'end' },
+    ],
+  );
+  assert.equal(fake.calls.transcribe, 0);
+  assert.equal(fake.calls.stop, 1);
+});
+
 test('Moonshine does not reuse a model while an aborted transcription is still running', async () => {
   const fake = makeNative();
   let engineCount = 0;

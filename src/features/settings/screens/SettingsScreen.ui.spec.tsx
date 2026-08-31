@@ -191,6 +191,14 @@ describe('SettingsScreen raise-to-speak setup', () => {
     expect(view.queryByText('利用状況データの削除を依頼')).toBeNull();
   });
 
+  it('shows the Moonshine attribution in the third-party license document', async () => {
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent.press(view.getByText('第三者ライセンス', { exact: true }));
+
+    expect(view.getByText(/Powered by Moonshine AI/)).toBeOnTheScreen();
+  });
+
   it('releases the setup lock when preparation fails', async () => {
     mockRaiseToSpeakPrepare.mockRejectedValue(new Error('preparation failed'));
     const view = await render(<SettingsScreen />);

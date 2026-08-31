@@ -52,6 +52,7 @@ export function createAndroidOnDeviceVoiceInputService(
   );
   let active = false;
   let offlineModelDownloadRequested = false;
+  let offlineModelDownloadPromise: Promise<void> | null = null;
 
   async function getInstalledLocales(): Promise<SupportedLocales | null> {
     if (apiLevel < 33) return null;
@@ -96,23 +97,30 @@ export function createAndroidOnDeviceVoiceInputService(
       }
 
       if (offlineModelDownloadRequested) return;
+      if (offlineModelDownloadPromise) return offlineModelDownloadPromise;
 
-      const supportedLocales = await getInstalledLocales();
-      if (
-        !supportedLocales ||
-        !hasLocale(supportedLocales.locales, VOICE_INPUT_LOCALE) ||
-        hasLocale(supportedLocales.installedLocales, VOICE_INPUT_LOCALE)
-      ) {
-        return;
-      }
+      offlineModelDownloadPromise = (async () => {
+        const supportedLocales = await getInstalledLocales();
+        if (
+          !supportedLocales ||
+          !hasLocale(supportedLocales.locales, VOICE_INPUT_LOCALE) ||
+          hasLocale(supportedLocales.installedLocales, VOICE_INPUT_LOCALE)
+        ) {
+          return;
+        }
 
-      offlineModelDownloadRequested = true;
-      try {
-        await native.androidTriggerOfflineModelDownload({ locale: VOICE_INPUT_LOCALE });
-      } catch {
-        // The bundled Moonshine provider remains available if the system model
-        // is unavailable or the user cancels its one-time download.
-      }
+        offlineModelDownloadRequested = true;
+        try {
+          await native.androidTriggerOfflineModelDownload({ locale: VOICE_INPUT_LOCALE });
+        } catch {
+          // The bundled Moonshine provider remains available if the system model
+          // is unavailable or the user cancels its one-time download.
+        }
+      })().finally(() => {
+        offlineModelDownloadPromise = null;
+      });
+
+      return offlineModelDownloadPromise;
     },
 
     subscribe(listener) {

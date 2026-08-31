@@ -98,6 +98,29 @@ test('Android on-device provider can prepare a missing locale and starts final-o
   });
 });
 
+test('Android on-device provider coalesces concurrent offline model downloads', async () => {
+  const missing = makeNative([]);
+  let resolveDownload: ((result: { status: string; message: string }) => void) | undefined;
+  missing.native.androidTriggerOfflineModelDownload = async () => {
+    missing.calls.download += 1;
+    return new Promise((resolve) => {
+      resolveDownload = resolve;
+    });
+  };
+  const service = createAndroidOnDeviceVoiceInputService({
+    native: missing.native,
+    apiLevel: 35,
+  });
+
+  const first = service.prepareOfflineModel();
+  const second = service.prepareOfflineModel();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(missing.calls.download, 1);
+
+  resolveDownload?.({ status: 'download_success', message: 'ok' });
+  await Promise.all([first, second]);
+});
+
 test('Android on-device provider accepts Android locale spellings', async () => {
   const native = makeNative(['ja_JP']);
   const service = createAndroidOnDeviceVoiceInputService({ native: native.native, apiLevel: 35 });
