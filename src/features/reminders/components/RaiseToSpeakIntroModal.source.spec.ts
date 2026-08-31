@@ -50,6 +50,15 @@ test('intro modal uses a reduced-motion-aware spring tilt illustration', () => {
   ]);
 });
 
+test('calibration progress is applied before an inactive illustration is reset', () => {
+  const progressBranch = source.indexOf('if (tiltProgress !== null)');
+  const inactiveBranch = source.indexOf('if (!active)');
+
+  assert.ok(progressBranch >= 0);
+  assert.ok(inactiveBranch >= 0);
+  assert.ok(progressBranch < inactiveBranch);
+});
+
 test('intro actions use a side-by-side choice layout', () => {
   assertSourceIncludes(source, [
     /actions:\s*\{[\s\S]*?flexDirection: 'row'/,

@@ -62,14 +62,14 @@ function TiltPhoneIllustration({
   useEffect(() => {
     cancelAnimation(rotation);
 
-    if (!active) {
-      rotation.value = 0;
-      return;
-    }
-
     if (tiltProgress !== null) {
       rotation.value = reduceMotionEnabled ? 0 : tiltProgress * TILT_PHONE_ROTATION_DEGREES;
       return () => cancelAnimation(rotation);
+    }
+
+    if (!active) {
+      rotation.value = 0;
+      return;
     }
 
     rotation.value = reduceMotionEnabled
