@@ -234,7 +234,7 @@ test('side-tilt voice uses Android on-device recognition with a bundled local fa
   assert.match(sherpaPluginSource, /require\('expo\/config-plugins'\)/);
   assert.match(sherpaPluginSource, /withAppBuildGradle/);
   assert.match(sherpaPluginSource, /withGradleProperties/);
-  assert.match(sherpaPluginSource, /gunzipSync/);
+  assert.match(sherpaPluginSource, /GZIPInputStream/);
   assert.match(sherpaPluginSource, /configureCMake/);
   assert.match(sherpaPluginSource, /preBuild/);
   assert.match(sherpaPluginSource, /sherpaOnnxDisableFfmpeg/);
@@ -291,6 +291,37 @@ test('side-tilt voice uses Android on-device recognition with a bundled local fa
     ),
     false,
   );
+});
+
+test('Android release builds generate and package the compressed Moonshine model', () => {
+  const requiredModelFiles = [
+    'encoder_model.ort',
+    'decoder_model_merged.ort',
+    'tokens.txt',
+    'LICENSE',
+    'NOTICE',
+  ];
+  const sherpaPluginSource = readFileSync(
+    join(__dirname, 'plugins/withAndroidSherpaModel.js'),
+    'utf8',
+  );
+
+  assert.equal(packageConfig.scripts['verify:android:aab'], 'node scripts/verify-android-aab.mjs');
+  assert.equal(existsSync(join(__dirname, 'scripts/verify-android-aab.mjs')), true);
+  assert.match(androidBuildGradle, /prepareMoonshineModelAssets/);
+  assert.match(androidBuildGradle, /generated\/moonshineModelAssets/);
+  assert.match(androidBuildGradle, /sourceSets\.main\.assets\.srcDir/);
+  assert.match(androidBuildGradle, /merge.*Assets/);
+  assert.match(sherpaPluginSource, /prepareMoonshineModelAssets/);
+  assert.match(sherpaPluginSource, /generated\/moonshineModelAssets/);
+  assert.match(sherpaPluginSource, /sourceSets\.main\.assets\.srcDir/);
+  assert.match(sherpaPluginSource, /merge.*Assets/);
+
+  for (const fileName of requiredModelFiles) {
+    const filePattern = new RegExp(`${fileName.replace('.', '\\.')}`);
+    assert.match(androidBuildGradle, filePattern);
+    assert.match(sherpaPluginSource, filePattern);
+  }
 });
 
 test('Android notifications have a release-ready small icon and accent color', () => {

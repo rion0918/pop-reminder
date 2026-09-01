@@ -124,6 +124,16 @@ eas build --profile production --platform android
 
 `eas.json` の production profile は Android App Bundle（`buildType: app-bundle`）と SDK 54 用の `sdk-54` イメージを使用します。ビルドが完了したら、EAS が表示するダウンロード URL から `.aab` を保存します。
 
+### 4.2.1 Android音声モデルの同梱確認
+
+Android native projectを管理しているため、EASではPrebuildが走らない場合があります。AABをPlay Consoleへアップロードする前に、ビルド時生成されたMoonshineモデルが実際に含まれることを確認します。
+
+```bash
+pnpm run verify:android:aab /absolute/path/to/production.aab
+```
+
+この検査が失敗したAABは配布しません。`base/assets/models/moonshine-tiny-ja/` 配下の音声モデル2ファイル、`tokens.txt`、`LICENSE`、`NOTICE`が、リポジトリの圧縮元データと一致している必要があります。
+
 ### 4.3 EAS の表示をどう判断するか
 
 | 表示                                                          | 対応                                                                                                                            |
@@ -143,6 +153,7 @@ Play Console の App Bundle 詳細で、次を確認します。
 - target SDK が `36` である。
 - package が `com.rion0918.popreminder` である。
 - Google Play App Signing が有効である。
+- `pnpm run verify:android:aab /absolute/path/to/production.aab` が成功している。
 - 不要な `READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE`、`SYSTEM_ALERT_WINDOW`、`ACTIVITY_RECOGNITION` が最終 AAB にない。
 - Widget、通知、マイク、ネットワークに必要な機能が欠けていない。
 

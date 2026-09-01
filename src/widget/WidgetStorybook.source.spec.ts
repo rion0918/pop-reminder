@@ -16,7 +16,7 @@ const storiesSource = readSource(import.meta.url, './PopReminderWidgetPreview.st
 
 test('Storybook is opt-in and keeps the normal Expo Router entry point unchanged', () => {
   assertSourceIncludes(packageSource, [
-    /"storybook": "STORYBOOK_ENABLED=true expo start --dev-client --lan --port 8082"/,
+    /"storybook:dev": "STORYBOOK_ENABLED=true expo start --dev-client --lan --port 8082"/,
     /"@storybook\/react-native": "10\.4\.2"/,
     /"@storybook\/react-native-ui-lite": "10\.4\.2"/,
     /"storybook": "10\.4\.2"/,
