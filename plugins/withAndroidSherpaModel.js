@@ -66,7 +66,7 @@ tasks.register("prepareMoonshineModelAssets") {
     }
 }
 android.sourceSets.main.assets.srcDir(moonshineModelGeneratedAssetsDir)
-tasks.matching { it.name ==~ /merge.*Assets/ }.configureEach {
+tasks.matching { it.name ==~ /(merge.*Assets|generate.*Lint.*Model|lintVital.*)/ }.configureEach {
     dependsOn(tasks.named("prepareMoonshineModelAssets"))
 }
 `;
