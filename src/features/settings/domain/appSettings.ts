@@ -1,6 +1,7 @@
 import { isTimeString } from '../../../shared/utils/time';
+import type { AppTheme } from '../../../shared/domain/appTheme';
 
-export type AppTheme = 'sky' | 'lavender' | 'mint';
+export type { AppTheme } from '../../../shared/domain/appTheme';
 export type AnalyticsConsent = 'unknown' | 'granted' | 'denied';
 
 export type AppSettings = {

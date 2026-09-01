@@ -22,7 +22,7 @@ import {
 import { useNotificationDevStore } from '../../reminders/stores/notificationDevStore';
 import { RaiseToSpeakIntroModal } from '../../reminders/components/RaiseToSpeakIntroModal';
 import { useRaiseToSpeakGesture } from '../../reminders/hooks/useRaiseToSpeakGesture';
-import { useAppServices } from '../../../bootstrap/AppProviders';
+import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { SettingRow } from '../components/SettingRow';
 import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
 import { useNotificationSettings } from '../presentation/useNotificationSettings';
@@ -176,6 +176,7 @@ export function SettingsScreen() {
     loading,
     refresh: refreshSettings,
     update,
+    updateAnalyticsConsent,
     updatePreviousNotifyTime,
     isUpdatingPreviousNotifyTime,
   } = useAppSettings();
@@ -333,20 +334,11 @@ export function SettingsScreen() {
     if (!analytics.configured || isAnalyticsPreferenceLoading || !settings) return;
 
     setIsAnalyticsPreferenceLoading(true);
-    const previousConsent = settings.analyticsConsent;
     const nextConsent = value ? 'granted' : 'denied';
-    let consentPersisted = false;
     try {
-      await update({ analyticsConsent: nextConsent });
-      consentPersisted = true;
-      const enabled = await analytics.setCaptureEnabled(value);
-      if (value && !enabled) throw new Error('Analytics could not be enabled');
+      await updateAnalyticsConsent(nextConsent);
       setIsAnalyticsEnabled(value);
     } catch {
-      await analytics.setCaptureEnabled(false);
-      if (consentPersisted && previousConsent !== nextConsent) {
-        await update({ analyticsConsent: previousConsent }).catch(() => undefined);
-      }
       await refreshSettings();
       Alert.alert('設定を変更できませんでした', '時間をおいてもう一度お試しください。');
     } finally {

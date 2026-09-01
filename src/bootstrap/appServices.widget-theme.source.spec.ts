@@ -1,15 +1,21 @@
 import { test } from 'node:test';
 
-import { assertSourceIncludes, readSource } from '../test-utils/sourceAssertions';
+import {
+  assertSourceContract,
+  assertSourceIncludes,
+  readSource,
+} from '../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './appServices.ts');
 
-test('persisting an app theme immediately refreshes the android widget', () => {
+test('bootstrap injects settings adapters without owning the theme workflow', () => {
   assertSourceIncludes(source, [
-    /const settingsService/,
-    /await sqliteSettingsRepository\.update\(input\)/,
-    /if \(input\.theme !== undefined\)/,
-    /await widgetGateway\.sync\(\)/,
-    /settings: settingsService/,
+    /createSettingsUseCases/,
+    /settings: sqliteSettingsRepository/,
+    /widget: widgetGateway/,
+    /analytics: posthogAnalytics/,
   ]);
+  assertSourceContract(source, {
+    excludes: [/const settingsService/, /input\.theme/, /analyticsConsent/],
+  });
 });

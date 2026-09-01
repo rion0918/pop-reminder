@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-import { useAppServices } from '../../../bootstrap/AppProviders';
+import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { palette } from '../../../constants/colors';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';

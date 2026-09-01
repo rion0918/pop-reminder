@@ -33,7 +33,7 @@ import {
   useReminderUiStore,
 } from '../stores/reminderUiStore';
 import type { Reminder } from '../types/reminder';
-import { useAppServices } from '../../../bootstrap/AppProviders';
+import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { useAppSettingsQuery as useAppSettings } from '../../settings/presentation/useAppSettingsQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { DEFAULT_TIME_PRESETS } from '../../../shared/utils/timePresets';

@@ -1,4 +1,4 @@
-import { useAppServices } from '../../../bootstrap/AppProviders';
+import { useAppServices } from '../../../bootstrap/appServicesContext';
 
 export function useNotificationSettings() {
   return useAppServices().notificationSettings;

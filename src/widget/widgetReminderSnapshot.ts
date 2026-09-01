@@ -1,7 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-import type { AppTheme } from '../constants/colors';
-import { coerceTheme } from '../shared/utils/time';
+import { coerceAppTheme, type AppTheme } from '../shared/domain/appTheme';
 
 export type WidgetReminder = {
   id: string;
@@ -61,7 +60,7 @@ function getTheme(db: SQLite.SQLiteDatabase): AppTheme {
        LIMIT 1`,
     );
 
-    return coerceTheme(row?.theme ?? 'lavender');
+    return coerceAppTheme(row?.theme ?? 'lavender');
   } catch (error) {
     console.warn('[Widget] Failed to fetch theme from SQLite', error);
     return 'lavender';
