@@ -13,11 +13,11 @@ test('intro explains that returning the phone upright ends voice input', () => {
 
 test('raise-to-speak calibration can be cancelled from the intro modal', () => {
   assertSourceIncludes(source, [
-    /onRequestClose=\{busy \? undefined : onDismiss\}/,
+    /onRequestClose=\{isDismissLocked \? undefined : onDismiss\}/,
     /accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"/,
     /onPress=\{onDismiss\}/,
   ]);
-  assert.doesNotMatch(source, /onRequestClose=\{busy \|\| calibrating \? undefined : onDismiss\}/);
+  assert.doesNotMatch(source, /onRequestClose=\{busy \? undefined : onDismiss\}/);
 });
 
 test('calibration distinguishes sensor startup failure from an unrecognized pose and can retry', () => {
@@ -45,12 +45,12 @@ test('intro modal uses a reduced-motion-aware spring tilt illustration', () => {
     /from 'react-native-reanimated'/,
     /cancelAnimation/,
     /useSharedValue\(0\)/,
-    /withRepeat\(/,
     /withSequence\(/,
+    /RaiseToSpeakCalibrationPhase =\s*'intro' \| 'preparing'/,
     /TILT_PHONE_ROTATION_DEGREES = 9/,
     /withSpring\(-TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING\)/,
-    /reduceMotionEnabled\s*\?\s*0\s*:\s*withRepeat/,
-    /active=\{visible && !calibrating\}/,
+    /reduceMotionEnabled\s*\?\s*0\s*:\s*withSequence/,
+    /active=\{visible && setupPhase === 'intro'\}/,
     /accessible\n\s*accessibilityRole="image"/,
     /accessibilityLabel="スマートフォンが左右に傾く動き"/,
   ]);
@@ -85,7 +85,7 @@ test('privacy guidance sits below the actions in a compact treatment', () => {
 test('enable action stays text-only', () => {
   assertSourceIncludes(source, [
     /accessibilityLabel="左右に傾けて音声入力を使ってみる"/,
-    /<Text style=\{styles\.primaryLabel\}>\{busy \? '確認中…' : '使ってみる'\}<\/Text>/,
+    /<Text style=\{styles\.primaryLabel\}>\{busy \? '確認中…' : '動きを試す'\}<\/Text>/,
   ]);
   assert.doesNotMatch(source, /<Ionicons name="[^"]+" size=\{18\} color=\{palette\.white\}/);
 });

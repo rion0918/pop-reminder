@@ -61,11 +61,117 @@ test('intro exposes the enable action', async () => {
     />,
   );
 
-  expect(view.getByText('使ってみる')).toBeTruthy();
+  expect(view.getByText('動きを試す')).toBeTruthy();
   const enableButton = view.getByLabelText('左右に傾けて音声入力を使ってみる');
   expect(enableButton).not.toBeDisabled();
   await fireEvent.press(enableButton);
   expect(onEnable).toHaveBeenCalledTimes(1);
+});
+
+test('intro labels the setup action as trying the motion', async () => {
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      phase="intro"
+      message={null}
+      sensorStatus="inactive"
+      sensorFailureReason={null}
+      tiltProgress={null}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+      onSuccessComplete={jest.fn()}
+    />,
+  );
+
+  expect(view.getByText('傾けて話す')).toBeTruthy();
+  expect(view.getByText('動きを試す')).toBeTruthy();
+});
+
+test('intro guides the user to return upright after tilt is detected', async () => {
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      phase="awaiting-upright"
+      message={null}
+      sensorStatus="active"
+      sensorFailureReason={null}
+      tiltProgress={1}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+      onSuccessComplete={jest.fn()}
+    />,
+  );
+
+  expect(view.getByText('開始の動きを確認できました')).toBeTruthy();
+  expect(
+    view.getByText('次はスマホを縦に戻してください。音声入力も同じ操作で終了します。'),
+  ).toBeTruthy();
+});
+
+test('intro shows a non-dismissible preparation state while permissions are checked', async () => {
+  const onDismiss = jest.fn();
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy
+      phase="preparing"
+      message={null}
+      sensorStatus="waiting"
+      sensorFailureReason={null}
+      tiltProgress={null}
+      onEnable={jest.fn()}
+      onDismiss={onDismiss}
+      onRetry={jest.fn()}
+    />,
+  );
+
+  expect(view.getByText('準備しています…')).toBeTruthy();
+  expect(view.getByText('マイクとセンサーを確認しています。')).toBeTruthy();
+  expect(view.getByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeDisabled();
+  await fireEvent.press(view.getByLabelText('左右に傾けて音声入力の設定をキャンセル'));
+  expect(onDismiss).not.toHaveBeenCalled();
+});
+
+test('success keeps the modal visible until the completion callback is invoked', async () => {
+  jest.useFakeTimers();
+  const onSuccessComplete = jest.fn();
+  const view = await render(
+    <RaiseToSpeakIntroModal
+      visible
+      busy={false}
+      phase="success"
+      message={null}
+      sensorStatus="waiting"
+      sensorFailureReason={null}
+      tiltProgress={null}
+      onEnable={jest.fn()}
+      onDismiss={jest.fn()}
+      onRetry={jest.fn()}
+      onSuccessComplete={onSuccessComplete}
+    />,
+  );
+
+  expect(view.getByText('使い方を確認できました')).toBeTruthy();
+  expect(onSuccessComplete).not.toHaveBeenCalled();
+
+  await act(async () => {
+    jest.advanceTimersByTime(999);
+  });
+  expect(onSuccessComplete).not.toHaveBeenCalled();
+
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(onSuccessComplete).toHaveBeenCalledTimes(1);
+
+  await act(async () => {
+    view.unmount();
+  });
+  jest.useRealTimers();
 });
 
 test('intro places the defer choice before the enable choice', async () => {

@@ -20,8 +20,14 @@ import {
 } from 'react-native';
 
 import { useNotificationDevStore } from '../../reminders/stores/notificationDevStore';
-import { RaiseToSpeakIntroModal } from '../../reminders/components/RaiseToSpeakIntroModal';
-import { useRaiseToSpeakGesture } from '../../reminders/hooks/useRaiseToSpeakGesture';
+import {
+  RaiseToSpeakIntroModal,
+  type RaiseToSpeakCalibrationPhase,
+} from '../../reminders/components/RaiseToSpeakIntroModal';
+import {
+  useRaiseToSpeakGesture,
+  type RaiseToSpeakGestureStopReason,
+} from '../../reminders/hooks/useRaiseToSpeakGesture';
 import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { SettingRow } from '../components/SettingRow';
 import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
@@ -207,6 +213,8 @@ export function SettingsScreen() {
   const [isRaiseToSpeakUpdatePending, setIsRaiseToSpeakUpdatePending] = useState(false);
   const [isRaiseToSpeakSetupBusy, setIsRaiseToSpeakSetupBusy] = useState(false);
   const [isRaiseToSpeakCalibrating, setIsRaiseToSpeakCalibrating] = useState(false);
+  const [raiseToSpeakCalibrationPhase, setRaiseToSpeakCalibrationPhase] =
+    useState<RaiseToSpeakCalibrationPhase>('intro');
   const [raiseToSpeakSetupMessage, setRaiseToSpeakSetupMessage] = useState<string | null>(null);
   const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
   const isPreviousTimeUpdateRequestedRef = useRef(false);
@@ -354,6 +362,7 @@ export function SettingsScreen() {
     try {
       if (!enabled) {
         setIsRaiseToSpeakCalibrating(false);
+        setRaiseToSpeakCalibrationPhase('intro');
         setRaiseToSpeakSetupMessage(null);
         await update({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: true });
         return;
@@ -371,6 +380,7 @@ export function SettingsScreen() {
       }
 
       if (result.status === 'permission-denied') {
+        setRaiseToSpeakCalibrationPhase('intro');
         const permissionLabel = Platform.OS === 'android' ? 'マイク' : 'マイクとモーション';
         const actions = result.canAskAgain
           ? [{ text: 'OK' }]
@@ -407,6 +417,7 @@ export function SettingsScreen() {
 
     setRaiseToSpeakSetupMessage(null);
     setIsRaiseToSpeakCalibrating(false);
+    setRaiseToSpeakCalibrationPhase('intro');
     void update({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false });
   }, [isRaiseToSpeakSetupBusy, update]);
 
@@ -414,11 +425,13 @@ export function SettingsScreen() {
     if (isRaiseToSpeakSetupBusy) return;
 
     setIsRaiseToSpeakSetupBusy(true);
+    setRaiseToSpeakCalibrationPhase('preparing');
     setRaiseToSpeakSetupMessage(null);
     try {
       const result = await raiseToSpeak.prepare();
       if (result.status === 'ready') {
         setIsRaiseToSpeakCalibrating(true);
+        setRaiseToSpeakCalibrationPhase('awaiting-tilt');
         return;
       }
 
@@ -443,34 +456,67 @@ export function SettingsScreen() {
           '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
         'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
       }[result.status];
+      setRaiseToSpeakCalibrationPhase('intro');
       setRaiseToSpeakSetupMessage(message);
     } catch {
+      setRaiseToSpeakCalibrationPhase('intro');
       setRaiseToSpeakSetupMessage('音声入力の準備を完了できませんでした。');
     } finally {
       setIsRaiseToSpeakSetupBusy(false);
     }
   }, [isRaiseToSpeakSetupBusy, raiseToSpeak]);
 
-  const handleRaiseToSpeakCalibrationStart = useCallback(async () => {
-    if (!isRaiseToSpeakCalibrating || isRaiseToSpeakSetupBusy) return;
-
-    setIsRaiseToSpeakSetupBusy(true);
-    try {
-      await update({
-        raiseToSpeakEnabled: true,
-        raiseToSpeakIntroSeen: true,
-      });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setRaiseToSpeakSetupMessage(null);
-    } catch {
-      setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
-    } finally {
-      setIsRaiseToSpeakCalibrating(false);
-      setIsRaiseToSpeakSetupBusy(false);
+  const handleRaiseToSpeakCalibrationStart = useCallback(() => {
+    if (
+      !isRaiseToSpeakCalibrating ||
+      isRaiseToSpeakSetupBusy ||
+      raiseToSpeakCalibrationPhase !== 'awaiting-tilt'
+    ) {
+      return;
     }
-  }, [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, update]);
 
-  const handleRaiseToSpeakCalibrationStop = useCallback(() => {}, []);
+    setRaiseToSpeakCalibrationPhase('awaiting-upright');
+    setRaiseToSpeakSetupMessage(null);
+    void Haptics.selectionAsync().catch(() => {});
+  }, [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, raiseToSpeakCalibrationPhase]);
+
+  const handleRaiseToSpeakCalibrationStop = useCallback(
+    async (reason: RaiseToSpeakGestureStopReason) => {
+      if (
+        !isRaiseToSpeakCalibrating ||
+        isRaiseToSpeakSetupBusy ||
+        raiseToSpeakCalibrationPhase !== 'awaiting-upright'
+      ) {
+        return;
+      }
+
+      if (reason !== 'portrait') {
+        setRaiseToSpeakCalibrationPhase('awaiting-tilt');
+        setRaiseToSpeakSetupMessage('いったん縦に戻して、もう一度傾けてください。');
+        return;
+      }
+
+      setIsRaiseToSpeakSetupBusy(true);
+      setRaiseToSpeakCalibrationPhase('saving');
+      try {
+        await update({
+          raiseToSpeakEnabled: true,
+          raiseToSpeakIntroSeen: true,
+        });
+        setIsRaiseToSpeakCalibrating(false);
+        setRaiseToSpeakCalibrationPhase('success');
+        setRaiseToSpeakSetupMessage(null);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } catch {
+        setIsRaiseToSpeakCalibrating(false);
+        setRaiseToSpeakCalibrationPhase('intro');
+        setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
+      } finally {
+        setIsRaiseToSpeakSetupBusy(false);
+      }
+    },
+    [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, raiseToSpeakCalibrationPhase, update],
+  );
 
   const {
     sensorStatus: raiseToSpeakSensorStatus,
@@ -1036,9 +1082,12 @@ export function SettingsScreen() {
       />
       <LegalDocumentModal document={legalDocument} onClose={() => setLegalDocument(null)} />
       <RaiseToSpeakIntroModal
-        visible={Boolean(settings?.raiseToSpeakEnabled && !settings.raiseToSpeakIntroSeen)}
+        visible={Boolean(
+          settings?.raiseToSpeakEnabled &&
+          (!settings.raiseToSpeakIntroSeen || raiseToSpeakCalibrationPhase === 'success'),
+        )}
         busy={isRaiseToSpeakSetupBusy}
-        calibrating={isRaiseToSpeakCalibrating}
+        phase={raiseToSpeakCalibrationPhase}
         message={raiseToSpeakSetupMessage}
         sensorStatus={raiseToSpeakSensorStatus}
         sensorFailureReason={raiseToSpeakSensorFailureReason}
@@ -1046,6 +1095,7 @@ export function SettingsScreen() {
         onEnable={() => void handlePrepareRaiseToSpeak()}
         onDismiss={handleDismissRaiseToSpeakIntro}
         onRetry={retryRaiseToSpeakSensor}
+        onSuccessComplete={() => setRaiseToSpeakCalibrationPhase('intro')}
       />
     </AppScreen>
   );

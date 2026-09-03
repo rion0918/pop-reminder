@@ -10,6 +10,7 @@ import {
   RAISE_TO_SPEAK_UPDATE_INTERVAL_MS,
   reduceRaiseToSpeakDetector,
   type RaiseToSpeakDetectorState,
+  type RaiseToSpeakStopReason,
 } from '../utils/raiseToSpeakDetector';
 
 type UseRaiseToSpeakGestureOptions = {
@@ -17,8 +18,10 @@ type UseRaiseToSpeakGestureOptions = {
   blocked: boolean;
   trackTiltProgress?: boolean;
   onStart: () => void;
-  onStop: () => void;
+  onStop: (reason: RaiseToSpeakGestureStopReason) => void;
 };
+
+export type RaiseToSpeakGestureStopReason = RaiseToSpeakStopReason | 'interrupted';
 
 export type RaiseToSpeakSensorStatus =
   'inactive' | 'waiting' | 'starting' | 'active' | 'unavailable';
@@ -75,7 +78,7 @@ export function useRaiseToSpeakGesture({
       setSensorStatus(enabled ? 'waiting' : 'inactive');
       setSensorFailureReason(null);
       setTiltProgress(null);
-      if (detectorRef.current.phase === 'listening') onStopRef.current();
+      if (detectorRef.current.phase === 'listening') onStopRef.current('interrupted');
       detectorRef.current = createRaiseToSpeakDetectorState();
       return undefined;
     }
@@ -123,7 +126,9 @@ export function useRaiseToSpeakGesture({
       detectorRef.current = result.state;
       if (trackTiltProgress) setTiltProgress(tiltMeasurement.progress);
       if (result.action === 'start') onStartRef.current();
-      if (result.action === 'stop') onStopRef.current();
+      if (result.action === 'stop' && result.stopReason) {
+        onStopRef.current(result.stopReason);
+      }
     };
 
     const startSensor = async () => {
@@ -169,7 +174,7 @@ export function useRaiseToSpeakGesture({
       disposed = true;
       if (sensorStartTimeout !== undefined) clearTimeout(sensorStartTimeout);
       motionSubscription?.remove();
-      if (detectorRef.current.phase === 'listening') onStopRef.current();
+      if (detectorRef.current.phase === 'listening') onStopRef.current('interrupted');
       detectorRef.current = createRaiseToSpeakDetectorState();
     };
   }, [appState, blocked, enabled, focusGate, retryVersion, trackTiltProgress]);

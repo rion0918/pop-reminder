@@ -15,9 +15,9 @@ EAS Build による development build（`.ipa` / `.apk`）を実機にインス�
 | リリース方針   | Android を先行し、App Store は Android 専用 Widget を除く共通機能を後追いで確認する。Android Widget は初回Androidリリース機能として確認する |
 | バージョン管理 | ユーザー向けは `expo.version`、Android提出番号は `android.versionCode`、iOS提出番号は `ios.buildNumber` を更新する                          |
 
-## Android 実機でQR検証する手順
+## 環境別のDevelopment Build起動手順
 
-このプロジェクトは `expo-dev-client` を含むため、通常の `expo start` では development build 用のQRが表示されます。QRのURLが `exp+pop-reminder://expo-development-client/...` の場合、そのQRは Expo Go ではなく、実機にインストール済みの development build アプリで開きます。
+このプロジェクトは `expo-dev-client` を含むため、普段は `pnpm run dev` でMetroを起動し、インストール済みのDevelopment Buildから接続します。QRのURLが `exp+pop-reminder://expo-development-client/...` の場合、そのQRはExpo GoではなくDevelopment Buildアプリで開きます。
 
 1. Nix 開発シェルに入る（direnv を使っている場合は `cd` するだけで自動適用）。
 
@@ -27,19 +27,65 @@ nix develop
 pnpm install
 ```
 
-2. development build をAndroid実機にインストールする。
+2. 対象OS・端末に応じてDevelopment Buildを用意する。
+
+### Androidエミュレータ
+
+エミュレータを起動した状態で実行します。起動中の `emulator-*` を自動判定します。
 
 ```bash
-eas build --profile development --platform android
+pnpm run dev:android:emulator
 ```
 
-3. Metroをdevelopment buildモードで起動する。
+複数のエミュレータが起動している場合は、候補に表示されたIDを指定します。
 
 ```bash
-pnpm run start:dev-client
+pnpm run dev:android:emulator -- emulator-5554
 ```
 
-4. 表示されたQRを、Expo Goではなくインストール済みの「ふわっと。」development buildで開く。
+### Android実機
+
+USBまたはADB経由のインストールが制限されている端末では、EASでAPKを作成して端末へ手動インストールします。
+
+```bash
+pnpm run dev:android:device
+```
+
+EASの完了画面に表示されたURLを実機で開いてAPKをインストールし、インストール後に次の共通手順へ進みます。
+
+### iOSシミュレータ
+
+シミュレータを起動した状態で実行します。起動中のシミュレータを優先して自動判定します。
+
+```bash
+pnpm run dev:ios:simulator
+```
+
+複数のシミュレータが起動している場合は、候補に表示されたUDIDを指定します。
+
+```bash
+pnpm run dev:ios:simulator -- <UDID>
+```
+
+### iOS実機
+
+Appleの署名・端末登録が済んでいる環境で、EAS Development Buildを作成します。
+
+```bash
+pnpm run dev:ios:device
+```
+
+EASの完了画面に表示されたURLから実機へインストールし、インストール後に次の共通手順へ進みます。
+
+### 共通: Metroへ接続
+
+Development Buildを端末・シミュレータへインストールした後、プロジェクトのルートでMetroを起動します。
+
+```bash
+pnpm run dev
+```
+
+表示されたQRを、Expo Goではなくインストール済みの「ふわっと。」Development Buildで開きます。
 
 Expo Goで確認したい場合は、development build用QRではなくExpo Goモードで起動します。
 

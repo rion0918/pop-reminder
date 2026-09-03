@@ -9,6 +9,7 @@ const mockRouter = {
 const mockSettingsUpdate = jest.fn();
 const mockRaiseToSpeakPrepare = jest.fn();
 const mockHapticsNotificationAsync = jest.fn();
+const mockHapticsSelectionAsync = jest.fn();
 const mockEvents: string[] = [];
 let mockSettingsState: AppSettings;
 let mockCalibrationDeferred: Promise<void> | null = null;
@@ -18,6 +19,7 @@ let mockRaiseGestureOptions: {
   enabled: boolean;
   blocked: boolean;
   onStart: () => void | Promise<void>;
+  onStop: (reason: 'portrait' | 'timeout' | 'interrupted') => void;
 } | null = null;
 
 function makeSettings(): AppSettings {
@@ -45,6 +47,7 @@ jest.mock('expo-router', () => ({
 jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success' },
   notificationAsync: (...args: unknown[]) => mockHapticsNotificationAsync(...args),
+  selectionAsync: (...args: unknown[]) => mockHapticsSelectionAsync(...args),
 }));
 
 jest.mock('../../../bootstrap/appServicesContext', () => ({
@@ -185,6 +188,9 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockHapticsNotificationAsync.mockImplementation(async () => {
       mockEvents.push('haptic');
     });
+    mockHapticsSelectionAsync.mockImplementation(async () => {
+      mockEvents.push('selection');
+    });
   });
 
   it('does not show a dedicated analytics deletion request row', async () => {
@@ -235,6 +241,9 @@ describe('SettingsScreen raise-to-speak setup', () => {
     await act(async () => {
       void mockRaiseGestureOptions?.onStart();
     });
+    await act(async () => {
+      mockRaiseGestureOptions?.onStop('portrait');
+    });
     await waitFor(() => {
       expect(mockRaiseGestureOptions?.blocked).toBe(true);
       expect(view.getByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeDisabled();
@@ -248,6 +257,61 @@ describe('SettingsScreen raise-to-speak setup', () => {
       expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).not.toBeDisabled();
     });
     expect(view.queryByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeNull();
+  });
+
+  it.each(['timeout', 'interrupted'] as const)(
+    'does not complete setup when calibration ends because of %s',
+    async (reason) => {
+      const view = await render(<SettingsScreen />);
+
+      await fireEvent(view.getByLabelText('左右に傾けて音声入力'), 'valueChange', true);
+      await waitFor(() =>
+        expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).toBeOnTheScreen(),
+      );
+      await fireEvent.press(view.getByLabelText('左右に傾けて音声入力を使ってみる'));
+      await waitFor(() => expect(mockRaiseGestureOptions?.enabled).toBe(true));
+
+      await act(async () => {
+        mockRaiseGestureOptions?.onStart();
+      });
+      await act(async () => {
+        mockRaiseGestureOptions?.onStop(reason);
+      });
+
+      expect(view.getByText('いったん縦に戻して、もう一度傾けてください。')).toBeOnTheScreen();
+      expect(mockSettingsUpdate).not.toHaveBeenCalledWith({
+        raiseToSpeakEnabled: true,
+        raiseToSpeakIntroSeen: true,
+      });
+      expect(mockRaiseGestureOptions?.blocked).toBe(false);
+      view.unmount();
+    },
+  );
+
+  it('keeps setup incomplete when cancelled after the tilt is detected', async () => {
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent(view.getByLabelText('左右に傾けて音声入力'), 'valueChange', true);
+    await waitFor(() =>
+      expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).toBeOnTheScreen(),
+    );
+    await fireEvent.press(view.getByLabelText('左右に傾けて音声入力を使ってみる'));
+    await waitFor(() => expect(mockRaiseGestureOptions?.enabled).toBe(true));
+    await act(async () => {
+      mockRaiseGestureOptions?.onStart();
+    });
+    await waitFor(() => expect(view.getByText('開始の動きを確認できました')).toBeOnTheScreen());
+
+    await fireEvent.press(view.getByLabelText('左右に傾けて音声入力の設定をキャンセル'));
+
+    await waitFor(() => {
+      expect(mockSettingsUpdate).toHaveBeenLastCalledWith({
+        raiseToSpeakEnabled: false,
+        raiseToSpeakIntroSeen: false,
+      });
+      expect(view.queryByText('開始の動きを確認できました')).toBeNull();
+    });
+    view.unmount();
   });
 
   it('persists the first enable, prepares the gesture, and blocks cancellation while saving', async () => {
@@ -266,6 +330,16 @@ describe('SettingsScreen raise-to-speak setup', () => {
 
     await act(async () => {
       void mockRaiseGestureOptions?.onStart();
+    });
+    await waitFor(() => expect(view.getByText('開始の動きを確認できました')).toBeOnTheScreen());
+    expect(mockHapticsSelectionAsync).toHaveBeenCalledTimes(1);
+    expect(mockSettingsUpdate).not.toHaveBeenCalledWith({
+      raiseToSpeakEnabled: true,
+      raiseToSpeakIntroSeen: true,
+    });
+
+    await act(async () => {
+      mockRaiseGestureOptions?.onStop('portrait');
     });
     await waitFor(() => expect(mockRaiseGestureOptions?.blocked).toBe(true));
 
@@ -288,5 +362,50 @@ describe('SettingsScreen raise-to-speak setup', () => {
     expect(mockEvents.indexOf('haptic')).toBeGreaterThan(
       mockEvents.findIndex((event) => event.includes('raiseToSpeakIntroSeen')),
     );
+  });
+
+  it('shows success feedback for one second and then closes the setup', async () => {
+    jest.useFakeTimers();
+    try {
+      const view = await render(<SettingsScreen />);
+
+      await fireEvent(view.getByLabelText('左右に傾けて音声入力'), 'valueChange', true);
+      await waitFor(() =>
+        expect(view.getByLabelText('左右に傾けて音声入力を使ってみる')).toBeOnTheScreen(),
+      );
+      await fireEvent.press(view.getByLabelText('左右に傾けて音声入力を使ってみる'));
+      await waitFor(() => expect(mockRaiseGestureOptions?.enabled).toBe(true));
+      await act(async () => {
+        mockRaiseGestureOptions?.onStart();
+      });
+      await waitFor(() => expect(view.getByText('開始の動きを確認できました')).toBeOnTheScreen());
+      expect(mockHapticsNotificationAsync).not.toHaveBeenCalled();
+      await act(async () => {
+        mockRaiseGestureOptions?.onStop('portrait');
+      });
+
+      await waitFor(() => expect(mockRaiseGestureOptions?.blocked).toBe(true));
+      await act(async () => {
+        mockResolveCalibration?.();
+        await mockCalibrationDeferred;
+      });
+
+      await waitFor(() => expect(view.getByText('使い方を確認できました')).toBeOnTheScreen());
+      expect(view.getByLabelText('音声入力の使い方を確認しました')).toBeOnTheScreen();
+      expect(mockHapticsNotificationAsync).toHaveBeenCalledWith('success');
+
+      await act(async () => {
+        jest.advanceTimersByTime(999);
+      });
+      expect(view.getByText('使い方を確認できました')).toBeOnTheScreen();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+      await waitFor(() => expect(view.queryByText('使い方を確認できました')).toBeNull());
+      view.unmount();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

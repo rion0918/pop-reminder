@@ -25,6 +25,7 @@ export type RaiseToSpeakSample = {
 };
 
 export type RaiseToSpeakAction = 'none' | 'start' | 'stop';
+export type RaiseToSpeakStopReason = 'portrait' | 'timeout';
 
 export type SideTiltMeasurement = {
   sideTilted: boolean;
@@ -105,7 +106,11 @@ function enterCooldown(timestamp: number): RaiseToSpeakDetectorState {
 export function reduceRaiseToSpeakDetector(
   state: RaiseToSpeakDetectorState,
   sample: RaiseToSpeakSample,
-): { state: RaiseToSpeakDetectorState; action: RaiseToSpeakAction } {
+): {
+  state: RaiseToSpeakDetectorState;
+  action: RaiseToSpeakAction;
+  stopReason?: RaiseToSpeakStopReason;
+} {
   if (state.phase === 'cooldown') {
     if (
       state.cooldownUntil !== null &&
@@ -122,7 +127,11 @@ export function reduceRaiseToSpeakDetector(
       state.listeningStartedAt !== null &&
       sample.timestamp - state.listeningStartedAt >= RAISE_TO_SPEAK_MAX_LISTENING_MS
     ) {
-      return { state: enterCooldown(sample.timestamp), action: 'stop' };
+      return {
+        state: enterCooldown(sample.timestamp),
+        action: 'stop',
+        stopReason: 'timeout',
+      };
     }
 
     const portraitSince = sample.sideTilted ? null : (state.portraitSince ?? sample.timestamp);
@@ -130,7 +139,11 @@ export function reduceRaiseToSpeakDetector(
       portraitSince !== null &&
       sample.timestamp - portraitSince >= RAISE_TO_SPEAK_PORTRAIT_HOLD_MS
     ) {
-      return { state: enterCooldown(sample.timestamp), action: 'stop' };
+      return {
+        state: enterCooldown(sample.timestamp),
+        action: 'stop',
+        stopReason: 'portrait',
+      };
     }
 
     return { state: { ...state, portraitSince }, action: 'none' };

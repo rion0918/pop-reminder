@@ -22,7 +22,10 @@ import { ReminderBubbleBoard, type BubbleDeleteMotion } from '../components/Remi
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderInputSheet } from '../components/ReminderInputSheet';
 import { NotificationPermissionIntroModal } from '../components/NotificationPermissionIntroModal';
-import { RaiseToSpeakIntroModal } from '../components/RaiseToSpeakIntroModal';
+import {
+  RaiseToSpeakIntroModal,
+  type RaiseToSpeakCalibrationPhase,
+} from '../components/RaiseToSpeakIntroModal';
 import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
 import { makeBulkDeleteMotions } from '../components/reminderBulkDeleteMotion';
 import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
@@ -45,7 +48,10 @@ import {
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { triggerReminderSelectionHaptic } from '../utils/reminderSelectionFeedback';
 import { FREE_ACTIVE_REMINDER_LIMIT } from '../../purchases/domain/proAccess';
-import { useRaiseToSpeakGesture } from '../hooks/useRaiseToSpeakGesture';
+import {
+  useRaiseToSpeakGesture,
+  type RaiseToSpeakGestureStopReason,
+} from '../hooks/useRaiseToSpeakGesture';
 
 const appIcon = require('../../../../assets/app-icon.png');
 const reminderDetailBubbles = require('../../../../assets/reminder-detail-bubbles.png');
@@ -133,7 +139,6 @@ export function HomeScreen() {
   const isQuickAddRequestPendingRef = useRef(false);
   const quickAddSourceRef = useRef<QuickAddSource>('home_button');
   const raiseSessionActiveRef = useRef(false);
-  const raiseCalibrationSessionRef = useRef(false);
   const selectedReminderRef = useRef<Reminder | null>(null);
   const selectedReminderIdRef = useRef<string | null>(null);
   const isSelectionModeRef = useRef(false);
@@ -152,6 +157,8 @@ export function HomeScreen() {
   const consumedIntentRef = useRef<string | null>(null);
   const [isRaiseToSpeakSetupBusy, setIsRaiseToSpeakSetupBusy] = useState(false);
   const [isRaiseToSpeakCalibrating, setIsRaiseToSpeakCalibrating] = useState(false);
+  const [raiseToSpeakCalibrationPhase, setRaiseToSpeakCalibrationPhase] =
+    useState<RaiseToSpeakCalibrationPhase>('intro');
   const [raiseToSpeakSetupMessage, setRaiseToSpeakSetupMessage] = useState<string | null>(null);
   const [isNotificationPermissionIntroVisible, setIsNotificationPermissionIntroVisible] =
     useState(false);
@@ -729,6 +736,7 @@ export function HomeScreen() {
 
     setRaiseToSpeakSetupMessage(null);
     setIsRaiseToSpeakCalibrating(false);
+    setRaiseToSpeakCalibrationPhase('intro');
     void updateSettings({ raiseToSpeakEnabled: false, raiseToSpeakIntroSeen: false });
   }, [isRaiseToSpeakSetupBusy, updateSettings]);
 
@@ -736,15 +744,18 @@ export function HomeScreen() {
     if (isRaiseToSpeakSetupBusy) return;
 
     setIsRaiseToSpeakSetupBusy(true);
+    setRaiseToSpeakCalibrationPhase('preparing');
     setRaiseToSpeakSetupMessage(null);
     try {
       const result = await raiseToSpeak.prepare();
       if (result.status === 'ready') {
         setIsRaiseToSpeakCalibrating(true);
+        setRaiseToSpeakCalibrationPhase('awaiting-tilt');
         return;
       }
 
       if (result.status === 'permission-denied') {
+        setRaiseToSpeakCalibrationPhase('intro');
         const permissionLabel = Platform.OS === 'android' ? 'マイク' : 'マイクとモーション';
         const message = result.canAskAgain
           ? `${permissionLabel}の権限を許可してください。`
@@ -765,53 +776,85 @@ export function HomeScreen() {
           '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
         'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
       }[result.status];
+      setRaiseToSpeakCalibrationPhase('intro');
       setRaiseToSpeakSetupMessage(message);
     } catch {
+      setRaiseToSpeakCalibrationPhase('intro');
       setRaiseToSpeakSetupMessage('音声入力の準備を完了できませんでした。');
     } finally {
       setIsRaiseToSpeakSetupBusy(false);
     }
   }, [isRaiseToSpeakSetupBusy, raiseToSpeak]);
 
-  const handleRaiseToSpeakStart = useCallback(async () => {
-    if (isRaiseToSpeakCalibrating && isRaiseToSpeakSetupBusy) return;
-
-    raiseSessionActiveRef.current = true;
-
+  const handleRaiseToSpeakStart = useCallback(() => {
     if (isRaiseToSpeakCalibrating) {
-      raiseCalibrationSessionRef.current = true;
-      setIsRaiseToSpeakSetupBusy(true);
-      try {
-        await updateSettings({
-          raiseToSpeakEnabled: true,
-          raiseToSpeakIntroSeen: true,
-        });
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        setIsRaiseToSpeakCalibrating(false);
-      } catch {
-        raiseCalibrationSessionRef.current = false;
-        raiseSessionActiveRef.current = false;
-        setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
-        setIsRaiseToSpeakCalibrating(false);
-      } finally {
-        setIsRaiseToSpeakSetupBusy(false);
+      if (isRaiseToSpeakSetupBusy || raiseToSpeakCalibrationPhase !== 'awaiting-tilt') {
+        return;
       }
+
+      setRaiseToSpeakCalibrationPhase('awaiting-upright');
+      setRaiseToSpeakSetupMessage(null);
+      void Haptics.selectionAsync().catch(() => {});
       return;
     }
 
+    raiseSessionActiveRef.current = true;
     void requestQuickAdd('raise_to_speak', { inputMode: 'voice' }).then((opened) => {
       if (!opened) raiseSessionActiveRef.current = false;
     });
-  }, [isRaiseToSpeakCalibrating, isRaiseToSpeakSetupBusy, requestQuickAdd, updateSettings]);
+  }, [
+    isRaiseToSpeakCalibrating,
+    isRaiseToSpeakSetupBusy,
+    raiseToSpeakCalibrationPhase,
+    requestQuickAdd,
+  ]);
 
-  const handleRaiseToSpeakStop = useCallback(() => {
-    raiseSessionActiveRef.current = false;
-    if (raiseCalibrationSessionRef.current) {
-      raiseCalibrationSessionRef.current = false;
-      return;
-    }
-    requestVoiceInputStop();
-  }, [requestVoiceInputStop]);
+  const handleRaiseToSpeakStop = useCallback(
+    async (reason: RaiseToSpeakGestureStopReason) => {
+      if (isRaiseToSpeakCalibrating) {
+        if (isRaiseToSpeakSetupBusy || raiseToSpeakCalibrationPhase !== 'awaiting-upright') {
+          return;
+        }
+
+        if (reason !== 'portrait') {
+          setRaiseToSpeakCalibrationPhase('awaiting-tilt');
+          setRaiseToSpeakSetupMessage('いったん縦に戻して、もう一度傾けてください。');
+          return;
+        }
+
+        setIsRaiseToSpeakSetupBusy(true);
+        setRaiseToSpeakCalibrationPhase('saving');
+        try {
+          await updateSettings({
+            raiseToSpeakEnabled: true,
+            raiseToSpeakIntroSeen: true,
+          });
+          setIsRaiseToSpeakCalibrating(false);
+          setRaiseToSpeakCalibrationPhase('success');
+          setRaiseToSpeakSetupMessage(null);
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        } catch {
+          raiseSessionActiveRef.current = false;
+          setIsRaiseToSpeakCalibrating(false);
+          setRaiseToSpeakCalibrationPhase('intro');
+          setRaiseToSpeakSetupMessage('設定を保存できませんでした。もう一度お試しください。');
+        } finally {
+          setIsRaiseToSpeakSetupBusy(false);
+        }
+        return;
+      }
+
+      raiseSessionActiveRef.current = false;
+      requestVoiceInputStop();
+    },
+    [
+      isRaiseToSpeakCalibrating,
+      isRaiseToSpeakSetupBusy,
+      raiseToSpeakCalibrationPhase,
+      requestVoiceInputStop,
+      updateSettings,
+    ],
+  );
 
   const {
     sensorStatus: raiseToSpeakSensorStatus,
@@ -824,6 +867,7 @@ export function HomeScreen() {
     blocked:
       (!settings?.raiseToSpeakIntroSeen && !isRaiseToSpeakCalibrating) ||
       isRaiseToSpeakSetupBusy ||
+      raiseToSpeakCalibrationPhase === 'success' ||
       isSelectionMode ||
       isSelectionBusy ||
       selectedReminder !== null ||
@@ -1057,9 +1101,12 @@ export function HomeScreen() {
       ) : null}
 
       <RaiseToSpeakIntroModal
-        visible={Boolean(settings?.raiseToSpeakEnabled && !settings.raiseToSpeakIntroSeen)}
+        visible={Boolean(
+          settings?.raiseToSpeakEnabled &&
+          (!settings.raiseToSpeakIntroSeen || raiseToSpeakCalibrationPhase === 'success'),
+        )}
         busy={isRaiseToSpeakSetupBusy}
-        calibrating={isRaiseToSpeakCalibrating}
+        phase={raiseToSpeakCalibrationPhase}
         message={raiseToSpeakSetupMessage}
         sensorStatus={raiseToSpeakSensorStatus}
         sensorFailureReason={raiseToSpeakSensorFailureReason}
@@ -1067,6 +1114,7 @@ export function HomeScreen() {
         onEnable={() => void handlePrepareRaiseToSpeak()}
         onDismiss={handleDismissRaiseToSpeakIntro}
         onRetry={retryRaiseToSpeakSensor}
+        onSuccessComplete={() => setRaiseToSpeakCalibrationPhase('intro')}
       />
       <NotificationPermissionIntroModal
         visible={isNotificationPermissionIntroVisible}

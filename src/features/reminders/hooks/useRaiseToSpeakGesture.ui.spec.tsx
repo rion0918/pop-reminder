@@ -49,7 +49,7 @@ type HarnessProps = {
   blocked: boolean;
   trackTiltProgress?: boolean;
   onStart: () => void;
-  onStop: () => void;
+  onStop: (reason: 'portrait' | 'timeout' | 'interrupted') => void;
 };
 
 function Harness({ enabled, blocked, trackTiltProgress, onStart, onStop }: HarnessProps) {
@@ -155,6 +155,7 @@ describe('useRaiseToSpeakGesture', () => {
       view.rerender(<Harness enabled blocked onStart={onStart} onStop={onStop} />);
     });
     expect(onStop).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenLastCalledWith('interrupted');
     expect(mockAccelerometerRemove).toHaveBeenCalledTimes(2);
 
     await act(async () => {
@@ -174,6 +175,7 @@ describe('useRaiseToSpeakGesture', () => {
       mockAppStateListener?.('background');
     });
     expect(onStop).toHaveBeenCalledTimes(2);
+    expect(onStop).toHaveBeenLastCalledWith('interrupted');
     expect(mockAccelerometerRemove).toHaveBeenCalledTimes(3);
 
     await act(async () => {
@@ -181,6 +183,65 @@ describe('useRaiseToSpeakGesture', () => {
       view.unmount();
     });
     expect(mockAppStateRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards the portrait stop reason from the detector', async () => {
+    const onStart = jest.fn();
+    const onStop = jest.fn();
+    const view = await render(
+      <Harness enabled blocked={false} onStart={onStart} onStop={onStop} />,
+    );
+
+    await act(async () => {
+      mockFocusEffect?.();
+      mockAppStateListener?.('active');
+    });
+    await flushSensorStart();
+
+    const now = jest.spyOn(Date, 'now');
+    await act(async () => {
+      now.mockReturnValueOnce(0).mockReturnValueOnce(200);
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+      now.mockReturnValueOnce(500).mockReturnValueOnce(850);
+      mockAccelerometerListener({ x: 0, y: 1, z: 0 });
+      mockAccelerometerListener({ x: 0, y: 1, z: 0 });
+    });
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenLastCalledWith('portrait');
+
+    await act(async () => {
+      view.unmount();
+    });
+  });
+
+  it('forwards the timeout stop reason from the detector', async () => {
+    const onStart = jest.fn();
+    const onStop = jest.fn();
+    const view = await render(
+      <Harness enabled blocked={false} onStart={onStart} onStop={onStop} />,
+    );
+
+    await act(async () => {
+      mockFocusEffect?.();
+      mockAppStateListener?.('active');
+    });
+    await flushSensorStart();
+
+    const now = jest.spyOn(Date, 'now');
+    await act(async () => {
+      now.mockReturnValueOnce(0).mockReturnValueOnce(200);
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+      now.mockReturnValue(8_200);
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+    });
+
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenLastCalledWith('timeout');
+    await act(async () => {
+      view.unmount();
+    });
   });
 
   it('starts the sample timeout only after subscribing and retries with a fresh subscription', async () => {

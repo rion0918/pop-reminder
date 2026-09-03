@@ -27,6 +27,7 @@ test('either side tilt starts voice input after the orientation is briefly stabl
   result = reduceRaiseToSpeakDetector(state, sample(200, true));
   assert.equal(result.action, 'start');
   assert.equal(result.state.phase, 'listening');
+  assert.equal(result.stopReason, undefined);
 });
 
 test('voice pose accepts left and right rotation symmetrically', () => {
@@ -111,6 +112,7 @@ test('returning to portrait stops listening after hysteresis', () => {
   result = reduceRaiseToSpeakDetector(state, sample(850, false));
   assert.equal(result.action, 'stop');
   assert.equal(result.state.phase, 'cooldown');
+  assert.equal(result.stopReason, 'portrait');
 });
 
 test('cooldown prevents a duplicate start until the phone returns to portrait', () => {
@@ -147,6 +149,7 @@ test('listening stops at the safety timeout and reset drops all pending state', 
   result = reduceRaiseToSpeakDetector(result.state, sample(8_200, true));
   assert.equal(result.action, 'stop');
   assert.equal(result.state.phase, 'cooldown');
+  assert.equal(result.stopReason, 'timeout');
 
   assert.deepEqual(createRaiseToSpeakDetectorState(), {
     phase: 'idle',

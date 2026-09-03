@@ -60,13 +60,41 @@ RevenueCatのダッシュボードとストア商品は [RevenueCatセットア�
 
 ## 📱 開発コマンド
 
-| コマンド                    | 用途                                                             |
-| :-------------------------- | :--------------------------------------------------------------- |
-| `pnpm run start:dev-client` | **Development Build 起動 (推奨)**: 通知・SQLite・Widget 動作確認 |
-| `pnpm run start:expo-go`    | **Expo Go 起動**: UI / JS 迅速確認                               |
-| `pnpm run android`          | Android エミュレータ / 実機でビルド・起動                        |
-| `pnpm run ios`              | iOS シミュレータ / 実機でビルド・起動                            |
-| `pnpm start`                | Expo CLI 標準起動                                                |
+ネイティブアプリを初回・変更後にインストールする段階と、インストール済みアプリをMetroへ接続して普段起動する段階を分けています。
+
+| コマンド                        | 用途                                                       |
+| :------------------------------ | :--------------------------------------------------------- |
+| `pnpm run dev`                  | **普段の起動**: インストール済みDevelopment Buildへ接続    |
+| `pnpm run dev:android:emulator` | Androidエミュレータを自動判定してビルド・インストール      |
+| `pnpm run dev:android:device`   | Android実機用EAS Development APKを作成（手動インストール） |
+| `pnpm run dev:ios:simulator`    | iOSシミュレータを自動判定してビルド・インストール          |
+| `pnpm run dev:ios:device`       | iOS実機用EAS Development Buildを作成（端末へインストール） |
+| `pnpm run start:expo-go`        | Expo GoでUIのみ確認（ネイティブ機能は対象外）              |
+
+### 環境別の使い分け
+
+エミュレータ・シミュレータは、対象を起動してから次のコマンドを実行します。
+
+```bash
+pnpm run dev:android:emulator
+pnpm run dev:ios:simulator
+```
+
+対象が複数ある場合は、候補に表示されたIDを指定します。
+
+```bash
+pnpm run dev:android:emulator -- emulator-5554
+pnpm run dev:ios:simulator -- <UDID>
+```
+
+実機は、USBやADBのインストール制限を避けるためEASでDevelopment Buildを作成し、表示されたURLから端末へ手動インストールします。
+
+```bash
+pnpm run dev:android:device
+pnpm run dev:ios:device
+```
+
+インストール後は、Android・iOSを問わず `pnpm run dev` を実行し、インストール済みDevelopment Buildから接続します。既存の `pnpm run start:dev-client`、`pnpm run android`、`pnpm run ios` も互換性のため残していますが、対象別コマンドの利用を推奨します。
 
 ---
 

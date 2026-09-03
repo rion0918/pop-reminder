@@ -13,7 +13,6 @@ import Animated, {
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withSequence,
   withSpring,
 } from 'react-native-reanimated';
@@ -32,11 +31,13 @@ const TILT_PHONE_SPRING = {
   mass: 0.85,
   overshootClamping: false,
 } as const;
+const NOOP = () => {};
 
 type RaiseToSpeakIntroModalProps = {
   visible: boolean;
   busy: boolean;
-  calibrating: boolean;
+  calibrating?: boolean;
+  phase?: RaiseToSpeakCalibrationPhase;
   message: string | null;
   sensorStatus: RaiseToSpeakSensorStatus;
   sensorFailureReason: RaiseToSpeakSensorFailureReason | null;
@@ -44,18 +45,24 @@ type RaiseToSpeakIntroModalProps = {
   onEnable: () => void;
   onDismiss: () => void;
   onRetry: () => void;
+  onSuccessComplete?: () => void;
 };
+
+export type RaiseToSpeakCalibrationPhase =
+  'intro' | 'preparing' | 'awaiting-tilt' | 'awaiting-upright' | 'saving' | 'success';
 
 type TiltPhoneIllustrationProps = {
   active: boolean;
   reduceMotionEnabled: boolean;
   tiltProgress: number | null;
+  phase: RaiseToSpeakCalibrationPhase;
 };
 
 function TiltPhoneIllustration({
   active,
   reduceMotionEnabled,
   tiltProgress,
+  phase,
 }: TiltPhoneIllustrationProps) {
   const rotation = useSharedValue(0);
 
@@ -74,15 +81,11 @@ function TiltPhoneIllustration({
 
     rotation.value = reduceMotionEnabled
       ? 0
-      : withRepeat(
-          withSequence(
-            withSpring(-TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING),
-            withSpring(0, TILT_PHONE_SPRING),
-            withSpring(TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING),
-            withSpring(0, TILT_PHONE_SPRING),
-          ),
-          -1,
-          false,
+      : withSequence(
+          withSpring(-TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING),
+          withSpring(0, TILT_PHONE_SPRING),
+          withSpring(TILT_PHONE_ROTATION_DEGREES, TILT_PHONE_SPRING),
+          withSpring(0, TILT_PHONE_SPRING),
         );
 
     return () => cancelAnimation(rotation);
@@ -91,6 +94,19 @@ function TiltPhoneIllustration({
   const animatedPhoneStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
+
+  if (phase === 'success') {
+    return (
+      <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="音声入力の使い方を確認しました"
+        style={styles.successIllustration}
+      >
+        <Ionicons name="checkmark-circle" size={76} color={palette.mintDeep} />
+      </View>
+    );
+  }
 
   return (
     <View
@@ -131,6 +147,7 @@ export function RaiseToSpeakIntroModal({
   visible,
   busy,
   calibrating,
+  phase,
   message,
   sensorStatus,
   sensorFailureReason,
@@ -138,7 +155,12 @@ export function RaiseToSpeakIntroModal({
   onEnable,
   onDismiss,
   onRetry,
+  onSuccessComplete = NOOP,
 }: RaiseToSpeakIntroModalProps) {
+  const setupPhase = phase ?? (calibrating ? 'awaiting-tilt' : 'intro');
+  const isCalibrating = setupPhase === 'awaiting-tilt' || setupPhase === 'awaiting-upright';
+  const isDismissLocked =
+    busy || setupPhase === 'preparing' || setupPhase === 'saving' || setupPhase === 'success';
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   const [calibrationTimedOut, setCalibrationTimedOut] = useState(false);
   const [calibrationAttempt, setCalibrationAttempt] = useState(0);
@@ -154,7 +176,7 @@ export function RaiseToSpeakIntroModal({
   }, []);
 
   useEffect(() => {
-    if (!visible || !calibrating) {
+    if (!visible || setupPhase !== 'awaiting-tilt') {
       setCalibrationTimedOut(false);
       if (poseTimeoutRef.current !== null) clearTimeout(poseTimeoutRef.current);
       poseTimeoutRef.current = null;
@@ -169,17 +191,29 @@ export function RaiseToSpeakIntroModal({
       if (poseTimeoutRef.current !== null) clearTimeout(poseTimeoutRef.current);
       poseTimeoutRef.current = null;
     };
-  }, [calibrationAttempt, calibrating, visible]);
+  }, [calibrationAttempt, setupPhase, visible]);
 
   useEffect(() => {
-    if (!visible || !calibrating || sensorStatus !== 'active' || poseTimeoutRef.current !== null) {
+    if (
+      !visible ||
+      setupPhase !== 'awaiting-tilt' ||
+      sensorStatus !== 'active' ||
+      poseTimeoutRef.current !== null
+    ) {
       return;
     }
 
     poseTimeoutRef.current = setTimeout(() => {
       setCalibrationTimedOut(true);
     }, CALIBRATION_POSE_TIMEOUT_MS);
-  }, [calibrationAttempt, calibrating, sensorStatus, visible]);
+  }, [calibrationAttempt, sensorStatus, setupPhase, visible]);
+
+  useEffect(() => {
+    if (!visible || setupPhase !== 'success') return;
+
+    const timeout = setTimeout(onSuccessComplete, 1_000);
+    return () => clearTimeout(timeout);
+  }, [onSuccessComplete, setupPhase, visible]);
 
   const handleRetry = () => {
     setCalibrationAttempt((attempt) => attempt + 1);
@@ -187,10 +221,10 @@ export function RaiseToSpeakIntroModal({
     onRetry();
   };
 
-  let title = '左右に傾けて音声入力';
+  let title = '傾けて話す';
   let body = 'スマホを左右どちらかへ傾けると音声入力を開始し、縦に戻すと終了します。';
 
-  if (calibrating) {
+  if (isCalibrating) {
     if (sensorStatus === 'unavailable') {
       if (sensorFailureReason === 'sensor-unavailable') {
         title = '加速度センサーを利用できません';
@@ -205,9 +239,12 @@ export function RaiseToSpeakIntroModal({
         title = 'センサーを確認できませんでした';
         body = '加速度センサーの状態を確認できませんでした。もう一度お試しください。';
       }
+    } else if (setupPhase === 'awaiting-upright') {
+      title = '開始の動きを確認できました';
+      body = '次はスマホを縦に戻してください。音声入力も同じ操作で終了します。';
     } else if (calibrationTimedOut) {
       title = '傾きを検出できませんでした';
-      body = 'スマホを一度縦向きに戻し、画面を見たまま左右へ40度以上回転してください。';
+      body = 'いったん縦向きに戻し、画面を見たまま左右へ40度以上回転してください。';
     } else if (sensorStatus === 'waiting' || sensorStatus === 'inactive') {
       title = '準備しています…';
       body = '画面を開いたまま、少しお待ちください。';
@@ -215,38 +252,58 @@ export function RaiseToSpeakIntroModal({
       title = 'センサーを確認しています…';
       body = 'スマホを縦向きに持ったまま、少しお待ちください。';
     } else {
-      title = '試しに左右どちらかへ傾けてください';
-      body =
-        '画面を見たまま、スマホを縦向きから左右どちらかへ40度以上回転します。振動したら設定完了です。';
+      title = '左右どちらかへ傾けてください';
+      body = '画面を見たまま、スマホをゆっくり40度ほど傾けます。';
     }
+  } else if (setupPhase === 'saving') {
+    title = '設定しています…';
+    body = 'そのまま少しお待ちください。';
+  } else if (setupPhase === 'preparing') {
+    title = '準備しています…';
+    body = 'マイクとセンサーを確認しています。';
+  } else if (setupPhase === 'success') {
+    title = '使い方を確認できました';
+    body = '傾けて開始、縦に戻して終了できます。';
   }
 
   const calibrationFeedback =
-    calibrating && sensorStatus === 'active' && !calibrationTimedOut
+    isCalibrating && sensorStatus === 'active' && !calibrationTimedOut
       ? Math.abs(tiltProgress ?? 0) >= 1
-        ? 'そのまま傾きをキープしてください'
+        ? setupPhase === 'awaiting-upright'
+          ? 'スマホを縦に戻してください'
+          : 'そのまま傾きをキープしてください'
         : Math.abs(tiltProgress ?? 0) >= 0.65
-          ? 'もう少し傾けてください'
-          : '左右へゆっくり傾けてください'
+          ? setupPhase === 'awaiting-upright'
+            ? 'スマホを縦に戻してください'
+            : 'もう少し傾けてください'
+          : setupPhase === 'awaiting-upright'
+            ? '縦向きのまま少し待ってください'
+            : '左右へゆっくり傾けてください'
       : null;
-  const canRetry = calibrating && (sensorStatus === 'unavailable' || calibrationTimedOut);
+  const canRetry =
+    setupPhase === 'awaiting-tilt' && (sensorStatus === 'unavailable' || calibrationTimedOut);
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType={reduceMotionEnabled ? 'none' : 'fade'}
-      onRequestClose={busy ? undefined : onDismiss}
+      onRequestClose={isDismissLocked ? undefined : onDismiss}
     >
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.card}>
           <TiltPhoneIllustration
-            active={visible && !calibrating}
+            active={visible && setupPhase === 'intro'}
             reduceMotionEnabled={reduceMotionEnabled}
-            tiltProgress={calibrating ? tiltProgress : null}
+            tiltProgress={isCalibrating ? tiltProgress : null}
+            phase={setupPhase}
           />
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.body}>{body}</Text>
+          <Text accessibilityLiveRegion="polite" style={styles.title}>
+            {title}
+          </Text>
+          <Text accessibilityLiveRegion="polite" style={styles.body}>
+            {body}
+          </Text>
           {calibrationFeedback ? (
             <Text accessibilityLiveRegion="polite" style={styles.message}>
               {calibrationFeedback}
@@ -259,12 +316,14 @@ export function RaiseToSpeakIntroModal({
           ) : null}
 
           <View style={styles.actions}>
-            {calibrating ? (
+            {setupPhase === 'success' ? null : isCalibrating ||
+              setupPhase === 'preparing' ||
+              setupPhase === 'saving' ? (
               <>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
-                  disabled={busy}
+                  disabled={isDismissLocked}
                   onPress={onDismiss}
                   style={[styles.choiceButton, styles.secondaryButton]}
                 >
@@ -274,8 +333,8 @@ export function RaiseToSpeakIntroModal({
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="傾きセンサーをもう一度試す"
-                    accessibilityState={{ disabled: busy, busy }}
-                    disabled={busy}
+                    accessibilityState={{ disabled: isDismissLocked, busy }}
+                    disabled={isDismissLocked}
                     onPress={handleRetry}
                     style={[styles.choiceButton, styles.primaryButton]}
                   >
@@ -303,7 +362,7 @@ export function RaiseToSpeakIntroModal({
                   style={[styles.choiceButton, styles.primaryButton]}
                 >
                   {busy ? <ActivityIndicator size="small" color={palette.white} /> : null}
-                  <Text style={styles.primaryLabel}>{busy ? '確認中…' : '使ってみる'}</Text>
+                  <Text style={styles.primaryLabel}>{busy ? '確認中…' : '動きを試す'}</Text>
                 </Pressable>
               </>
             )}
@@ -340,6 +399,12 @@ const styles = StyleSheet.create({
     width: 190,
     height: 132,
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successIllustration: {
+    width: 190,
+    height: 132,
     alignItems: 'center',
     justifyContent: 'center',
   },
