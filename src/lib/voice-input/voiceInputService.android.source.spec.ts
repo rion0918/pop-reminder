@@ -26,3 +26,17 @@ test('Android voice input uses on-device recognition with a local Moonshine fall
     excludes: [/react-native-vosk/, /Vosk/, /model-ja-jp/],
   });
 });
+
+test('Android startup defers Sherpa loading until the Moonshine fallback is used', () => {
+  assertSourceContract(source, {
+    includes: [
+      /function loadSherpaOnnxBindings\(\)/,
+      /require\('react-native-sherpa-onnx\/audio'\)/,
+      /require\('react-native-sherpa-onnx\/stt'\)/,
+    ],
+    excludes: [
+      /import \{ createPcmLiveStream \} from 'react-native-sherpa-onnx\/audio';/,
+      /import \{ createSTT \} from 'react-native-sherpa-onnx\/stt';/,
+    ],
+  });
+});

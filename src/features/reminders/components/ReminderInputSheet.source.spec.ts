@@ -52,9 +52,17 @@ test('quick add keeps the character count visible while the title input is focus
   assert.equal(focusedInputStyle.includes('elevation:'), false);
 });
 
+test('quick add does not show a standalone voice button', () => {
+  assertSourceContract(source, {
+    excludes: [
+      /accessibilityLabel=\{voiceStatus === 'idle' \? '音声入力を開始' : '音声入力を終了'\}/,
+      /name=\{voiceStatus === 'idle' \? 'mic-outline' : 'stop'\}/,
+    ],
+  });
+});
+
 test('quick add supports cancellable on-device voice input without truncating the draft', () => {
   assertSourceIncludes(source, [
-    /voiceStatus === 'idle' \? '音声入力を開始' : '音声入力を終了'/,
     /await voiceInput\.start\(\)/,
     /voiceInput\.stop\(\)/,
     /voiceInput\.abort\(\)/,
@@ -72,7 +80,7 @@ test('quick add supports cancellable on-device voice input without truncating th
     /withSpring\(targetScale, VOICE_METER_SPRING\)/,
     /voiceStatus === 'stopping'\s*\?\s*'text-outline'/,
     /voiceStatus === 'starting'\s*\?\s*'hourglass-outline'/,
-    /accessibilityHint=\{\s*voiceStatus === 'idle' \? 'マイクで音声入力を開始します' : '音声入力を停止します'/,
+    /accessibilityLabel="音声入力をキャンセル"/,
     /音声入力を開始しました/,
     /内容を確認してください/,
   ]);

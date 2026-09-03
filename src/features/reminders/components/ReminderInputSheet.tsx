@@ -892,30 +892,6 @@ export function ReminderInputSheet({
             />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={voiceStatus === 'idle' ? '音声入力を開始' : '音声入力を終了'}
-              accessibilityHint={
-                voiceStatus === 'idle' ? 'マイクで音声入力を開始します' : '音声入力を停止します'
-              }
-              accessibilityState={{
-                busy: voiceStatus === 'starting' || voiceStatus === 'stopping',
-              }}
-              hitSlop={8}
-              pressRetentionOffset={12}
-              onPress={voiceStatus === 'idle' ? beginVoiceInput : stopVoiceInput}
-              style={({ pressed }) => [
-                styles.voiceButton,
-                voiceStatus !== 'idle' ? styles.voiceButtonActive : null,
-                pressed ? styles.voiceButtonPressed : null,
-              ]}
-            >
-              <Ionicons
-                name={voiceStatus === 'idle' ? 'mic-outline' : 'stop'}
-                size={20}
-                color={voiceStatus === 'idle' ? palette.lavenderDeep : palette.white}
-              />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
               accessibilityLabel="入力を閉じる"
               hitSlop={8}
               onPress={handleClosePress}
@@ -1114,19 +1090,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F3F6FC',
-  },
-  voiceButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F2EDFF',
-    borderWidth: 1,
-    borderColor: 'rgba(168,145,245,0.34)',
-  },
-  voiceButtonActive: {
-    backgroundColor: palette.lavenderDeep,
   },
   voiceButtonPressed: {
     opacity: 0.7,

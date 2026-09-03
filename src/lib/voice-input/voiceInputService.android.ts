@@ -1,7 +1,5 @@
 import { requireOptionalNativeModule } from 'expo';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
-import { createPcmLiveStream } from 'react-native-sherpa-onnx/audio';
-import { createSTT } from 'react-native-sherpa-onnx/stt';
 
 import { createAndroidHybridVoiceInputService } from './androidVoiceInputServiceCore';
 import {
@@ -21,6 +19,29 @@ const RECORDING_MAX_DURATION_MS = 8_000;
 const recordAudioPermission = PermissionsAndroid.PERMISSIONS.RECORD_AUDIO;
 let canAskForMicrophonePermissionAgain = true;
 let forcedVoiceInputEngine: 'os' | 'moonshine' | null = null;
+
+type SherpaOnnxBindings = Pick<
+  typeof import('react-native-sherpa-onnx/audio'),
+  'createPcmLiveStream'
+> &
+  Pick<typeof import('react-native-sherpa-onnx/stt'), 'createSTT'>;
+
+let sherpaOnnxBindings: SherpaOnnxBindings | null | undefined;
+
+function loadSherpaOnnxBindings(): SherpaOnnxBindings | null {
+  if (sherpaOnnxBindings !== undefined) return sherpaOnnxBindings;
+
+  try {
+    sherpaOnnxBindings = {
+      createPcmLiveStream: require('react-native-sherpa-onnx/audio').createPcmLiveStream,
+      createSTT: require('react-native-sherpa-onnx/stt').createSTT,
+    };
+  } catch {
+    sherpaOnnxBindings = null;
+  }
+
+  return sherpaOnnxBindings;
+}
 
 const unavailablePermission: VoiceInputPermissionResponse = {
   granted: false,
@@ -85,8 +106,13 @@ const primaryVoiceInputService = createAndroidOnDeviceVoiceInputService({
 
 const moonshineNative: MoonshineNativeModule = {
   createEngine() {
+    const bindings = loadSherpaOnnxBindings();
+    if (!bindings) {
+      return Promise.reject(new Error('SherpaOnnx native module is unavailable'));
+    }
+
     return removeIncompleteMoonshineModelCache().then(() =>
-      createSTT({
+      bindings.createSTT({
         modelPath: { type: 'asset', path: MOONSHINE_MODEL_PATH },
         modelType: 'auto',
         debug: typeof __DEV__ !== 'undefined' && __DEV__,
@@ -96,7 +122,12 @@ const moonshineNative: MoonshineNativeModule = {
     );
   },
   createPcmLiveStream() {
-    return createPcmLiveStream({ sampleRate: SAMPLE_RATE, channelCount: 1 });
+    const bindings = loadSherpaOnnxBindings();
+    if (!bindings) {
+      throw new Error('SherpaOnnx native module is unavailable');
+    }
+
+    return bindings.createPcmLiveStream({ sampleRate: SAMPLE_RATE, channelCount: 1 });
   },
 };
 
