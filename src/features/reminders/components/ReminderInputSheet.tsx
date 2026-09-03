@@ -41,6 +41,8 @@ import {
   type ImeSafeReminderTitleInputHandle,
 } from './ImeSafeReminderTitleInput';
 import { useAppServices } from '../../../bootstrap/appServicesContext';
+import { parseVoiceReminder } from '../domain/voiceReminderParser';
+import { getVoiceReminderSchedulePatch } from '../presentation/voiceReminderSchedule';
 
 type VoiceInputStatus = 'idle' | 'starting' | 'listening' | 'stopping';
 
@@ -125,6 +127,7 @@ export function ReminderInputSheet({
   const voiceBaselineTitleRef = useRef('');
   const voiceCommittedTranscriptRef = useRef('');
   const voiceReceivedTextRef = useRef(false);
+  const voiceVisibleTranscriptRef = useRef('');
   const explicitVoiceAbortRef = useRef(false);
   const voiceStopFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const beginVoiceInputRef = useRef<() => void>(() => {});
@@ -194,6 +197,11 @@ export function ReminderInputSheet({
     return addDays(new Date(), dateOffset);
   }, [customTargetDate, dateOffset]);
 
+  const currentUiDateRef = useRef('');
+  const currentUiTimeRef = useRef(time);
+  currentUiDateRef.current = format(selectedTargetDate, 'yyyy-MM-dd');
+  currentUiTimeRef.current = time;
+
   const selectedDateLabel = useMemo(
     () => formatReminderInputDate(selectedTargetDate),
     [selectedTargetDate],
@@ -254,6 +262,7 @@ export function ReminderInputSheet({
       if (restoreBaseline) replaceDraftTitle(voiceBaselineTitleRef.current);
       voiceCommittedTranscriptRef.current = '';
       voiceReceivedTextRef.current = false;
+      voiceVisibleTranscriptRef.current = '';
       setVoiceVolume(0);
       setVoiceStatusValue('idle');
       completeVoiceInput();
@@ -314,6 +323,7 @@ export function ReminderInputSheet({
     voiceBaselineTitleRef.current = draftTitleRef.current;
     voiceCommittedTranscriptRef.current = '';
     voiceReceivedTextRef.current = false;
+    voiceVisibleTranscriptRef.current = '';
     explicitVoiceAbortRef.current = false;
     pendingSaveAfterEndEditingRef.current = false;
     setTitleNotice(null);
@@ -419,7 +429,12 @@ export function ReminderInputSheet({
         const currentTranscript = event.isFinal
           ? voiceCommittedTranscriptRef.current
           : joinVoiceText(voiceCommittedTranscriptRef.current, transcript);
-        replaceDraftTitle(joinVoiceText(voiceBaselineTitleRef.current, currentTranscript));
+        voiceVisibleTranscriptRef.current = currentTranscript;
+        replaceDraftTitle(
+          Platform.OS === 'android'
+            ? currentTranscript
+            : joinVoiceText(voiceBaselineTitleRef.current, currentTranscript),
+        );
         return;
       }
 
@@ -452,6 +467,27 @@ export function ReminderInputSheet({
       if (event.type === 'end') {
         clearVoiceStopFallback();
         const shouldConfirmEnd = voiceStatusRef.current !== 'idle';
+        const completedTranscript = voiceVisibleTranscriptRef.current;
+        if (Platform.OS === 'android' && shouldConfirmEnd && completedTranscript) {
+          try {
+            const parseNow = new Date();
+            const parsed = parseVoiceReminder({
+              text: completedTranscript,
+              currentDateTime: parseNow,
+              currentUiDate: currentUiDateRef.current,
+              currentUiTime: currentUiTimeRef.current,
+            });
+            replaceDraftTitle(parsed.title.value);
+            const schedulePatch = getVoiceReminderSchedulePatch(parsed, parseNow);
+            if (schedulePatch.dateOffset !== null) setDateOffset(schedulePatch.dateOffset);
+            if (schedulePatch.customTargetDate !== null) {
+              setCustomTargetDate(schedulePatch.customTargetDate);
+            }
+            if (schedulePatch.targetTime !== null) setTargetTime(schedulePatch.targetTime);
+          } catch {
+            // Keep the raw transcript and existing schedule if parsing unexpectedly fails.
+          }
+        }
         explicitVoiceAbortRef.current = false;
         setVoiceVolume(0);
         setVoiceStatusValue('idle');
@@ -478,6 +514,9 @@ export function ReminderInputSheet({
     completeVoiceInput,
     setVoiceStatusValue,
     replaceDraftTitle,
+    setCustomTargetDate,
+    setDateOffset,
+    setTargetTime,
     voiceInput,
   ]);
 

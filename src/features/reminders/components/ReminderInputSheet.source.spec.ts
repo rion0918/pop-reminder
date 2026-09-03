@@ -86,6 +86,37 @@ test('quick add supports cancellable on-device voice input without truncating th
   });
 });
 
+test('Android voice completion parses the transcript and applies only concrete fields', () => {
+  assertSourceIncludes(source, [
+    /import \{ parseVoiceReminder \} from '\.\.\/domain\/voiceReminderParser';/,
+    /import \{ getVoiceReminderSchedulePatch \} from '\.\.\/presentation\/voiceReminderSchedule';/,
+    /Platform\.OS === 'android' && shouldConfirmEnd && completedTranscript/,
+    /currentDateTime: parseNow/,
+    /currentUiDate: currentUiDateRef\.current/,
+    /currentUiTime: currentUiTimeRef\.current/,
+    /getVoiceReminderSchedulePatch\(parsed, parseNow\)/,
+    /if \(schedulePatch\.dateOffset !== null\) setDateOffset\(schedulePatch\.dateOffset\)/,
+    /if \(schedulePatch\.customTargetDate !== null\)/,
+    /setCustomTargetDate\(schedulePatch\.customTargetDate\)/,
+    /if \(schedulePatch\.targetTime !== null\) setTargetTime\(schedulePatch\.targetTime\)/,
+  ]);
+  assertSourceContract(source, {
+    excludes: [
+      /handleTargetTimeChange\(parsed\.time\.value\)/,
+      /Alert\.alert\(['"]日時の解析/,
+      /onSave\(parsed/,
+    ],
+  });
+});
+
+test('Android voice recognition replaces the draft while iOS keeps its existing append behavior', () => {
+  assertSourceIncludes(source, [
+    /voiceVisibleTranscriptRef\.current = currentTranscript;/,
+    /Platform\.OS === 'android'\s*\?\s*currentTranscript\s*:\s*joinVoiceText\(voiceBaselineTitleRef\.current, currentTranscript\)/,
+    /replaceDraftTitle\(parsed\.title\.value\)/,
+  ]);
+});
+
 test('voice input uses the top stop action and escapes a stuck native stop', () => {
   assertSourceIncludes(source, [
     /const VOICE_STOP_FALLBACK_MS = Platform\.OS === 'android' \? 20_000 : 5_000;/,
