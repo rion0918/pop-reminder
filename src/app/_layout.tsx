@@ -1,7 +1,7 @@
 import '../../global.css';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
@@ -12,15 +12,18 @@ import { AppProviders } from '../bootstrap/AppProviders';
 import { configureAppRuntime, prepareAppData } from '../bootstrap/appInitialization';
 import { createDeepLinkIntentBuffer, type DeepLinkIntent } from '../bootstrap/deepLinkIntent';
 import { palette } from '../constants/colors';
+import { EmptyReminderBubble } from '../features/reminders/components/EmptyReminderBubble';
 
 type BootstrapState = 'loading' | 'ready' | 'error';
 
 export default function RootLayout() {
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>('loading');
   const stateRef = useRef<BootstrapState>('loading');
   const intentBufferRef = useRef(createDeepLinkIntentBuffer());
   const intentSequenceRef = useRef(0);
+  const bootstrapBubbleSize = Math.round(Math.min(Math.max(windowWidth * 0.68, 184), 286));
 
   const publishIntent = useCallback(
     (intent: DeepLinkIntent) => {
@@ -76,7 +79,7 @@ export default function RootLayout() {
     return (
       <View style={styles.loading}>
         {bootstrapState === 'loading' ? (
-          <ActivityIndicator color={palette.skyDeep} />
+          <EmptyReminderBubble size={bootstrapBubbleSize} disabled />
         ) : (
           <>
             <Text style={styles.errorTitle}>起動できませんでした</Text>
