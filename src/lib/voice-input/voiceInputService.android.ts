@@ -11,6 +11,7 @@ import {
   type MoonshineNativeModule,
 } from './moonshineVoiceInputServiceCore';
 import { removeIncompleteMoonshineModelCache } from './moonshineModelCache';
+import { getMoonshineModelAssetPaths } from './moonshineModelCacheCore';
 import type { VoiceInputPermissionResponse, VoiceInputService } from './voiceInputTypes';
 
 const MOONSHINE_MODEL_PATH = 'models/moonshine-tiny-ja';
@@ -24,7 +25,8 @@ type SherpaOnnxBindings = Pick<
   typeof import('react-native-sherpa-onnx/audio'),
   'createPcmLiveStream'
 > &
-  Pick<typeof import('react-native-sherpa-onnx/stt'), 'createSTT'>;
+  Pick<typeof import('react-native-sherpa-onnx/stt'), 'createSTT'> &
+  Pick<typeof import('react-native-sherpa-onnx'), 'resolveModelPath'>;
 
 let sherpaOnnxBindings: SherpaOnnxBindings | null | undefined;
 
@@ -35,6 +37,9 @@ function loadSherpaOnnxBindings(): SherpaOnnxBindings | null {
     sherpaOnnxBindings = {
       createPcmLiveStream: require('react-native-sherpa-onnx/audio').createPcmLiveStream,
       createSTT: require('react-native-sherpa-onnx/stt').createSTT,
+      // Keep the root native binding lazy for startup; the fallback loads it only when needed.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      resolveModelPath: require('react-native-sherpa-onnx').resolveModelPath,
     };
   } catch {
     sherpaOnnxBindings = null;
@@ -105,21 +110,25 @@ const primaryVoiceInputService = createAndroidOnDeviceVoiceInputService({
 });
 
 const moonshineNative: MoonshineNativeModule = {
-  createEngine() {
+  async createEngine() {
     const bindings = loadSherpaOnnxBindings();
     if (!bindings) {
-      return Promise.reject(new Error('SherpaOnnx native module is unavailable'));
+      throw new Error('SherpaOnnx native module is unavailable');
     }
 
-    return removeIncompleteMoonshineModelCache().then(() =>
-      bindings.createSTT({
-        modelPath: { type: 'asset', path: MOONSHINE_MODEL_PATH },
-        modelType: 'auto',
-        debug: typeof __DEV__ !== 'undefined' && __DEV__,
-        preferInt8: true,
-        numThreads: 2,
-      }),
+    await removeIncompleteMoonshineModelCache();
+    await Promise.all(
+      getMoonshineModelAssetPaths(MOONSHINE_MODEL_PATH).map((assetPath) =>
+        bindings.resolveModelPath({ type: 'asset', path: assetPath }),
+      ),
     );
+    return bindings.createSTT({
+      modelPath: { type: 'asset', path: MOONSHINE_MODEL_PATH },
+      modelType: 'auto',
+      debug: typeof __DEV__ !== 'undefined' && __DEV__,
+      preferInt8: true,
+      numThreads: 2,
+    });
   },
   createPcmLiveStream() {
     const bindings = loadSherpaOnnxBindings();

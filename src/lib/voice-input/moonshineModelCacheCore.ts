@@ -9,6 +9,10 @@ export type MoonshineModelCacheFileInfo = {
   isDirectory?: boolean;
 };
 
+export function getMoonshineModelAssetPaths(modelPath: string) {
+  return MOONSHINE_MODEL_CACHE_FILES.map((fileName) => `${modelPath}/${fileName}`);
+}
+
 export function hasCompleteMoonshineModelCache(files: readonly MoonshineModelCacheFileInfo[]) {
   return (
     files.length === MOONSHINE_MODEL_CACHE_FILES.length &&
