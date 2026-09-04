@@ -50,7 +50,9 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
   return {
     reminders: {
       listActive: async () => (current ? [current] : []),
+      listVisible: async () => (current ? [current] : []),
       listExpired: async () => (current ? [current] : []),
+      listRetainedExpired: async () => [],
       getById: async () => current,
       insert: async (draft) => {
         events.push('insert');
@@ -557,6 +559,44 @@ test('schedule update accepts a future time today and crosses a calendar year', 
   assert.equal(yearResult?.reminder.expiresAt, new Date('2027-01-01T23:59:59.999').toISOString());
 });
 
+test('rescheduling a retained expired reminder reactivates it', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const expiredReminder = { ...reminder, status: 'expired' as const };
+  dependencies.reminders.getById = async () => expiredReminder;
+  dependencies.reminders.listActive = async () => [];
+  dependencies.reminders.updateSchedule = async (_id, update) => {
+    events.push(`update-schedule:${update.status}`);
+    return { ...expiredReminder, ...update };
+  };
+
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    expiredReminder.id,
+    { targetDate: '2026-07-15', targetTime: '18:30' },
+    { now: new Date('2026-07-14T09:00:00') },
+  );
+
+  assert.equal(result?.reminder.status, 'active');
+  assert.equal(events[0], 'update-schedule:active');
+});
+
+test('rescheduling a retained expired reminder respects the free active limit', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.getById = async () => ({ ...reminder, status: 'expired' });
+  dependencies.reminders.listActive = async () => makeActiveReminders(FREE_ACTIVE_REMINDER_LIMIT);
+
+  await assert.rejects(
+    createReminderUseCases(dependencies).updateSchedule(
+      reminder.id,
+      { targetDate: '2026-07-15', targetTime: '18:30' },
+      { now: new Date('2026-07-14T09:00:00') },
+    ),
+    ActiveReminderLimitReachedError,
+  );
+  assert.deepEqual(events, []);
+});
+
 test('schedule update keeps the new date when notification scheduling is blocked', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
@@ -862,6 +902,85 @@ test('retryPendingNotifications leaves blocked reminders pending', async () => {
 test('cleanup cancels expired reminders before deleting them', async () => {
   const events: string[] = [];
   const result = await createReminderUseCases(makeDependencies(events)).cleanup(
+    new Date('2026-07-15T00:00:00.000Z'),
+  );
+
+  assert.equal(result, 1);
+  assert.deepEqual(events, ['cancel', 'delete-many', 'widget']);
+});
+
+test('listVisible includes retained expired reminders only when auto-delete is disabled', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const expiredReminder = { ...reminder, status: 'expired' as const };
+  let autoDeleteEnabled = true;
+  dependencies.settings.get = async () => ({
+    id: 'default',
+    previousNotifyTime: '20:00',
+    defaultTargetTime: '08:00',
+    noonTargetTime: '12:00',
+    eveningTargetTime: '18:00',
+    nightTargetTime: '20:00',
+    autoDeleteEnabled,
+    notificationSoundEnabled: true,
+    notificationPermissionIntroSeen: false,
+    raiseToSpeakEnabled: false,
+    raiseToSpeakIntroSeen: false,
+    analyticsConsent: 'unknown',
+    theme: 'sky',
+  });
+  dependencies.reminders.listVisible = async (includeExpired) => {
+    events.push(`list-visible:${includeExpired}`);
+    return includeExpired ? [reminder, expiredReminder] : [reminder];
+  };
+  const useCases = createReminderUseCases(dependencies);
+
+  const autoDeleteResult = await useCases.listVisible(new Date('2026-07-15T00:00:00.000Z'));
+
+  autoDeleteEnabled = false;
+  const retainedResult = await useCases.listVisible(new Date('2026-07-15T00:00:00.000Z'));
+
+  assert.deepEqual(autoDeleteResult, [reminder]);
+  assert.deepEqual(retainedResult, [reminder, expiredReminder]);
+  assert.deepEqual(events, ['list-visible:false', 'list-visible:true']);
+});
+
+test('cleanup retains expired reminders without cancelling notifications when auto-delete is disabled', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.settings.get = async () => ({
+    id: 'default',
+    previousNotifyTime: '20:00',
+    defaultTargetTime: '08:00',
+    noonTargetTime: '12:00',
+    eveningTargetTime: '18:00',
+    nightTargetTime: '20:00',
+    autoDeleteEnabled: false,
+    notificationSoundEnabled: true,
+    notificationPermissionIntroSeen: false,
+    raiseToSpeakEnabled: false,
+    raiseToSpeakIntroSeen: false,
+    analyticsConsent: 'unknown',
+    theme: 'sky',
+  });
+
+  const result = await createReminderUseCases(dependencies).cleanup(
+    new Date('2026-07-15T00:00:00.000Z'),
+  );
+
+  assert.equal(result, 1);
+  assert.deepEqual(events, ['mark-expired', 'widget']);
+});
+
+test('cleanup deletes reminders retained while auto-delete was disabled after it is enabled', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  dependencies.reminders.listExpired = async () => [];
+  dependencies.reminders.listRetainedExpired = async () => [
+    { ...reminder, status: 'expired' as const },
+  ];
+
+  const result = await createReminderUseCases(dependencies).cleanup(
     new Date('2026-07-15T00:00:00.000Z'),
   );
 

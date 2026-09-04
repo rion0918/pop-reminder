@@ -406,7 +406,11 @@ export function ReminderDetailSheet({
         }
 
         console.warn('Failed to update reminder schedule', error);
-        setScheduleNotice('日時を保存できませんでした');
+        setScheduleNotice(
+          error instanceof Error && error.name === 'ActiveReminderLimitReachedError'
+            ? '無料版で保持できる予定の上限に達しています'
+            : '日時を保存できませんでした',
+        );
       } finally {
         if (editSession === scheduleEditSessionRef.current) {
           setIsScheduleSaving(false);

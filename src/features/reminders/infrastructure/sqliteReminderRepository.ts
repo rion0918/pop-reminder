@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lte, or } from 'drizzle-orm';
 
 import { db } from '../../../db/client';
 import { type NewReminderRow, type ReminderRow, reminders } from '../../../db/schema';
@@ -43,6 +43,39 @@ export const sqliteReminderRepository: ReminderRepository = {
       .from(reminders)
       .where(and(eq(reminders.status, 'active'), lte(reminders.targetNotifyAt, now.toISOString())))
       .orderBy(asc(reminders.targetNotifyAt));
+    return rows.map(toDomain);
+  },
+
+  async listVisible(includeExpired, now = new Date()) {
+    const nowIso = now.toISOString();
+    const activeRows = await db
+      .select()
+      .from(reminders)
+      .where(and(eq(reminders.status, 'active'), gt(reminders.targetNotifyAt, nowIso)))
+      .orderBy(asc(reminders.targetAt));
+
+    if (!includeExpired) return activeRows.map(toDomain);
+
+    const expiredRows = await db
+      .select()
+      .from(reminders)
+      .where(
+        or(
+          eq(reminders.status, 'expired'),
+          and(eq(reminders.status, 'active'), lte(reminders.targetNotifyAt, nowIso)),
+        ),
+      )
+      .orderBy(desc(reminders.targetAt));
+
+    return [...activeRows, ...expiredRows].map(toDomain);
+  },
+
+  async listRetainedExpired() {
+    const rows = await db
+      .select()
+      .from(reminders)
+      .where(eq(reminders.status, 'expired'))
+      .orderBy(desc(reminders.targetAt));
     return rows.map(toDomain);
   },
 

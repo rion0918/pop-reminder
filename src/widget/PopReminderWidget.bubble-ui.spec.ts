@@ -24,7 +24,7 @@ test('android widget promotes the nearest reminder and renders the rest as a que
   assertSourceContract(source, {
     includes: [
       /function HeroReminder/,
-      /text="次のリマインド"/,
+      /reminder\.isExpired \? '期限済み' : '次のリマインド'/,
       /function QueueReminderRow/,
       /plan\.hero\.reminderId/,
       /plan\.queueRows\.map/,
@@ -179,13 +179,17 @@ test('android widget retains rounded native click feedback', () => {
   ]);
 });
 
-test('native periodic updates keep expired reminders out while the app is closed', () => {
+test('native periodic updates respect auto-delete while the app is closed', () => {
   assertSourceIncludes(appConfigSource, [
     /"name": "PopReminderWidget"[\s\S]*"updatePeriodMillis": 1800000/,
   ]);
   assertSourceIncludes(nativeWidgetConfigSource, [/android:updatePeriodMillis="1800000"/]);
   assertSourceIncludes(snapshotSource, [
-    /WHERE status = 'active' AND target_notify_at > \?/,
-    /ORDER BY target_at ASC/,
+    /autoDeleteEnabled/,
+    /auto_delete_enabled/,
+    /includeExpired/,
+    /status = 'expired'/,
+    /target_notify_at <= \?/,
+    /ORDER BY/,
   ]);
 });

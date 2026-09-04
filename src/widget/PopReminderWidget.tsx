@@ -10,6 +10,7 @@ import type { AppTheme } from '../constants/colors';
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
 import { getReminderDueColor } from '../features/reminders/utils/reminderDueColor';
 import { getWidgetTheme, type WidgetThemeTokens } from './widgetColors';
+import type { WidgetReminder } from './widgetReminderSnapshot';
 import {
   getWidgetLayoutPlan,
   type WidgetDisplayMode,
@@ -26,12 +27,6 @@ import {
   WIDGET_FONT_FAMILY,
   WIDGET_ROW_ACTION_SIZE,
 } from './widgetVisuals';
-
-type WidgetReminder = {
-  id: string;
-  title: string;
-  targetAt: string;
-};
 
 type PopReminderWidgetProps = {
   reminders: WidgetReminder[];
@@ -232,7 +227,7 @@ function HeroReminder({
         }}
         clickAction="OPEN_URI"
         clickActionData={{ uri: `popreminder://?action=view&id=${reminder.id}` }}
-        accessibilityLabel={`次のリマインド、${reminder.title}、${timeText}、詳細を開く`}
+        accessibilityLabel={`${reminder.isExpired ? '期限済み' : '次のリマインド'}、${reminder.title}、${timeText}、詳細を開く`}
       >
         <DueBubble size={typography.heroBubbleSize} reminder={reminder} />
         <FlexWidget
@@ -251,7 +246,7 @@ function HeroReminder({
             }}
           >
             <TextWidget
-              text="次のリマインド"
+              text={reminder.isExpired ? '期限済み' : '次のリマインド'}
               style={{
                 fontFamily: WIDGET_FONT_FAMILY,
                 fontSize: typography.heroKickerFontSize,

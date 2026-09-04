@@ -166,6 +166,10 @@ export function HomeScreen() {
   const [notificationPermissionCanAskAgain, setNotificationPermissionCanAskAgain] = useState(true);
 
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
+  const activeReminderCount = reminders.filter(
+    (reminder) =>
+      reminder.status === 'active' && new Date(reminder.targetNotifyAt).getTime() > Date.now(),
+  ).length;
   const visibleReminderIds = useMemo(
     () => new Set(reminders.slice(0, MAX_VISIBLE_HOME_BUBBLES).map((reminder) => reminder.id)),
     [reminders],
@@ -220,7 +224,7 @@ export function HomeScreen() {
 
       isQuickAddRequestPendingRef.current = true;
       try {
-        if (reminders.length >= FREE_ACTIVE_REMINDER_LIMIT) {
+        if (activeReminderCount >= FREE_ACTIVE_REMINDER_LIMIT) {
           const accessState = await purchases.getProAccessState();
           if (accessState === 'free' && !(await showActiveLimitPaywall(source))) {
             return false;
@@ -235,7 +239,7 @@ export function HomeScreen() {
         isQuickAddRequestPendingRef.current = false;
       }
     },
-    [openQuickAddForSource, purchases, reminders.length, showActiveLimitPaywall],
+    [activeReminderCount, openQuickAddForSource, purchases, showActiveLimitPaywall],
   );
 
   useEffect(() => {
@@ -444,7 +448,7 @@ export function HomeScreen() {
         );
       }
 
-      if (reminders.length + 1 >= FREE_ACTIVE_REMINDER_LIMIT) {
+      if (activeReminderCount + 1 >= FREE_ACTIVE_REMINDER_LIMIT) {
         const accessState = await purchases.getProAccessState();
         if (accessState === 'free') {
           closeQuickAdd();
@@ -881,11 +885,15 @@ export function HomeScreen() {
   const isBubbleIdleDisabled = isSaving;
   const isEmptyHome = !loading && !error && reminders.length === 0;
   const nextReminder = reminders[0] ?? null;
+  const nextReminderIsExpired = nextReminder
+    ? nextReminder.status === 'expired' ||
+      new Date(nextReminder.targetNotifyAt).getTime() <= Date.now()
+    : false;
   const nextReminderLabel = nextReminder
     ? formatReminderBubbleDateTime(nextReminder.targetAt)
     : null;
   const nextReminderAccessibilityLabel = nextReminder
-    ? `次のリマインド、${nextReminder.title}、${formatReminderDetailAccessibilityDateTime(nextReminder.targetAt)}`
+    ? `${nextReminderIsExpired ? '期限済み' : '次のリマインド'}、${nextReminder.title}、${formatReminderDetailAccessibilityDateTime(nextReminder.targetAt)}`
     : undefined;
   const isCompactPhoneWidth = windowWidth <= 360;
 
@@ -973,7 +981,9 @@ export function HomeScreen() {
                 <Ionicons name="notifications-outline" size={19} color={palette.lavenderDeep} />
               </View>
               <View style={styles.nextReminderContent}>
-                <Text style={styles.nextReminderKicker}>次のリマインド</Text>
+                <Text style={styles.nextReminderKicker}>
+                  {nextReminderIsExpired ? '期限済み' : '次のリマインド'}
+                </Text>
                 <Text numberOfLines={1} ellipsizeMode="tail" style={styles.nextReminderTitle}>
                   {nextReminder.title}
                 </Text>

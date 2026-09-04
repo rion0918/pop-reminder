@@ -25,6 +25,20 @@ const widgetGateway = {
   },
 };
 
+const reminderUseCases = createReminderUseCases({
+  reminders: sqliteReminderRepository,
+  settings: {
+    get: sqliteSettingsRepository.get,
+    updatePreviousNotifyTime: (previousNotifyTime: string) =>
+      sqliteSettingsRepository.update({ previousNotifyTime }),
+  },
+  notifications: reminderNotificationGateway,
+  widget: widgetGateway,
+  proAccess: {
+    getState: revenueCatPurchaseService.getProAccessState,
+  },
+});
+
 export const appServices = {
   analytics: posthogAnalytics,
   purchases: revenueCatPurchaseService,
@@ -32,23 +46,14 @@ export const appServices = {
   raiseToSpeak: {
     prepare: prepareRaiseToSpeak,
   },
-  reminders: createReminderUseCases({
-    reminders: sqliteReminderRepository,
-    settings: {
-      get: sqliteSettingsRepository.get,
-      updatePreviousNotifyTime: (previousNotifyTime: string) =>
-        sqliteSettingsRepository.update({ previousNotifyTime }),
-    },
-    notifications: reminderNotificationGateway,
-    widget: widgetGateway,
-    proAccess: {
-      getState: revenueCatPurchaseService.getProAccessState,
-    },
-  }),
+  reminders: reminderUseCases,
   settings: createSettingsUseCases({
     settings: sqliteSettingsRepository,
     widget: widgetGateway,
     analytics: posthogAnalytics,
+    reminders: {
+      cleanup: reminderUseCases.cleanup,
+    },
   }),
   notificationSettings: {
     cancelAllScheduledNotifications,

@@ -45,6 +45,12 @@ function createDependencies(options?: {
           events.push('widget:sync');
         },
       },
+      reminders: {
+        async cleanup() {
+          events.push('reminders:cleanup');
+          return 0;
+        },
+      },
       analytics: {
         async setCaptureEnabled(enabled: boolean) {
           events.push(`analytics:${enabled}`);
@@ -73,6 +79,16 @@ test('theme update persists before syncing the widget once', async () => {
 
   assert.equal(settings.theme, 'mint');
   assert.deepEqual(events, ['persist:{"theme":"mint"}', 'widget:sync']);
+});
+
+test('auto-delete update persists before reconciling expired reminders', async () => {
+  const { dependencies, events } = createDependencies();
+  const useCases = createSettingsUseCases(dependencies);
+
+  const settings = await useCases.update({ autoDeleteEnabled: false });
+
+  assert.equal(settings.autoDeleteEnabled, false);
+  assert.deepEqual(events, ['persist:{"autoDeleteEnabled":false}', 'reminders:cleanup']);
 });
 
 test('analytics consent is persisted before capture is enabled', async () => {

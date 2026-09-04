@@ -11,14 +11,19 @@ export type AnalyticsConsentGateway = {
   setCaptureEnabled(enabled: boolean): Promise<boolean>;
 };
 
+export type ReminderExpirationGateway = {
+  cleanup(): Promise<number>;
+};
+
 export type SettingsApplicationDependencies = {
   settings: SettingsRepository;
   widget: SettingsWidgetSyncGateway;
   analytics: AnalyticsConsentGateway;
+  reminders: ReminderExpirationGateway;
 };
 
 export function createSettingsUseCases(dependencies: SettingsApplicationDependencies) {
-  const { settings, widget, analytics } = dependencies;
+  const { settings, widget, analytics, reminders } = dependencies;
 
   return {
     get: settings.get,
@@ -28,6 +33,10 @@ export function createSettingsUseCases(dependencies: SettingsApplicationDependen
 
       if (input.theme !== undefined) {
         await widget.sync();
+      }
+
+      if (input.autoDeleteEnabled !== undefined) {
+        await reminders.cleanup();
       }
 
       return updatedSettings;

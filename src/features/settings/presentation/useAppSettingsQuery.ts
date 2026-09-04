@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAppServices } from '../../../bootstrap/appServicesContext';
+import { activeRemindersQueryKey } from '../../reminders/presentation/reminderQueryMutations';
 
 export const currentSettingsQueryKey = ['settings', 'current'] as const;
 
@@ -14,7 +15,12 @@ export function useAppSettingsQuery() {
   });
   const mutation = useMutation({
     mutationFn: services.settings.update,
-    onSuccess: (settings) => queryClient.setQueryData(currentSettingsQueryKey, settings),
+    onSuccess: (settings, input) => {
+      queryClient.setQueryData(currentSettingsQueryKey, settings);
+      if (input.autoDeleteEnabled !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: activeRemindersQueryKey });
+      }
+    },
   });
   const previousNotifyTimeMutation = useMutation({
     mutationFn: (previousNotifyTime: string) =>

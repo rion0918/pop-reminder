@@ -12,9 +12,16 @@ import {
 const MAX_REFRESH_TIMER_MS = 24 * 60 * 60 * 1000;
 
 function sortReminders(reminders: Reminder[]) {
-  return [...reminders].sort(
-    (first, second) => new Date(first.targetAt).getTime() - new Date(second.targetAt).getTime(),
-  );
+  const now = Date.now();
+  return [...reminders].sort((first, second) => {
+    const firstTime = new Date(first.targetNotifyAt).getTime();
+    const secondTime = new Date(second.targetNotifyAt).getTime();
+    const firstExpired = first.status === 'expired' || firstTime <= now;
+    const secondExpired = second.status === 'expired' || secondTime <= now;
+
+    if (firstExpired !== secondExpired) return firstExpired ? 1 : -1;
+    return firstExpired ? secondTime - firstTime : firstTime - secondTime;
+  });
 }
 
 export function useRemindersQuery() {
@@ -22,7 +29,7 @@ export function useRemindersQuery() {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: activeRemindersQueryKey,
-    queryFn: () => services.reminders.listActive(),
+    queryFn: () => services.reminders.listVisible(),
     retry: false,
   });
   const { data: reminders, error, isLoading, refetch } = query;

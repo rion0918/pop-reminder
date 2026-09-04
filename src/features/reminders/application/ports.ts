@@ -60,6 +60,7 @@ export type ReminderScheduleUpdate = Pick<
   | 'expiresAt'
   | 'previousNotificationId'
   | 'targetNotificationId'
+  | 'status'
 >;
 
 export type ReminderPreviousScheduleUpdate = Pick<
@@ -69,7 +70,9 @@ export type ReminderPreviousScheduleUpdate = Pick<
 
 export type ReminderRepository = {
   listActive(now?: Date): Promise<Reminder[]>;
+  listVisible(includeExpired: boolean, now?: Date): Promise<Reminder[]>;
   listExpired(now?: Date): Promise<Reminder[]>;
+  listRetainedExpired(): Promise<Reminder[]>;
   getById(id: string): Promise<Reminder | null>;
   insert(draft: CreateReminderDraft): Promise<Reminder>;
   updateNotificationIds(id: string, ids: ReminderNotificationIds): Promise<Reminder | null>;

@@ -40,7 +40,8 @@ test('home gates the seventh active reminder before opening quick add', () => {
   assertSourceContract(source, {
     includes: [
       /FREE_ACTIVE_REMINDER_LIMIT/,
-      /reminders\.length >= FREE_ACTIVE_REMINDER_LIMIT/,
+      /activeReminderCount >= FREE_ACTIVE_REMINDER_LIMIT/,
+      /reminder\.status === 'active'/,
       /purchases\.getProAccessState\(\)/,
       /analytics\.captureProGateReached\(\{ source \}\)/,
       /purchases\.presentProPaywallIfNeeded\(\)/,
@@ -201,7 +202,7 @@ test('home presents the next reminder as a compact bubble card that opens its de
       /source=\{reminderDetailBubbles\}/,
       /resizeMode="cover"/,
       /name="notifications-outline"/,
-      />次のリマインド<\/Text>/,
+      /nextReminderIsExpired \? '期限済み' : '次のリマインド'/,
       /numberOfLines=\{1\}[\s\S]*ellipsizeMode="tail"[\s\S]*\{nextReminder\.title\}/,
       /numberOfLines=\{1\}[\s\S]*\{nextReminderLabel\}/,
     ],

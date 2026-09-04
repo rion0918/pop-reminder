@@ -10,6 +10,10 @@ const querySource = readSource(import.meta.url, './useRemindersQuery.ts');
 const queryMutationsSource = readSource(import.meta.url, './reminderQueryMutations.ts');
 const providersSource = readSource(import.meta.url, '../../../bootstrap/AppProviders.tsx');
 const storeSource = readSource(import.meta.url, '../stores/reminderUiStore.ts');
+const settingsQuerySource = readSource(
+  import.meta.url,
+  '../../settings/presentation/useAppSettingsQuery.ts',
+);
 const screensSource = [
   readSource(import.meta.url, '../screens/HomeScreen.tsx'),
   readSource(import.meta.url, '../screens/ReminderListScreen.tsx'),
@@ -42,6 +46,13 @@ test('app focus and target time both trigger SQLite reconciliation', () => {
     /Math\.min\(remainingMs, MAX_REFRESH_TIMER_MS\)/,
     /scheduleRefresh\(\);/,
     /void reconcileExpiredReminders\(\);/,
+  ]);
+});
+
+test('changing auto-delete refreshes the shared reminder cache', () => {
+  assertSourceIncludes(settingsQuerySource, [
+    /activeRemindersQueryKey/,
+    /autoDeleteEnabled[\s\S]*invalidateQueries\(\{ queryKey: activeRemindersQueryKey \}\)/,
   ]);
 });
 
