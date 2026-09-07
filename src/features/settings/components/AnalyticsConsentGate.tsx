@@ -59,8 +59,8 @@ export function AnalyticsConsentGate({ children }: PropsWithChildren) {
           <View style={styles.consentCard}>
             <Text style={styles.consentTitle}>匿名の利用状況を共有しますか？</Text>
             <Text style={styles.consentBody}>
-              品質改善のため、匿名ID、画面表示、リマインダー操作、通知、Pro購入導線の結果を送信します。
-              タイトルや日時、音声、位置情報は送信しません。後から設定画面でいつでも変更できます。
+              品質改善のため、匿名ID、イベントの発生時刻、画面表示、リマインダー操作、通知、Pro購入導線の結果をPostHog（米国）へ送信します。
+              リマインダーのタイトルや予定日時、音声、位置情報は分析データに含めません。共有しなくても基本機能を利用でき、設定画面でいつでも変更できます。
             </Text>
             <View style={styles.consentActions}>
               <Pressable

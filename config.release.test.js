@@ -525,7 +525,7 @@ test('iOS privacy manifest matches the declared anonymous collection', () => {
   }
 });
 
-test('privacy policy draft is ready to publish for store review', () => {
+test('privacy policy documents the current release data handling', () => {
   const privacyPolicyPath = join(__dirname, 'docs/PRIVACY_POLICY.md');
 
   assert.equal(existsSync(privacyPolicyPath), true);
@@ -533,10 +533,10 @@ test('privacy policy draft is ready to publish for store review', () => {
   const privacyPolicy = readFileSync(privacyPolicyPath, 'utf8');
 
   assert.match(privacyPolicy, /プライバシーポリシー/);
-  assert.match(privacyPolicy, /最終更新日: 2026年8月10日/);
+  assert.match(privacyPolicy, /最終更新日: 2026年9月7日/);
   assert.match(privacyPolicy, /「ふわっと。」は/);
   assert.match(privacyPolicy, /端末内に保存/);
-  assert.match(privacyPolicy, /登録したリマインダーやアプリ設定を同期する機能はなく/);
+  assert.match(privacyPolicy, /開発者によるリマインダーの外部サーバー同期はありません/);
   assert.match(privacyPolicy, /PostHog US Cloud/);
   assert.match(privacyPolicy, /いつでも停止・再開できます/);
   assert.match(
@@ -552,7 +552,8 @@ test('privacy policy draft is ready to publish for store review', () => {
   assert.doesNotMatch(privacyPolicy, /近接センサー|近接情報/);
   assert.match(privacyPolicy, /文字起こしを分析、外部送信することはありません/);
   assert.match(privacyPolicy, /データの削除/);
-  assert.match(privacyPolicy, /収集済みイベントは通常保持期間12か月後に削除/);
+  assert.match(privacyPolicy, /通常保持期間は12か月/);
+  assert.match(privacyPolicy, /期間経過後に削除/);
   assert.match(privacyPolicy, /個別削除依頼の受付は提供していません/);
   assert.doesNotMatch(privacyPolicy, /設定画面の削除依頼|匿名分析ID/);
   assert.match(privacyPolicy, /Google PlayやApp Store/);

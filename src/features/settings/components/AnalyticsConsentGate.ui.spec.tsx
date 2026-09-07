@@ -37,6 +37,14 @@ describe('AnalyticsConsentGate', () => {
     mockUpdateAnalyticsConsent.mockResolvedValue({ analyticsConsent: 'granted' });
   });
 
+  it('discloses the analytics recipient and optional collection before consent', async () => {
+    const view = await render(<AnalyticsConsentGate>{null}</AnalyticsConsentGate>);
+
+    expect(view.getByText(/PostHog.*米国/)).toBeOnTheScreen();
+    expect(view.getByText(/共有しなくても/)).toBeOnTheScreen();
+    expect(view.getByText(/イベントの発生時刻/)).toBeOnTheScreen();
+  });
+
   it('applies persisted consent once when settings are first hydrated', async () => {
     mockAnalyticsConsent = 'granted';
 

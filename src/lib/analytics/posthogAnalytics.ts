@@ -13,6 +13,7 @@ const allowedPostHogPropertyKeys = new Set([
   'distinct_id',
   '$lib',
   '$lib_version',
+  '$geoip_disable',
   '$screen_name',
   'source',
   'date_preset',
