@@ -1,25 +1,32 @@
 import { test } from 'node:test';
+import { assertSourceContract, readSource } from '../../../test-utils/sourceAssertions';
 
-import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAssertions';
+const clock = readSource(import.meta.url, './useReminderBubbleBurstMotion.ts');
+const skia = readSource(import.meta.url, './ReminderBubbleBurstSkia.tsx');
+const fallback = readSource(import.meta.url, './ReminderBubbleBurstFallback.tsx');
 
-const typesSource = readSource(import.meta.url, './ReminderBubbleBurst.types.ts');
-const fallbackSource = readSource(import.meta.url, './ReminderBubbleBurstFallback.tsx');
-const nativeSource = readSource(import.meta.url, './ReminderBubbleBurst.native.tsx');
-const androidSource = readSource(import.meta.url, './ReminderBubbleBurst.android.tsx');
-
-test('bubble burst supports staggered motion while respecting reduced motion and haptic restraint', () => {
-  assertSourceIncludes(typesSource, [/delayMs\?: number;/, /hapticsEnabled\?: boolean;/]);
-  assertSourceIncludes(fallbackSource, [
-    /const motionDelayMs = reduceMotion \? 0 : delayMs;/,
-    /withDelay\(\s*motionDelayMs,\s*withTiming/,
-  ]);
-  assertSourceIncludes(nativeSource, [
-    /const motionDelayMs = reduceMotion \? 0 : delayMs;/,
-    /if \(phase === 'bursting' && hapticsEnabled\)/,
-    /withDelay\(\s*motionDelayMs,\s*withTiming/,
-  ]);
-  assertSourceIncludes(androidSource, [
-    /if \(props\.phase !== 'bursting' \|\| !hapticsEnabled\)/,
-    /motionDelayMs \+ REMINDER_BUBBLE_RUPTURE_MS/,
-  ]);
+test('one clock owns staggered completion and both renderers respect reduced motion', () => {
+  assertSourceContract(clock, {
+    includes: [
+      /withDelay\(/,
+      /delayMs/,
+      /withTiming\(/,
+      /if \(reduceMotion\)/,
+      /generationRef/,
+      /snapshotReady/,
+      /membraneMode/,
+    ],
+  });
+  assertSourceContract(skia, {
+    includes: [
+      /hapticsEnabled/,
+      /ruptured && !previous && hapticsEnabled/,
+      /\(!phase && !isSelected\) \|\| reduceMotion/,
+    ],
+    excludes: [/withTiming/, /onMotionComplete/],
+  });
+  assertSourceContract(fallback, {
+    includes: [/const \{ progress \} = motion;/, /!phase \|\| reduceMotion/],
+    excludes: [/withTiming/, /onMotionComplete/],
+  });
 });

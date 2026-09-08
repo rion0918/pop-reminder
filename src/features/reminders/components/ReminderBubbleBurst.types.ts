@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import type { View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 
 import type { BubbleDeleteMotionPhase } from './ReminderBubble';
 
@@ -23,5 +24,12 @@ export type ReminderBubbleBurstProps = {
   hapticsEnabled?: boolean;
   isSelected?: boolean;
   surfaceRef: RefObject<View | null>;
-  onMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
+  surfaceKey: string;
+  surfaceReady: boolean;
+  motion: {
+    progress: SharedValue<number>;
+    snapshotReady: SharedValue<boolean>;
+    membraneMode: SharedValue<number>;
+    activePhase: SharedValue<BubbleDeleteMotionPhase | undefined>;
+  };
 };

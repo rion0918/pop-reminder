@@ -20,37 +20,31 @@ export const ReminderBubbleBurst = memo(function ReminderBubbleBurst(
   props: ReminderBubbleBurstProps,
 ) {
   const reduceMotion = useReducedMotion();
-  const motionDelayMs = reduceMotion ? 0 : (props.delayMs ?? 0);
-  const hapticsEnabled = props.hapticsEnabled ?? true;
-  const hapticTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (hapticTimeoutRef.current) {
-      clearTimeout(hapticTimeoutRef.current);
-      hapticTimeoutRef.current = null;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
 
-    if (props.phase !== 'bursting' || !hapticsEnabled) {
+    if (props.phase !== 'bursting' || !(props.hapticsEnabled ?? true)) {
       return;
     }
 
-    if (reduceMotion) {
+    const delay = reduceMotion ? 0 : (props.delayMs ?? 0) + REMINDER_BUBBLE_RUPTURE_MS;
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
       void triggerAndroidBubbleBurstHaptic();
-      return;
-    }
-
-    hapticTimeoutRef.current = setTimeout(() => {
-      hapticTimeoutRef.current = null;
-      void triggerAndroidBubbleBurstHaptic();
-    }, motionDelayMs + REMINDER_BUBBLE_RUPTURE_MS);
+    }, delay);
 
     return () => {
-      if (hapticTimeoutRef.current) {
-        clearTimeout(hapticTimeoutRef.current);
-        hapticTimeoutRef.current = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
-  }, [hapticsEnabled, motionDelayMs, props.phase, reduceMotion]);
+  }, [props.delayMs, props.hapticsEnabled, props.phase, reduceMotion]);
 
   return <ReminderBubbleBurstFallback {...props} />;
 });

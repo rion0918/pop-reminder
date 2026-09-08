@@ -1,15 +1,9 @@
-import { memo, useCallback, useEffect, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  cancelAnimation,
-  Easing,
-  runOnJS,
   type SharedValue,
   useAnimatedStyle,
   useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withTiming,
 } from 'react-native-reanimated';
 
 import {
@@ -17,11 +11,7 @@ import {
   type BubbleBurstDroplet,
   type BubbleMembraneFragment,
 } from './ReminderBubbleBurstGeometry';
-import {
-  REMINDER_BUBBLE_BURST_MS,
-  REMINDER_BUBBLE_RESTORE_MS,
-  type ReminderBubbleBurstProps,
-} from './ReminderBubbleBurst.types';
+import type { ReminderBubbleBurstProps } from './ReminderBubbleBurst.types';
 
 function clamp01(value: number) {
   'worklet';
@@ -43,18 +33,19 @@ function WebMembraneFragment({
   color: string;
 }) {
   const outerStart = fragment.points[0];
-  const outerEnd = fragment.points[1];
+  const outerEnd = fragment.points[2];
   const width = Math.max(4, Math.hypot(outerEnd.x - outerStart.x, outerEnd.y - outerStart.y));
+  const angle = Math.atan2(outerEnd.y - outerStart.y, outerEnd.x - outerStart.x);
   const animatedStyle = useAnimatedStyle(() => {
-    const travel = easeOutCubic(clamp01((progress.value - fragment.delay) / 0.55));
-    const fade = clamp01((progress.value - 0.68) / 0.32);
+    const travel = clamp01((progress.value - fragment.delay) / (230 / 380 - fragment.delay));
+    const fade = travel;
 
     return {
-      opacity: (1 - fade) * Math.min(1, travel * 3.2),
+      opacity: (1 - fade) * Math.min(0.58, travel * 6),
       transform: [
         { translateX: fragment.travelX * travel },
         { translateY: fragment.travelY * travel },
-        { rotate: `${fragment.rotation * travel}rad` },
+        { rotate: `${angle + fragment.rotation * travel}rad` },
         { scaleX: 1 - travel * 0.44 },
         { scaleY: 1 - travel * 0.7 },
       ],
@@ -84,13 +75,14 @@ function WebDroplet({
   droplet: BubbleBurstDroplet;
   progress: SharedValue<number>;
 }) {
-  const diameter = Math.max(2, droplet.radius * 2);
+  const diameter = droplet.radius * 2;
   const animatedStyle = useAnimatedStyle(() => {
-    const travel = easeOutCubic(clamp01((progress.value - droplet.delay) / 0.48));
-    const fade = clamp01((progress.value - 0.7) / 0.3);
+    const local = clamp01((progress.value - droplet.delay) / (1 - droplet.delay));
+    const travel = 1 - (1 - local) ** 2;
+    const fade = local;
 
     return {
-      opacity: (1 - fade) * Math.min(0.86, travel * 3),
+      opacity: (1 - fade) * Math.min(0.55, travel * 6),
       transform: [
         { translateX: droplet.travelX * travel },
         { translateY: droplet.travelY * travel + droplet.gravity * travel * travel },
@@ -122,56 +114,14 @@ export const ReminderBubbleBurstFallback = memo(function ReminderBubbleBurstFall
   height,
   color,
   phase,
-  delayMs = 0,
-  onMotionComplete,
+  motion,
 }: ReminderBubbleBurstProps) {
   const reduceMotion = useReducedMotion();
-  const motionDelayMs = reduceMotion ? 0 : delayMs;
-  const progress = useSharedValue(0);
+  const { progress } = motion;
   const geometry = useMemo(
     () => createBubbleBurstGeometry(reminderId, width, height),
     [height, reminderId, width],
   );
-  const completeMotion = useCallback(
-    (completedPhase: NonNullable<typeof phase>) => {
-      onMotionComplete?.(reminderId, completedPhase);
-    },
-    [onMotionComplete, reminderId],
-  );
-
-  useEffect(() => {
-    cancelAnimation(progress);
-    progress.value = 0;
-
-    if (!phase) {
-      return;
-    }
-
-    if (reduceMotion) {
-      progress.value = 1;
-      void Promise.resolve().then(() => completeMotion(phase));
-      return;
-    }
-
-    progress.value = withDelay(
-      motionDelayMs,
-      withTiming(
-        1,
-        {
-          duration: phase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
-          easing: Easing.linear,
-        },
-        (finished) => {
-          if (finished) {
-            runOnJS(completeMotion)(phase);
-          }
-        },
-      ),
-    );
-
-    return () => cancelAnimation(progress);
-  }, [completeMotion, motionDelayMs, phase, progress, reduceMotion]);
-
   const restoreRingStyle = useAnimatedStyle(() => {
     const eased = easeOutCubic(progress.value);
     return {
@@ -244,18 +194,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     height: 4,
     borderRadius: 999,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.36,
-    shadowRadius: 5,
+    borderTopWidth: 0.9,
   },
   webDroplet: {
     position: 'absolute',
     backgroundColor: 'rgba(255,255,255,0.76)',
-    shadowColor: '#9FE9FF',
-    shadowOpacity: 0.42,
-    shadowRadius: 4,
   },
   webRestoreRing: {
     position: 'absolute',

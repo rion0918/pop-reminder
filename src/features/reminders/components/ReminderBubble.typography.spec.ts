@@ -8,7 +8,7 @@ import {
 
 const source = readSource(import.meta.url, './ReminderBubble.tsx');
 const visualsSource = readSource(import.meta.url, '../utils/reminderBubbleVisuals.ts');
-const nativeBurstSource = readSource(import.meta.url, './ReminderBubbleBurst.native.tsx');
+const nativeBurstSource = readSource(import.meta.url, './ReminderBubbleBurstSkia.tsx');
 const burstTypesSource = readSource(import.meta.url, './ReminderBubbleBurst.types.ts');
 const colorsSource = readSource(import.meta.url, '../../../constants/colors.ts');
 
@@ -95,7 +95,8 @@ test('reminder bubble delegates delete motion to a platform burst layer', () => 
       /styles\.bubbleSurface[\s\S]*bubbleSurfaceAnimatedStyle/,
       /<ReminderBubbleBurst/,
       /surfaceRef=\{surfaceRef\}/,
-      /onMotionComplete=\{onDeleteMotionComplete\}/,
+      /onMotionComplete: onDeleteMotionComplete/,
+      /motion=\{motion\}/,
     ],
     excludes: [/styles\.burstFlash/, /styles\.burstCrack/, /styles\.burstParticle/],
   });
@@ -109,13 +110,13 @@ test('native reminder bubble burst uses a captured Skia membrane and physical ti
   ]);
   assertSourceContract(nativeBurstSource, {
     includes: [
-      /makeImageFromView/,
+      /useBubbleBurstSnapshot/,
       /<Canvas/,
-      /invertClip/,
+      /<Mask/,
       /createBubbleBurstGeometry/,
       /useReducedMotion/,
       /triggerBubbleBurstHaptic/,
-      /onMotionComplete\?\.\(reminderId, completedPhase\)/,
+      /const \{ progress, membraneMode, activePhase \} = motion;/,
     ],
     excludes: [/burstCrack/, /burstFlash/, /setInterval/],
   });

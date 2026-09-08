@@ -589,6 +589,7 @@ export function HomeScreen() {
 
   const handleBulkDelete = useCallback(
     async (ids: string[]) => {
+      if (isReminderDeletionInProgressRef.current) return;
       isReminderDeletionInProgressRef.current = true;
       setIsBulkDeletionInProgress(true);
 
@@ -645,6 +646,7 @@ export function HomeScreen() {
 
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
+      if (isReminderDeletionInProgressRef.current) return;
       isReminderDeletionInProgressRef.current = true;
 
       try {

@@ -85,7 +85,7 @@ graph TB
 | :------------------------------- | :--------------- | :------------------------------------------------------------ |
 | **NativeWind / Tailwind**        | `^4` / `^3.4.17` | Tailwind CSS クラスを用いたユーティリティファーストな UI 記述 |
 | **react-native-reanimated**      | `~4.1.7`         | ワークレットベースの高精細 UI アニメーション                  |
-| **@shopify/react-native-skia**   | `2.2.12`         | iOS 向けの泡破裂エフェクト、水滴描画                          |
+| **@shopify/react-native-skia**   | `2.2.12`         | Android / iOS 共通の泡破裂エフェクト、水滴描画                |
 | **@gorhom/bottom-sheet**         | `^5.1.4`         | リマインダー追加・詳細表示用 Bottom Sheet                     |
 | **react-native-gesture-handler** | `~2.28.0`        | タッチ・フリックジェスチャーのネイティブ処理                  |
 | **expo-linear-gradient**         | `~15.0.8`        | 泡およびグラデーション背景の描画                              |

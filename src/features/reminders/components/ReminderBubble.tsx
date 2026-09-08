@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,11 +24,8 @@ import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
 import { getReminderDueColor } from '../utils/reminderDueColor';
 import { homeVisualTokens, palette } from '../../../constants/colors';
 import { ReminderBubbleBurst } from './ReminderBubbleBurst';
-import {
-  REMINDER_BUBBLE_BURST_MS,
-  REMINDER_BUBBLE_RESTORE_MS,
-  REMINDER_BUBBLE_RUPTURE_MS,
-} from './ReminderBubbleBurst.types';
+import { getBurstSurfaceFrame } from './reminderBubbleBurstMotion';
+import { useReminderBubbleBurstMotion } from './useReminderBubbleBurstMotion';
 import { makeReminderBubbleIdleMotionConfig } from './reminderBubbleIdleMotion';
 import {
   REMINDER_BUBBLE_PRESS_SCALE,
@@ -96,6 +93,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   const radius = visualSize / 2;
   const reduceMotion = useReducedMotion();
   const surfaceRef = useRef<View>(null);
+  const [surfaceReady, setSurfaceReady] = useState(false);
   const longPressTriggeredRef = useRef(false);
   const idleMotion = useMemo(
     () => makeReminderBubbleIdleMotionConfig(reminder.id, index),
@@ -105,7 +103,23 @@ export const ReminderBubble = memo(function ReminderBubble({
   const birthProgress = useSharedValue(0);
   const idleProgress = useSharedValue(0);
   const pressProgress = useSharedValue(0);
-  const deleteMotionProgress = useSharedValue(0);
+  const motion = useReminderBubbleBurstMotion({
+    reminderId: reminder.id,
+    phase: deleteMotionPhase,
+    delayMs: deleteMotionDelayMs,
+    reduceMotion,
+    onMotionComplete: onDeleteMotionComplete,
+  });
+  const { progress: deleteMotionProgress, membraneMode } = motion;
+  const surfaceKey = JSON.stringify([
+    reminder.title,
+    reminder.targetAt,
+    bubbleWidth,
+    bubbleHeight,
+    color,
+    typography,
+    formatReminderBubbleDateTime(reminder.targetAt),
+  ]);
   const selectionProgress = useSharedValue(0);
 
   useEffect(() => {
@@ -132,7 +146,11 @@ export const ReminderBubble = memo(function ReminderBubble({
   useEffect(() => {
     cancelAnimation(idleProgress);
 
-    if (reduceMotion || idleDisabled || deleteMotionPhase) {
+    if (deleteMotionPhase) {
+      return;
+    }
+
+    if (reduceMotion || idleDisabled) {
       idleProgress.value = withTiming(0, {
         duration: 220,
         easing: Easing.out(Easing.cubic),
@@ -164,26 +182,6 @@ export const ReminderBubble = memo(function ReminderBubble({
     idleProgress,
     reduceMotion,
   ]);
-
-  useEffect(() => {
-    cancelAnimation(deleteMotionProgress);
-    deleteMotionProgress.value = 0;
-
-    if (!deleteMotionPhase || reduceMotion) {
-      return;
-    }
-
-    deleteMotionProgress.value = withDelay(
-      deleteMotionDelayMs,
-      withTiming(1, {
-        duration:
-          deleteMotionPhase === 'bursting' ? REMINDER_BUBBLE_BURST_MS : REMINDER_BUBBLE_RESTORE_MS,
-        easing: Easing.linear,
-      }),
-    );
-
-    return () => cancelAnimation(deleteMotionProgress);
-  }, [deleteMotionDelayMs, deleteMotionPhase, deleteMotionProgress, reduceMotion]);
 
   useEffect(() => {
     cancelAnimation(selectionProgress);
@@ -250,13 +248,10 @@ export const ReminderBubble = memo(function ReminderBubble({
     }
 
     if (deleteMotionPhase === 'bursting') {
-      const ruptureProgress = REMINDER_BUBBLE_RUPTURE_MS / REMINDER_BUBBLE_BURST_MS;
-      const tension = Math.min(1, deleteMotionProgress.value / ruptureProgress);
-      const fade = Math.min(1, Math.max(0, (deleteMotionProgress.value - ruptureProgress) / 0.27));
-
+      const frame = getBurstSurfaceFrame(deleteMotionProgress.value, membraneMode.value === 1);
       return {
-        opacity: 1 - fade,
-        transform: [{ scale: 1 + tension * 0.035 - fade * 0.08 }],
+        opacity: frame.opacity,
+        transform: [{ scaleX: frame.scaleX }, { scaleY: frame.scaleY }],
       };
     }
 
@@ -302,6 +297,7 @@ export const ReminderBubble = memo(function ReminderBubble({
       }
       disabled={isDisabled}
       onPress={() => {
+        if (isDisabled) return;
         if (longPressTriggeredRef.current) {
           longPressTriggeredRef.current = false;
           return;
@@ -332,6 +328,7 @@ export const ReminderBubble = memo(function ReminderBubble({
       <Animated.View
         ref={surfaceRef}
         collapsable={false}
+        onLayout={() => setSurfaceReady(true)}
         style={[
           styles.bubbleSurface,
           {
@@ -441,9 +438,11 @@ export const ReminderBubble = memo(function ReminderBubble({
         phase={deleteMotionPhase}
         delayMs={deleteMotionDelayMs}
         hapticsEnabled={deleteMotionHapticsEnabled}
-        isSelected={isSelected}
+        isSelected={isSelected || isMultiSelected}
         surfaceRef={surfaceRef}
-        onMotionComplete={onDeleteMotionComplete}
+        surfaceKey={surfaceKey}
+        surfaceReady={surfaceReady}
+        motion={motion}
       />
     </AnimatedPressable>
   );

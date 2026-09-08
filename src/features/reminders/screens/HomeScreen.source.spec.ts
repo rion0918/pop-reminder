@@ -482,3 +482,10 @@ test('home supports long-press multi-selection and sequential bulk deletion', ()
     /allSelected=\{allVisibleRemindersSelected\}/,
   ]);
 });
+
+test('home rejects duplicate deletion requests before starting any work', () => {
+  assertSourceIncludes(source, [
+    /async \(ids: string\[\]\) => \{\s*if \(isReminderDeletionInProgressRef\.current\) return;/,
+    /async \(reminder: Reminder\) => \{\s*if \(isReminderDeletionInProgressRef\.current\) return;/,
+  ]);
+});

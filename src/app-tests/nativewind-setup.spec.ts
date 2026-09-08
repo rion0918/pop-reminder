@@ -65,7 +65,7 @@ test('native platform implementations retain iOS and Android branches', () => {
     /Platform\.OS === 'android'/,
   );
   assert.match(
-    readRootSource('src/features/reminders/components/ReminderBubbleBurst.native.tsx'),
+    readRootSource('src/features/reminders/components/ReminderBubbleBurstSkia.tsx'),
     /Platform\.OS === 'android'/,
   );
   assert.match(
