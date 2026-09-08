@@ -128,6 +128,20 @@ test('reminder detail sheet edits and saves the title when its field loses focus
   });
 });
 
+test('reminder detail sheet reuses the quick add title field with an in-field character count', () => {
+  assertSourceContract(source, {
+    includes: [
+      /<ImeSafeReminderTitleInput[\s\S]*initialValue=\{draftTitleRef\.current\}[\s\S]*onTextChange=\{handleTitleTextChange\}[\s\S]*onEndEditing=\{handleTitleEndEditing\}/,
+    ],
+    excludes: [
+      /inputStyle=\{styles\.titleInput\}/,
+      /focusedInputStyle=\{styles\.titleInputFocused\}/,
+      /countStyle=\{styles\.titleCountText\}/,
+      /titleCountText: \{/,
+    ],
+  });
+});
+
 test('reminder detail sheet closes only the reminder that was dismissed', () => {
   assertSourceContract(source, {
     includes: [

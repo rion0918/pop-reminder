@@ -204,6 +204,17 @@ describe('SettingsScreen raise-to-speak setup', () => {
     expect(view.getByLabelText('購入済みの方はこちら（購入を復元）')).toBeOnTheScreen();
   });
 
+  it('shows a clear granted notification status and opens the OS notification settings', async () => {
+    const view = await render(<SettingsScreen />);
+
+    expect(view.getByText('通知', { exact: true })).toBeOnTheScreen();
+    expect(view.getByText('許可済み', { exact: true })).toBeOnTheScreen();
+    expect(
+      view.queryByText('通知音とバイブレーションは端末設定で変更できます', { exact: true }),
+    ).toBeNull();
+    expect(view.getByLabelText('通知設定を開く')).toBeOnTheScreen();
+  });
+
   it.each(['unavailable', 'pro'] as const)(
     'hides the restore link when Pro access is %s',
     async (accessState) => {

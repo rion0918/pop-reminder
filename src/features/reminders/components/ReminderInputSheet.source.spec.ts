@@ -9,6 +9,7 @@ import {
 
 const source = readSource(import.meta.url, './ReminderInputSheet.tsx');
 const imeSafeTitleInputSource = readSource(import.meta.url, './ImeSafeReminderTitleInput.tsx');
+const titleInputStylesSource = readSource(import.meta.url, './reminderTitleInputStyles.ts');
 const dateChipsSource = readSource(import.meta.url, './DateChips.tsx');
 const rootLayoutSource = readSource(import.meta.url, '../../../app/_layout.tsx');
 const timeSelectorSource = readSource(
@@ -38,18 +39,16 @@ test('quick add shows a live accessible title character count from the validatio
 });
 
 test('quick add keeps the title input at the standard body text size', () => {
-  assertSourceIncludes(source, [
+  assertSourceIncludes(titleInputStylesSource, [
     /input: \{[\s\S]*?fontSize: 14,[\s\S]*?lineHeight: 22,[\s\S]*?fontWeight: '700',/,
   ]);
 });
 
 test('quick add keeps the character count visible while the title input is focused', () => {
-  const focusedInputStyle = source.slice(
-    source.indexOf('  inputFocused: {'),
-    source.indexOf('  titleCountText: {'),
-  );
-
-  assert.equal(focusedInputStyle.includes('elevation:'), false);
+  assertSourceIncludes(titleInputStylesSource, [
+    /inputFocused: \{[\s\S]*?borderColor: 'rgba\(121,87,213,0\.62\)',/,
+    /count: \{[\s\S]*?position: 'absolute',[\s\S]*?right: 12,[\s\S]*?bottom: 7,/,
+  ]);
 });
 
 test('quick add does not show a standalone voice button', () => {

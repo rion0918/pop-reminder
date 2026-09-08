@@ -762,51 +762,79 @@ export function SettingsScreen() {
             <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
               icon="notifications-outline"
-              title="通知権限"
+              title="通知"
               onPress={handleOpenAppSettings}
             >
-              <Text className="text-[13px] font-extrabold text-app-muted">
-                {notificationPermissionLabel}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
-            </SettingRow>
-            {!isNotificationPermissionGranted ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={
-                    canAskNotificationPermissionAgain
-                      ? handleRequestNotificationPermission
-                      : handleOpenAppSettings
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="通知設定を開く"
+                onPress={() => void handleOpenAppSettings()}
+                hitSlop={4}
+                className="flex-row items-center gap-[8px] rounded-[14px]"
+                style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+              >
+                <View
+                  className={
+                    isNotificationPermissionGranted
+                      ? 'flex-row items-center gap-[5px] rounded-[12px] bg-[#E9F8F1] px-[9px] py-[7px]'
+                      : 'flex-row items-center gap-[5px] rounded-[12px] bg-[#FFF4E7] px-[9px] py-[7px]'
                   }
-                  className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
                 >
                   <Ionicons
                     name={
-                      canAskNotificationPermissionAgain
-                        ? 'notifications-outline'
-                        : 'settings-outline'
+                      isNotificationPermissionGranted
+                        ? 'checkmark-circle'
+                        : 'alert-circle-outline'
                     }
-                    size={18}
-                    color={palette.white}
+                    size={16}
+                    color={
+                      isNotificationPermissionGranted ? palette.mintDeep : palette.peachDeep
+                    }
                   />
                   <Text
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.72}
-                    className="shrink text-[14px] font-extrabold text-app-white"
-                    style={styles.noFontPadding}
-                  >
-                    {canAskNotificationPermissionAgain
-                      ? '通知権限をリクエスト'
-                      : '端末の通知設定を開く'}
-                  </Text>
-                </Pressable>
-                <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-              </>
-            ) : (
-              <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-            )}
+                    className={
+                      isNotificationPermissionGranted
+                        ? 'text-[12px] font-black text-app-mint-deep'
+                        : 'text-[12px] font-black text-app-peach-deep'
+                    }
+                >
+                  {notificationPermissionLabel}
+                </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+              </Pressable>
+            </SettingRow>
+            {!isNotificationPermissionGranted ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={
+                  canAskNotificationPermissionAgain
+                    ? handleRequestNotificationPermission
+                    : handleOpenAppSettings
+                }
+                className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
+              >
+                <Ionicons
+                  name={
+                    canAskNotificationPermissionAgain ? 'notifications-outline' : 'settings-outline'
+                  }
+                  size={18}
+                  color={palette.white}
+                />
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  className="shrink text-[14px] font-extrabold text-app-white"
+                  style={styles.noFontPadding}
+                >
+                  {canAskNotificationPermissionAgain
+                    ? '通知権限をリクエスト'
+                    : '端末の通知設定を開く'}
+                </Text>
+              </Pressable>
+            ) : null}
+            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
               icon="hourglass-outline"
               title="自動消滅"

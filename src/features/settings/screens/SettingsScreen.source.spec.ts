@@ -31,12 +31,18 @@ test('settings exposes notification permission controls outside the dev-only sec
   const productionSection = source.slice(0, devSectionIndex);
 
   assertSourceIncludes(productionSection, [
-    /title="通知権限"/,
+    /title="通知"/,
     /notificationPermissionLabel/,
+    /name=\{[\s\S]*'checkmark-circle'/,
+    /bg-\[#E9F8F1\]/,
+    /accessibilityLabel="通知設定を開く"/,
     /handleRequestNotificationPermission/,
     /handleOpenAppSettings/,
-    /title="通知権限"[\s\S]*?onPress=\{handleOpenAppSettings\}/,
+    /title="通知"[\s\S]*?onPress=\{handleOpenAppSettings\}/,
   ]);
+  assertSourceContract(productionSection, {
+    excludes: [/通知音とバイブレーションは端末設定で変更できます/],
+  });
 });
 
 test('settings does not expose an in-app notification sound toggle', () => {
@@ -118,7 +124,6 @@ test('settings applies the shared previous time to existing reminders with obser
       /disabled=\{isUpdatingPreviousNotifyTime\}/,
     ],
     excludes: [
-      /caption=/,
       /すべての泡に共通/,
       /OS標準の通知音を鳴らします/,
       /端末の通知設定と連動します/,

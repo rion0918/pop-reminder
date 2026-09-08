@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { assertSourceContract, readSource } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './ImeSafeReminderTitleInput.tsx');
+const titleInputStylesSource = readSource(import.meta.url, './reminderTitleInputStyles.ts');
 
 test('IME-safe reminder title input keeps native text uncontrolled during manual typing', () => {
   assertSourceContract(source, {
@@ -13,10 +14,12 @@ test('IME-safe reminder title input keeps native text uncontrolled during manual
       /const \[titleLength, setTitleLength\] = useState/,
       /const \[isFocused, setIsFocused\] = useState/,
       /submitBehavior="blurAndSubmit"/,
-      /fontVariant: \['tabular-nums'\]/,
       /REMINDER_TITLE_MAX_LENGTH/,
     ],
     excludes: [/value=\{/, /maxLength=\{REMINDER_TITLE_MAX_LENGTH\}/],
+  });
+  assertSourceContract(titleInputStylesSource, {
+    includes: [/fontVariant: \['tabular-nums'\]/, /count: \{[\s\S]*position: 'absolute'/],
   });
 });
 

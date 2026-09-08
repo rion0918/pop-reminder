@@ -465,11 +465,6 @@ export function ReminderDetailSheet({
                   ref={titleInputRef}
                   accessibilityLabel="リマインダーのタイトル"
                   initialValue={draftTitleRef.current}
-                  inputStyle={styles.titleInput}
-                  focusedInputStyle={styles.titleInputFocused}
-                  countStyle={styles.titleCountText}
-                  countWarningStyle={styles.titleCountTextWarning}
-                  countOverLimitStyle={styles.titleCountTextOverLimit}
                   onTextChange={handleTitleTextChange}
                   onEndEditing={handleTitleEndEditing}
                 />
@@ -594,34 +589,6 @@ const styles = StyleSheet.create({
   },
   titlePressablePressed: {
     opacity: 0.68,
-  },
-  titleInput: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    color: palette.ink,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '900',
-    borderRadius: 14,
-    backgroundColor: '#F3F6FC',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  titleInputFocused: {
-    borderColor: 'rgba(121,87,213,0.58)',
-    backgroundColor: palette.white,
-  },
-  titleCountText: {
-    alignSelf: 'flex-end',
-    marginTop: 4,
-    marginRight: 4,
-  },
-  titleCountTextWarning: {
-    color: '#8B6F2D',
-  },
-  titleCountTextOverLimit: {
-    color: '#B34B58',
   },
   titleNotice: {
     marginTop: 4,

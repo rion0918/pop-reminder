@@ -893,11 +893,6 @@ export function ReminderInputSheet({
               placeholder="忘れたくないことを入力"
               editable={voiceStatus === 'idle'}
               containerStyle={styles.inputField}
-              inputStyle={styles.input}
-              focusedInputStyle={styles.inputFocused}
-              countStyle={styles.titleCountText}
-              countWarningStyle={styles.titleCountTextWarning}
-              countOverLimitStyle={styles.titleCountTextOverLimit}
               onTextChange={handleDraftTitleChange}
               onEndEditing={handleTitleEndEditing}
             />
@@ -1092,7 +1087,6 @@ const styles = StyleSheet.create({
   },
   inputField: {
     flex: 1,
-    position: 'relative',
   },
   closeButton: {
     width: 34,
@@ -1160,39 +1154,6 @@ const styles = StyleSheet.create({
     color: palette.lavenderDeep,
     fontSize: 11,
     fontWeight: '900',
-  },
-  input: {
-    width: '100%',
-    minHeight: 56,
-    borderRadius: 18,
-    paddingLeft: 16,
-    paddingRight: 64,
-    paddingVertical: 14,
-    color: palette.ink,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: '700',
-    backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: palette.line,
-  },
-  inputFocused: {
-    borderColor: 'rgba(121,87,213,0.62)',
-    shadowColor: palette.lavenderDeep,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-  },
-  titleCountText: {
-    position: 'absolute',
-    right: 12,
-    bottom: 7,
-  },
-  titleCountTextWarning: {
-    color: '#8B6F2D',
-  },
-  titleCountTextOverLimit: {
-    color: '#B34B58',
   },
   titleNoticeText: {
     color: '#8B6F2D',
