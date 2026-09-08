@@ -35,7 +35,10 @@ function loadSherpaOnnxBindings(): SherpaOnnxBindings | null {
 
   try {
     sherpaOnnxBindings = {
+      // Keep the optional native fallback lazy so normal Android startup does not load Sherpa.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       createPcmLiveStream: require('react-native-sherpa-onnx/audio').createPcmLiveStream,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       createSTT: require('react-native-sherpa-onnx/stt').createSTT,
       // Keep the root native binding lazy for startup; the fallback loads it only when needed.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
