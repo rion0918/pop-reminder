@@ -46,6 +46,7 @@ function notScheduledNotification(
 function makeDependencies(events: string[]): ReminderApplicationDependencies {
   let current: Reminder | null = reminder;
   let previousNotifyTime = '20:00';
+  let notificationChannelMigrationVersion = 0;
 
   return {
     reminders: {
@@ -105,7 +106,6 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         eveningTargetTime: '18:00',
         nightTargetTime: '20:00',
         autoDeleteEnabled: true,
-        notificationSoundEnabled: true,
         notificationPermissionIntroSeen: false,
         raiseToSpeakEnabled: false,
         raiseToSpeakIntroSeen: false,
@@ -123,7 +123,6 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
           eveningTargetTime: '18:00',
           nightTargetTime: '20:00',
           autoDeleteEnabled: true,
-          notificationSoundEnabled: true,
           notificationPermissionIntroSeen: false,
           raiseToSpeakEnabled: false,
           raiseToSpeakIntroSeen: false,
@@ -155,6 +154,7 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         events.push('schedule-previous');
         return scheduledSingleNotification;
       },
+      getLegacyScheduledNotificationIds: async () => new Set<string>(),
       cancelOne: async (notificationId) => {
         events.push(`cancel-one:${notificationId ?? 'null'}`);
       },
@@ -166,6 +166,13 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
     },
     proAccess: {
       getState: async () => 'free',
+    },
+    notificationChannelMigration: {
+      getVersion: async () => notificationChannelMigrationVersion,
+      setVersion: async (version) => {
+        notificationChannelMigrationVersion = version;
+        events.push(`notification-channel-version:${version}`);
+      },
     },
   };
 }
@@ -909,6 +916,106 @@ test('cleanup cancels expired reminders before deleting them', async () => {
   assert.deepEqual(events, ['cancel', 'delete-many', 'widget']);
 });
 
+test('legacy silent-channel notifications are migrated once without duplicating them', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = {
+    ...reminder,
+    previousNotificationId: 'legacy-previous',
+    targetNotificationId: 'legacy-target',
+  };
+  let current = candidate;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    events.push(`update-target:${update.targetNotificationId ?? 'null'}`);
+    return current;
+  };
+  dependencies.reminders.updatePreviousSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    events.push(`update-previous:${update.previousNotificationId ?? 'null'}`);
+    return current;
+  };
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-previous', 'legacy-target']);
+  dependencies.notifications.scheduleTarget = async () => ({
+    status: 'scheduled',
+    notificationId: 'new-target',
+  });
+  dependencies.notifications.schedulePrevious = async () => ({
+    status: 'scheduled',
+    notificationId: 'new-previous',
+  });
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, 'new-target');
+  assert.equal(current.previousNotificationId, 'new-previous');
+  assert.deepEqual(events, [
+    'cancel-one:legacy-target',
+    'update-target:new-target',
+    'cancel-one:legacy-previous',
+    'update-previous:new-previous',
+    'notification-channel-version:1',
+  ]);
+});
+
+test('already migrated notifications are not scheduled again', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = {
+    ...reminder,
+    previousNotificationId: 'current-previous',
+    targetNotificationId: 'current-target',
+  };
+  dependencies.reminders.listActive = async () => [candidate];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () => new Set();
+  dependencies.notifications.scheduleTarget = async () => {
+    throw new Error('already migrated target was scheduled');
+  };
+  dependencies.notifications.schedulePrevious = async () => {
+    throw new Error('already migrated previous was scheduled');
+  };
+
+  await createReminderUseCases(dependencies).migrateLegacyNotificationChannels();
+
+  assert.deepEqual(events, ['notification-channel-version:1']);
+});
+
+test('failed channel migration remains pending for the next startup', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = { ...reminder, targetNotificationId: 'legacy-target' };
+  dependencies.reminders.listActive = async () => [candidate];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-target']);
+  let attempts = 0;
+  dependencies.notifications.scheduleTarget = async () => {
+    attempts += 1;
+    if (attempts === 1) {
+      return {
+        status: 'not-scheduled',
+        reason: 'notification-permission-denied',
+        notificationId: null,
+      };
+    }
+    return { status: 'scheduled', notificationId: 'new-target' };
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+  assert.deepEqual(events, []);
+
+  await useCases.migrateLegacyNotificationChannels();
+  assert.deepEqual(events, [
+    'cancel-one:legacy-target',
+    'update-target:new-target',
+    'notification-channel-version:1',
+  ]);
+});
+
 test('listVisible includes retained expired reminders only when auto-delete is disabled', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
@@ -922,7 +1029,6 @@ test('listVisible includes retained expired reminders only when auto-delete is d
     eveningTargetTime: '18:00',
     nightTargetTime: '20:00',
     autoDeleteEnabled,
-    notificationSoundEnabled: true,
     notificationPermissionIntroSeen: false,
     raiseToSpeakEnabled: false,
     raiseToSpeakIntroSeen: false,
@@ -956,7 +1062,6 @@ test('cleanup retains expired reminders without cancelling notifications when au
     eveningTargetTime: '18:00',
     nightTargetTime: '20:00',
     autoDeleteEnabled: false,
-    notificationSoundEnabled: true,
     notificationPermissionIntroSeen: false,
     raiseToSpeakEnabled: false,
     raiseToSpeakIntroSeen: false,

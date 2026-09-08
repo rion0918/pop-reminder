@@ -6,7 +6,7 @@ import * as schema from './schema';
 import { runDatabaseMigrations, type MigrationDatabase } from './migrations';
 
 const POP_REMINDER_DATABASE_NAME = 'pop_reminder.db';
-const NOTIFICATION_PERMISSION_DATABASE_VERSION = 5;
+const NOTIFICATION_PERMISSION_DATABASE_VERSION = 6;
 
 export function getPopReminderDatabaseDirectory() {
   return `${Paths.document.uri}SQLite`;
@@ -38,10 +38,14 @@ async function initializeNotificationPermissionCompatibility(database: Migration
   const needsAnalyticsConsentColumn = !columns.some(
     (column) => column.name === 'analytics_consent',
   );
+  const needsNotificationChannelVersionColumn = !columns.some(
+    (column) => column.name === 'notification_channel_version',
+  );
   if (
     (result?.user_version ?? 0) >= NOTIFICATION_PERMISSION_DATABASE_VERSION &&
     !needsNotificationPermissionColumn &&
-    !needsAnalyticsConsentColumn
+    !needsAnalyticsConsentColumn &&
+    !needsNotificationChannelVersionColumn
   ) {
     return;
   }
@@ -60,7 +64,14 @@ async function initializeNotificationPermissionCompatibility(database: Migration
     `);
   }
 
-  await database.execAsync(`PRAGMA user_version = 5;`);
+  if (needsNotificationChannelVersionColumn) {
+    await database.execAsync(`
+      ALTER TABLE app_settings
+      ADD COLUMN notification_channel_version INTEGER NOT NULL DEFAULT 0;
+    `);
+  }
+
+  await database.execAsync(`PRAGMA user_version = 6;`);
   await database.execAsync(`
     INSERT OR IGNORE INTO app_settings (
       id,
@@ -70,13 +81,13 @@ async function initializeNotificationPermissionCompatibility(database: Migration
       evening_target_time,
       night_target_time,
       auto_delete_enabled,
-      notification_sound_enabled,
       notification_permission_intro_seen,
       raise_to_speak_enabled,
       raise_to_speak_intro_seen,
       analytics_consent,
+      notification_channel_version,
       theme
-    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 0, 0, 0, 'unknown', 'lavender');
+    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 0, 0, 0, 'unknown', 0, 'lavender');
   `);
 }
 

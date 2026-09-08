@@ -1,4 +1,12 @@
-import { forwardRef, memo, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import type { ComponentProps, ElementRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
@@ -12,6 +20,7 @@ export type ImeSafeReminderTitleInputHandle = {
   blur: () => void;
   clear: () => void;
   replaceText: (text: string) => void;
+  replaceTextAndFocus: (text: string) => void;
   isFocused: () => boolean;
 };
 
@@ -56,6 +65,7 @@ const ImeSafeReminderTitleInputComponent = forwardRef<
 ) {
   const inputRef = useRef<ElementRef<typeof BottomSheetTextInput>>(null);
   const nativeTextRef = useRef(initialValue);
+  const focusAfterReplacementRef = useRef(false);
   const [nativeRevision, setNativeRevision] = useState(0);
   const [titleLength, setTitleLength] = useState(initialValue.length);
   const [isFocused, setIsFocused] = useState(false);
@@ -77,6 +87,21 @@ const ImeSafeReminderTitleInputComponent = forwardRef<
     [recordText],
   );
 
+  const replaceTextAndFocus = useCallback(
+    (text: string) => {
+      focusAfterReplacementRef.current = true;
+      replaceText(text);
+    },
+    [replaceText],
+  );
+
+  useEffect(() => {
+    if (!focusAfterReplacementRef.current) return;
+
+    focusAfterReplacementRef.current = false;
+    inputRef.current?.focus();
+  }, [nativeRevision]);
+
   useImperativeHandle(
     providedRef,
     () => ({
@@ -84,9 +109,10 @@ const ImeSafeReminderTitleInputComponent = forwardRef<
       blur: () => inputRef.current?.blur(),
       clear: () => replaceText(''),
       replaceText,
+      replaceTextAndFocus,
       isFocused: () => inputRef.current?.isFocused() ?? false,
     }),
-    [replaceText],
+    [replaceText, replaceTextAndFocus],
   );
 
   const handleChangeText = useCallback(

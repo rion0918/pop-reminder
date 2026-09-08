@@ -69,7 +69,8 @@ const schedulingFailedResult: ReminderNotificationScheduleResult = {
 };
 
 export function createReminderUseCases(dependencies: ReminderApplicationDependencies) {
-  const { reminders, notifications, settings, widget, proAccess } = dependencies;
+  const { reminders, notifications, settings, widget, proAccess, notificationChannelMigration } =
+    dependencies;
 
   return {
     listActive: (now?: Date) => reminders.listActive(now),
@@ -114,11 +115,9 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       try {
         notification = options?.useTestNotifications
           ? await notifications.scheduleTest(reminder, {
-              soundEnabled: currentSettings.notificationSoundEnabled,
               permissionMode: options?.permissionMode,
             })
           : await notifications.schedule(reminder, {
-              soundEnabled: currentSettings.notificationSoundEnabled,
               permissionMode: options?.permissionMode,
             });
 
@@ -167,7 +166,6 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
 
           if (reminder.targetNotificationId === null) {
             const targetResult = await notifications.scheduleTarget(reminder, {
-              soundEnabled: currentSettings.notificationSoundEnabled,
               permissionMode: 'check-only',
             });
             if (targetResult.status === 'scheduled') {
@@ -193,7 +191,6 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
             new Date(reminder.previousNotifyAt).getTime() > now.getTime()
           ) {
             const previousResult = await notifications.schedulePrevious(reminder, {
-              soundEnabled: currentSettings.notificationSoundEnabled,
               permissionMode: 'check-only',
             });
             if (previousResult.status === 'scheduled') {
@@ -218,6 +215,113 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       }
 
       return { scheduled, remaining };
+    },
+
+    async migrateLegacyNotificationChannels() {
+      if ((await notificationChannelMigration.getVersion()) >= 1) {
+        return;
+      }
+
+      const activeReminders = await reminders.listActive();
+      const legacyIds = await notifications.getLegacyScheduledNotificationIds(
+        activeReminders.flatMap((reminder) => [
+          reminder.previousNotificationId,
+          reminder.targetNotificationId,
+        ]),
+      );
+      let migrationPending = false;
+
+      for (const activeReminder of activeReminders) {
+        let currentReminder = activeReminder;
+
+        if (
+          currentReminder.targetNotificationId &&
+          legacyIds.has(currentReminder.targetNotificationId)
+        ) {
+          try {
+            const oldNotificationId = currentReminder.targetNotificationId;
+            const result = await notifications.scheduleTarget(currentReminder, {
+              permissionMode: 'check-only',
+            });
+            if (result.status === 'scheduled') {
+              await notifications.cancelOne(oldNotificationId);
+              const updated = await reminders.updateTargetSchedule(currentReminder.id, {
+                targetAt: currentReminder.targetAt,
+                targetNotifyAt: currentReminder.targetNotifyAt,
+                targetNotificationId: result.notificationId,
+              });
+              if (updated) {
+                currentReminder = updated;
+              } else {
+                await notifications.cancelOne(result.notificationId);
+                migrationPending = true;
+              }
+            } else if (result.status === 'skipped') {
+              await notifications.cancelOne(oldNotificationId);
+              const updated = await reminders.updateTargetSchedule(currentReminder.id, {
+                targetAt: currentReminder.targetAt,
+                targetNotifyAt: currentReminder.targetNotifyAt,
+                targetNotificationId: null,
+              });
+              if (updated) {
+                currentReminder = updated;
+              } else {
+                migrationPending = true;
+              }
+            } else {
+              migrationPending = true;
+            }
+          } catch (error) {
+            console.warn('Failed to migrate target notification channel', error);
+            migrationPending = true;
+          }
+        }
+
+        if (
+          currentReminder.previousNotificationId &&
+          legacyIds.has(currentReminder.previousNotificationId)
+        ) {
+          try {
+            const oldNotificationId = currentReminder.previousNotificationId;
+            const result = await notifications.schedulePrevious(currentReminder, {
+              permissionMode: 'check-only',
+            });
+            if (result.status === 'scheduled') {
+              await notifications.cancelOne(oldNotificationId);
+              const updated = await reminders.updatePreviousSchedule(currentReminder.id, {
+                previousNotifyAt: currentReminder.previousNotifyAt,
+                previousNotificationId: result.notificationId,
+              });
+              if (updated) {
+                currentReminder = updated;
+              } else {
+                await notifications.cancelOne(result.notificationId);
+                migrationPending = true;
+              }
+            } else if (result.status === 'skipped') {
+              await notifications.cancelOne(oldNotificationId);
+              const updated = await reminders.updatePreviousSchedule(currentReminder.id, {
+                previousNotifyAt: currentReminder.previousNotifyAt,
+                previousNotificationId: null,
+              });
+              if (updated) {
+                currentReminder = updated;
+              } else {
+                migrationPending = true;
+              }
+            } else {
+              migrationPending = true;
+            }
+          } catch (error) {
+            console.warn('Failed to migrate previous notification channel', error);
+            migrationPending = true;
+          }
+        }
+      }
+
+      if (!migrationPending) {
+        await notificationChannelMigration.setVersion(1);
+      }
     },
 
     async delete(id: string) {
@@ -255,10 +359,7 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       if (!updatedReminder) return null;
 
       try {
-        const currentSettings = await settings.get();
-        const notification = await notifications.schedule(updatedReminder, {
-          soundEnabled: currentSettings.notificationSoundEnabled,
-        });
+        const notification = await notifications.schedule(updatedReminder, {});
         const hasReplacement =
           notification.ids.previousNotificationId !== null ||
           notification.ids.targetNotificationId !== null;
@@ -333,9 +434,7 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
 
       let notification = schedulingFailedResult;
       try {
-        notification = await notifications.schedule(persistedReminder, {
-          soundEnabled: currentSettings.notificationSoundEnabled,
-        });
+        notification = await notifications.schedule(persistedReminder, {});
         const hasReplacement =
           notification.ids.previousNotificationId !== null ||
           notification.ids.targetNotificationId !== null;
@@ -424,7 +523,6 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
           }
 
           const notification = await notifications.schedulePrevious(updatedReminder, {
-            soundEnabled: updatedSettings.notificationSoundEnabled,
             permissionMode: 'check-only',
           });
           if (notification.status !== 'scheduled') {

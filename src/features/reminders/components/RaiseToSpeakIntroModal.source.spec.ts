@@ -74,12 +74,8 @@ test('intro actions use a side-by-side choice layout', () => {
   ]);
 });
 
-test('privacy guidance sits below the actions in a compact treatment', () => {
-  assertSourceIncludes(source, [
-    /styles\.actions[\s\S]*?styles\.privacyRow/,
-    /privacyRow:\s*\{[\s\S]*?minHeight: 28/,
-    /privacyText:\s*\{[\s\S]*?fontSize: 10/,
-  ]);
+test('intro omits redundant voice privacy guidance', () => {
+  assert.doesNotMatch(source, /privacyRow|privacyText|音声は端末内で処理し、録音を保存しません/);
 });
 
 test('enable action stays text-only', () => {

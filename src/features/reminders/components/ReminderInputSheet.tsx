@@ -217,11 +217,15 @@ export function ReminderInputSheet({
     draftTitleRef.current = text;
   }, []);
 
-  const resetDraftTitle = useCallback(() => {
+  const resetDraftTitle = useCallback((focusAfterReset = false) => {
     draftTitleRef.current = '';
     pendingSaveAfterEndEditingRef.current = false;
     pendingVoiceStartAfterEndEditingRef.current = false;
-    titleInputRef.current?.clear();
+    if (focusAfterReset) {
+      titleInputRef.current?.replaceTextAndFocus('');
+    } else {
+      titleInputRef.current?.clear();
+    }
   }, []);
 
   const replaceDraftTitle = useCallback((text: string) => {
@@ -735,11 +739,18 @@ export function ReminderInputSheet({
       try {
         await onSave?.(normalizedTitle);
         resetTitle();
-        resetDraftTitle();
+        if (isOpenRef.current && !isClosingRef.current) {
+          resetDraftTitle(true);
+        } else {
+          resetDraftTitle();
+        }
         isSaveRequestedRef.current = false;
       } catch {
         // HomeScreen shows the user-facing error. Keep the sheet open so the title is not lost.
         isSaveRequestedRef.current = false;
+        if (isOpenRef.current && !isClosingRef.current) {
+          titleInputRef.current?.focus();
+        }
       }
     },
     [isSaving, onSave, resetDraftTitle, resetTitle, setTitle],

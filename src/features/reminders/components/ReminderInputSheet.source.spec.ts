@@ -150,13 +150,36 @@ test('voice input uses the top stop action and escapes a stuck native stop', () 
   });
 });
 
-test('successful quick add does not focus the title input again', () => {
-  const saveSuccessBlock = source.slice(
-    source.indexOf('await onSave?.(normalizedTitle);'),
-    source.indexOf('} catch {'),
+test('successful quick add clears the title and refocuses the input while the sheet remains open', () => {
+  const commitSaveBlock = source.slice(
+    source.indexOf('const commitSave = useCallback'),
+    source.indexOf('const handleTitleEndEditing'),
+  );
+  const saveSuccessBlock = commitSaveBlock.slice(
+    commitSaveBlock.indexOf('await onSave?.(normalizedTitle);'),
+    commitSaveBlock.indexOf('} catch {'),
   );
 
-  assert.equal(saveSuccessBlock.includes('focus()'), false);
+  assertSourceIncludes(saveSuccessBlock, [
+    /resetTitle\(\);/,
+    /isOpenRef\.current && !isClosingRef\.current/,
+    /resetDraftTitle\(true\)/,
+  ]);
+  assert.equal(saveSuccessBlock.includes('resetInput('), false);
+});
+
+test('failed quick add keeps the draft and refocuses the input while the sheet remains open', () => {
+  const commitSaveBlock = source.slice(
+    source.indexOf('const commitSave = useCallback'),
+    source.indexOf('const handleTitleEndEditing'),
+  );
+  const saveFailureBlock = commitSaveBlock.slice(commitSaveBlock.indexOf('} catch {'));
+
+  assertSourceIncludes(saveFailureBlock, [
+    /isOpenRef\.current && !isClosingRef\.current/,
+    /titleInputRef\.current\?\.focus\(\)/,
+  ]);
+  assert.equal(saveFailureBlock.includes('resetDraftTitle()'), false);
 });
 
 test('quick add waits for native end editing before saving an active IME session', () => {

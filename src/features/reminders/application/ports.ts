@@ -27,7 +27,6 @@ export type ReminderNotificationScheduleResult =
     };
 
 export type ReminderNotificationScheduleOptions = {
-  soundEnabled: boolean;
   permissionMode?: 'request' | 'check-only';
 };
 
@@ -105,8 +104,14 @@ export type ReminderNotificationGateway = {
     reminder: Reminder,
     options: ReminderNotificationScheduleOptions,
   ): Promise<ReminderSingleNotificationScheduleResult>;
+  getLegacyScheduledNotificationIds(notificationIds: (string | null)[]): Promise<Set<string>>;
   cancel(reminder: Reminder): Promise<void>;
   cancelOne(notificationId: string | null): Promise<void>;
+};
+
+export type ReminderNotificationChannelMigrationGateway = {
+  getVersion(): Promise<number>;
+  setVersion(version: number): Promise<void>;
 };
 
 export type ReminderSettingsGateway = {
@@ -128,4 +133,5 @@ export type ReminderApplicationDependencies = {
   settings: ReminderSettingsGateway;
   widget: WidgetSyncGateway;
   proAccess: ProAccessGateway;
+  notificationChannelMigration: ReminderNotificationChannelMigrationGateway;
 };

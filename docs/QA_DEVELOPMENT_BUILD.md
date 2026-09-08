@@ -238,8 +238,8 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - [ ] テスト通知のタイトルが「通知テスト 前日」「通知テスト 当日」である
 - [ ] 通常モードでは、設定した日時に近いタイミングで通知が届く（実際の日時を短縮して検証）
 - [ ] 通知をタップするとアプリがフォアグラウンドに戻る
-- [ ] Android: 通知音 ON のリマインダーが「リマインダー」通知チャンネルで届く
-- [ ] Android: 通知音 OFF のリマインダーが「リマインダー（通知音なし）」通知チャンネルで届く
+- [ ] Android: 端末の「リマインダー」通知チャンネルで音をOFFにすると、既存・新規リマインダーが無音になる
+- [ ] Android: 端末の「リマインダー」通知チャンネルで音をONに戻すと、既存・新規リマインダーが鳴る
 - [ ] Android: OSの通知チャンネル設定画面で、2つのチャンネル名が確認できる
 - [ ] 通知権限がない状態で追加すると、リマインダーは保存され「通知を予約できませんでした」と表示される
 - [ ] 上記の警告から設定画面へ移動し、必要な権限を許可して戻ると未予約のリマインダーが再予約される
@@ -253,7 +253,7 @@ Expo Goで `Something went wrong. Sorry about that. You can go back to Expo home
 - iOS: `DATE` トリガーが指定時刻付近に動作する
 - Android 12以降: `SCHEDULE_EXACT_ALARM` を使わない `DATE` トリガーは inexact alarm として扱われるため、バックグラウンド／アプリ終了時は指定時刻から最大60分程度の遅延を許容する。遅延した場合は実測時刻と端末のDoze・バッテリー最適化設定を記録する
 - Android: `TIME_INTERVAL` / `DATE` トリガーが通知権限の許可状態に応じて動作する
-- Android: 通知音の有無がチャンネル単位で安定して反映される
+- Android: 音とバイブレーションの変更が「リマインダー」チャンネルのOS設定に従って既存・新規通知へ反映される
 - 予約失敗を成功表示せず、権限回復後はIDがない当日通知・未来の前日通知が個別に再予約され、共通設定と異なる前日時刻も修復される
 
 ---
@@ -706,7 +706,7 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 - [ ] Google Play Console の内部テストまたはクローズドテストにアップロードできる
 - [ ] Androidランチャーで丸/角丸などのマスクがかかってもアイコンが欠けないことを確認する
 - [ ] Androidナビゲーションバーが淡い背景色で、ボタン/ジェスチャー表示が読めることを確認する
-- [ ] Android 13+ 実機で通知権限、通知チャンネル、通知音 ON/OFF を確認する
+- [ ] Android 13+ 実機で通知権限、通知チャンネル、OS側の通知音 ON/OFF を確認する
 - [ ] Android通知ドロワーで小アイコンが白い泡として表示され、通知アクセント色が不自然でない
 - [ ] 追加Sheetと詳細Sheetを開いた状態でAndroid Backキーを押し、画面離脱ではなくSheetだけ閉じることを確認する
 - [ ] Android 小画面端末で Home、追加 Sheet、設定画面、一覧画面が崩れない
@@ -728,7 +728,7 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 - [ ] App Store提出前に `ios.buildNumber` が前回提出版より大きい
 - [ ] 初回App Storeリリースは `ios.supportsTablet = false` のiPhone対象として提出する
 - [ ] iPhone SE 系、標準サイズ、Pro Max 系で Home、追加 Sheet、設定画面、一覧画面が崩れない
-- [ ] iOS 実機で通知権限、通知音 ON/OFF、通知タップ復帰を確認する
+- [ ] iOS 実機で通知権限、OS側の通知音 ON/OFF、通知タップ復帰を確認する
 - [ ] プライバシーポリシーと利用規約の問い合わせ文言が App Store でも不自然でない
 - [ ] `ITSAppUsesNonExemptEncryption = false` が App Store Connect の暗号化申告と一致している
 - [ ] App Store Connectの非消耗型商品 `fuwatto_pro_lifetime` とRevenueCatの`pro` entitlementが接続されている

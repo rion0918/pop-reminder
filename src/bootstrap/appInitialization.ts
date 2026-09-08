@@ -17,6 +17,11 @@ export async function configureAppRuntime() {
 
 export async function prepareAppData() {
   await initializeDatabase();
+  try {
+    await appServices.reminders.migrateLegacyNotificationChannels();
+  } catch (error) {
+    console.warn('Failed to migrate legacy notification channels', error);
+  }
   await appServices.reminders.cleanup();
   try {
     await appServices.reminders.retryPendingNotifications();

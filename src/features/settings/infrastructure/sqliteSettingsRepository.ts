@@ -21,14 +21,18 @@ const defaultSettings: NewAppSettingsRow = {
   previousNotifyTime: '20:00',
   ...DEFAULT_QUICK_ADD_PRESET_TIMES,
   autoDeleteEnabled: true,
-  notificationSoundEnabled: true,
   ...DEFAULT_NOTIFICATION_PERMISSION_SETTINGS,
   ...DEFAULT_RAISE_TO_SPEAK_SETTINGS,
   ...DEFAULT_ANALYTICS_SETTINGS,
   theme: 'lavender',
 };
 
-function toDomain(row: AppSettingsRow): AppSettings {
+type CurrentAppSettingsRow = Omit<
+  AppSettingsRow,
+  'notificationSoundEnabled' | 'notificationChannelVersion'
+>;
+
+function toDomain(row: CurrentAppSettingsRow): AppSettings {
   return {
     id: row.id,
     previousNotifyTime: row.previousNotifyTime,
@@ -37,7 +41,6 @@ function toDomain(row: AppSettingsRow): AppSettings {
     eveningTargetTime: row.eveningTargetTime,
     nightTargetTime: row.nightTargetTime,
     autoDeleteEnabled: row.autoDeleteEnabled,
-    notificationSoundEnabled: row.notificationSoundEnabled,
     notificationPermissionIntroSeen: row.notificationPermissionIntroSeen,
     raiseToSpeakEnabled: row.raiseToSpeakEnabled,
     raiseToSpeakIntroSeen: row.raiseToSpeakIntroSeen,
@@ -48,14 +51,27 @@ function toDomain(row: AppSettingsRow): AppSettings {
 
 async function get() {
   const rows = await db
-    .select()
+    .select({
+      id: appSettings.id,
+      previousNotifyTime: appSettings.previousNotifyTime,
+      defaultTargetTime: appSettings.defaultTargetTime,
+      noonTargetTime: appSettings.noonTargetTime,
+      eveningTargetTime: appSettings.eveningTargetTime,
+      nightTargetTime: appSettings.nightTargetTime,
+      autoDeleteEnabled: appSettings.autoDeleteEnabled,
+      notificationPermissionIntroSeen: appSettings.notificationPermissionIntroSeen,
+      raiseToSpeakEnabled: appSettings.raiseToSpeakEnabled,
+      raiseToSpeakIntroSeen: appSettings.raiseToSpeakIntroSeen,
+      analyticsConsent: appSettings.analyticsConsent,
+      theme: appSettings.theme,
+    })
     .from(appSettings)
     .where(eq(appSettings.id, DEFAULT_SETTINGS_ID))
     .limit(1);
   if (rows[0]) return toDomain(rows[0]);
 
   await db.insert(appSettings).values(defaultSettings);
-  return toDomain(defaultSettings as AppSettingsRow);
+  return toDomain(defaultSettings as CurrentAppSettingsRow);
 }
 
 export const sqliteSettingsRepository: SettingsRepository = {
@@ -85,7 +101,6 @@ export const sqliteSettingsRepository: SettingsRepository = {
           : current.previousNotifyTime,
       ...nextPresetTimes,
       autoDeleteEnabled: input.autoDeleteEnabled ?? current.autoDeleteEnabled,
-      notificationSoundEnabled: input.notificationSoundEnabled ?? current.notificationSoundEnabled,
       notificationPermissionIntroSeen:
         input.notificationPermissionIntroSeen ?? current.notificationPermissionIntroSeen,
       raiseToSpeakEnabled: input.raiseToSpeakEnabled ?? current.raiseToSpeakEnabled,
@@ -102,7 +117,6 @@ export const sqliteSettingsRepository: SettingsRepository = {
         eveningTargetTime: next.eveningTargetTime,
         nightTargetTime: next.nightTargetTime,
         autoDeleteEnabled: next.autoDeleteEnabled,
-        notificationSoundEnabled: next.notificationSoundEnabled,
         notificationPermissionIntroSeen: next.notificationPermissionIntroSeen,
         raiseToSpeakEnabled: next.raiseToSpeakEnabled,
         raiseToSpeakIntroSeen: next.raiseToSpeakIntroSeen,

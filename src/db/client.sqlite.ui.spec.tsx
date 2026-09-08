@@ -62,7 +62,7 @@ const { initializeDatabase } =
   require('./client') as typeof import('./client');
 
 describe('initializeDatabase notification permission compatibility', () => {
-  it('adds the column, records v5, and is idempotent on rerun', async () => {
+  it('adds compatibility columns, records v6, and is idempotent on rerun', async () => {
     const fake = makeDatabase(4, [
       'id',
       'notification_sound_enabled',
@@ -76,16 +76,18 @@ describe('initializeDatabase notification permission compatibility', () => {
 
     await initializeDatabase(fake.database);
 
-    expect(fake.getVersion()).toBe(5);
+    expect(fake.getVersion()).toBe(6);
     expect(fake.getColumns()).toContain('notification_permission_intro_seen');
     expect(fake.getDefinition('notification_permission_intro_seen')).toBe(
       'INTEGER NOT NULL DEFAULT 0',
     );
+    expect(fake.getColumns()).toContain('notification_channel_version');
+    expect(fake.getDefinition('notification_channel_version')).toBe('INTEGER NOT NULL DEFAULT 0');
 
     const statementCount = fake.statements.length;
     await initializeDatabase(fake.database);
 
-    expect(fake.getVersion()).toBe(5);
+    expect(fake.getVersion()).toBe(6);
     expect(fake.statements).toHaveLength(statementCount);
     expect(
       fake.statements.filter((statement) =>

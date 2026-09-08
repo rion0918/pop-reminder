@@ -12,6 +12,8 @@ const mockHapticsNotificationAsync = jest.fn();
 const mockHapticsSelectionAsync = jest.fn();
 const mockEvents: string[] = [];
 let mockSettingsState: AppSettings;
+let mockProAccessState: 'free' | 'pro' | 'unavailable' = 'unavailable';
+const mockRestoreProPurchase = jest.fn(async () => 'no-purchase' as const);
 let mockCalibrationDeferred: Promise<void> | null = null;
 let mockResolveCalibration: (() => void) | null = null;
 let mockRejectCalibration: (() => void) | null = null;
@@ -31,7 +33,6 @@ function makeSettings(): AppSettings {
     eveningTargetTime: '18:00',
     nightTargetTime: '22:00',
     autoDeleteEnabled: true,
-    notificationSoundEnabled: true,
     notificationPermissionIntroSeen: true,
     raiseToSpeakEnabled: false,
     raiseToSpeakIntroSeen: false,
@@ -65,7 +66,7 @@ jest.mock('../../../bootstrap/appServicesContext', () => ({
     purchases: {
       getProAccessState: jest.fn(async () => 'unavailable'),
       presentProPaywallIfNeeded: jest.fn(async () => 'cancelled'),
-      restoreProPurchase: jest.fn(async () => 'no-purchase'),
+      restoreProPurchase: mockRestoreProPurchase,
     },
     raiseToSpeak: {
       prepare: (...args: unknown[]) => mockRaiseToSpeakPrepare(...args),
@@ -131,7 +132,7 @@ jest.mock('../presentation/useNotificationSettings', () => ({
 
 jest.mock('../../purchases/presentation/useProAccessQuery', () => ({
   useProAccessQuery: () => ({
-    proAccessState: 'unavailable',
+    proAccessState: mockProAccessState,
     isProAccessLoading: false,
     refreshProAccess: jest.fn(async () => 'unavailable'),
   }),
@@ -177,6 +178,9 @@ describe('SettingsScreen raise-to-speak setup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockEvents.length = 0;
+    mockProAccessState = 'unavailable';
+    mockRestoreProPurchase.mockClear();
+    mockRestoreProPurchase.mockResolvedValue('no-purchase');
     mockSettingsState = makeSettings();
     mockResolveCalibration = null;
     mockRejectCalibration = null;
@@ -191,6 +195,32 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockHapticsSelectionAsync.mockImplementation(async () => {
       mockEvents.push('selection');
     });
+  });
+
+  it('shows the restore link only after the store confirms free access', async () => {
+    mockProAccessState = 'free';
+    const view = await render(<SettingsScreen />);
+
+    expect(view.getByLabelText('購入済みの方はこちら（購入を復元）')).toBeOnTheScreen();
+  });
+
+  it.each(['unavailable', 'pro'] as const)(
+    'hides the restore link when Pro access is %s',
+    async (accessState) => {
+      mockProAccessState = accessState;
+      const view = await render(<SettingsScreen />);
+
+      expect(view.queryByLabelText('購入済みの方はこちら（購入を復元）')).toBeNull();
+    },
+  );
+
+  it('keeps restoring purchases available from the subtle free-state link', async () => {
+    mockProAccessState = 'free';
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent.press(view.getByLabelText('購入済みの方はこちら（購入を復元）'));
+
+    await waitFor(() => expect(mockRestoreProPurchase).toHaveBeenCalledTimes(1));
   });
 
   it('does not show a dedicated analytics deletion request row', async () => {

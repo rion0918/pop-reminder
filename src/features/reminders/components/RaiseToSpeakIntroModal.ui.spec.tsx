@@ -62,6 +62,7 @@ test('intro exposes the enable action', async () => {
   );
 
   expect(view.getByText('動きを試す')).toBeTruthy();
+  expect(view.queryByText('音声は端末内で処理し、録音を保存しません')).toBeNull();
   const enableButton = view.getByLabelText('左右に傾けて音声入力を使ってみる');
   expect(enableButton).not.toBeDisabled();
   await fireEvent.press(enableButton);

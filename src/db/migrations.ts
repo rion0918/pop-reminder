@@ -4,14 +4,19 @@ export type MigrationDatabase = {
   getAllAsync<T>(sql: string): Promise<T[]>;
 };
 
-const CURRENT_DATABASE_VERSION = 5;
+const CURRENT_DATABASE_VERSION = 6;
 
 export async function runDatabaseMigrations(database: MigrationDatabase) {
   const result = await database.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let version = result?.user_version ?? 0;
   if (version >= CURRENT_DATABASE_VERSION) {
     const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(app_settings)');
-    if (columns.some((column) => column.name === 'analytics_consent')) return;
+    if (
+      columns.some((column) => column.name === 'analytics_consent') &&
+      columns.some((column) => column.name === 'notification_channel_version')
+    ) {
+      return;
+    }
   }
 
   if (version < 1) {
@@ -112,6 +117,17 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
   }
   await database.execAsync(`PRAGMA user_version = 5;`);
 
+  const currentColumns = await database.getAllAsync<{ name: string }>(
+    'PRAGMA table_info(app_settings)',
+  );
+  if (!currentColumns.some((column) => column.name === 'notification_channel_version')) {
+    await database.execAsync(`
+      ALTER TABLE app_settings
+      ADD COLUMN notification_channel_version INTEGER NOT NULL DEFAULT 0;
+    `);
+  }
+  await database.execAsync(`PRAGMA user_version = 6;`);
+
   await database.execAsync(`
     INSERT OR IGNORE INTO app_settings (
       id,
@@ -121,11 +137,11 @@ export async function runDatabaseMigrations(database: MigrationDatabase) {
       evening_target_time,
       night_target_time,
       auto_delete_enabled,
-      notification_sound_enabled,
       raise_to_speak_enabled,
       raise_to_speak_intro_seen,
       analytics_consent,
+      notification_channel_version,
       theme
-    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 1, 0, 0, 'unknown', 'lavender');
+    ) VALUES ('default', '20:00', '08:00', '12:00', '18:00', '20:00', 1, 0, 0, 'unknown', 0, 'lavender');
   `);
 }

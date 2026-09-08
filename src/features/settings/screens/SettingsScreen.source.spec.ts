@@ -35,7 +35,19 @@ test('settings exposes notification permission controls outside the dev-only sec
     /notificationPermissionLabel/,
     /handleRequestNotificationPermission/,
     /handleOpenAppSettings/,
+    /title="通知権限"[\s\S]*?onPress=\{handleOpenAppSettings\}/,
   ]);
+});
+
+test('settings does not expose an in-app notification sound toggle', () => {
+  assertSourceContract(source, {
+    excludes: [
+      /title="通知音"/,
+      /notificationSoundEnabled/,
+      /OS標準の通知音を鳴らします/,
+      /端末の通知設定と連動します/,
+    ],
+  });
 });
 
 test('auto-delete uses a distinct expiration icon from the Pro upgrade', () => {
@@ -57,8 +69,10 @@ test('settings exposes native Pro purchase and independent restore actions', () 
       /presentProPaywallIfNeeded/,
       /handleRestoreProPurchase/,
       /restoreProPurchase/,
-      /!isProAccessLoading && proAccessState !== 'pro'/,
-      /購入を復元/,
+      /!isProAccessLoading && proAccessState === 'free'/,
+      /accessibilityRole="button"\s*accessibilityLabel="購入済みの方はこちら（購入を復元）"/,
+      /購入済みの方はこちら/,
+      /disabled=\{isPurchaseActionPending\}/,
       /proAccessState === 'pro'/,
       /result === 'restored'/,
       /result === 'no-purchase'/,
@@ -72,6 +86,7 @@ test('settings exposes native Pro purchase and independent restore actions', () 
       /現在の利用状態を確認できません/,
       /text-app-white">Pro<\/Text>/,
       /ふわっと。Pro/,
+      /<SettingRow[\s\S]*title="購入を復元"/,
     ],
   });
 });
@@ -204,11 +219,11 @@ test('settings shows the side-tilt voice intro on the first enable before prepar
     /setIsRaiseToSpeakCalibrating\(false\);\s*setRaiseToSpeakCalibrationPhase\('success'\)/,
     /onSuccessComplete=\{\(\) => setRaiseToSpeakCalibrationPhase\('intro'\)\}/,
     /blocked: isRaiseToSpeakSetupBusy/,
-    /音声は端末内で処理し、録音を保存しません/,
     /const permissionLabel = Platform\.OS === 'android' \? 'マイク' : 'マイクとモーション';/,
     /`\$\{permissionLabel\}の権限を許可してください。`/,
     /`端末の設定で\$\{permissionLabel\}の権限を許可してください。`/,
   ]);
+  assert.doesNotMatch(source, /音声は端末内で処理し、録音を保存しません/);
   assert.doesNotMatch(
     source,
     /if \(!settings\.raiseToSpeakIntroSeen\) \{\s*await update\(\{ raiseToSpeakEnabled: true \}\);\s*router\.replace\(['"]\/['"]\)/,

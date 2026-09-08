@@ -16,7 +16,7 @@ type ReminderNotificationTarget = Pick<
 >;
 
 export const REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts';
-export const SILENT_REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-silent';
+const LEGACY_SILENT_REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-silent';
 
 type ScheduleNotificationInput = {
   title: string;
@@ -24,19 +24,16 @@ type ScheduleNotificationInput = {
   date?: Date;
   seconds?: number;
   reminderId: string;
-  soundEnabled?: boolean;
 };
 
 export function configureNotificationHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      const soundEnabled = notification.request.content.data?.soundEnabled === true;
-
+    handleNotification: async () => {
       return {
         shouldShowAlert: true,
         shouldShowBanner: true,
         shouldShowList: true,
-        shouldPlaySound: soundEnabled,
+        shouldPlaySound: true,
         shouldSetBadge: false,
       } as Notifications.NotificationBehavior;
     },
@@ -48,30 +45,14 @@ export async function configureAndroidNotificationChannels() {
     return;
   }
 
-  await Promise.all([
-    Notifications.setNotificationChannelAsync(REMINDER_NOTIFICATION_CHANNEL_ID, {
-      name: 'リマインダー',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      description: 'リマインダーのお知らせを通知音付きで届けます',
-      sound: 'default',
-      enableVibrate: true,
-      showBadge: false,
-    }),
-    Notifications.setNotificationChannelAsync(SILENT_REMINDER_NOTIFICATION_CHANNEL_ID, {
-      name: 'リマインダー（通知音なし）',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      description: '通知音なしでリマインダーのお知らせを届けます',
-      sound: null,
-      enableVibrate: false,
-      showBadge: false,
-    }),
-  ]);
-}
-
-function getReminderNotificationChannelId(soundEnabled?: boolean) {
-  return soundEnabled === false
-    ? SILENT_REMINDER_NOTIFICATION_CHANNEL_ID
-    : REMINDER_NOTIFICATION_CHANNEL_ID;
+  await Notifications.setNotificationChannelAsync(REMINDER_NOTIFICATION_CHANNEL_ID, {
+    name: 'リマインダー',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    description: 'リマインダーのお知らせを届けます。音とバイブレーションは端末設定に従います',
+    sound: 'default',
+    enableVibrate: true,
+    showBadge: false,
+  });
 }
 
 export async function getNotificationPermissionStatus() {
@@ -116,23 +97,19 @@ async function scheduleIfFuture({
   date,
   reminderId,
   seconds,
-  soundEnabled,
 }: ScheduleNotificationInput) {
   if (seconds !== undefined) {
     return Notifications.scheduleNotificationAsync({
       content: {
         title,
         body,
-        sound: Boolean(soundEnabled),
-        data: {
-          reminderId,
-          soundEnabled: Boolean(soundEnabled),
-        },
+        sound: true,
+        data: { reminderId },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds,
-        channelId: getReminderNotificationChannelId(soundEnabled),
+        channelId: REMINDER_NOTIFICATION_CHANNEL_ID,
       },
     });
   }
@@ -149,16 +126,13 @@ async function scheduleIfFuture({
     content: {
       title,
       body,
-      sound: Boolean(soundEnabled),
-      data: {
-        reminderId,
-        soundEnabled: Boolean(soundEnabled),
-      },
+      sound: true,
+      data: { reminderId },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date,
-      channelId: getReminderNotificationChannelId(soundEnabled),
+      channelId: REMINDER_NOTIFICATION_CHANNEL_ID,
     },
   });
 }
@@ -201,7 +175,7 @@ function singleNotificationNotScheduled(
 
 export async function scheduleTargetReminderNotification(
   reminder: ReminderNotificationTarget,
-  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+  options: ReminderNotificationScheduleOptions = {},
 ): Promise<ReminderSingleNotificationScheduleResult> {
   const targetDate = new Date(reminder.targetNotifyAt);
   if (targetDate.getTime() <= Date.now()) {
@@ -219,7 +193,6 @@ export async function scheduleTargetReminderNotification(
       body: `「${reminder.title}」の時間をお知らせします`,
       date: targetDate,
       reminderId: reminder.id,
-      soundEnabled: options.soundEnabled,
     });
     return notificationId
       ? { status: 'scheduled', notificationId }
@@ -232,7 +205,7 @@ export async function scheduleTargetReminderNotification(
 
 export async function schedulePreviousReminderNotification(
   reminder: ReminderNotificationTarget,
-  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+  options: ReminderNotificationScheduleOptions = {},
 ): Promise<ReminderSingleNotificationScheduleResult> {
   const previousDate = new Date(reminder.previousNotifyAt);
   if (previousDate.getTime() <= Date.now()) {
@@ -250,7 +223,6 @@ export async function schedulePreviousReminderNotification(
       body: `明日の「${reminder.title}」をふわっと残しています`,
       date: previousDate,
       reminderId: reminder.id,
-      soundEnabled: options.soundEnabled,
     });
     return notificationId
       ? { status: 'scheduled', notificationId }
@@ -263,7 +235,7 @@ export async function schedulePreviousReminderNotification(
 
 export async function scheduleReminderNotifications(
   reminder: ReminderNotificationTarget,
-  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+  options: ReminderNotificationScheduleOptions = {},
 ): Promise<ReminderNotificationScheduleResult> {
   const targetDate = new Date(reminder.targetNotifyAt);
   if (targetDate.getTime() <= Date.now()) {
@@ -282,7 +254,6 @@ export async function scheduleReminderNotifications(
       body: `「${reminder.title}」の時間をお知らせします`,
       date: targetDate,
       reminderId: reminder.id,
-      soundEnabled: options.soundEnabled,
     });
   } catch (error) {
     console.warn('Failed to schedule target notification', error);
@@ -300,7 +271,6 @@ export async function scheduleReminderNotifications(
       body: `明日の「${reminder.title}」をふわっと残しています`,
       date: new Date(reminder.previousNotifyAt),
       reminderId: reminder.id,
-      soundEnabled: options.soundEnabled,
     });
   } catch (error) {
     console.warn('Failed to schedule previous notification', error);
@@ -319,7 +289,7 @@ export async function scheduleReminderNotifications(
 
 export async function scheduleTestReminderNotifications(
   reminder: Pick<Reminder, 'id' | 'title'>,
-  options: ReminderNotificationScheduleOptions = { soundEnabled: true },
+  options: ReminderNotificationScheduleOptions = {},
 ): Promise<ReminderNotificationScheduleResult> {
   if (!__DEV__) {
     return notScheduled('scheduling-failed');
@@ -337,7 +307,6 @@ export async function scheduleTestReminderNotifications(
       body: `「${reminder.title}」の当日通知テストです`,
       seconds: 20,
       reminderId: reminder.id,
-      soundEnabled: options.soundEnabled,
     });
   } catch (error) {
     console.warn('Failed to schedule target test notification', error);
@@ -354,7 +323,6 @@ export async function scheduleTestReminderNotifications(
       body: `「${reminder.title}」の前日通知テストです`,
       seconds: 10,
       reminderId: reminder.id,
-      soundEnabled: options.soundEnabled,
     });
     return {
       status: 'scheduled',
@@ -390,11 +358,37 @@ export async function cancelAllScheduledNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
+export async function getLegacyScheduledNotificationIds(
+  notificationIds: (string | null)[],
+): Promise<Set<string>> {
+  const candidateIds = new Set(notificationIds.filter((id): id is string => id !== null));
+  if (candidateIds.size === 0) {
+    return new Set();
+  }
+
+  const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+  return new Set(
+    scheduledNotifications
+      .filter((notification) => candidateIds.has(notification.identifier))
+      .filter((notification) => {
+        const trigger = notification.trigger;
+        return (
+          trigger !== null &&
+          typeof trigger === 'object' &&
+          'channelId' in trigger &&
+          trigger.channelId === LEGACY_SILENT_REMINDER_NOTIFICATION_CHANNEL_ID
+        );
+      })
+      .map((notification) => notification.identifier),
+  );
+}
+
 export const reminderNotificationGateway: ReminderNotificationGateway = {
   schedule: scheduleReminderNotifications,
   scheduleTest: scheduleTestReminderNotifications,
   scheduleTarget: scheduleTargetReminderNotification,
   schedulePrevious: schedulePreviousReminderNotification,
+  getLegacyScheduledNotificationIds,
   cancel: cancelReminderNotifications,
   cancelOne: cancelScheduledReminderNotification,
 };

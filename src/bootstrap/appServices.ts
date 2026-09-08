@@ -1,5 +1,6 @@
 import { createReminderUseCases } from '../features/reminders/application/reminderUseCases';
 import { sqliteReminderRepository } from '../features/reminders/infrastructure/sqliteReminderRepository';
+import { sqliteNotificationChannelMigrationRepository } from '../db/notificationChannelMigration';
 import { createSettingsUseCases } from '../features/settings/application/settingsUseCases';
 import { sqliteSettingsRepository } from '../features/settings/infrastructure/sqliteSettingsRepository';
 import {
@@ -37,6 +38,7 @@ const reminderUseCases = createReminderUseCases({
   proAccess: {
     getState: revenueCatPurchaseService.getProAccessState,
   },
+  notificationChannelMigration: sqliteNotificationChannelMigrationRepository,
 });
 
 export const appServices = {

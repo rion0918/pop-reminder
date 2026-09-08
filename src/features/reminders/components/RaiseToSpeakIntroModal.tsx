@@ -367,10 +367,6 @@ export function RaiseToSpeakIntroModal({
               </>
             )}
           </View>
-          <View style={styles.privacyRow}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={palette.mintDeep} />
-            <Text style={styles.privacyText}>音声は端末内で処理し、録音を保存しません</Text>
-          </View>
         </View>
       </View>
     </Modal>
@@ -509,24 +505,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '700',
     textAlign: 'center',
-  },
-  privacyRow: {
-    marginTop: 12,
-    minHeight: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderRadius: 12,
-    paddingHorizontal: 9,
-    backgroundColor: '#EFFAF5',
-  },
-  privacyText: {
-    minWidth: 0,
-    flexShrink: 1,
-    color: palette.mintDeep,
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '800',
   },
   message: {
     marginTop: 12,

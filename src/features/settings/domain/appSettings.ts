@@ -12,7 +12,6 @@ export type AppSettings = {
   eveningTargetTime: string;
   nightTargetTime: string;
   autoDeleteEnabled: boolean;
-  notificationSoundEnabled: boolean;
   notificationPermissionIntroSeen: boolean;
   raiseToSpeakEnabled: boolean;
   raiseToSpeakIntroSeen: boolean;

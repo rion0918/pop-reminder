@@ -12,7 +12,6 @@ const baseSettings: AppSettings = {
   eveningTargetTime: '18:00',
   nightTargetTime: '20:00',
   autoDeleteEnabled: true,
-  notificationSoundEnabled: true,
   notificationPermissionIntroSeen: false,
   raiseToSpeakEnabled: false,
   raiseToSpeakIntroSeen: false,
@@ -60,16 +59,6 @@ function createDependencies(options?: {
     },
   };
 }
-
-test('ordinary settings update persists without syncing the widget', async () => {
-  const { dependencies, events } = createDependencies();
-  const useCases = createSettingsUseCases(dependencies);
-
-  const settings = await useCases.update({ notificationSoundEnabled: false });
-
-  assert.equal(settings.notificationSoundEnabled, false);
-  assert.deepEqual(events, ['persist:{"notificationSoundEnabled":false}']);
-});
 
 test('theme update persists before syncing the widget once', async () => {
   const { dependencies, events } = createDependencies();

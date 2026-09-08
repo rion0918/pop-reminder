@@ -43,6 +43,7 @@ export const appSettings = sqliteTable('app_settings', {
   })
     .notNull()
     .default('unknown'),
+  notificationChannelVersion: integer('notification_channel_version').notNull().default(0),
   theme: text('theme', { enum: ['sky', 'lavender', 'mint'] })
     .notNull()
     .default('lavender'),

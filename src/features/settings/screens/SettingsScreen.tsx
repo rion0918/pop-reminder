@@ -83,7 +83,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '2. 端末内に保存する情報',
-      body: 'リマインダーの表示・編集・通知・整理のため、タイトル、日時、リマインダーID、通知ID、作成・更新日時、期限・状態を端末内に保存します。通知音、テーマ、時刻プリセット、自動整理、音声入力、分析への同意などの設定も保存します。購入管理SDKの識別子・購入状態のキャッシュ、同意後の分析用識別子・未送信イベントも端末内に保存される場合があります。ログイン・アカウント作成機能や、開発者によるリマインダーの外部サーバー同期はありません。OSのバックアップ設定によっては、端末内のデータがバックアップの対象となり、復元される場合があります。バックアップの管理・削除はOSやバックアップサービスの設定から行ってください。',
+      body: 'リマインダーの表示・編集・通知・整理のため、タイトル、日時、リマインダーID、通知ID、作成・更新日時、期限・状態を端末内に保存します。テーマ、時刻プリセット、自動整理、音声入力、分析への同意などの設定も保存します。購入管理SDKの識別子・購入状態のキャッシュ、同意後の分析用識別子・未送信イベントも端末内に保存される場合があります。ログイン・アカウント作成機能や、開発者によるリマインダーの外部サーバー同期はありません。OSのバックアップ設定によっては、端末内のデータがバックアップの対象となり、復元される場合があります。バックアップの管理・削除はOSやバックアップサービスの設定から行ってください。',
     },
     {
       title: '3. 通知権限とWidget',
@@ -723,17 +723,20 @@ export function SettingsScreen() {
                   ) : null}
                 </Pressable>
               )}
-              {!isProAccessLoading && proAccessState !== 'pro' ? (
-                <>
-                  <View className="ml-[50px] h-px bg-[rgba(220,233,247,0.78)]" />
-                  <SettingRow
-                    icon="refresh-outline"
-                    title="購入を復元"
-                    onPress={() => void handleRestoreProPurchase()}
-                  >
-                    <Ionicons name="chevron-forward" size={18} color={palette.muted} />
-                  </SettingRow>
-                </>
+              {!isProAccessLoading && proAccessState === 'free' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="購入済みの方はこちら（購入を復元）"
+                  accessibilityState={{ disabled: isPurchaseActionPending }}
+                  disabled={isPurchaseActionPending}
+                  onPress={() => void handleRestoreProPurchase()}
+                  className="items-center py-[8px]"
+                  style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+                >
+                  <Text className="text-[12px] font-semibold text-app-muted underline">
+                    購入済みの方はこちら
+                  </Text>
+                </Pressable>
               ) : null}
             </View>
           ) : null}
@@ -758,28 +761,14 @@ export function SettingsScreen() {
             </SettingRow>
             <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
             <SettingRow
-              icon="volume-medium-outline"
-              title="通知音"
-              onPress={() => {
-                void update({ notificationSoundEnabled: !settings.notificationSoundEnabled });
-              }}
+              icon="notifications-outline"
+              title="通知権限"
+              onPress={handleOpenAppSettings}
             >
-              <Switch
-                value={settings.notificationSoundEnabled}
-                onValueChange={(value) => {
-                  void update({ notificationSoundEnabled: value });
-                }}
-                trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
-                thumbColor={
-                  settings.notificationSoundEnabled ? palette.lavenderDeep : palette.white
-                }
-              />
-            </SettingRow>
-            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-            <SettingRow icon="notifications-outline" title="通知権限">
               <Text className="text-[13px] font-extrabold text-app-muted">
                 {notificationPermissionLabel}
               </Text>
+              <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>
             {!isNotificationPermissionGranted ? (
               <>
@@ -854,9 +843,6 @@ export function SettingsScreen() {
                 />
               )}
             </SettingRow>
-            <Text className="mb-[12px] ml-[46px] text-[11px] font-semibold leading-[17px] text-app-muted">
-              音声は端末内で処理し、録音を保存しません
-            </Text>
           </View>
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
