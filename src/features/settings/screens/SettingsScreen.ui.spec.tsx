@@ -7,11 +7,18 @@ const mockRouter = {
   replace: jest.fn(),
 };
 const mockSettingsUpdate = jest.fn();
+const mockPreviousTimeUpdate = jest.fn(async (value: string) => ({
+  settings: { ...mockSettingsState, previousNotifyTime: value },
+  skippedPastCount: 0,
+  failedReminderCount: 0,
+}));
 const mockRaiseToSpeakPrepare = jest.fn();
 const mockHapticsNotificationAsync = jest.fn();
 const mockHapticsSelectionAsync = jest.fn();
 const mockEvents: string[] = [];
 let mockSettingsState: AppSettings;
+let mockSettingsLoading = false;
+let mockPreviousTimePending = false;
 let mockProAccessState: 'free' | 'pro' | 'unavailable' = 'unavailable';
 const mockRestoreProPurchase = jest.fn(async () => 'no-purchase' as const);
 let mockCalibrationDeferred: Promise<void> | null = null;
@@ -105,13 +112,13 @@ jest.mock('../presentation/useAppSettingsQuery', () => {
 
       return {
         settings,
-        loading: false,
+        loading: mockSettingsLoading,
         refresh: jest.fn(async () => ({ data: settings })),
         update,
         updateAnalyticsConsent: (analyticsConsent: AppSettings['analyticsConsent']) =>
           update({ analyticsConsent }),
-        updatePreviousNotifyTime: jest.fn(),
-        isUpdatingPreviousNotifyTime: false,
+        updatePreviousNotifyTime: mockPreviousTimeUpdate,
+        isUpdatingPreviousNotifyTime: mockPreviousTimePending,
       };
     },
   };
@@ -157,7 +164,27 @@ jest.mock('../../../shared/components/AppScreen', () => {
 });
 
 jest.mock('../../../shared/components/TimePickerModal', () => ({
-  TimePickerModal: () => null,
+  TimePickerModal: ({
+    visible,
+    title = '前日の時刻',
+    value,
+    onConfirm,
+  }: {
+    visible: boolean;
+    title?: string;
+    value: string;
+    onConfirm: (value: string) => void;
+  }) => {
+    const React = jest.requireActual<typeof import('react')>('react');
+    const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native');
+    return visible
+      ? React.createElement(
+          Pressable,
+          { accessibilityLabel: title, onPress: () => onConfirm(value.replace(':00', ':15')) },
+          React.createElement(Text, null, value),
+        )
+      : null;
+  },
 }));
 
 jest.mock('../../reminders/hooks/useRaiseToSpeakGesture', () => ({
@@ -182,6 +209,8 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockRestoreProPurchase.mockClear();
     mockRestoreProPurchase.mockResolvedValue('no-purchase');
     mockSettingsState = makeSettings();
+    mockSettingsLoading = false;
+    mockPreviousTimePending = false;
     mockResolveCalibration = null;
     mockRejectCalibration = null;
     mockCalibrationDeferred = new Promise<void>((resolve) => {
@@ -195,6 +224,84 @@ describe('SettingsScreen raise-to-speak setup', () => {
     mockHapticsSelectionAsync.mockImplementation(async () => {
       mockEvents.push('selection');
     });
+  });
+
+  it('keeps editable controls hidden until settings are loaded', async () => {
+    mockSettingsLoading = true;
+    const view = await render(<SettingsScreen />);
+    expect(view.queryByLabelText('朝の時刻を変更')).toBeNull();
+    expect(view.queryByLabelText('ドリームテーマを選択')).toBeNull();
+    view.unmount();
+  });
+
+  it('edits the previous notification time from the timeline', async () => {
+    const view = await render(<SettingsScreen />);
+    await fireEvent.press(view.getByLabelText('前日のお知らせ時刻を変更'));
+    await fireEvent.press(view.getByLabelText('前日の時刻'));
+    await waitFor(() => expect(mockPreviousTimeUpdate).toHaveBeenCalledWith('20:15'));
+    expect(view.getByLabelText('前日のお知らせ時刻を変更')).toHaveAccessibilityValue({
+      text: '20:15',
+    });
+    view.unmount();
+  });
+
+  it('preserves the independent analytics consent control', async () => {
+    const view = await render(<SettingsScreen />);
+    await fireEvent(view.getByLabelText('匿名の利用状況を共有'), 'valueChange', true);
+    await waitFor(() =>
+      expect(mockSettingsUpdate).toHaveBeenCalledWith({ analyticsConsent: 'granted' }),
+    );
+    view.unmount();
+  });
+
+  it('prevents reopening the previous-time picker while saving', async () => {
+    mockPreviousTimePending = true;
+    const view = await render(<SettingsScreen />);
+    expect(view.getByLabelText('前日のお知らせ時刻を変更')).toBeDisabled();
+    await fireEvent.press(view.getByLabelText('前日のお知らせ時刻を変更'));
+    expect(view.queryByLabelText('前日の時刻')).toBeNull();
+    view.unmount();
+  });
+
+  it('shows all four preset times without expanding and updates the selected theme', async () => {
+    const view = await render(<SettingsScreen />);
+    for (const label of ['朝', '昼', '夕', '夜']) {
+      expect(view.getByLabelText(`${label}の時刻を変更`)).toBeOnTheScreen();
+    }
+    expect(view.getByText('08:00')).toBeOnTheScreen();
+    expect(view.getByLabelText('ドリームテーマを選択')).toHaveProp('accessibilityState', {
+      selected: true,
+    });
+    await fireEvent.press(view.getByLabelText('ブリーズテーマを選択'));
+    await waitFor(() => expect(mockSettingsUpdate).toHaveBeenCalledWith({ theme: 'mint' }));
+    expect(view.getByLabelText('ブリーズテーマを選択')).toHaveProp('accessibilityState', {
+      selected: true,
+    });
+    view.unmount();
+  });
+
+  it.each([
+    ['朝', 'defaultTargetTime', '08:15'],
+    ['昼', 'noonTargetTime', '12:15'],
+    ['夕', 'eveningTargetTime', '18:15'],
+    ['夜', 'nightTargetTime', '22:15'],
+  ])('edits the %s time through its tile', async (label, key, nextValue) => {
+    const view = await render(<SettingsScreen />);
+    await fireEvent.press(view.getByLabelText(`${label}の時刻を変更`));
+    await fireEvent.press(view.getByLabelText(`${label}の時刻を選択`));
+    await waitFor(() => expect(mockSettingsUpdate).toHaveBeenCalledWith({ [key]: nextValue }));
+    view.unmount();
+  });
+
+  it('explains automatic deletion and exposes its current state accessibly', async () => {
+    const view = await render(<SettingsScreen />);
+    expect(view.getByText('予定日を過ぎた泡を、アプリ起動時などに削除')).toBeOnTheScreen();
+    await fireEvent(view.getByLabelText('自動消滅'), 'valueChange', false);
+    await waitFor(() =>
+      expect(mockSettingsUpdate).toHaveBeenCalledWith({ autoDeleteEnabled: false }),
+    );
+    expect(view.getByText('泡を残す')).toBeOnTheScreen();
+    view.unmount();
   });
 
   it('shows the restore link only after the store confirms free access', async () => {

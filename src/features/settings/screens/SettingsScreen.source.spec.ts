@@ -8,6 +8,7 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './SettingsScreen.tsx');
+const visuals = readSource(import.meta.url, '../components/SettingsVisuals.tsx');
 
 test('settings uses the dream theme before a persisted theme is available', () => {
   assertSourceIncludes(source, [/settings\?\.theme \?\? 'lavender'/]);
@@ -106,11 +107,8 @@ test('settings exposes four independently editable quick-add preset times', () =
     /nightTargetTime/,
     /TimePickerModal/,
     /QUICK_ADD_PRESET_VALIDATION_MESSAGE/,
-    /isQuickAddPresetSectionOpen/,
-    /accessibilityState=\{\{ expanded: isQuickAddPresetSectionOpen \}\}/,
-    /setIsQuickAddPresetSectionOpen\(\(current\) => !current\)/,
-    /isQuickAddPresetSectionOpen \?/,
-    /const \[isQuickAddPresetSectionOpen, setIsQuickAddPresetSectionOpen\] = useState\(false\);/,
+    /<SettingsTimeTile/,
+    /onPress=\{\(\) => setQuickAddPresetPickerKey\(preset.key\)\}/,
   ]);
 });
 
@@ -121,7 +119,7 @@ test('settings applies the shared previous time to existing reminders with obser
       /isUpdatingPreviousNotifyTime/,
       /result\.skippedPastCount/,
       /result\.failedReminderCount/,
-      /disabled=\{isUpdatingPreviousNotifyTime\}/,
+      /pending=\{isUpdatingPreviousNotifyTime\}/,
     ],
     excludes: [
       /すべての泡に共通/,
@@ -140,7 +138,7 @@ test('settings applies the shared previous time to existing reminders with obser
 test('settings edits the shared previous time directly from its value button', () => {
   assertSourceContract(source, {
     includes: [
-      /accessibilityLabel="前日のお知らせ時刻を変更"/,
+      /<SettingsNotificationTimeline/,
       /onPress=\{\(\) => setIsPreviousTimePickerOpen\(true\)\}/,
       /visible=\{isPreviousTimePickerOpen\}/,
     ],
@@ -162,7 +160,7 @@ test('settings uses distinct time-of-day icons for quick-add preset times', () =
     /key: 'noonTargetTime', label: '昼', icon: 'sunny-outline'/,
     /key: 'eveningTargetTime', label: '夕', icon: 'cloudy-night-outline'/,
     /key: 'nightTargetTime', label: '夜', icon: 'moon-outline'/,
-    /<SettingRow icon=\{preset\.icon\} title=\{preset\.label\}/,
+    /icon=\{preset\.icon\}/,
   ]);
 });
 
@@ -265,43 +263,26 @@ test('settings only reports a successful test notification after both notificati
   ]);
 });
 
-test('settings action controls stay inside compact Android widths', () => {
+test('settings visual controls use wrapping layouts and accessible selection', () => {
+  assertSourceIncludes(visuals, [
+    /sky: 'ドーン'/,
+    /lavender: 'ドリーム'/,
+    /mint: 'ブリーズ'/,
+    /accessibilityState=\{\{ selected: active \}\}/,
+    /accessibilityLabel="前日のお知らせ時刻を変更"/,
+    /disabled=\{pending\}/,
+    /flexWrap: 'wrap'/,
+    /minHeight: 100/,
+    /minHeight: 112/,
+  ]);
   assertSourceContract(source, {
     includes: [
-      /sky: 'ドーン'/,
-      /lavender: 'ドリーム'/,
-      /mint: 'ブリーズ'/,
-      /テーマを選択/,
-      /className="mb-\[12px\] flex-row items-center gap-\[12px\]"/,
-      /className="rounded-\[24px\] border border-\[rgba\(220,233,247,0\.78\)\] bg-\[#F6FAFF\] p-\[4px\]"/,
-      /className="min-w-0 flex-1 items-center justify-center gap-\[5px\] px-\[6px\]"/,
-      /accessibilityState=\{\{ selected: active \}\}/,
-      /style=\{\(\{ pressed \}\) => \[[\s\S]*styles\.themeButton[\s\S]*backgroundColor: active \? palette\.white : appThemes\[theme\]\.accentSoft[\s\S]*borderColor: active \? appThemes\[theme\]\.accent : 'transparent'/,
-      /styles\.themeSwatch[\s\S]*backgroundColor: active[\s\S]*\? appThemes\[theme\]\.accentSoft[\s\S]*: appThemes\[theme\]\.accent/,
-      /active \? \([\s\S]*<Ionicons name="checkmark" size=\{11\} color=\{appThemes\[theme\]\.accent\} \/>[\s\S]*\) : null/,
-      /color: appThemes\[theme\]\.accent,/,
-      /themeButton: \{[\s\S]*minHeight: 58,[\s\S]*borderRadius: 20,/,
-      /themeSwatch: \{[\s\S]*height: 18,[\s\S]*width: 18,[\s\S]*borderRadius: 9,/,
-      /themeLabel: \{[\s\S]*fontSize: 13,[\s\S]*lineHeight: 16,[\s\S]*fontWeight: '900',/,
-      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*className="shrink text-\[14px\] font-extrabold text-app-white"[\s\S]*style=\{styles\.noFontPadding\}/,
-      /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*adjustsFontSizeToFit[\s\S]*minimumFontScale=\{0\.72\}[\s\S]*className="shrink text-\[14px\] font-extrabold text-app-ink"[\s\S]*style=\{styles\.noFontPadding\}/,
-      /noFontPadding: \{[\s\S]*includeFontPadding: false,/,
+      /flexWrap: 'wrap'/,
+      /<SettingsThemePicker/,
+      /<SettingsAutoDeletePreview/,
+      /<SettingsVoicePreview/,
     ],
-    excludes: [
-      /min-w-\[58px\]/,
-      /themeButtonWide/,
-      /backgroundColor: active \? appThemes\[theme\]\.accent : '#F6FAFF'/,
-      /borderColor: active \? appThemes\[theme\]\.accent : palette\.line/,
-      /active \? 'text-app-white' : 'text-app-muted'/,
-      /color: active \? palette\.white : appThemes\[theme\]\.accent/,
-      /<SettingRow[\s\S]*icon="color-palette-outline"[\s\S]*title="テーマ"/,
-      /そら/,
-      /らべんだー/,
-      /みんと/,
-      /sky: 'Dawn'/,
-      /lavender: 'Dream'/,
-      /mint: 'Breeze'/,
-    ],
+    excludes: [/isQuickAddPresetSectionOpen/],
   });
 });
 

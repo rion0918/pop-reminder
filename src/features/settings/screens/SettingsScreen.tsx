@@ -30,12 +30,20 @@ import {
 } from '../../reminders/hooks/useRaiseToSpeakGesture';
 import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { SettingRow } from '../components/SettingRow';
+import {
+  SettingsSection,
+  SettingsThemePicker,
+  SettingsTimeTile,
+  SettingsNotificationTimeline,
+  SettingsAutoDeletePreview,
+  SettingsVoicePreview,
+} from '../components/SettingsVisuals';
 import { useAppSettingsQuery as useAppSettings } from '../presentation/useAppSettingsQuery';
 import { useNotificationSettings } from '../presentation/useNotificationSettings';
 import { useProAccessQuery } from '../../purchases/presentation/useProAccessQuery';
 import { AppScreen } from '../../../shared/components/AppScreen';
 import { TimePickerModal } from '../../../shared/components/TimePickerModal';
-import { type AppTheme, appThemes, palette, themeOptions } from '../../../constants/colors';
+import { type AppTheme, palette } from '../../../constants/colors';
 import {
   isValidQuickAddPresetTimes,
   QUICK_ADD_PRESET_VALIDATION_MESSAGE,
@@ -55,12 +63,6 @@ const quickAddPresetRows: { key: QuickAddPresetKey; label: string; icon: QuickAd
   { key: 'eveningTargetTime', label: '夕', icon: 'cloudy-night-outline' },
   { key: 'nightTargetTime', label: '夜', icon: 'moon-outline' },
 ];
-
-const themeLabels: Record<AppTheme, string> = {
-  sky: 'ドーン',
-  lavender: 'ドリーム',
-  mint: 'ブリーズ',
-};
 
 type LegalSection = {
   title: string;
@@ -220,7 +222,6 @@ export function SettingsScreen() {
   );
   const [previousTime, setPreviousTime] = useState('20:00');
   const [isPreviousTimePickerOpen, setIsPreviousTimePickerOpen] = useState(false);
-  const [isQuickAddPresetSectionOpen, setIsQuickAddPresetSectionOpen] = useState(false);
   const [quickAddPresetPickerKey, setQuickAddPresetPickerKey] = useState<QuickAddPresetKey | null>(
     null,
   );
@@ -668,12 +669,146 @@ export function SettingsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Image
-            source={appIcon}
-            className="mb-[30px] mt-[18px] h-[156px] w-[156px] self-center rounded-[36px]"
-            style={styles.appIconShadow}
-          />
-
+          <SettingsSection title="テーマ">
+            <SettingsThemePicker
+              value={settings.theme}
+              onChange={(theme) => void saveTheme(theme)}
+            />
+          </SettingsSection>
+          <SettingsSection title="お知らせ">
+            <SettingsNotificationTimeline
+              value={previousTime}
+              pending={isUpdatingPreviousNotifyTime}
+              onPress={() => setIsPreviousTimePickerOpen(true)}
+            />
+            <SettingRow icon="notifications-outline" title="通知" onPress={handleOpenAppSettings}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="通知設定を開く"
+                onPress={() => void handleOpenAppSettings()}
+                hitSlop={4}
+                className="min-h-[44px] flex-row items-center gap-[8px] rounded-[14px]"
+                style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
+              >
+                <View
+                  className={
+                    isNotificationPermissionGranted
+                      ? 'flex-row items-center gap-[5px] rounded-[12px] bg-[#E9F8F1] px-[9px] py-[7px]'
+                      : 'flex-row items-center gap-[5px] rounded-[12px] bg-[#FFF4E7] px-[9px] py-[7px]'
+                  }
+                >
+                  <Ionicons
+                    name={
+                      isNotificationPermissionGranted ? 'checkmark-circle' : 'alert-circle-outline'
+                    }
+                    size={16}
+                    color={isNotificationPermissionGranted ? palette.mintDeep : palette.peachDeep}
+                  />
+                  <Text
+                    className={
+                      isNotificationPermissionGranted
+                        ? 'text-[12px] font-black text-app-mint-deep'
+                        : 'text-[12px] font-black text-app-peach-deep'
+                    }
+                  >
+                    {notificationPermissionLabel}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+              </Pressable>
+            </SettingRow>
+            {!isNotificationPermissionGranted ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={
+                  canAskNotificationPermissionAgain
+                    ? handleRequestNotificationPermission
+                    : handleOpenAppSettings
+                }
+                className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
+              >
+                <Ionicons
+                  name={
+                    canAskNotificationPermissionAgain ? 'notifications-outline' : 'settings-outline'
+                  }
+                  size={18}
+                  color={palette.white}
+                />
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  className="shrink text-[14px] font-extrabold text-app-white"
+                  style={styles.noFontPadding}
+                >
+                  {canAskNotificationPermissionAgain
+                    ? '通知権限をリクエスト'
+                    : '端末の通知設定を開く'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </SettingsSection>
+          <SettingsSection title="クイック追加の時刻">
+            <View style={styles.presetGrid}>
+              {quickAddPresetRows.map((preset, index) => (
+                <SettingsTimeTile
+                  key={preset.key}
+                  label={preset.label}
+                  icon={preset.icon}
+                  value={settings[preset.key]}
+                  color={
+                    [palette.skyDeep, palette.peachDeep, palette.lavenderDeep, palette.ink][index]
+                  }
+                  background={['#EDF5FF', '#FFF5E5', '#F2ECFF', '#EDF0F8'][index]}
+                  onPress={() => setQuickAddPresetPickerKey(preset.key)}
+                />
+              ))}
+            </View>
+          </SettingsSection>
+          <SettingsSection title="泡と音声入力">
+            <SettingRow
+              icon="hourglass-outline"
+              title="自動消滅"
+              onPress={() => {
+                void update({ autoDeleteEnabled: !settings.autoDeleteEnabled });
+              }}
+            >
+              <Switch
+                accessibilityLabel="自動消滅"
+                value={settings.autoDeleteEnabled}
+                onValueChange={(value) => {
+                  void update({ autoDeleteEnabled: value });
+                }}
+                trackColor={{ false: '#DDE7F4', true: '#BFEBD9' }}
+                thumbColor={settings.autoDeleteEnabled ? palette.mintDeep : palette.white}
+              />
+            </SettingRow>
+            <SettingsAutoDeletePreview enabled={settings.autoDeleteEnabled} />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="mic-outline"
+              title="左右に傾けて音声入力"
+              onPress={() => void handleRaiseToSpeakEnabledChange(!settings.raiseToSpeakEnabled)}
+            >
+              {isRaiseToSpeakUpdatePending ? (
+                <ActivityIndicator size="small" color={palette.lavenderDeep} />
+              ) : (
+                <Switch
+                  accessibilityLabel="左右に傾けて音声入力"
+                  value={settings.raiseToSpeakEnabled}
+                  onValueChange={(value) => void handleRaiseToSpeakEnabledChange(value)}
+                  trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
+                  thumbColor={settings.raiseToSpeakEnabled ? palette.lavenderDeep : palette.white}
+                />
+              )}
+            </SettingRow>
+            <SettingsVoicePreview enabled={settings.raiseToSpeakEnabled} />
+          </SettingsSection>
+          <View style={styles.informationHeading}>
+            <Text accessibilityRole="header" className="text-[15px] font-extrabold text-app-ink">
+              Pro・アプリ情報
+            </Text>
+          </View>
           {isNativePurchasePlatform ? (
             <View className="mb-[18px] rounded-[24px] border border-[rgba(168,145,245,0.26)] bg-[rgba(255,255,255,0.88)] px-[16px] py-[14px]">
               {isProAccessLoading || proAccessState === 'pro' ? (
@@ -730,7 +865,7 @@ export function SettingsScreen() {
                   accessibilityState={{ disabled: isPurchaseActionPending }}
                   disabled={isPurchaseActionPending}
                   onPress={() => void handleRestoreProPurchase()}
-                  className="items-center py-[8px]"
+                  className="min-h-[44px] items-center justify-center py-[8px]"
                   style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
                 >
                   <Text className="text-[12px] font-semibold text-app-muted underline">
@@ -740,259 +875,6 @@ export function SettingsScreen() {
               ) : null}
             </View>
           ) : null}
-
-          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
-            <SettingRow icon="notifications-outline" title="前日のお知らせ時刻">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="前日のお知らせ時刻を変更"
-                accessibilityState={{ disabled: isUpdatingPreviousNotifyTime }}
-                onPress={() => setIsPreviousTimePickerOpen(true)}
-                disabled={isUpdatingPreviousNotifyTime}
-                className="h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border border-app-line bg-[#F6FAFF]"
-                style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
-              >
-                {isUpdatingPreviousNotifyTime ? (
-                  <ActivityIndicator size="small" color={palette.lavenderDeep} />
-                ) : (
-                  <Text className="text-[15px] font-extrabold text-app-ink">{previousTime}</Text>
-                )}
-              </Pressable>
-            </SettingRow>
-            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-            <SettingRow
-              icon="notifications-outline"
-              title="通知"
-              onPress={handleOpenAppSettings}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="通知設定を開く"
-                onPress={() => void handleOpenAppSettings()}
-                hitSlop={4}
-                className="flex-row items-center gap-[8px] rounded-[14px]"
-                style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
-              >
-                <View
-                  className={
-                    isNotificationPermissionGranted
-                      ? 'flex-row items-center gap-[5px] rounded-[12px] bg-[#E9F8F1] px-[9px] py-[7px]'
-                      : 'flex-row items-center gap-[5px] rounded-[12px] bg-[#FFF4E7] px-[9px] py-[7px]'
-                  }
-                >
-                  <Ionicons
-                    name={
-                      isNotificationPermissionGranted
-                        ? 'checkmark-circle'
-                        : 'alert-circle-outline'
-                    }
-                    size={16}
-                    color={
-                      isNotificationPermissionGranted ? palette.mintDeep : palette.peachDeep
-                    }
-                  />
-                  <Text
-                    className={
-                      isNotificationPermissionGranted
-                        ? 'text-[12px] font-black text-app-mint-deep'
-                        : 'text-[12px] font-black text-app-peach-deep'
-                    }
-                >
-                  {notificationPermissionLabel}
-                </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={palette.muted} />
-              </Pressable>
-            </SettingRow>
-            {!isNotificationPermissionGranted ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={
-                  canAskNotificationPermissionAgain
-                    ? handleRequestNotificationPermission
-                    : handleOpenAppSettings
-                }
-                className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
-              >
-                <Ionicons
-                  name={
-                    canAskNotificationPermissionAgain ? 'notifications-outline' : 'settings-outline'
-                  }
-                  size={18}
-                  color={palette.white}
-                />
-                <Text
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.72}
-                  className="shrink text-[14px] font-extrabold text-app-white"
-                  style={styles.noFontPadding}
-                >
-                  {canAskNotificationPermissionAgain
-                    ? '通知権限をリクエスト'
-                    : '端末の通知設定を開く'}
-                </Text>
-              </Pressable>
-            ) : null}
-            <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-            <SettingRow
-              icon="hourglass-outline"
-              title="自動消滅"
-              onPress={() => {
-                void update({ autoDeleteEnabled: !settings.autoDeleteEnabled });
-              }}
-            >
-              <Switch
-                value={settings.autoDeleteEnabled}
-                onValueChange={(value) => {
-                  void update({ autoDeleteEnabled: value });
-                }}
-                trackColor={{ false: '#DDE7F4', true: '#BFEBD9' }}
-                thumbColor={settings.autoDeleteEnabled ? palette.mintDeep : palette.white}
-              />
-            </SettingRow>
-          </View>
-
-          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
-            <SettingRow
-              icon="mic-outline"
-              title="左右に傾けて音声入力"
-              onPress={() => void handleRaiseToSpeakEnabledChange(!settings.raiseToSpeakEnabled)}
-            >
-              {isRaiseToSpeakUpdatePending ? (
-                <ActivityIndicator size="small" color={palette.lavenderDeep} />
-              ) : (
-                <Switch
-                  accessibilityLabel="左右に傾けて音声入力"
-                  value={settings.raiseToSpeakEnabled}
-                  onValueChange={(value) => void handleRaiseToSpeakEnabledChange(value)}
-                  trackColor={{ false: '#DDE7F4', true: '#D8CCFF' }}
-                  thumbColor={settings.raiseToSpeakEnabled ? palette.lavenderDeep : palette.white}
-                />
-              )}
-            </SettingRow>
-          </View>
-
-          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="クイック追加の時刻設定を開閉"
-              accessibilityState={{ expanded: isQuickAddPresetSectionOpen }}
-              onPress={() => setIsQuickAddPresetSectionOpen((current) => !current)}
-              className="min-h-[64px] flex-row items-center gap-[12px] py-[10px]"
-            >
-              <View className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[17px] bg-[#F2F7FE]">
-                <Ionicons name="time-outline" size={20} color={palette.muted} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text
-                  className="text-[14px] font-extrabold leading-[19px] text-app-ink"
-                  style={styles.noFontPadding}
-                >
-                  クイック追加の時刻
-                </Text>
-              </View>
-              <Ionicons
-                name={isQuickAddPresetSectionOpen ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={palette.muted}
-              />
-            </Pressable>
-            {isQuickAddPresetSectionOpen
-              ? quickAddPresetRows.map((preset, index) => (
-                  <View key={preset.key}>
-                    <SettingRow icon={preset.icon} title={preset.label}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`${preset.label}の時刻を変更`}
-                        onPress={() => setQuickAddPresetPickerKey(preset.key)}
-                        className="h-[38px] min-w-[72px] items-center justify-center rounded-[14px] border border-app-line bg-[#F6FAFF]"
-                        style={({ pressed }) => [pressed ? styles.timeValueButtonPressed : null]}
-                      >
-                        <Text className="text-[15px] font-extrabold text-app-ink">
-                          {settings[preset.key]}
-                        </Text>
-                      </Pressable>
-                    </SettingRow>
-                    {index < quickAddPresetRows.length - 1 ? (
-                      <View className="ml-[46px] h-px bg-[rgba(220,233,247,0.78)]" />
-                    ) : null}
-                  </View>
-                ))
-              : null}
-          </View>
-
-          <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[14px]">
-            <View className="mb-[12px] flex-row items-center gap-[12px]">
-              <View className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[17px] bg-[#F2F7FE]">
-                <Ionicons name="color-palette-outline" size={20} color={palette.muted} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text
-                  className="text-[14px] font-extrabold leading-[19px] text-app-ink"
-                  style={styles.noFontPadding}
-                >
-                  テーマ
-                </Text>
-              </View>
-            </View>
-            <View className="rounded-[24px] border border-[rgba(220,233,247,0.78)] bg-[#F6FAFF] p-[4px]">
-              <View className="min-w-0 flex-row gap-[4px]">
-                {themeOptions.map((theme) => {
-                  const active = theme === settings.theme;
-
-                  return (
-                    <Pressable
-                      key={theme}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${themeLabels[theme]}テーマを選択`}
-                      accessibilityState={{ selected: active }}
-                      onPress={() => saveTheme(theme)}
-                      className="min-w-0 flex-1 items-center justify-center gap-[5px] px-[6px]"
-                      style={({ pressed }) => [
-                        styles.themeButton,
-                        {
-                          backgroundColor: active ? palette.white : appThemes[theme].accentSoft,
-                          borderColor: active ? appThemes[theme].accent : 'transparent',
-                        },
-                        active ? styles.themeButtonActive : null,
-                        pressed ? styles.themeButtonPressed : null,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.themeSwatch,
-                          {
-                            backgroundColor: active
-                              ? appThemes[theme].accentSoft
-                              : appThemes[theme].accent,
-                          },
-                        ]}
-                      >
-                        {active ? (
-                          <Ionicons name="checkmark" size={11} color={appThemes[theme].accent} />
-                        ) : null}
-                      </View>
-                      <Text
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.78}
-                        className="text-[13px] font-black"
-                        style={[
-                          styles.themeLabel,
-                          {
-                            color: appThemes[theme].accent,
-                          },
-                        ]}
-                      >
-                        {themeLabels[theme]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
 
           <View className="mb-[18px] rounded-[24px] bg-[rgba(255,255,255,0.82)] px-[16px] py-[4px]">
             <SettingRow icon="analytics-outline" title="匿名の利用状況を共有">
@@ -1034,6 +916,11 @@ export function SettingsScreen() {
             >
               <Ionicons name="chevron-forward" size={18} color={palette.muted} />
             </SettingRow>
+          </View>
+
+          <View style={styles.brand}>
+            <Image source={appIcon} style={styles.brandIcon} accessibilityIgnoresInvertColors />
+            <Text className="text-[14px] font-extrabold text-app-muted">ふわっと。</Text>
           </View>
 
           {__DEV__ ? (
@@ -1193,47 +1080,17 @@ const styles = StyleSheet.create({
     opacity: 0.82,
     transform: [{ translateY: 1 }, { scale: 0.94 }],
   },
+  presetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  divider: { height: 1, backgroundColor: palette.line, marginVertical: 8 },
+  informationHeading: { marginTop: 28, marginBottom: 14, marginLeft: 4 },
+  brand: { alignItems: 'center', gap: 10, paddingVertical: 24 },
+  brandIcon: { width: 48, height: 48, borderRadius: 14 },
   content: {
     paddingBottom: 40,
-  },
-  appIconShadow: {
-    shadowColor: palette.lavenderDeep,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
   },
   timeValueButtonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.96 }],
-  },
-  themeButton: {
-    minHeight: 58,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  themeButtonActive: {
-    shadowColor: palette.shadow,
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  themeButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.96 }],
-  },
-  themeSwatch: {
-    height: 18,
-    width: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  themeLabel: {
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '900',
-    includeFontPadding: false,
   },
   proUpgradeIcon: {
     includeFontPadding: false,
