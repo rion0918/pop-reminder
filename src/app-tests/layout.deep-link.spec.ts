@@ -23,7 +23,30 @@ test('widget deep links always land on home before opening add or detail UI', ()
     /requestQuickAdd\('widget_deep_link', \{ focusTitle: true \}\);/,
     /purchases\.getProAccessState\(\)/,
     /setSelectedReminderId\(/,
-    /router\.setParams\(\{ action: undefined, id: undefined, intent: undefined \}\);/,
   ]);
   assertSourceContract(source, { excludes: [/useReminderUiStore/, /setTimeout\(\(\) =>/] });
+});
+
+test('home does not clear route params while a later widget intent may be arriving', () => {
+  assertSourceContract(homeSource, {
+    excludes: [/router\.setParams\(\{ action: undefined, id: undefined, intent: undefined \}\);/],
+  });
+});
+
+test('widget intents wait for the mounted navigator before being published', () => {
+  const prepareBlock = source.slice(
+    source.indexOf('const prepare = useCallback'),
+    source.indexOf("if (bootstrapState !== 'ready')"),
+  );
+
+  assertSourceIncludes(source, [
+    /const navigationReadyRef = useRef\(false\);/,
+    /const flushPendingIntent = useCallback\(\(\) => \{/,
+    /if \(!navigationReadyRef\.current\) return;/,
+    /navigationReadyRef\.current = true;/,
+    /flushPendingIntent\(\);/,
+  ]);
+  assertSourceContract(prepareBlock, {
+    excludes: [/intentBufferRef\.current\.consume\(\)/, /publishIntent\(pendingIntent\)/],
+  });
 });

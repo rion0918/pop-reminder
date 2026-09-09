@@ -106,3 +106,17 @@ export const MintTheme: Story = {
     widgetHeight: 320,
   },
 };
+
+export const Expired: Story = {
+  args: {
+    reminders: [
+      { id: 'expired', title: '期限が過ぎた予定', targetAt: targetAt(-1, 18), isExpired: true },
+    ],
+    widgetWidth: 250,
+    widgetHeight: 180,
+  },
+};
+
+export const MaximumCapacity: Story = {
+  args: { reminders, widgetWidth: 360, widgetHeight: 840 },
+};

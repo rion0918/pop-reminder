@@ -41,16 +41,17 @@ function assertRowsDoNotOverlap(rows: WidgetRect[]) {
   }
 }
 
-test('android widget preserves capacity while promoting the first reminder to hero', () => {
+test('android widget prioritizes readable rows while promoting the first reminder to hero', () => {
   const cases = [
-    { width: 250, height: 180, mode: 'compact', visible: 2 },
-    { width: 320, height: 220, mode: 'compact', visible: 3 },
-    { width: 360, height: 280, mode: 'list', visible: 4 },
-    { width: 360, height: 320, mode: 'expanded', visible: 5 },
-    { width: 480, height: 320, mode: 'expanded', visible: 5 },
-    { width: 360, height: 380, mode: 'expanded', visible: 6 },
-    { width: 360, height: 420, mode: 'expanded', visible: 7 },
-    { width: 360, height: 460, mode: 'expanded', visible: 8 },
+    { width: 250, height: 180, mode: 'compact', visible: 1 },
+    { width: 320, height: 220, mode: 'compact', visible: 2 },
+    { width: 360, height: 280, mode: 'list', visible: 2 },
+    { width: 360, height: 320, mode: 'expanded', visible: 3 },
+    { width: 480, height: 320, mode: 'expanded', visible: 3 },
+    { width: 360, height: 380, mode: 'expanded', visible: 4 },
+    { width: 360, height: 420, mode: 'expanded', visible: 5 },
+    { width: 360, height: 460, mode: 'expanded', visible: 5 },
+    { width: 360, height: 840, mode: 'expanded', visible: 8 },
   ] as const;
 
   for (const expected of cases) {
@@ -68,7 +69,7 @@ test('android widget preserves capacity while promoting the first reminder to he
 });
 
 test('android widget reports overflow after the nearest eight reminders', () => {
-  const plan = getWidgetLayoutPlan(makeReminders(10), 360, 460);
+  const plan = getWidgetLayoutPlan(makeReminders(10), 360, 840);
 
   assert.equal(plan.visibleReminderCount, 8);
   assert.equal(plan.overflowCount, 2);
@@ -100,8 +101,11 @@ test('android widget keeps header, add action, hero, and queue inside every surf
 
     assertInside(plan.header, surfaceBounds);
     assertInside(plan.addButton, surfaceBounds);
+    assert.equal(plan.addButton.width, 48);
+    assert.equal(plan.addButton.height, 48);
     assert.ok(plan.hero);
     assertInside(plan.hero, surfaceBounds);
+    assert.equal(plan.hero.height, 64);
     assertInside(plan.queueBounds, surfaceBounds);
     assert.equal(plan.addButton.top, plan.header.top);
     assert.equal(plan.addButton.bottom, plan.header.bottom);
@@ -111,6 +115,7 @@ test('android widget keeps header, add action, hero, and queue inside every surf
 
     for (const row of plan.queueRows) {
       assertInside(row, plan.queueBounds);
+      assert.equal(row.height, 64);
       assert.equal(row.left, plan.queueBounds.left);
       assert.equal(row.width, plan.queueBounds.width);
     }

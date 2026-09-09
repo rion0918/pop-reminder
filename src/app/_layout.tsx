@@ -20,9 +20,9 @@ export default function RootLayout() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>('loading');
-  const stateRef = useRef<BootstrapState>('loading');
   const intentBufferRef = useRef(createDeepLinkIntentBuffer());
   const intentSequenceRef = useRef(0);
+  const navigationReadyRef = useRef(false);
   const bootstrapBubbleSize = Math.round(Math.min(Math.max(windowWidth * 0.68, 184), 286));
 
   const publishIntent = useCallback(
@@ -40,31 +40,32 @@ export default function RootLayout() {
     [router],
   );
 
+  const flushPendingIntent = useCallback(() => {
+    if (!navigationReadyRef.current) return;
+    const pendingIntent = intentBufferRef.current.consume();
+    if (pendingIntent) publishIntent(pendingIntent);
+  }, [publishIntent]);
+
   const receiveUrl = useCallback(
     (url: string | null) => {
-      if (!url || !intentBufferRef.current.receive(url) || stateRef.current !== 'ready') return;
-      const intent = intentBufferRef.current.consume();
-      if (intent) publishIntent(intent);
+      if (!url || !intentBufferRef.current.receive(url)) return;
+      flushPendingIntent();
     },
-    [publishIntent],
+    [flushPendingIntent],
   );
 
   const prepare = useCallback(async () => {
-    stateRef.current = 'loading';
+    navigationReadyRef.current = false;
     setBootstrapState('loading');
     try {
       await configureAppRuntime();
       await prepareAppData();
-      stateRef.current = 'ready';
       setBootstrapState('ready');
-      const pendingIntent = intentBufferRef.current.consume();
-      if (pendingIntent) publishIntent(pendingIntent);
     } catch (error) {
       console.warn('Failed to prepare app data', error);
-      stateRef.current = 'error';
       setBootstrapState('error');
     }
-  }, [publishIntent]);
+  }, []);
 
   useEffect(() => {
     const subscription = Linking.addEventListener('url', (event) => receiveUrl(event.url));
@@ -74,6 +75,12 @@ export default function RootLayout() {
     void prepare();
     return () => subscription.remove();
   }, [prepare, receiveUrl]);
+
+  useEffect(() => {
+    if (bootstrapState !== 'ready') return;
+    navigationReadyRef.current = true;
+    flushPendingIntent();
+  }, [bootstrapState, flushPendingIntent]);
 
   if (bootstrapState !== 'ready') {
     return (

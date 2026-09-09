@@ -15,10 +15,9 @@ test('compact widget preview promotes the first reminder and keeps production ca
   );
 
   expect(view.getByText('ふわっと。')).toBeTruthy();
-  expect(view.getByText('3件')).toBeTruthy();
-  expect(view.getByText('次のリマインド')).toBeTruthy();
+  expect(view.getByText('表示中 1件 / 全3件')).toBeTruthy();
   expect(view.getByText('最初の予定')).toBeTruthy();
-  expect(view.getByText('次の予定')).toBeTruthy();
+  expect(view.queryByText('次の予定')).toBeNull();
   expect(view.queryByText('表示範囲外の予定')).toBeNull();
   expect(view.getByText('＋')).toBeTruthy();
 });
@@ -26,10 +25,9 @@ test('compact widget preview promotes the first reminder and keeps production ca
 test('empty widget preview exposes the native widget empty state', async () => {
   const view = await render(<PopReminderWidgetPreview reminders={[]} />);
 
-  expect(view.getByText('0件')).toBeTruthy();
-  expect(view.getByText('最初のリマインドを残そう')).toBeTruthy();
-  expect(view.getByText('タップして追加')).toBeTruthy();
-  expect(view.getAllByText('＋')).toHaveLength(1);
+  expect(view.getByText('表示中 0件 / 全0件')).toBeTruthy();
+  expect(view.getByText('リマインダーはありません')).toBeTruthy();
+  expect(view.getByText('＋ 追加する')).toBeTruthy();
 });
 
 test('preview accepts every persisted widget theme', async () => {
@@ -45,4 +43,18 @@ test('preview accepts every persisted widget theme', async () => {
   for (const theme of themes) {
     expect(view.getByTestId(`widget-surface-${theme}`)).toBeTruthy();
   }
+});
+
+test('preview keeps long titles at two lines and labels expired reminders', async () => {
+  const reminder = {
+    ...reminders[0],
+    title: '日本語の長いリマインダーも小さくせず二行で表示する予定',
+    isExpired: true,
+  };
+  const view = await render(<PopReminderWidgetPreview reminders={[reminder]} />);
+  const title = view.getByText(reminder.title);
+  expect(title.props.numberOfLines).toBe(1);
+  expect(title.props.adjustsFontSizeToFit).not.toBe(true);
+  expect(title.props.style.fontSize).toBeGreaterThanOrEqual(14);
+  expect(view.getByText(/期限済み/)).toBeTruthy();
 });

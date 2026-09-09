@@ -90,7 +90,10 @@ test('Android widget picker uses a representative preview and a 4 by 3 target si
   assert.equal(widget.targetCellWidth, 4);
   assert.equal(widget.targetCellHeight, 3);
   assert.equal(existsSync(previewPath), true);
-  assert.deepEqual(readPngDimensions(previewPath), { width: 750, height: 540 });
+  const previewSize = readPngDimensions(previewPath);
+  assert.ok(previewSize.width >= 500 && previewSize.height >= 360);
+  // Native density can round either dimension by a pixel.
+  assert.ok(Math.abs(previewSize.width - (previewSize.height * 250) / 180) <= 2);
   assert.equal(readPngColorType(previewPath), 6);
   assert.equal(existsSync(nativePreviewPath), true);
   assert.equal(readFileSha256(nativePreviewPath), readFileSha256(previewPath));

@@ -281,8 +281,7 @@ export function HomeScreen() {
         reminders.some((reminder) => reminder.id === routeParams.id) ? routeParams.id : null,
       );
     }
-    router.setParams({ action: undefined, id: undefined, intent: undefined });
-  }, [loading, reminders, requestQuickAdd, routeParams, router]);
+  }, [loading, reminders, requestQuickAdd, routeParams]);
 
   useEffect(() => {
     isMountedRef.current = true;

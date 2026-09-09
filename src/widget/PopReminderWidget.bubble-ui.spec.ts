@@ -23,14 +23,13 @@ const taskHandlerSource = readSource(import.meta.url, './widgetTaskHandler.tsx')
 test('android widget promotes the nearest reminder and renders the rest as a queue', () => {
   assertSourceContract(source, {
     includes: [
-      /function HeroReminder/,
-      /reminder\.isExpired \? '期限済み' : '次のリマインド'/,
-      /function QueueReminderRow/,
-      /plan\.hero\.reminderId/,
-      /plan\.queueRows\.map/,
+      /function ReminderRow/,
+      /reminder\.isExpired \? '期限済み · ' : ''/,
+      /layout\.reminderId/,
+      /rows\.map/,
       /formatReminderBubbleDateTime/,
       /truncate="END"/,
-      /action=view&id=\$\{reminder\.id\}/,
+      /action=view&id=\$\{encodeURIComponent\(reminder\.id\)\}/,
     ],
     excludes: [/function OverflowBubble/, /getReminderTitleVisualLength/, /getWidgetMotionFrame/],
   });
@@ -51,11 +50,11 @@ test('hero and queue reuse the app deadline color contract as glass bubbles', ()
 test('android widget keeps a dedicated low-noise delete target on every reminder', () => {
   const deleteButtonSource = source.slice(
     source.indexOf('function DeleteReminderButton'),
-    source.indexOf('function HeroReminder'),
+    source.indexOf('function ReminderRow'),
   );
 
   assertSourceIncludes(`${deleteButtonSource}\n${visualsSource}`, [
-    /WIDGET_ROW_ACTION_SIZE = 32/,
+    /WIDGET_ROW_ACTION_SIZE = 48/,
     /makeWidgetTrashSvg/,
     /clickAction=\{WIDGET_DELETE_REMINDER_ACTION\}/,
     /clickActionData=\{\{ id: reminder\.id \}\}/,
@@ -68,7 +67,7 @@ test('header groups the brand, count chip, and top-right add action', () => {
   assertSourceIncludes(source, [
     /function WidgetHeader/,
     /text="ふわっと。"/,
-    /text=\{`\$\{totalCount\}件`\}/,
+    /text=\{`表示中 \$\{visibleCount\}件 \/ 全\$\{fetchedCount\}件`\}/,
     /function AddReminderButton/,
     /backgroundGradient: widgetGradient\(theme\.addButtonGradient\)/,
     /accessibilityLabel="リマインダーを追加"/,
@@ -86,10 +85,10 @@ test('widget uses theme-aware lightweight material without bitmap scenery', () =
       /surfaceGradient/,
       /heroGradient/,
       /SvgWidget/,
-      /makeWidgetBackdropSvg/,
-      /radialGradient/,
     ],
     excludes: [
+      /makeWidgetBackdropSvg/,
+      /adjustsFontSizeToFit/,
       /ImageWidget/,
       /ImageRequireSource/,
       /widgetSky/,
@@ -102,10 +101,10 @@ test('widget uses theme-aware lightweight material without bitmap scenery', () =
 test('empty widget offers a clear full-surface quick-add state', () => {
   assertSourceIncludes(source, [
     /function EmptyState/,
-    /text="最初のリマインドを残そう"/,
-    /text="タップして追加"/,
-    /accessibilityLabel="最初のリマインダーを追加"/,
-    /<EmptyState bounds=\{plan\.queueBounds\} theme=\{theme\} \/>/,
+    /text="リマインダーはありません"/,
+    /text="＋ 追加する"/,
+    /accessibilityLabel="リマインダーを追加"/,
+    /<EmptyState bounds=\{plan\.queueBounds\} theme=\{colors\} \/>/,
     /reminders\.length > 0 \?\s*<AddReminderButton[\s\S]*?: null/,
   ]);
 });
@@ -118,7 +117,7 @@ test('android widget layout contract defines hero, queue, overflow, and eight-it
       /queueRows: WidgetReminderLayout\[\]/,
       /overflowCount: number/,
       /WIDGET_MAX_VISIBLE_REMINDERS = 8/,
-      /WIDGET_QUEUE_ROW_HEIGHT = 40/,
+      /WIDGET_QUEUE_ROW_HEIGHT = 64/,
       /makeQueueRows/,
     ],
     excludes: [/reminderBubbles:/, /bubbleSlots:/, /getBubbleSlots/],
