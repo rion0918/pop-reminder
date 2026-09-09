@@ -9,7 +9,7 @@ function assertFiniteGeometry(value: unknown): void {
   else if (value && typeof value === 'object') Object.values(value).forEach(assertFiniteGeometry);
 }
 
-test('burst geometry is repeatable, restrained, and varies between reminders', () => {
+test('burst geometry is repeatable, slightly larger, and varies between reminders', () => {
   const first = createBubbleBurstGeometry('one', 160, 140);
   assert.deepEqual(first, createBubbleBurstGeometry('one', 160, 140));
   assert.notDeepEqual(first.rupturePoint, createBubbleBurstGeometry('two', 160, 140).rupturePoint);
@@ -18,9 +18,9 @@ test('burst geometry is repeatable, restrained, and varies between reminders', (
     assert.ok(geometry.membraneFragments.length >= 6 && geometry.membraneFragments.length <= 8);
     assert.ok(geometry.droplets.length >= 8 && geometry.droplets.length <= 12);
     for (const droplet of geometry.droplets) {
-      assert.ok(droplet.radius >= 0.5 && droplet.radius <= 1.5);
+      assert.ok(droplet.radius >= 0.6 && droplet.radius <= 1.7);
       const travel = Math.hypot(droplet.travelX, droplet.travelY);
-      assert.ok(travel >= 140 * 0.08 && travel <= 140 * 0.2);
+      assert.ok(travel >= 140 * 0.09 && travel <= 140 * 0.23);
       assert.ok(droplet.delay >= 110 / 380 && droplet.delay <= 180 / 380);
     }
     for (const fragment of geometry.membraneFragments) {

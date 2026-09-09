@@ -42,4 +42,9 @@ test('IME-safe title keeps manual text native and remounts only for explicit rep
   await act(() => inputRef.current?.replaceTextAndFocus('次の入力'));
   expect(view.getByDisplayValue('次の入力')).toBeTruthy();
   expect(view.getByText('4 / 40')).toBeTruthy();
+
+  await act(() => inputRef.current?.clearAndFocus());
+  expect(view.getByDisplayValue('')).toBeTruthy();
+  expect(view.getByText('0 / 40')).toBeTruthy();
+  expect(onTextChange).toHaveBeenLastCalledWith('');
 });

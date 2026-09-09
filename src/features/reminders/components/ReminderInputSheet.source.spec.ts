@@ -149,7 +149,7 @@ test('voice input uses the top stop action and escapes a stuck native stop', () 
   });
 });
 
-test('successful quick add clears the title and refocuses the input while the sheet remains open', () => {
+test('successful quick add clears the title and keeps the input focused while the sheet remains open', () => {
   const commitSaveBlock = source.slice(
     source.indexOf('const commitSave = useCallback'),
     source.indexOf('const handleTitleEndEditing'),
@@ -165,6 +165,11 @@ test('successful quick add clears the title and refocuses the input while the sh
     /resetDraftTitle\(true\)/,
   ]);
   assert.equal(saveSuccessBlock.includes('resetInput('), false);
+  assertSourceIncludes(imeSafeTitleInputSource, [
+    /clearAndFocus: \(\) => void;/,
+    /const clearAndFocus = useCallback\(\(\) => \{[\s\S]*recordText\(''\);[\s\S]*inputRef\.current\?\.clear\(\);[\s\S]*inputRef\.current\?\.focus\(\);/,
+  ]);
+  assert.equal(saveSuccessBlock.includes('replaceTextAndFocus('), false);
 });
 
 test('failed quick add keeps the draft and refocuses the input while the sheet remains open', () => {
@@ -181,15 +186,26 @@ test('failed quick add keeps the draft and refocuses the input while the sheet r
   assert.equal(saveFailureBlock.includes('resetDraftTitle()'), false);
 });
 
-test('quick add waits for native end editing before saving an active IME session', () => {
+test('quick add keeps the title input focused while saving', () => {
+  const handleSaveBlock = source.slice(
+    source.indexOf('const handleSave = useCallback'),
+    source.indexOf('const handleDatePickerChange'),
+  );
+
+  assertSourceIncludes(handleSaveBlock, [
+    /if \(titleInputRef\.current\?\.isFocused\(\)\) \{\s*void commitSave\(draftTitleRef\.current\);\s*return;/,
+  ]);
+  assert.equal(handleSaveBlock.includes('.blur()'), false);
   assertSourceContract(source, {
     includes: [
-      /const pendingSaveAfterEndEditingRef = useRef\(false\);/,
-      /if \(titleInputRef\.current\?\.isFocused\(\)\) \{[\s\S]*pendingSaveAfterEndEditingRef\.current = true;[\s\S]*titleInputRef\.current\.blur\(\);[\s\S]*return;/,
-      /const handleTitleEndEditing = useCallback\([\s\S]*pendingSaveAfterEndEditingRef\.current[\s\S]*void commitSave\(text\);/,
+      /const handleTitleEndEditing = useCallback\([\s\S]*draftTitleRef\.current = text;/,
       /onEndEditing=\{handleTitleEndEditing\}/,
     ],
-    excludes: [/value=\{draftTitle\}/, /const \[draftTitle, setDraftTitleText\]/],
+    excludes: [
+      /value=\{draftTitle\}/,
+      /const \[draftTitle, setDraftTitleText\]/,
+      /pendingSaveAfterEndEditingRef/,
+    ],
   });
   assertSourceIncludes(imeSafeTitleInputSource, [/submitBehavior="blurAndSubmit"/]);
 });

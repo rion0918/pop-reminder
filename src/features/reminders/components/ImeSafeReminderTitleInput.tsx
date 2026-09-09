@@ -19,6 +19,7 @@ export type ImeSafeReminderTitleInputHandle = {
   focus: () => void;
   blur: () => void;
   clear: () => void;
+  clearAndFocus: () => void;
   replaceText: (text: string) => void;
   replaceTextAndFocus: (text: string) => void;
   isFocused: () => boolean;
@@ -95,6 +96,12 @@ const ImeSafeReminderTitleInputComponent = forwardRef<
     [replaceText],
   );
 
+  const clearAndFocus = useCallback(() => {
+    recordText('');
+    inputRef.current?.clear();
+    inputRef.current?.focus();
+  }, [recordText]);
+
   useEffect(() => {
     if (!focusAfterReplacementRef.current) return;
 
@@ -108,11 +115,12 @@ const ImeSafeReminderTitleInputComponent = forwardRef<
       focus: () => inputRef.current?.focus(),
       blur: () => inputRef.current?.blur(),
       clear: () => replaceText(''),
+      clearAndFocus,
       replaceText,
       replaceTextAndFocus,
       isFocused: () => inputRef.current?.isFocused() ?? false,
     }),
-    [replaceText, replaceTextAndFocus],
+    [clearAndFocus, replaceText, replaceTextAndFocus],
   );
 
   const handleChangeText = useCallback(
@@ -170,12 +178,8 @@ const ImeSafeReminderTitleInputComponent = forwardRef<
         style={[
           reminderTitleInputStyles.count,
           countStyle,
-          isTitleCountWarning
-            ? [reminderTitleInputStyles.countWarning, countWarningStyle]
-            : null,
-          isTitleOverLimit
-            ? [reminderTitleInputStyles.countOverLimit, countOverLimitStyle]
-            : null,
+          isTitleCountWarning ? [reminderTitleInputStyles.countWarning, countWarningStyle] : null,
+          isTitleOverLimit ? [reminderTitleInputStyles.countOverLimit, countOverLimitStyle] : null,
         ]}
       >
         {titleLength} / {REMINDER_TITLE_MAX_LENGTH}

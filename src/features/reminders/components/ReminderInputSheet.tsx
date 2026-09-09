@@ -116,7 +116,6 @@ export function ReminderInputSheet({
   const isPresentedRef = useRef(false);
   const isClosingRef = useRef(false);
   const isSaveRequestedRef = useRef(false);
-  const pendingSaveAfterEndEditingRef = useRef(false);
   const pendingVoiceStartAfterEndEditingRef = useRef(false);
   const titleFocusRequestIdRef = useRef(0);
   const pendingTitleFocusRequestIdRef = useRef<number | null>(null);
@@ -219,10 +218,9 @@ export function ReminderInputSheet({
 
   const resetDraftTitle = useCallback((focusAfterReset = false) => {
     draftTitleRef.current = '';
-    pendingSaveAfterEndEditingRef.current = false;
     pendingVoiceStartAfterEndEditingRef.current = false;
     if (focusAfterReset) {
-      titleInputRef.current?.replaceTextAndFocus('');
+      titleInputRef.current?.clearAndFocus();
     } else {
       titleInputRef.current?.clear();
     }
@@ -313,7 +311,6 @@ export function ReminderInputSheet({
   const beginVoiceInput = useCallback(async () => {
     if (voiceStatusRef.current !== 'idle') return;
 
-    pendingSaveAfterEndEditingRef.current = false;
     if (titleInputRef.current?.isFocused()) {
       pendingVoiceStartAfterEndEditingRef.current = true;
       titleInputRef.current.blur();
@@ -329,7 +326,6 @@ export function ReminderInputSheet({
     voiceReceivedTextRef.current = false;
     voiceVisibleTranscriptRef.current = '';
     explicitVoiceAbortRef.current = false;
-    pendingSaveAfterEndEditingRef.current = false;
     setTitleNotice(null);
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
@@ -622,7 +618,6 @@ export function ReminderInputSheet({
 
   useEffect(() => {
     return () => {
-      pendingSaveAfterEndEditingRef.current = false;
       pendingVoiceStartAfterEndEditingRef.current = false;
       invalidateTitleFocusRequest();
       Keyboard.dismiss();
@@ -641,7 +636,6 @@ export function ReminderInputSheet({
 
   const requestClose = useCallback(() => {
     isClosingRef.current = true;
-    pendingSaveAfterEndEditingRef.current = false;
     pendingVoiceStartAfterEndEditingRef.current = false;
     cancelVoiceInput(false);
     invalidateTitleFocusRequest();
@@ -670,7 +664,6 @@ export function ReminderInputSheet({
     Keyboard.dismiss();
     isPresentedRef.current = false;
     isSaveRequestedRef.current = false;
-    pendingSaveAfterEndEditingRef.current = false;
     pendingVoiceStartAfterEndEditingRef.current = false;
     cancelVoiceInput(false);
     closeDatePicker();
@@ -693,7 +686,6 @@ export function ReminderInputSheet({
   ]);
 
   const openDatePicker = useCallback(() => {
-    pendingSaveAfterEndEditingRef.current = false;
     pendingVoiceStartAfterEndEditingRef.current = false;
     stopVoiceInput();
     invalidateTitleFocusRequest();
@@ -703,7 +695,6 @@ export function ReminderInputSheet({
   }, [invalidateTitleFocusRequest, setQuickAddPickerOpen, stopVoiceInput]);
 
   const openTimePicker = useCallback(() => {
-    pendingSaveAfterEndEditingRef.current = false;
     pendingVoiceStartAfterEndEditingRef.current = false;
     stopVoiceInput();
     invalidateTitleFocusRequest();
@@ -718,7 +709,6 @@ export function ReminderInputSheet({
         return;
       }
 
-      pendingSaveAfterEndEditingRef.current = false;
       const normalizedTitle = text.replace(/\n/g, ' ').trim();
 
       if (normalizedTitle.length === 0) {
@@ -756,23 +746,15 @@ export function ReminderInputSheet({
     [isSaving, onSave, resetDraftTitle, resetTitle, setTitle],
   );
 
-  const handleTitleEndEditing = useCallback(
-    (text: string) => {
-      draftTitleRef.current = text;
+  const handleTitleEndEditing = useCallback((text: string) => {
+    draftTitleRef.current = text;
 
-      if (pendingVoiceStartAfterEndEditingRef.current) {
-        pendingVoiceStartAfterEndEditingRef.current = false;
-        beginVoiceInputRef.current();
-        return;
-      }
-
-      if (!pendingSaveAfterEndEditingRef.current) return;
-
-      pendingSaveAfterEndEditingRef.current = false;
-      void commitSave(text);
-    },
-    [commitSave],
-  );
+    if (pendingVoiceStartAfterEndEditingRef.current) {
+      pendingVoiceStartAfterEndEditingRef.current = false;
+      beginVoiceInputRef.current();
+      return;
+    }
+  }, []);
 
   const handleSave = useCallback(() => {
     if (isSaving || isSaveRequestedRef.current) {
@@ -780,8 +762,7 @@ export function ReminderInputSheet({
     }
 
     if (titleInputRef.current?.isFocused()) {
-      pendingSaveAfterEndEditingRef.current = true;
-      titleInputRef.current.blur();
+      void commitSave(draftTitleRef.current);
       return;
     }
 

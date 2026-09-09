@@ -46,6 +46,14 @@ test('settings exposes notification permission controls outside the dev-only sec
   });
 });
 
+test('notification permission request button uses a centered compact width', () => {
+  assertSourceContract(source, {
+    includes: [
+      /className="mx-\[46px\] mb-\[12px\] min-h-\[44px\] flex-row items-center justify-center gap-\[8px\] rounded-\[14px\] bg-app-sky-deep px-\[14px\]"/,
+    ],
+  });
+});
+
 test('settings does not expose an in-app notification sound toggle', () => {
   assertSourceContract(source, {
     excludes: [

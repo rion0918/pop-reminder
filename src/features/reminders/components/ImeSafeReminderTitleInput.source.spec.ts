@@ -30,6 +30,7 @@ test('IME-safe reminder title input exposes only explicit programmatic replaceme
       /focus: \(\) => void;/,
       /blur: \(\) => void;/,
       /clear: \(\) => void;/,
+      /clearAndFocus: \(\) => void;/,
       /replaceText: \(text: string\) => void;/,
       /replaceTextAndFocus: \(text: string\) => void;/,
       /isFocused: \(\) => boolean;/,

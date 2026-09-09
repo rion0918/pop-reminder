@@ -725,7 +725,7 @@ export function SettingsScreen() {
                     ? handleRequestNotificationPermission
                     : handleOpenAppSettings
                 }
-                className="mb-[12px] ml-[46px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
+                className="mx-[46px] mb-[12px] min-h-[44px] flex-row items-center justify-center gap-[8px] rounded-[14px] bg-app-sky-deep px-[14px]"
               >
                 <Ionicons
                   name={

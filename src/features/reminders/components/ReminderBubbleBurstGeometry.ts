@@ -77,7 +77,7 @@ export function createBubbleBurstGeometry(
   const width = Math.max(1, bubbleWidth);
   const height = Math.max(1, bubbleHeight);
   const visualSize = Math.min(width, height);
-  const overscan = visualSize * 0.25 + 3;
+  const overscan = visualSize * 0.29 + 3;
   const bubbleCenter = { x: overscan + width / 2, y: overscan + height / 2 };
   const seed = hashString(reminderId);
   const ruptureAngle = Math.PI * (1.08 + unitFromHash(seed, 1) * 0.84);
@@ -107,7 +107,7 @@ export function createBubbleBurstGeometry(
       x: origin.x * 2 - (start.x + end.x) / 2,
       y: origin.y * 2 - (start.y + end.y) / 2,
     };
-    const travel = visualSize * (0.03 + unitFromHash(seed, 90 + index) * 0.05);
+    const travel = visualSize * (0.035 + unitFromHash(seed, 90 + index) * 0.055);
     const arrival =
       55 + (75 * Math.hypot(origin.x - rupturePoint.x, origin.y - rupturePoint.y)) / maxHoleRadius;
     return {
@@ -124,13 +124,13 @@ export function createBubbleBurstGeometry(
   const droplets = Array.from({ length: dropletCount }, (_, index) => {
     const angle = (Math.PI * 2 * (index + unitFromHash(seed, 200 + index) * 0.5)) / dropletCount;
     const origin = outlinePoint(bubbleCenter, width, height, angle);
-    const travel = visualSize * (0.08 + unitFromHash(seed, 260 + index) * 0.12);
+    const travel = visualSize * (0.09 + unitFromHash(seed, 260 + index) * 0.14);
     const arrival =
       (75 * Math.hypot(origin.x - rupturePoint.x, origin.y - rupturePoint.y)) / maxHoleRadius;
     return {
       id: `${reminderId}-droplet-${index}`,
       origin,
-      radius: 0.5 + unitFromHash(seed, 290 + index),
+      radius: 0.6 + unitFromHash(seed, 290 + index) * 1.1,
       travelX: Math.cos(angle) * travel,
       travelY: Math.sin(angle) * travel,
       gravity: visualSize * (0.01 + unitFromHash(seed, 320 + index) * 0.02),
