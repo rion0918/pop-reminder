@@ -1,11 +1,12 @@
 import { Platform } from 'react-native';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 
+import { enqueueWidgetTask } from './widgetTaskQueue';
+
 import { PopReminderWidget } from './PopReminderWidget';
 import { getWidgetSnapshot } from './widgetReminderSnapshot';
 
 const WIDGET_NAME = 'PopReminderWidget';
-let widgetUpdateQueue: Promise<void> = Promise.resolve();
 
 /**
  * Fetch active reminders from SQLite and trigger a widget update.
@@ -19,11 +20,11 @@ export async function updateWidget(): Promise<void> {
     return;
   }
 
-  widgetUpdateQueue = widgetUpdateQueue.then(runWidgetUpdate, runWidgetUpdate);
-  await widgetUpdateQueue;
+  await enqueueWidgetTask(runWidgetUpdate);
 }
 
-async function runWidgetUpdate(): Promise<void> {
+// Called directly only by the widget task already holding the queue.
+export async function runWidgetUpdate(): Promise<void> {
   try {
     const snapshot = await getWidgetSnapshot();
 

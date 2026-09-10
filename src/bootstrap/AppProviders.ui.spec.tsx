@@ -1,4 +1,7 @@
-import { render, waitFor } from '@testing-library/react-native';
+import { AppState, Text } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { activeRemindersQueryKey } from '../features/reminders/presentation/reminderQueryMutations';
+import { act, render, waitFor } from '@testing-library/react-native';
 
 const mockServices = {
   settings: {
@@ -12,6 +15,7 @@ const mockServices = {
     captureScreen: jest.fn(),
   },
   reminders: {
+    listVisible: jest.fn(async () => ['first']),
     retryPendingNotifications: jest.fn(async () => undefined),
   },
 };
@@ -41,4 +45,33 @@ describe('AppProviders', () => {
       expect(mockServices.analytics.setCaptureEnabled).toHaveBeenCalledWith(false),
     );
   });
+});
+
+function ReminderList() {
+  const { data } = useQuery({
+    queryKey: activeRemindersQueryKey,
+    queryFn: mockServices.reminders.listVisible,
+  });
+  return <Text>{data?.join(',') || 'empty'}</Text>;
+}
+
+test('returning from a widget deletion refreshes the cached reminder list', async () => {
+  const subscribe = jest.spyOn(AppState, 'addEventListener');
+  const view = await render(
+    <AppProviders>
+      <ReminderList />
+    </AppProviders>,
+  );
+  await waitFor(() => expect(view.getByText('first')).toBeTruthy());
+  mockServices.reminders.listVisible.mockResolvedValue([]);
+  await act(async () => {
+    for (const [event, listener] of subscribe.mock.calls) {
+      if (event === 'change') listener('background');
+    }
+    for (const [event, listener] of subscribe.mock.calls) {
+      if (event === 'change') listener('active');
+    }
+  });
+  await waitFor(() => expect(view.getByText('empty')).toBeTruthy());
+  subscribe.mockRestore();
 });

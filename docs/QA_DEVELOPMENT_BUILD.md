@@ -599,6 +599,14 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 - Widget 選択用画像は標準250×180dpのネイティブ描画を使用し、Expo設定の参照画像とAndroidリソースを同一にした。
 - ホーム画面への配置と操作ラベルの出現を確認した。確認中にエミュレーターのデータ・配置が変化したため、追加／詳細／削除の一連の操作、通知キャンセル、複数Widget同期、実リサイズ、TalkBackの実操作、更新画像の再インストール後の選択画面表示は未検証。以下のチェックリストで別途確認する。
 
+#### 2026-09-10 Widget操作修正後の検証記録
+
+- `WidgetClickIntentTest` を Android instrumentation test で実行し、同一時刻の複数ボタン、別予定、別Widget、再登録でPendingIntentが衝突しないことを確認した（2 tests passed）。
+- Development Buildで配置済みWidgetから予定の詳細を開き、同じ予定を閉じて再度開く操作が成功した。詳細表示ではタイトルと日時が対象予定と一致した。
+- Widgetのゴミ箱をアプリ終了状態で押し、アプリを前面に出さずに対象予定が削除されることを確認した。削除後はWidgetから対象行が消え、SQLiteの一覧にも残らなかった。
+- Widget更新、DB初期化待ち、深いリンクの起動待ち、古い取得結果の破棄、取得失敗時の再試行を自動テストで確認した。`pnpm run mvh:verify`、Android debug / release buildも成功した。
+- Development Buildをプロセス停止状態から起動した場合はExpo Dev Launcherが先に表示されるため、Development Buildだけでは冷起動からのアプリ画面表示を判定できない。冷起動の最終確認は内部テスト配布のrelease相当ビルドで行う。
+
 #### Widget選択画面
 
 - [ ] Development Build を再インストールし、ランチャーの Widget 選択画面を開く

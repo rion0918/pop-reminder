@@ -2,7 +2,7 @@ import '../../global.css';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,6 +18,7 @@ type BootstrapState = 'loading' | 'ready' | 'error';
 
 export default function RootLayout() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
   const { width: windowWidth } = useWindowDimensions();
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>('loading');
   const intentBufferRef = useRef(createDeepLinkIntentBuffer());
@@ -68,19 +69,25 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    const subscription = Linking.addEventListener('url', (event) => receiveUrl(event.url));
+    let receivedEvent = false;
+    const subscription = Linking.addEventListener('url', (event) => {
+      receivedEvent = true;
+      receiveUrl(event.url);
+    });
     void Linking.getInitialURL()
-      .then(receiveUrl)
+      .then((url) => {
+        if (!receivedEvent) receiveUrl(url);
+      })
       .catch(() => {});
     void prepare();
     return () => subscription.remove();
   }, [prepare, receiveUrl]);
 
   useEffect(() => {
-    if (bootstrapState !== 'ready') return;
+    if (bootstrapState !== 'ready' || !navigationState?.key) return;
     navigationReadyRef.current = true;
     flushPendingIntent();
-  }, [bootstrapState, flushPendingIntent]);
+  }, [bootstrapState, navigationState?.key, flushPendingIntent]);
 
   if (bootstrapState !== 'ready') {
     return (

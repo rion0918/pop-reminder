@@ -335,8 +335,16 @@ test('home removes deleted reminders locally before the silent database refresh'
       /removeReminder,/,
       /removeReminder\(reminder\.id\);[\s\S]*void refresh\(\{ silent: true \}\);/,
     ],
-    excludes: [/await refresh\(\);/],
   });
+  assertSourceContract(
+    source.slice(
+      source.indexOf('const handleDeleteReminder'),
+      source.indexOf('const handleUpdateReminderTitle'),
+    ),
+    {
+      excludes: [/await refresh\(\);/],
+    },
+  );
 });
 
 test('home reflects an edited reminder title without waiting for a refresh', () => {

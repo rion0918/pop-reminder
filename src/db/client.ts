@@ -5,7 +5,7 @@ import { Paths } from 'expo-file-system';
 import * as schema from './schema';
 import { runDatabaseMigrations, type MigrationDatabase } from './migrations';
 
-const POP_REMINDER_DATABASE_NAME = 'pop_reminder.db';
+export const POP_REMINDER_DATABASE_NAME = 'pop_reminder.db';
 const NOTIFICATION_PERMISSION_DATABASE_VERSION = 6;
 
 export function getPopReminderDatabaseDirectory() {
@@ -91,7 +91,20 @@ async function initializeNotificationPermissionCompatibility(database: Migration
   `);
 }
 
-export async function initializeDatabase(database: MigrationDatabase = sqlite) {
+const initializationTasks = new WeakMap<MigrationDatabase, Promise<void>>();
+
+export function initializeDatabase(database: MigrationDatabase = sqlite): Promise<void> {
+  const existing = initializationTasks.get(database);
+  if (existing) return existing;
+  const task = initializeDatabaseConnection(database).catch((error) => {
+    initializationTasks.delete(database);
+    throw error;
+  });
+  initializationTasks.set(database, task);
+  return task;
+}
+
+async function initializeDatabaseConnection(database: MigrationDatabase) {
   try {
     await runDatabaseMigrations(database);
     await initializeNotificationPermissionCompatibility(database);

@@ -132,7 +132,8 @@ test('widget snapshot carries persisted theme through every refresh path', () =>
     /SELECT theme/,
     /FROM app_settings/,
     /coerceAppTheme\(row\?\.theme \?\? 'lavender'\)/,
-    /return \{ reminders: \[\], theme: 'lavender' \}/,
+    /await initializeDatabase\(\);/,
+    /throw error;/,
   ]);
   assertSourceIncludes(updateSource, [
     /import \{ getWidgetSnapshot \} from '\.\/widgetReminderSnapshot';/,
@@ -142,13 +143,13 @@ test('widget snapshot carries persisted theme through every refresh path', () =>
     /renderWidget: \(\{ width, height \}\) =>/,
     /widgetWidth=\{width\}/,
     /widgetHeight=\{height\}/,
-    /let widgetUpdateQueue: Promise<void> = Promise\.resolve\(\);/,
+    /await enqueueWidgetTask\(runWidgetUpdate\);/,
   ]);
   assertSourceIncludes(taskHandlerSource, [
     /import \{ getWidgetSnapshot \} from '\.\/widgetReminderSnapshot';/,
     /theme=\{snapshot\.theme\}/,
     /WIDGET_DELETE_REMINDER_ACTION/,
-    /appServices\.reminders\.delete\(reminderId\)/,
+    /widgetServices\.reminders\.delete\(reminderId\)/,
   ]);
   assertSourceContract(updateSource, { excludes: [/expo-sqlite/, /expo-file-system/] });
 });

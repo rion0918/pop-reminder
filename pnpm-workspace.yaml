@@ -13,3 +13,4 @@ overrides:
 
 patchedDependencies:
   react-native-sherpa-onnx@0.4.3: patches/react-native-sherpa-onnx@0.4.3.patch
+  react-native-android-widget@0.20.3: patches/react-native-android-widget@0.20.3.patch

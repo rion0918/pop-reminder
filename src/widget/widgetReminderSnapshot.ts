@@ -1,5 +1,11 @@
 import * as SQLite from 'expo-sqlite';
 
+import {
+  getPopReminderDatabaseDirectory,
+  initializeDatabase,
+  POP_REMINDER_DATABASE_NAME,
+} from '../db/client';
+
 import { coerceAppTheme, type AppTheme } from '../shared/domain/appTheme';
 
 export type WidgetReminder = {
@@ -36,7 +42,11 @@ let widgetDb: SQLite.SQLiteDatabase | null = null;
 
 function getWidgetDb(): SQLite.SQLiteDatabase {
   if (!widgetDb) {
-    widgetDb = SQLite.openDatabaseSync('pop_reminder.db', { useNewConnection: true });
+    widgetDb = SQLite.openDatabaseSync(
+      POP_REMINDER_DATABASE_NAME,
+      { useNewConnection: true },
+      getPopReminderDatabaseDirectory(),
+    );
   }
   return widgetDb;
 }
@@ -93,12 +103,13 @@ function getSettings(db: SQLite.SQLiteDatabase): WidgetSettings {
     };
   } catch (error) {
     console.warn('[Widget] Failed to fetch settings from SQLite', error);
-    return { theme: 'lavender', autoDeleteEnabled: true };
+    throw error;
   }
 }
 
 export async function getWidgetSnapshot(now = new Date()): Promise<WidgetSnapshot> {
   try {
+    await initializeDatabase();
     const db = getWidgetDb();
     const settings = getSettings(db);
 
@@ -108,6 +119,6 @@ export async function getWidgetSnapshot(now = new Date()): Promise<WidgetSnapsho
     };
   } catch (error) {
     console.warn('[Widget] Failed to fetch reminders from SQLite', error);
-    return { reminders: [], theme: 'lavender' };
+    throw error;
   }
 }

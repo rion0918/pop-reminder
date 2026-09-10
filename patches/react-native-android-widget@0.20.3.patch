@@ -1,0 +1,182 @@
+diff --git a/android/src/main/java/com/reactnativeandroidwidget/RNWidget.java b/android/src/main/java/com/reactnativeandroidwidget/RNWidget.java
+index 2d88172e426ccd70288005d4b7c15d7b534d20d9..066f1b372efa565430ace32574fe3ead0aa7d014 100644
+--- a/android/src/main/java/com/reactnativeandroidwidget/RNWidget.java
++++ b/android/src/main/java/com/reactnativeandroidwidget/RNWidget.java
+@@ -189,18 +189,9 @@ public class RNWidget {
+     }
+ 
+     private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
+-        Intent intent = new Intent(appContext.getPackageName() + ".WIDGET_CLICK");
+-        intent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
+-        intent.putExtra("widgetId", id);
+-        intent.putExtra("clickAction", clickableView.getClickAction());
+-        intent.putExtra("clickActionData", Arguments.toBundle(clickableView.getClickActionData()));
+-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+-            appContext,
+-            (int) System.currentTimeMillis(),
+-            intent,
+-            PendingIntent.FLAG_CANCEL_CURRENT
+-                | PendingIntent.FLAG_MUTABLE
+-        );
++        PendingIntent pendingIntent = WidgetClickIntent.create(
++            appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName), id,
++            clickableView.getClickAction(), Arguments.toBundle(clickableView.getClickActionData()));
+         widgetView.setOnClickPendingIntent(button, pendingIntent);
+     }
+ 
+@@ -299,18 +299,11 @@ public class RNWidget {
+     private PendingIntent createCollectionPendingIntentTemplate(int widgetId) {
+         // This section makes it possible for items to have individualized
+         // behavior. It does this by setting up a pending intent template.
+         // Individuals items of a collection can't set up their own pending
+         // intents. Instead, the collection as a whole sets up a pending
+         // intent template, and the individual items set a fillInIntent
+         // to create unique behavior on an item-by-item basis.
+-        Intent widgetListItemClickIntent = new Intent(appContext, RNWidgetCollectionService.class);
+-        // Set the action for the intent.
+-        // When the user touches a particular view, it has the effect of
+-        // broadcasting WIDGET_CLICK.
+-        widgetListItemClickIntent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
+-        widgetListItemClickIntent.setAction(appContext.getPackageName() + ".WIDGET_CLICK");
+-        widgetListItemClickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+-        return PendingIntent.getBroadcast(appContext, 0, widgetListItemClickIntent,
+-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
++        return WidgetClickIntent.createCollectionTemplate(
++            appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName), widgetId);
+     }
+ 
+diff --git a/android/src/main/java/com/reactnativeandroidwidget/RNWidgetCollectionService.java b/android/src/main/java/com/reactnativeandroidwidget/RNWidgetCollectionService.java
+index 2bdbab9fe634d23e90a4b0b58d591de7745b18c2..b7ea9a2ba43107eca5e6a2dcb092eaefb19c611d 100644
+--- a/android/src/main/java/com/reactnativeandroidwidget/RNWidgetCollectionService.java
++++ b/android/src/main/java/com/reactnativeandroidwidget/RNWidgetCollectionService.java
+@@ -143,18 +143,9 @@ class ListRemoteViewsFactory implements RemoteViewsService.RemoteViewsFactory {
+     }
+ 
+     private PendingIntent createPendingIntent(Bundle clickableArea) {
+-        Intent intent = new Intent(mContext.getPackageName() + ".WIDGET_CLICK");
+-        intent.setComponent(new ComponentName(mContext, RNWidgetUtil.getWidgetProviderClassName(mContext, widgetName)));
+-        intent.putExtra("widgetId", mAppWidgetId);
+-        intent.putExtra("clickAction", clickableArea.getString("clickAction"));
+-        intent.putExtra("clickActionData", clickableArea.getBundle("clickActionData"));
+-        return PendingIntent.getBroadcast(
+-            mContext,
+-            (int) System.currentTimeMillis(),
+-            intent,
+-            PendingIntent.FLAG_CANCEL_CURRENT
+-                | PendingIntent.FLAG_MUTABLE
+-        );
++        return WidgetClickIntent.create(
++            mContext, RNWidgetUtil.getWidgetProviderClassName(mContext, widgetName), mAppWidgetId,
++            clickableArea.getString("clickAction"), clickableArea.getBundle("clickActionData"));
+     }
+ 
+     public RemoteViews getLoadingView() {
+diff --git a/android/src/main/java/com/reactnativeandroidwidget/WidgetClickIntent.java b/android/src/main/java/com/reactnativeandroidwidget/WidgetClickIntent.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..0b9a3d5ae4cb31b7c0686e5b2ba39e04d7f342d7
+--- /dev/null
++++ b/android/src/main/java/com/reactnativeandroidwidget/WidgetClickIntent.java
+@@ -0,0 +1,39 @@
++package com.reactnativeandroidwidget;
++
++import android.app.PendingIntent;
++import android.content.ComponentName;
++import android.content.Context;
++import android.content.Intent;
++import android.net.Uri;
++import android.os.Bundle;
++
++/** Stable identity for an individual RemoteViews click; extras are not intent identity. */
++public final class WidgetClickIntent {
++    private WidgetClickIntent() {}
++
++    public static PendingIntent create(Context context, String provider, int widgetId,
++                                       String action, Bundle data) {
++        Bundle payload = data == null ? new Bundle() : data;
++        Uri identity = new Uri.Builder().scheme("widget-click").authority(context.getPackageName())
++            .appendPath(provider).appendPath(Integer.toString(widgetId)).appendPath(action)
++            .appendQueryParameter("id", payload.getString("id", ""))
++            .appendQueryParameter("uri", payload.getString("uri", "")).build();
++        Intent intent = new Intent(context.getPackageName() + ".WIDGET_CLICK")
++            .setComponent(new ComponentName(context, provider)).setData(identity)
++            .putExtra("widgetId", widgetId).putExtra("clickAction", action)
++            .putExtra("clickActionData", payload);
++        return PendingIntent.getBroadcast(context, 0, intent,
++            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
++    }
++
++    public static PendingIntent createCollectionTemplate(Context context, String provider,
++                                                         int widgetId) {
++        Intent intent = new Intent(context.getPackageName() + ".WIDGET_CLICK")
++            .setComponent(new ComponentName(context, provider)).setData(new Uri.Builder()
++                .scheme("widget-click-template").authority(context.getPackageName())
++                .appendPath(provider).appendPath(Integer.toString(widgetId)).build())
++            .putExtra("widgetId", widgetId);
++        return PendingIntent.getBroadcast(context, 0, intent,
++            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
++    }
++}
+diff --git a/lib/commonjs/api/request-widget-update.js b/lib/commonjs/api/request-widget-update.js
+index 3f1cb770f60fd1d6655dab1647d69f168c97c88a..766bfe0580020d81b77009b94e55b5adfd738b20 100644
+--- a/lib/commonjs/api/request-widget-update.js
++++ b/lib/commonjs/api/request-widget-update.js
+@@ -22,7 +22,7 @@ async function requestWidgetUpdate(_ref) {
+   if (widgetsInfo.length === 0) {
+     widgetNotFound === null || widgetNotFound === void 0 ? void 0 : widgetNotFound();
+   }
+-  widgetsInfo.forEach(async info => {
++  for (const info of widgetsInfo) {
+     const widgetComponent = await renderWidget(info);
+     const lightWidget = 'light' in widgetComponent ? (0, _buildWidgetTree.buildWidgetTree)(widgetComponent.light) : (0, _buildWidgetTree.buildWidgetTree)(widgetComponent);
+     const darkWidget = 'dark' in widgetComponent ? (0, _buildWidgetTree.buildWidgetTree)(widgetComponent.dark) : null;
+@@ -31,6 +31,6 @@ async function requestWidgetUpdate(_ref) {
+       dark: darkWidget
+     };
+     _AndroidWidget.AndroidWidget.drawWidgetById(config, widgetName, info.widgetId);
+-  });
++  }
+ }
+ //# sourceMappingURL=request-widget-update.js.map
+\ No newline at end of file
+diff --git a/lib/module/api/request-widget-update.js b/lib/module/api/request-widget-update.js
+index 6b7147d7d10d0df1d25a2d22859558f8de007557..cbba19c73bd11893a3f47ceed2ce6ca32978ba50 100644
+--- a/lib/module/api/request-widget-update.js
++++ b/lib/module/api/request-widget-update.js
+@@ -16,7 +16,7 @@ export async function requestWidgetUpdate(_ref) {
+   if (widgetsInfo.length === 0) {
+     widgetNotFound === null || widgetNotFound === void 0 ? void 0 : widgetNotFound();
+   }
+-  widgetsInfo.forEach(async info => {
++  for (const info of widgetsInfo) {
+     const widgetComponent = await renderWidget(info);
+     const lightWidget = 'light' in widgetComponent ? buildWidgetTree(widgetComponent.light) : buildWidgetTree(widgetComponent);
+     const darkWidget = 'dark' in widgetComponent ? buildWidgetTree(widgetComponent.dark) : null;
+@@ -25,6 +25,6 @@ export async function requestWidgetUpdate(_ref) {
+       dark: darkWidget
+     };
+     AndroidWidget.drawWidgetById(config, widgetName, info.widgetId);
+-  });
++  }
+ }
+ //# sourceMappingURL=request-widget-update.js.map
+\ No newline at end of file
+diff --git a/src/api/request-widget-update.tsx b/src/api/request-widget-update.tsx
+index 23668933974ae89ad6e9b46c446d4200d79a58a3..39951b3078c9dbc8157addc7962a5e295bd9bd0e 100644
+--- a/src/api/request-widget-update.tsx
++++ b/src/api/request-widget-update.tsx
+@@ -39,7 +39,7 @@ export async function requestWidgetUpdate({
+     widgetNotFound?.();
+   }
+ 
+-  widgetsInfo.forEach(async (info: WidgetInfo) => {
++  for (const info of widgetsInfo) {
+     const widgetComponent = await renderWidget(info);
+ 
+     const lightWidget =
+@@ -57,5 +57,5 @@ export async function requestWidgetUpdate({
+     };
+ 
+     AndroidWidget.drawWidgetById(config, widgetName, info.widgetId);
+-  });
++  }
+ }

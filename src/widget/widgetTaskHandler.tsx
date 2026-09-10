@@ -1,61 +1,61 @@
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
-import { appServices } from '../bootstrap/appServices';
+import { widgetServices } from '../bootstrap/appServices';
+import { initializeDatabase } from '../db/client';
 import { PopReminderWidget, WIDGET_DELETE_REMINDER_ACTION } from './PopReminderWidget';
 import { getWidgetSnapshot } from './widgetReminderSnapshot';
-
-async function renderPopReminderWidget(props: WidgetTaskHandlerProps) {
-  const widgetInfo = props.widgetInfo;
-  const snapshot = await getWidgetSnapshot();
-
-  props.renderWidget(
-    <PopReminderWidget
-      reminders={snapshot.reminders}
-      theme={snapshot.theme}
-      widgetWidth={widgetInfo.width}
-      widgetHeight={widgetInfo.height}
-    />,
-  );
-}
-
-async function handleWidgetClick(props: WidgetTaskHandlerProps) {
-  if (props.clickAction !== WIDGET_DELETE_REMINDER_ACTION) {
-    return;
-  }
-
-  const reminderId = props.clickActionData?.id;
-  if (typeof reminderId !== 'string' || reminderId.length === 0) {
-    return;
-  }
-
-  try {
-    await appServices.reminders.delete(reminderId);
-  } catch (error) {
-    console.warn('[Widget] Failed to delete reminder', error);
-  }
-}
+import { enqueueWidgetTask } from './widgetTaskQueue';
+import { runWidgetUpdate } from './widgetUpdateService';
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
-  const widgetAction = props.widgetAction;
+  if (props.widgetAction === 'WIDGET_DELETED') return;
+  if (
+    !['WIDGET_ADDED', 'WIDGET_UPDATE', 'WIDGET_RESIZED', 'WIDGET_CLICK'].includes(
+      props.widgetAction,
+    )
+  )
+    return;
 
-  switch (widgetAction) {
-    case 'WIDGET_ADDED':
-    case 'WIDGET_UPDATE':
-    case 'WIDGET_RESIZED': {
-      await renderPopReminderWidget(props);
-      break;
+  await enqueueWidgetTask(async () => {
+    let stage = 'initialize';
+    const reminderId = props.clickActionData?.id;
+    try {
+      await initializeDatabase();
+      if (props.widgetAction === 'WIDGET_CLICK') {
+        if (
+          props.clickAction !== WIDGET_DELETE_REMINDER_ACTION ||
+          typeof reminderId !== 'string' ||
+          !reminderId
+        )
+          return;
+        stage = 'delete';
+        const deleted = await widgetServices.reminders.delete(reminderId);
+        // Successful deletion syncs all widgets inside the use case. A stale click needs a refresh too.
+        if (!deleted) {
+          stage = 'sync';
+          await runWidgetUpdate();
+        }
+        return;
+      }
+
+      stage = 'snapshot';
+      const snapshot = await getWidgetSnapshot();
+      stage = 'render';
+      props.renderWidget(
+        <PopReminderWidget
+          reminders={snapshot.reminders}
+          theme={snapshot.theme}
+          widgetWidth={props.widgetInfo.width}
+          widgetHeight={props.widgetInfo.height}
+        />,
+      );
+    } catch (error) {
+      console.warn('[Widget] Task failed', {
+        widgetId: props.widgetInfo.widgetId,
+        reminderId: typeof reminderId === 'string' ? reminderId : undefined,
+        stage,
+        error,
+      });
     }
-    case 'WIDGET_DELETED': {
-      // No cleanup needed
-      break;
-    }
-    case 'WIDGET_CLICK': {
-      await handleWidgetClick(props);
-      await renderPopReminderWidget(props);
-      break;
-    }
-    default: {
-      break;
-    }
-  }
+  });
 }

@@ -42,7 +42,7 @@ function makeDatabase(userVersion: number, initialColumns: string[]): FakeDataba
   };
 }
 
-const mockOpenDatabaseSync = jest.fn();
+const mockOpenDatabaseSync = jest.fn(() => ({ databasePath: '/mock/SQLite/pop_reminder.db' }));
 
 jest.mock('drizzle-orm/expo-sqlite', () => ({
   drizzle: jest.fn(() => ({})),
@@ -53,7 +53,7 @@ jest.mock('expo-file-system', () => ({
 }));
 
 jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: (...args: unknown[]) => mockOpenDatabaseSync(...args),
+  openDatabaseSync: () => mockOpenDatabaseSync(),
 }));
 
 // Native modules are mocked above so this test can execute the startup flow with a DB double.
@@ -72,7 +72,6 @@ describe('initializeDatabase notification permission compatibility', () => {
       'raise_to_speak_enabled',
       'raise_to_speak_intro_seen',
     ]);
-    mockOpenDatabaseSync.mockReturnValue(fake.database);
 
     await initializeDatabase(fake.database);
 
@@ -95,4 +94,30 @@ describe('initializeDatabase notification permission compatibility', () => {
       ),
     ).toHaveLength(1);
   });
+});
+
+test('concurrent initialization shares migrations and failures can be retried', async () => {
+  const fake = makeDatabase(4, [
+    'id',
+    'notification_sound_enabled',
+    'noon_target_time',
+    'evening_target_time',
+    'night_target_time',
+    'raise_to_speak_enabled',
+    'raise_to_speak_intro_seen',
+  ]);
+  await Promise.all([initializeDatabase(fake.database), initializeDatabase(fake.database)]);
+  expect(
+    fake.statements.filter((sql) => sql.includes('ADD COLUMN notification_permission_intro_seen')),
+  ).toHaveLength(1);
+
+  const getFirst = fake.database.getFirstAsync;
+  fake.database.getFirstAsync = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('busy'))
+    .mockImplementation(getFirst);
+  // A fresh connection must retry after an initialization failure.
+  const retryDatabase = { ...fake.database };
+  await expect(initializeDatabase(retryDatabase)).rejects.toThrow('busy');
+  await expect(initializeDatabase(retryDatabase)).resolves.toBeUndefined();
 });

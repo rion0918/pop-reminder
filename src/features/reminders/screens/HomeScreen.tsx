@@ -28,6 +28,7 @@ import {
 } from '../components/RaiseToSpeakIntroModal';
 import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
 import { makeBulkDeleteMotions } from '../components/reminderBulkDeleteMotion';
+import { useWidgetDetailIntent } from '../presentation/useWidgetDetailIntent';
 import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import { useNotificationDevStore } from '../stores/notificationDevStore';
 import {
@@ -270,18 +271,43 @@ export function HomeScreen() {
   }, [visibleReminderIds]);
 
   useEffect(() => {
-    if (!routeParams.intent || consumedIntentRef.current === routeParams.intent) return;
-    if ((routeParams.action === 'add' || routeParams.action === 'view') && loading) return;
+    if (
+      routeParams.action !== 'add' ||
+      !routeParams.intent ||
+      consumedIntentRef.current === routeParams.intent ||
+      loading
+    )
+      return;
 
     consumedIntentRef.current = routeParams.intent;
     if (routeParams.action === 'add') {
       void requestQuickAdd('widget_deep_link', { focusTitle: true });
-    } else if (routeParams.action === 'view' && routeParams.id) {
-      setSelectedReminderId(
-        reminders.some((reminder) => reminder.id === routeParams.id) ? routeParams.id : null,
-      );
     }
   }, [loading, reminders, requestQuickAdd, routeParams]);
+
+  const refreshWidgetReminders = useCallback(async () => {
+    const result = await refresh();
+    if (result.error) throw result.error;
+    return result.data ?? [];
+  }, [refresh]);
+
+  const openWidgetReminder = useCallback(
+    (id: string) => {
+      closeQuickAdd();
+      setIsSelectionMode(false);
+      setSelectedReminderIds(new Set());
+      setSelectedReminderId(id);
+    },
+    [closeQuickAdd],
+  );
+
+  useWidgetDetailIntent(routeParams, refreshWidgetReminders, openWidgetReminder);
+
+  useEffect(() => {
+    if (!loading && !error && selectedReminderId && !selectedReminder) {
+      setSelectedReminderId(null);
+    }
+  }, [loading, error, selectedReminderId, selectedReminder]);
 
   useEffect(() => {
     isMountedRef.current = true;

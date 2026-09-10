@@ -11,7 +11,7 @@ const homeSource = readSource(import.meta.url, '../features/reminders/screens/Ho
 
 test('widget deep links always land on home before opening add or detail UI', () => {
   assertSourceIncludes(source, [
-    /import \{ Stack, useRouter \} from 'expo-router';/,
+    /import \{ Stack, useRouter, useRootNavigationState \} from 'expo-router';/,
     /const router = useRouter\(\);/,
     /pathname: '\/',/,
     /action: intent\.action,/,
@@ -44,6 +44,7 @@ test('widget intents wait for the mounted navigator before being published', () 
     /const flushPendingIntent = useCallback\(\(\) => \{/,
     /if \(!navigationReadyRef\.current\) return;/,
     /navigationReadyRef\.current = true;/,
+    /bootstrapState !== 'ready' \|\| !navigationState\?\.key/,
     /flushPendingIntent\(\);/,
   ]);
   assertSourceContract(prepareBlock, {

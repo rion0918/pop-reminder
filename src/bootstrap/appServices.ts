@@ -11,7 +11,7 @@ import {
   scheduleTestReminderNotifications,
 } from '../lib/notifications/reminderNotifications';
 import { posthogAnalytics } from '../lib/analytics/posthogAnalytics';
-import { updateWidget } from '../widget/widgetUpdateService';
+import { updateWidget, runWidgetUpdate } from '../widget/widgetUpdateService';
 import { revenueCatPurchaseService } from '../features/purchases/infrastructure/revenueCatPurchaseService';
 import { prepareRaiseToSpeak } from '../lib/voice-input/prepareRaiseToSpeak';
 import { voiceInputService } from '../lib/voice-input/voiceInputService';
@@ -26,7 +26,7 @@ const widgetGateway = {
   },
 };
 
-const reminderUseCases = createReminderUseCases({
+const reminderDependencies = {
   reminders: sqliteReminderRepository,
   settings: {
     get: sqliteSettingsRepository.get,
@@ -39,7 +39,13 @@ const reminderUseCases = createReminderUseCases({
     getState: revenueCatPurchaseService.getProAccessState,
   },
   notificationChannelMigration: sqliteNotificationChannelMigrationRepository,
-});
+};
+const reminderUseCases = createReminderUseCases(reminderDependencies);
+
+// The headless handler holds the widget queue: sync directly to avoid enqueueing behind itself.
+export const widgetServices = {
+  reminders: createReminderUseCases({ ...reminderDependencies, widget: { sync: runWidgetUpdate } }),
+};
 
 export const appServices = {
   analytics: posthogAnalytics,
