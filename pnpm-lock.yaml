@@ -13,7 +13,7 @@ overrides:
 
 patchedDependencies:
   react-native-android-widget@0.20.3:
-    hash: 08370a5ea52c51461c5d13366083b7f48c109fd2f93fddc1c19be7aba76d3d1b
+    hash: 99c728f7c8d419ef4ae6d7057a57cbaeef203555ab0440d387376f046ccb4fc8
     path: patches/react-native-android-widget@0.20.3.patch
   react-native-sherpa-onnx@0.4.3:
     hash: fba2a862fb9b74afe0beea43da38343ed914506feff377c556060a6acef4b39b
@@ -112,7 +112,7 @@ importers:
         version: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
       react-native-android-widget:
         specifier: ^0.20.3
-        version: 0.20.3(patch_hash=08370a5ea52c51461c5d13366083b7f48c109fd2f93fddc1c19be7aba76d3d1b)(expo@54.0.37)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 0.20.3(patch_hash=99c728f7c8d419ef4ae6d7057a57cbaeef203555ab0440d387376f046ccb4fc8)(expo@54.0.37)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       react-native-css-interop:
         specifier: 0.2.6
         version: 0.2.6(react-native-reanimated@4.1.7(react-native-worklets@0.5.1(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-safe-area-context@5.6.2(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-svg@15.15.5(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(tailwindcss@3.4.19(tsx@4.22.4)(yaml@2.9.0))
@@ -13196,7 +13196,7 @@ snapshots:
 
   react-is@19.2.7: {}
 
-  react-native-android-widget@0.20.3(patch_hash=08370a5ea52c51461c5d13366083b7f48c109fd2f93fddc1c19be7aba76d3d1b)(expo@54.0.37)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  react-native-android-widget@0.20.3(patch_hash=99c728f7c8d419ef4ae6d7057a57cbaeef203555ab0440d387376f046ccb4fc8)(expo@54.0.37)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.0)
