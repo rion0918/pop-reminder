@@ -1,11 +1,15 @@
 ---
 name: pr-review
-description: Guidelines and criteria for PR size classification (size/XS to size/XL), automated code review, and auto-merge evaluation in Antigravity and CI workflows.
+description: "Use when reviewing a pull request or PR diff for size classification, code quality, or approve/request-changes decisions in Antigravity or CI. Do not use for implementation tasks, generic code review without a PR or diff, or merge execution."
 ---
 
 # PR Review Guidelines & Size Classification
 
 This document defines the rules and criteria for automated PR size labeling and code review evaluation across Antigravity and Codex workflows.
+
+## Scope and precedence
+
+This skill adds PR-specific size and review criteria. The project `AGENTS.md` remains authoritative for repository architecture, protected files, testing gates, and permission boundaries. This skill does not authorize publishing a review, merging, or other external mutation unless the user explicitly requests it.
 
 ## 1. PR Size Classification Matrix
 

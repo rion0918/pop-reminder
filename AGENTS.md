@@ -2,14 +2,15 @@
 
 ## 最優先の制約
 
-- 既存のレイヤー境界を守り、変更は目的に必要な範囲だけに留める。
+- 以下のプロジェクト固有のレイヤー境界を守り、変更は目的に必要な範囲だけに留める。
 - 画面から SQLite、通知、Widget のネイティブ実装を直接呼び出さない。
 - `expo-sqlite` の直接 import は `src/db/` と `src/widget/` に限定する。
 - `expo-notifications` の直接 import は `src/lib/notifications/` に限定する。
 - reminders のユースケースは `src/features/reminders/application/` の Port だけを参照し、外部実装は `src/bootstrap/appServices.ts` で接続する。
-- 状態変更を伴う作業は、観測可能なテストを先に更新して RED、実装後に GREEN を確認する。
 - ハーネスの真実は説明文書ではなく、テスト、Biome ルール、package scripts、CI に置く。
 - `biome.json`、`lefthook.yml`、`flake.nix`、`package.json`、`pnpm-lock.yaml`、`AGENTS.md`、`.codex/hooks/**`、`scripts/mvh-*`、`tools/biome-rules/**` は保護対象。明示承認なしに変更しない。
+- 必要な参照ファイルが見つからない場合、または検証が失敗した場合は、成功扱いにせず停止して報告する。
+- 権限境界を越える操作や保護対象の変更が必要になった場合は、明示承認なしに進めない。
 
 ## プロジェクト概要
 
@@ -25,7 +26,7 @@
 
 ## 実装時の境界
 
-- ルートファイルは `src/app/`、画面の実装は各 feature の `screens/` に置く。新しい画面は Router の入口と feature 画面を分ける。
+- ルートファイルは `src/app/`、画面の実装は各 feature の `src/features/*/screens/` に置く。新しい画面は Router の入口と feature 画面を分ける。
 - DB のテーブル定義と起動時の互換初期化は `src/db/schema.ts` と `src/db/client.ts` に置く。専用 migration パッケージは使わない。
 - reminders の CRUD Adapter は `src/features/reminders/infrastructure/sqliteReminderRepository.ts`、副作用を伴うユースケースは `src/features/reminders/application/reminderUseCases.ts` を参照する。
 - 入力の trim・文字数・日付時刻検証は `src/features/reminders/schemas/reminderSchema.ts` と日付 service/util を参照する。
@@ -43,19 +44,7 @@
 - 個別確認には `pnpm test`、`pnpm run typecheck`、`pnpm run lint`、`pnpm run format:check`、`pnpm run biome:check`、`pnpm run doctor` を使う。
 - リリース相当の確認は `pnpm run verify:release`。Android / iOS の Expo export まで実行する。
 
-## 開発・実機コマンド
+## 開発・実機・参照資料
 
-- 環境は `nix develop` または direnv。固定 Node.js は `.node-version` の 24.16.0、pnpm は 10.8.1。
-- 初回セットアップは `pnpm install` の後に `pnpm run mvh:setup`。
-- Development Build の Metro は `pnpm run start:dev-client`、Expo Go は `pnpm run start:expo-go`。
-- ネイティブローカル実行は `pnpm run android` または `pnpm run ios`。
-- 通知・SQLite・Android Widget の確認には Expo Go を使わず Development Build を使う。
-- EAS の開発ビルドは `eas build --profile development --platform android` または `ios`。release 手順は `docs/RELEASE_ANDROID_IOS.md` を参照する。
-- MVH の構造化フィードバックは `pnpm run mvh:feedback`、hook の初期化は `pnpm run mvh:setup` を使う。
-
-## 参照先
-
-- 技術構成は `docs/TECH_STACK.md`、外部境界の方針は `docs/NEW_ARCHITECTURE_ALIGNMENT.md` を参照する。
-- MVH の方針と保護ファイルの扱いは `docs/MVH_HARNESS.md` と `docs/adr/0001-harness-policy.md` を参照する。
-- 起動・通知・deep link は `src/app/_layout.tsx` と `src/bootstrap/`、DB は `src/db/client.ts` と `src/db/migrations.ts`、通知は `src/lib/notifications/reminderNotifications.ts` を起点に読む。
-- 画面からユースケースまでの実例は `src/features/reminders/screens/HomeScreen.tsx`、`src/features/reminders/presentation/useRemindersQuery.ts`、`src/features/reminders/application/reminderUseCases.ts` を参照する。
+- 通知、SQLite、Android Widget の実機挙動は Expo Go ではなく Development Build で確認する。
+- 環境、セットアップ、Development Build、EAS、MVH のコマンドと、技術構成・境界・代表実装の参照先は `.agents/references/project-operations.md` に集約する。該当する作業では、実行や実装の前にその参照ファイルを読む。
