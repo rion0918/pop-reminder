@@ -4,6 +4,8 @@ export type ReminderScheduleInput = {
   dateOffset: 0 | 1 | 2;
   customTargetDate?: string | null;
   targetTime: string;
+  allDay?: boolean;
+  allDayNotifyTime?: string;
   previousNotifyTime: string;
   now?: Date;
 };
@@ -12,7 +14,7 @@ export function validateReminderScheduleInput(input: ReminderScheduleInput) {
   if (![0, 1, 2].includes(input.dateOffset)) {
     throw new Error('Reminder date offset is invalid');
   }
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.targetTime)) {
+  if (!input.allDay && !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.targetTime)) {
     throw new Error('Reminder target time is invalid');
   }
   if (input.customTargetDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.customTargetDate)) {
@@ -50,20 +52,24 @@ export function buildReminderSchedule({
   dateOffset,
   customTargetDate,
   targetTime,
+  allDay = false,
+  allDayNotifyTime = '09:00',
   previousNotifyTime,
   now = new Date(),
 }: ReminderScheduleInput) {
   const targetDay = startOfLocalDay(
     customTargetDate ? parseLocalDate(customTargetDate) : addLocalDays(now, dateOffset),
   );
-  const target = parseTime(targetTime);
+  const target = parseTime(allDay ? '00:00' : targetTime);
+  const notify = parseTime(allDay ? allDayNotifyTime : targetTime);
   const previous = parseTime(previousNotifyTime);
   const targetAt = setLocalTime(targetDay, target.hours, target.minutes);
+  const targetNotifyAt = setLocalTime(targetDay, notify.hours, notify.minutes);
 
   return {
     targetAt,
     previousNotifyAt: setLocalTime(addLocalDays(targetDay, -1), previous.hours, previous.minutes),
-    targetNotifyAt: targetAt,
+    targetNotifyAt,
     expiresAt: setLocalTime(targetDay, 23, 59, 59, 999),
   };
 }

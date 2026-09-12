@@ -17,6 +17,7 @@ export const createReminderInputSchema = z.object({
     .nullable()
     .optional(),
   targetTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '時刻をHH:mm形式で入力してください'),
+  allDay: z.boolean().optional().default(false),
 });
 
 export type CreateReminderInput = z.infer<typeof createReminderInputSchema>;

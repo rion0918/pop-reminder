@@ -215,7 +215,10 @@ export function ReminderListScreen() {
   );
 
   const handleUpdateReminderSchedule = useCallback(
-    async (reminder: Reminder, input: { targetDate: string; targetTime: string }) => {
+    async (
+      reminder: Reminder,
+      input: { targetDate: string; targetTime: string; allDay?: boolean },
+    ) => {
       const result = await updateReminderSchedule(reminder.id, input);
 
       if (!result) {
@@ -396,7 +399,7 @@ export function ReminderListScreen() {
                     numberOfLines={1}
                     className="mt-[4px] text-[12px] font-extrabold text-app-muted"
                   >
-                    {formatReminderDateTime(reminder.targetAt)}
+                    {formatReminderDateTime(reminder.targetAt, reminder.allDay)}
                   </Text>
                 </View>
                 {isSelectionMode ? (
@@ -433,6 +436,7 @@ export function ReminderListScreen() {
 
       <ReminderDetailSheet
         reminder={selectedReminder}
+        allDayNotifyTime={settings?.allDayNotifyTime}
         onClose={(closedReminderId) =>
           setSelectedReminderId((current) => (current === closedReminderId ? null : current))
         }

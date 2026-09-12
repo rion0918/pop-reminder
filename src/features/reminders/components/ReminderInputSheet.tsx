@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ComponentProps } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -18,7 +26,13 @@ import type { DateTimePickerEvent } from '@react-native-community/datetimepicker
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { addDays, format, set, startOfDay } from 'date-fns';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetBackdrop,
+  BottomSheetFooter,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
+import type { BottomSheetFooterProps } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -36,6 +50,7 @@ import { REMINDER_TITLE_MAX_LENGTH } from '../schemas/reminderSchema';
 import { formatReminderInputDate } from '../utils/reminderDateFormat';
 import { getNextAvailableTimeForToday } from '../utils/reminderTimePresets';
 import { DateChips } from './DateChips';
+import { ReminderAllDaySlider } from './ReminderAllDaySlider';
 import {
   ImeSafeReminderTitleInput,
   type ImeSafeReminderTitleInputHandle,
@@ -44,10 +59,19 @@ import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { parseVoiceReminder } from '../domain/voiceReminderParser';
 import { getVoiceReminderSchedulePatch } from '../presentation/voiceReminderSchedule';
 
+// Keep the footer component type stable while the slider changes the draft mid-gesture.
+const QuickAddFooterContext = createContext<ReactNode>(null);
+
+function QuickAddFooter(props: BottomSheetFooterProps) {
+  const content = useContext(QuickAddFooterContext);
+  return <BottomSheetFooter {...props}>{content}</BottomSheetFooter>;
+}
+
 type VoiceInputStatus = 'idle' | 'starting' | 'listening' | 'stopping';
 
 export type ReminderInputSheetProps = {
   defaultTargetTime?: string;
+  allDayNotifyTime?: string;
   presets?: TimePreset[];
   isSaving?: boolean;
   onSave?: (title: string) => Promise<void> | void;
@@ -103,10 +127,25 @@ function voiceErrorMessage(error: string) {
 
 export function ReminderInputSheet({
   defaultTargetTime = '08:00',
+  allDayNotifyTime = '09:00',
   presets = DEFAULT_TIME_PRESETS,
   isSaving = false,
   onSave,
 }: ReminderInputSheetProps) {
+  const footerContentRef = useRef<ReactNode>(null);
+  // BottomSheetModal renders in a portal: provide footer content inside that portal,
+  // with stable component types so changing allDay never unmounts the active gesture.
+  const FooterContainer = useMemo(
+    () =>
+      function QuickAddFooterContainer({ children }: PropsWithChildren) {
+        return (
+          <QuickAddFooterContext.Provider value={footerContentRef.current}>
+            {children}
+          </QuickAddFooterContext.Provider>
+        );
+      },
+    [],
+  );
   const voiceInput = useAppServices().voiceInput;
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -166,6 +205,7 @@ export function ReminderInputSheet({
   const dateOffset = useReminderUiStore((state) => state.dateOffset);
   const datePreset = useReminderUiStore((state) => state.datePreset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
+  const allDay = useReminderUiStore((state) => state.allDay);
   const time = useReminderUiStore(selectFormattedTime);
   const isTimeValid = useReminderUiStore(selectIsTimeValid);
   const closeQuickAdd = useReminderUiStore((state) => state.closeQuickAdd);
@@ -177,6 +217,7 @@ export function ReminderInputSheet({
   const setPresetTargetDate = useReminderUiStore((state) => state.setPresetTargetDate);
   const setCustomTargetDate = useReminderUiStore((state) => state.setCustomTargetDate);
   const setTargetTime = useReminderUiStore((state) => state.setTargetTime);
+  const setAllDay = useReminderUiStore((state) => state.setAllDay);
   const resetInput = useReminderUiStore((state) => state.resetInput);
   isOpenRef.current = isOpen;
 
@@ -210,7 +251,23 @@ export function ReminderInputSheet({
     return buildTargetDateTime(selectedTargetDate, time);
   }, [selectedTargetDate, time]);
 
-  const isTargetFuture = targetAt.getTime() > Date.now();
+  const endOfTargetDay = set(targetAt, {
+    hours: 23,
+    minutes: 59,
+    seconds: 59,
+    milliseconds: 999,
+  });
+  const [allDayHours, allDayMinutes] = allDayNotifyTime.split(':').map(Number);
+  const allDayNotifyAt = set(selectedTargetDate, {
+    hours: allDayHours,
+    minutes: allDayMinutes,
+    seconds: 0,
+    milliseconds: 0,
+  });
+  const allDayNotificationPassed = allDay && allDayNotifyAt.getTime() <= Date.now();
+  const isTargetFuture = allDay
+    ? endOfTargetDay.getTime() > Date.now()
+    : targetAt.getTime() > Date.now();
   const disabledPresetTimes = presets
     .filter(
       (preset) => buildTargetDateTime(selectedTargetDate, preset.time).getTime() <= Date.now(),
@@ -845,9 +902,36 @@ export function ReminderInputSheet({
     [presets, selectedTargetDate, setTargetTime],
   );
 
+  footerContentRef.current = (
+    <View style={[styles.footer, { paddingBottom: quickAddContentBottomPadding }]}>
+      <View style={styles.actionRow}>
+        <ReminderAllDaySlider
+          allDay={allDay}
+          dateLabel={selectedDateLabel}
+          time={time}
+          allDayNotifyTime={allDayNotifyTime}
+          disabled={isSaving || voiceStatus !== 'idle'}
+          reduceMotion={reduceMotionEnabled}
+          onChange={setAllDay}
+        />
+        <PrimaryButton
+          label={isSaving ? '追加中' : '追加'}
+          icon="cloud-outline"
+          onPress={handleSave}
+          disabled={
+            isSaving || voiceStatus !== 'idle' || (!allDay && !isTimeValid) || !isTargetFuture
+          }
+          style={styles.saveButton}
+        />
+      </View>
+    </View>
+  );
+
   return (
     <>
       <BottomSheetModal
+        containerComponent={FooterContainer}
+        footerComponent={QuickAddFooter}
         name="quick-reminder-input"
         ref={sheetRef}
         stackBehavior="replace"
@@ -867,7 +951,8 @@ export function ReminderInputSheet({
         backgroundStyle={styles.sheetBackground}
       >
         <BottomSheetScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: quickAddContentBottomPadding }]}
+          enableFooterMarginAdjustment
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -955,37 +1040,27 @@ export function ReminderInputSheet({
             onSelectCustomDate={openDatePicker}
           />
 
-          <TimeSelector
-            value={time}
-            onChange={handleTargetTimeChange}
-            onSelectCustomTime={openTimePicker}
-            presets={presets}
-            disabledTimes={disabledPresetTimes}
-            variant="compact"
-            style={styles.timeSelector}
-          />
+          {!allDay ? (
+            <TimeSelector
+              value={time}
+              onChange={handleTargetTimeChange}
+              onSelectCustomTime={openTimePicker}
+              presets={presets}
+              disabledTimes={disabledPresetTimes}
+              variant="compact"
+              style={styles.timeSelector}
+            />
+          ) : null}
 
-          {!isTargetFuture ? (
+          {allDayNotificationPassed ? (
+            <Text style={styles.timingNoticeText}>
+              本日のお知らせ時刻は過ぎています。今日いっぱい表示します。
+            </Text>
+          ) : !isTargetFuture ? (
             <Text style={styles.timingNoticeText}>
               過去の日時は選べません。お知らせを受け取る未来の日時を選んでください。
             </Text>
           ) : null}
-
-          <View style={styles.actionRow}>
-            <View style={styles.summary}>
-              <Ionicons name="notifications-outline" size={16} color={palette.lavenderDeep} />
-              <Text style={styles.summaryText}>
-                {selectedDateLabel} {time}
-              </Text>
-            </View>
-            <PrimaryButton
-              label={isSaving ? '追加中' : '追加'}
-              icon="cloud-outline"
-              onPress={handleSave}
-              disabled={isSaving || voiceStatus !== 'idle' || !isTimeValid || !isTargetFuture}
-              style={styles.saveButton}
-            />
-          </View>
         </BottomSheetScrollView>
       </BottomSheetModal>
 
@@ -1063,7 +1138,9 @@ const styles = StyleSheet.create({
     width: 48,
     backgroundColor: '#C6D0E4',
   },
+  footer: { paddingHorizontal: 16, backgroundColor: palette.white },
   content: {
+    paddingBottom: 8,
     paddingHorizontal: 16,
   },
   inputHeader: {
@@ -1173,24 +1250,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 10,
-  },
-  summary: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(237,230,255,0.58)',
-    borderWidth: 1,
-    borderColor: 'rgba(168,145,245,0.24)',
-  },
-  summaryText: {
-    color: palette.ink,
-    fontSize: 12,
-    fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,

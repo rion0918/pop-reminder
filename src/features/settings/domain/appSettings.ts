@@ -7,6 +7,7 @@ export type AnalyticsConsent = 'unknown' | 'granted' | 'denied';
 export type AppSettings = {
   id: string;
   previousNotifyTime: string;
+  allDayNotifyTime?: string;
   defaultTargetTime: string;
   noonTargetTime: string;
   eveningTargetTime: string;
@@ -32,6 +33,8 @@ export const DEFAULT_QUICK_ADD_PRESET_TIMES: QuickAddPresetTimes = {
   eveningTargetTime: '18:00',
   nightTargetTime: '20:00',
 };
+
+export const DEFAULT_ALL_DAY_NOTIFY_TIME = '09:00';
 
 export const DEFAULT_RAISE_TO_SPEAK_SETTINGS = {
   raiseToSpeakEnabled: false,

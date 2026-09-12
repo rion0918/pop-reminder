@@ -3,6 +3,7 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 export const reminders = sqliteTable('reminders', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
+  allDay: integer('all_day', { mode: 'boolean' }).notNull().default(false),
   targetAt: text('target_at').notNull(),
   previousNotifyAt: text('previous_notify_at').notNull(),
   targetNotifyAt: text('target_notify_at').notNull(),
@@ -19,6 +20,7 @@ export const reminders = sqliteTable('reminders', {
 export const appSettings = sqliteTable('app_settings', {
   id: text('id').primaryKey(),
   previousNotifyTime: text('previous_notify_time').notNull().default('20:00'),
+  allDayNotifyTime: text('all_day_notify_time').notNull().default('09:00'),
   defaultTargetTime: text('default_target_time').notNull().default('08:00'),
   noonTargetTime: text('noon_target_time').notNull().default('12:00'),
   eveningTargetTime: text('evening_target_time').notNull().default('18:00'),

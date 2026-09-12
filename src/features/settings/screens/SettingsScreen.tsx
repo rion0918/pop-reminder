@@ -207,6 +207,7 @@ export function SettingsScreen() {
     updateAnalyticsConsent,
     updatePreviousNotifyTime,
     isUpdatingPreviousNotifyTime,
+    updateAllDayNotifyTime,
   } = useAppSettings();
   const {
     cancelAllScheduledNotifications,
@@ -221,6 +222,8 @@ export function SettingsScreen() {
     (state) => state.setNotificationTestModeEnabled,
   );
   const [previousTime, setPreviousTime] = useState('20:00');
+  const [allDayTime, setAllDayTime] = useState('09:00');
+  const [isAllDayTimePickerOpen, setIsAllDayTimePickerOpen] = useState(false);
   const [isPreviousTimePickerOpen, setIsPreviousTimePickerOpen] = useState(false);
   const [quickAddPresetPickerKey, setQuickAddPresetPickerKey] = useState<QuickAddPresetKey | null>(
     null,
@@ -260,6 +263,7 @@ export function SettingsScreen() {
     }
 
     setPreviousTime(settings.previousNotifyTime);
+    setAllDayTime(settings.allDayNotifyTime ?? '09:00');
   }, [settings]);
 
   useEffect(() => {
@@ -321,6 +325,25 @@ export function SettingsScreen() {
       Alert.alert('時刻を変更できませんでした', '時間をおいてもう一度お試しください。');
     } finally {
       isPreviousTimeUpdateRequestedRef.current = false;
+    }
+  };
+
+  const saveAllDayTime = async (value: string) => {
+    const currentValue = allDayTime;
+    setAllDayTime(value);
+    try {
+      const result = await updateAllDayNotifyTime(value);
+      setAllDayTime(result.settings.allDayNotifyTime ?? value);
+      if (result.skippedPastCount > 0) {
+        Alert.alert(
+          '終日のお知らせ時刻を変更しました',
+          `${result.skippedPastCount}件は新しい時刻を過ぎているため、当日のお知らせを見送りました。`,
+        );
+      }
+    } catch (error) {
+      console.warn('Failed to update all-day notification time', error);
+      setAllDayTime(currentValue);
+      Alert.alert('時刻を変更できませんでした', '時間をおいてもう一度お試しください。');
     }
   };
 
@@ -681,6 +704,13 @@ export function SettingsScreen() {
               pending={isUpdatingPreviousNotifyTime}
               onPress={() => setIsPreviousTimePickerOpen(true)}
             />
+            <SettingRow
+              icon="sunny-outline"
+              title="終日のお知らせ"
+              onPress={() => setIsAllDayTimePickerOpen(true)}
+            >
+              <Text className="text-[14px] font-black text-app-lavender-deep">{allDayTime}</Text>
+            </SettingRow>
             <SettingRow icon="notifications-outline" title="通知" onPress={handleOpenAppSettings}>
               <Pressable
                 accessibilityRole="button"
@@ -988,6 +1018,17 @@ export function SettingsScreen() {
         hint="選んだ時刻に前日のお知らせが届きます"
         onConfirm={handleTimePickerChange}
         onClose={() => setIsPreviousTimePickerOpen(false)}
+      />
+      <TimePickerModal
+        visible={isAllDayTimePickerOpen}
+        value={allDayTime}
+        title="終日のお知らせ時刻"
+        hint="終日リマインダーに当日のお知らせが届きます"
+        onConfirm={(value) => {
+          setIsAllDayTimePickerOpen(false);
+          void saveAllDayTime(value);
+        }}
+        onClose={() => setIsAllDayTimePickerOpen(false)}
       />
       <TimePickerModal
         visible={quickAddPresetPicker !== null}

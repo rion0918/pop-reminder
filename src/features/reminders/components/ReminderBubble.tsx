@@ -118,7 +118,7 @@ export const ReminderBubble = memo(function ReminderBubble({
     bubbleHeight,
     color,
     typography,
-    formatReminderBubbleDateTime(reminder.targetAt),
+    formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay),
   ]);
   const selectionProgress = useSharedValue(0);
 
@@ -414,7 +414,7 @@ export const ReminderBubble = memo(function ReminderBubble({
               },
             ]}
           >
-            {formatReminderBubbleDateTime(reminder.targetAt)}
+            {formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay)}
           </Text>
         </View>
       </Animated.View>

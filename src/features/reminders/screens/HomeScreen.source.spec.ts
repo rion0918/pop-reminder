@@ -186,8 +186,8 @@ test('home presents the next reminder as a compact bubble card that opens its de
   assertSourceIncludes(source, [
     /const reminderDetailBubbles = require\(['"]\.\.\/\.\.\/\.\.\/\.\.\/assets\/reminder-detail-bubbles\.png['"]\);/,
     /const nextReminder = reminders\[0\] \?\? null;/,
-    /const nextReminderLabel = nextReminder[\s\S]*formatReminderBubbleDateTime\(nextReminder\.targetAt\)/,
-    /const nextReminderAccessibilityLabel = nextReminder[\s\S]*formatReminderDetailAccessibilityDateTime\(nextReminder\.targetAt\)/,
+    /const nextReminderLabel = nextReminder[\s\S]*formatReminderBubbleDateTime\(nextReminder\.targetAt,/,
+    /const nextReminderAccessibilityLabel = nextReminder[\s\S]*formatReminderDetailAccessibilityDateTime\(nextReminder\.targetAt,/,
   ]);
   assertSourceContract(nextReminderBlock, {
     includes: [

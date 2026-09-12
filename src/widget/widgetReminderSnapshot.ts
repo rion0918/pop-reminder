@@ -13,6 +13,7 @@ export type WidgetReminder = {
   title: string;
   targetAt: string;
   isExpired: boolean;
+  allDay?: boolean;
 };
 
 export type WidgetSnapshot = {
@@ -23,8 +24,10 @@ export type WidgetSnapshot = {
 type ReminderRow = {
   id: string;
   title: string;
+  all_day: number;
   target_at: string;
   target_notify_at: string;
+  expires_at: string;
   status: string;
 };
 
@@ -59,22 +62,22 @@ function getReminders(
   const nowIso = now.toISOString();
   const rows = includeExpired
     ? db.getAllSync<ReminderRow>(
-        `SELECT id, title, target_at, target_notify_at, status
+        `SELECT id, title, all_day, target_at, target_notify_at, expires_at, status
          FROM reminders
-         WHERE (status = 'active' AND target_notify_at > ?)
+         WHERE (status = 'active' AND expires_at > ?)
             OR status = 'expired'
-            OR (status = 'active' AND target_notify_at <= ?)
+            OR (status = 'active' AND expires_at <= ?)
          ORDER BY
-           CASE WHEN status = 'active' AND target_notify_at > ? THEN 0 ELSE 1 END ASC,
-           CASE WHEN status = 'active' AND target_notify_at > ? THEN target_at END ASC,
-           CASE WHEN status = 'expired' OR target_notify_at <= ? THEN target_at END DESC
+           CASE WHEN status = 'active' AND expires_at > ? THEN 0 ELSE 1 END ASC,
+           CASE WHEN status = 'active' AND expires_at > ? THEN target_at END ASC,
+           CASE WHEN status = 'expired' OR expires_at <= ? THEN target_at END DESC
          LIMIT 20`,
         [nowIso, nowIso, nowIso, nowIso, nowIso],
       )
     : db.getAllSync<ReminderRow>(
-        `SELECT id, title, target_at, target_notify_at, status
+        `SELECT id, title, all_day, target_at, target_notify_at, expires_at, status
          FROM reminders
-         WHERE status = 'active' AND target_notify_at > ?
+         WHERE status = 'active' AND expires_at > ?
          ORDER BY target_at ASC
          LIMIT 20`,
         [nowIso],
@@ -84,7 +87,8 @@ function getReminders(
     id: row.id,
     title: row.title,
     targetAt: row.target_at,
-    isExpired: row.status === 'expired' || row.target_notify_at <= nowIso,
+    isExpired: row.status === 'expired' || row.expires_at <= nowIso,
+    allDay: row.all_day !== 0,
   }));
 }
 

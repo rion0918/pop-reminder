@@ -168,7 +168,7 @@ function ReminderRow({
   highlighted: boolean;
 }) {
   const typography = getWidgetTypography(mode);
-  const timeText = `${reminder.isExpired ? '期限済み · ' : ''}${formatReminderBubbleDateTime(reminder.targetAt)}`;
+  const timeText = `${reminder.isExpired ? '期限済み · ' : ''}${formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay)}`;
   return (
     <FlexWidget
       style={{

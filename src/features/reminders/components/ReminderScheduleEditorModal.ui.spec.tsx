@@ -1,7 +1,13 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import type { ReactNode } from 'react';
 
 import type { Reminder } from '../types/reminder';
 import { ReminderScheduleEditorModal } from './ReminderScheduleEditorModal';
+
+jest.mock('react-native-gesture-handler', () => ({
+  ...jest.requireActual('react-native-gesture-handler'),
+  GestureHandlerRootView: ({ children }: { children: ReactNode }) => children,
+}));
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -65,8 +71,8 @@ describe('ReminderScheduleEditorModal', () => {
       new Date(2030, 4, 12, 15, 30),
     );
 
-    expect(view.getByText('5月19日（日）')).toBeOnTheScreen();
-    expect(view.getByText('15:30')).toBeOnTheScreen();
+    expect(view.getAllByText('5月19日（日）').length).toBeGreaterThanOrEqual(1);
+    expect(view.getAllByText('15:30').length).toBeGreaterThanOrEqual(1);
     expect(
       view.getByLabelText('前日のお知らせも 5月18日（土） 20:00 に変わります'),
     ).toBeOnTheScreen();
@@ -81,8 +87,8 @@ describe('ReminderScheduleEditorModal', () => {
       />,
     );
 
-    expect(view.getByText('5月19日（日）')).toBeOnTheScreen();
-    expect(view.getByText('15:30')).toBeOnTheScreen();
+    expect(view.getAllByText('5月19日（日）').length).toBeGreaterThanOrEqual(1);
+    expect(view.getAllByText('15:30').length).toBeGreaterThanOrEqual(1);
 
     await fireEvent.press(view.getByLabelText('日時変更を完了'));
     expect(onConfirm).toHaveBeenCalledWith({ targetDate: '2030-05-19', targetTime: '15:30' });
@@ -119,6 +125,33 @@ describe('ReminderScheduleEditorModal', () => {
     expect(completeButton).toBeDisabled();
     await fireEvent.press(completeButton);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('uses the all-day slider while editing and preserves the selected time when toggled back', async () => {
+    const onConfirm = jest.fn();
+    const view = await render(
+      <ReminderScheduleEditorModal
+        visible
+        reminder={initialReminder}
+        isSaving={false}
+        onConfirm={onConfirm}
+        onClose={jest.fn()}
+      />,
+    );
+
+    const slider = view.getByRole('switch');
+    expect(slider).not.toBeChecked();
+    await fireEvent(slider, 'accessibilityAction', {
+      nativeEvent: { actionName: 'activate' },
+    });
+    expect(slider).toBeChecked();
+    expect(view.queryByLabelText('時刻を変更')).toBeNull();
+    expect(view.getByText('終日 · 09:00にお知らせ')).toBeOnTheScreen();
+
+    await fireEvent(slider, 'accessibilityTap');
+    expect(slider).not.toBeChecked();
+    expect(view.getByLabelText('時刻を変更')).toBeOnTheScreen();
+    expect(view.getAllByText('14:00').length).toBeGreaterThanOrEqual(1);
   });
 
   it('disables every action while saving', async () => {

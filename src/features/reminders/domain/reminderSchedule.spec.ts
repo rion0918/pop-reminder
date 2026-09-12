@@ -71,3 +71,19 @@ test('schedule editing rejects invalid time strings', () => {
   assert.throws(() => replaceReminderTargetTime(target, '24:00'));
   assert.throws(() => buildPreviousNotifyAt(target, '9:00'));
 });
+
+test('all-day schedules notify in the morning but remain active until the day ends', () => {
+  const schedule = buildReminderSchedule({
+    dateOffset: 0,
+    targetTime: '00:00',
+    allDay: true,
+    allDayNotifyTime: '09:00',
+    previousNotifyTime: '20:30',
+    now: new Date(2030, 4, 12, 13),
+  });
+
+  assert.equal(schedule.targetAt.getHours(), 0);
+  assert.equal(schedule.targetNotifyAt.getHours(), 9);
+  assert.equal(schedule.expiresAt.getHours(), 23);
+  assert.equal(schedule.expiresAt.getDate(), 12);
+});

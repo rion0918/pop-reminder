@@ -32,6 +32,8 @@ const reminderDependencies = {
     get: sqliteSettingsRepository.get,
     updatePreviousNotifyTime: (previousNotifyTime: string) =>
       sqliteSettingsRepository.update({ previousNotifyTime }),
+    updateAllDayNotifyTime: (allDayNotifyTime: string) =>
+      sqliteSettingsRepository.update({ allDayNotifyTime }),
   },
   notifications: reminderNotificationGateway,
   widget: widgetGateway,

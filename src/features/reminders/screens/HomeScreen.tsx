@@ -71,6 +71,7 @@ type PendingReminderSaveInput = {
   dateOffset: 0 | 1 | 2;
   customTargetDate: string | null;
   targetTime: string;
+  allDay: boolean;
   useTestNotifications: boolean;
 };
 
@@ -115,6 +116,7 @@ export function HomeScreen() {
   const datePreset = useReminderUiStore((state) => state.datePreset);
   const customTargetDate = useReminderUiStore((state) => state.customTargetDate);
   const targetTime = useReminderUiStore(selectFormattedTime);
+  const allDay = useReminderUiStore((state) => state.allDay);
   const isNotificationTestModeEnabled = useNotificationDevStore(
     (state) => state.isNotificationTestModeEnabled,
   );
@@ -169,7 +171,7 @@ export function HomeScreen() {
   const selectedReminder = reminders.find((r) => r.id === selectedReminderId) || null;
   const activeReminderCount = reminders.filter(
     (reminder) =>
-      reminder.status === 'active' && new Date(reminder.targetNotifyAt).getTime() > Date.now(),
+      reminder.status === 'active' && new Date(reminder.expiresAt).getTime() > Date.now(),
   ).length;
   const visibleReminderIds = useMemo(
     () => new Set(reminders.slice(0, MAX_VISIBLE_HOME_BUBBLES).map((reminder) => reminder.id)),
@@ -435,6 +437,7 @@ export function HomeScreen() {
           dateOffset: input.dateOffset,
           customTargetDate: input.customTargetDate,
           targetTime: input.targetTime,
+          allDay: input.allDay,
         },
         {
           useTestNotifications: input.useTestNotifications,
@@ -451,6 +454,7 @@ export function HomeScreen() {
 
       if (
         result.notification.status === 'not-scheduled' &&
+        !(input.allDay && result.notification.reason === 'target-time-passed') &&
         !(
           result.notification.reason === 'notification-permission-denied' &&
           options.suppressPermissionDeniedAlert
@@ -508,6 +512,7 @@ export function HomeScreen() {
       dateOffset,
       customTargetDate,
       targetTime,
+      allDay,
       useTestNotifications: __DEV__ && isNotificationTestModeEnabled,
     };
 
@@ -741,7 +746,10 @@ export function HomeScreen() {
   );
 
   const handleUpdateReminderSchedule = useCallback(
-    async (reminder: Reminder, input: { targetDate: string; targetTime: string }) => {
+    async (
+      reminder: Reminder,
+      input: { targetDate: string; targetTime: string; allDay?: boolean },
+    ) => {
       const result = await updateReminderSchedule(reminder.id, input);
 
       if (!result) {
@@ -913,14 +921,13 @@ export function HomeScreen() {
   const isEmptyHome = !loading && !error && reminders.length === 0;
   const nextReminder = reminders[0] ?? null;
   const nextReminderIsExpired = nextReminder
-    ? nextReminder.status === 'expired' ||
-      new Date(nextReminder.targetNotifyAt).getTime() <= Date.now()
+    ? nextReminder.status === 'expired' || new Date(nextReminder.expiresAt).getTime() <= Date.now()
     : false;
   const nextReminderLabel = nextReminder
-    ? formatReminderBubbleDateTime(nextReminder.targetAt)
+    ? formatReminderBubbleDateTime(nextReminder.targetAt, new Date(), nextReminder.allDay)
     : null;
   const nextReminderAccessibilityLabel = nextReminder
-    ? `${nextReminderIsExpired ? '期限済み' : '次のリマインド'}、${nextReminder.title}、${formatReminderDetailAccessibilityDateTime(nextReminder.targetAt)}`
+    ? `${nextReminderIsExpired ? '期限済み' : '次のリマインド'}、${nextReminder.title}、${formatReminderDetailAccessibilityDateTime(nextReminder.targetAt, new Date(), nextReminder.allDay)}`
     : undefined;
   const isCompactPhoneWidth = windowWidth <= 360;
 
@@ -1050,6 +1057,7 @@ export function HomeScreen() {
 
       <ReminderInputSheet
         defaultTargetTime={getQuickAddDefaultTime()}
+        allDayNotifyTime={settings?.allDayNotifyTime}
         presets={quickAddPresets}
         isSaving={isSaving}
         onSave={handleSave}
@@ -1057,6 +1065,7 @@ export function HomeScreen() {
 
       <ReminderDetailSheet
         reminder={selectedReminder}
+        allDayNotifyTime={settings?.allDayNotifyTime}
         onClose={handleCloseReminderDetail}
         onDelete={handleDeleteReminder}
         onUpdateTitle={handleUpdateReminderTitle}

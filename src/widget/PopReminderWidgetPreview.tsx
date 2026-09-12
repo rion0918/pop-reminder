@@ -24,6 +24,7 @@ export type WidgetPreviewReminder = {
   title: string;
   targetAt: string;
   isExpired?: boolean;
+  allDay?: boolean;
 };
 
 export type PopReminderWidgetPreviewProps = {
@@ -48,7 +49,7 @@ function ReminderPreview({
 }) {
   const typography = getWidgetTypography(mode);
   const dueColor = getReminderDueColor(reminder.targetAt);
-  const timeText = `${reminder.isExpired ? '期限済み · ' : ''}${formatReminderBubbleDateTime(reminder.targetAt)}`;
+  const timeText = `${reminder.isExpired ? '期限済み · ' : ''}${formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay)}`;
   return (
     <View
       style={[

@@ -115,7 +115,10 @@ export function SearchScreen() {
   );
 
   const handleUpdateReminderSchedule = useCallback(
-    async (reminder: Reminder, input: { targetDate: string; targetTime: string }) => {
+    async (
+      reminder: Reminder,
+      input: { targetDate: string; targetTime: string; allDay?: boolean },
+    ) => {
       const result = await updateReminderSchedule(reminder.id, input);
 
       if (!result) {
@@ -302,6 +305,7 @@ export function SearchScreen() {
 
       <ReminderDetailSheet
         reminder={selectedReminder}
+        allDayNotifyTime={settings?.allDayNotifyTime}
         onClose={(closedReminderId) =>
           setSelectedReminderId((current) => (current === closedReminderId ? null : current))
         }

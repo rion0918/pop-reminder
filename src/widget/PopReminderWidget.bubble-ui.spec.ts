@@ -189,7 +189,7 @@ test('native periodic updates respect auto-delete while the app is closed', () =
     /auto_delete_enabled/,
     /includeExpired/,
     /status = 'expired'/,
-    /target_notify_at <= \?/,
+    /expires_at <= \?/,
     /ORDER BY/,
   ]);
 });

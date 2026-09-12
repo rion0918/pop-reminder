@@ -53,6 +53,7 @@ export type ReminderTargetScheduleUpdate = Pick<
 
 export type ReminderScheduleUpdate = Pick<
   Reminder,
+  | 'allDay'
   | 'targetAt'
   | 'previousNotifyAt'
   | 'targetNotifyAt'
@@ -117,6 +118,7 @@ export type ReminderNotificationChannelMigrationGateway = {
 export type ReminderSettingsGateway = {
   get(): Promise<AppSettings>;
   updatePreviousNotifyTime(previousNotifyTime: string): Promise<AppSettings>;
+  updateAllDayNotifyTime?(allDayNotifyTime: string): Promise<AppSettings>;
 };
 
 export type WidgetSyncGateway = {

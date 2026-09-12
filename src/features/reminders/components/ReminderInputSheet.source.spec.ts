@@ -274,7 +274,9 @@ test('quick add sheet keeps compact dynamic sizing while bounding the resized sa
       /18 \+ safeAreaInsets\.bottom/,
       /maxDynamicContentSize=\{quickAddMaxDynamicContentSize\}/,
       /bottomInset=\{safeAreaInsets\.bottom\}/,
-      /contentContainerStyle=\{\[styles\.content, \{ paddingBottom: quickAddContentBottomPadding \}\]\}/,
+      /footerComponent=\{QuickAddFooter\}/,
+      /enableFooterMarginAdjustment/,
+      /paddingBottom: quickAddContentBottomPadding/,
       /keyboardShouldPersistTaps="handled"/,
     ],
     excludes: [
@@ -282,7 +284,6 @@ test('quick add sheet keeps compact dynamic sizing while bounding the resized sa
       /KeyboardAwareScrollView/,
       /quickAddKeyboardBottomOffset/,
       /bottomOffset=\{/,
-      /contentContainerStyle=\{styles\.content\}/,
       /snapPoints=\{snapPoints\}/,
       /const snapPoints = useMemo/,
     ],

@@ -27,6 +27,11 @@ export function useAppSettingsQuery() {
       services.reminders.updatePreviousNotifyTime(previousNotifyTime),
     onSuccess: (result) => queryClient.setQueryData(currentSettingsQueryKey, result.settings),
   });
+  const allDayNotifyTimeMutation = useMutation({
+    mutationFn: (allDayNotifyTime: string) =>
+      services.reminders.updateAllDayNotifyTime(allDayNotifyTime),
+    onSuccess: (result) => queryClient.setQueryData(currentSettingsQueryKey, result.settings),
+  });
   const analyticsConsentMutation = useMutation({
     mutationFn: services.settings.updateAnalyticsConsent,
     onSuccess: (settings) => queryClient.setQueryData(currentSettingsQueryKey, settings),
@@ -39,6 +44,7 @@ export function useAppSettingsQuery() {
     update: mutation.mutateAsync,
     updateAnalyticsConsent: analyticsConsentMutation.mutateAsync,
     updatePreviousNotifyTime: previousNotifyTimeMutation.mutateAsync,
+    updateAllDayNotifyTime: allDayNotifyTimeMutation.mutateAsync,
     isUpdatingPreviousNotifyTime: previousNotifyTimeMutation.isPending,
   };
 }

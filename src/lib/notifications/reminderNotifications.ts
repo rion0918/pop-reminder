@@ -12,7 +12,7 @@ import type { Reminder } from '../../features/reminders/domain/reminder';
 
 type ReminderNotificationTarget = Pick<
   Reminder,
-  'id' | 'title' | 'previousNotifyAt' | 'targetNotifyAt'
+  'id' | 'title' | 'allDay' | 'previousNotifyAt' | 'targetNotifyAt'
 >;
 
 export const REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts';
@@ -190,7 +190,9 @@ export async function scheduleTargetReminderNotification(
   try {
     const notificationId = await scheduleIfFuture({
       title: 'ふわっと。',
-      body: `「${reminder.title}」の時間をお知らせします`,
+      body: reminder.allDay
+        ? `今日の「${reminder.title}」をお知らせします`
+        : `「${reminder.title}」の時間をお知らせします`,
       date: targetDate,
       reminderId: reminder.id,
     });

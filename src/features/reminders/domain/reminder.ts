@@ -3,6 +3,7 @@ export type ReminderStatus = 'active' | 'expired';
 export type Reminder = {
   id: string;
   title: string;
+  allDay?: boolean;
   targetAt: string;
   previousNotifyAt: string;
   targetNotifyAt: string;
@@ -16,7 +17,7 @@ export type Reminder = {
 
 export type CreateReminderDraft = Pick<
   Reminder,
-  'title' | 'targetAt' | 'previousNotifyAt' | 'targetNotifyAt' | 'expiresAt'
+  'title' | 'allDay' | 'targetAt' | 'previousNotifyAt' | 'targetNotifyAt' | 'expiresAt'
 >;
 
 export function normalizeReminderTitle(title: string) {

@@ -34,6 +34,7 @@ import {
 
 type ReminderDetailSheetProps = {
   reminder: Reminder | null;
+  allDayNotifyTime?: string;
   onClose: (closedReminderId: string | null) => void;
   onDelete: (reminder: Reminder) => Promise<void>;
   onUpdateTitle: (reminder: Reminder, title: string) => Promise<Reminder>;
@@ -67,6 +68,8 @@ function NotificationTimeline({
   );
   const targetAccessibilityDateTime = formatReminderDetailAccessibilityDateTime(
     reminder.targetNotifyAt,
+    new Date(),
+    reminder.allDay,
   );
 
   return (
@@ -100,7 +103,7 @@ function NotificationTimeline({
             {formatReminderDetailDate(reminder.targetNotifyAt)}
           </Text>
           <Text style={styles.targetScheduleTime}>
-            {formatReminderDetailTime(reminder.targetNotifyAt)}
+            {formatReminderDetailTime(reminder.targetNotifyAt, reminder.allDay)}
           </Text>
           <View style={styles.targetTimeHint}>
             <Text style={styles.targetTimeHintText}>タップして日時を変更</Text>
@@ -140,6 +143,7 @@ function NotificationTimeline({
 
 export function ReminderDetailSheet({
   reminder,
+  allDayNotifyTime = '09:00',
   onClose,
   onDelete,
   onUpdateTitle,
@@ -393,7 +397,10 @@ export function ReminderDetailSheet({
         }
 
         setIsScheduleEditorOpen(false);
-        if (result.notification.status === 'not-scheduled') {
+        if (
+          result.notification.status === 'not-scheduled' &&
+          !(input.allDay && result.notification.reason === 'target-time-passed')
+        ) {
           setScheduleNotice('日時は変更しましたが、通知を予約できませんでした');
         } else if (result.notification.status === 'partial') {
           setScheduleNotice('日時は変更しましたが、前日通知を予約できませんでした');
@@ -537,6 +544,7 @@ export function ReminderDetailSheet({
         <ReminderScheduleEditorModal
           visible={isScheduleEditorOpen}
           reminder={reminder}
+          allDayNotifyTime={allDayNotifyTime}
           isSaving={isScheduleSaving}
           onConfirm={handleScheduleConfirm}
           onClose={() => setIsScheduleEditorOpen(false)}

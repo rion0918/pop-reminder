@@ -10,6 +10,7 @@ function toDomain(row: ReminderRow): Reminder {
   return {
     id: row.id,
     title: row.title,
+    allDay: row.allDay,
     targetAt: row.targetAt,
     previousNotifyAt: row.previousNotifyAt,
     targetNotifyAt: row.targetNotifyAt,
@@ -32,7 +33,7 @@ export const sqliteReminderRepository: ReminderRepository = {
     const rows = await db
       .select()
       .from(reminders)
-      .where(and(eq(reminders.status, 'active'), gt(reminders.targetNotifyAt, now.toISOString())))
+      .where(and(eq(reminders.status, 'active'), gt(reminders.expiresAt, now.toISOString())))
       .orderBy(asc(reminders.targetAt));
     return rows.map(toDomain);
   },
@@ -41,8 +42,8 @@ export const sqliteReminderRepository: ReminderRepository = {
     const rows = await db
       .select()
       .from(reminders)
-      .where(and(eq(reminders.status, 'active'), lte(reminders.targetNotifyAt, now.toISOString())))
-      .orderBy(asc(reminders.targetNotifyAt));
+      .where(and(eq(reminders.status, 'active'), lte(reminders.expiresAt, now.toISOString())))
+      .orderBy(asc(reminders.expiresAt));
     return rows.map(toDomain);
   },
 
@@ -51,7 +52,7 @@ export const sqliteReminderRepository: ReminderRepository = {
     const activeRows = await db
       .select()
       .from(reminders)
-      .where(and(eq(reminders.status, 'active'), gt(reminders.targetNotifyAt, nowIso)))
+      .where(and(eq(reminders.status, 'active'), gt(reminders.expiresAt, nowIso)))
       .orderBy(asc(reminders.targetAt));
 
     if (!includeExpired) return activeRows.map(toDomain);
@@ -62,7 +63,7 @@ export const sqliteReminderRepository: ReminderRepository = {
       .where(
         or(
           eq(reminders.status, 'expired'),
-          and(eq(reminders.status, 'active'), lte(reminders.targetNotifyAt, nowIso)),
+          and(eq(reminders.status, 'active'), lte(reminders.expiresAt, nowIso)),
         ),
       )
       .orderBy(desc(reminders.targetAt));

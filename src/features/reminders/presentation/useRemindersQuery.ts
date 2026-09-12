@@ -14,13 +14,21 @@ const MAX_REFRESH_TIMER_MS = 24 * 60 * 60 * 1000;
 function sortReminders(reminders: Reminder[]) {
   const now = Date.now();
   return [...reminders].sort((first, second) => {
-    const firstTime = new Date(first.targetNotifyAt).getTime();
-    const secondTime = new Date(second.targetNotifyAt).getTime();
-    const firstExpired = first.status === 'expired' || firstTime <= now;
-    const secondExpired = second.status === 'expired' || secondTime <= now;
+    const firstTime = new Date(first.targetAt).getTime();
+    const secondTime = new Date(second.targetAt).getTime();
+    const firstExpired = first.status === 'expired' || new Date(first.expiresAt).getTime() <= now;
+    const secondExpired =
+      second.status === 'expired' || new Date(second.expiresAt).getTime() <= now;
 
     if (firstExpired !== secondExpired) return firstExpired ? 1 : -1;
-    return firstExpired ? secondTime - firstTime : firstTime - secondTime;
+    if (firstExpired) return secondTime - firstTime;
+    if (
+      first.allDay !== second.allDay &&
+      new Date(first.targetAt).toDateString() === new Date(second.targetAt).toDateString()
+    ) {
+      return first.allDay ? -1 : 1;
+    }
+    return firstTime - secondTime;
   });
 }
 
@@ -116,6 +124,11 @@ export function useRemindersQuery() {
       void reconcile();
     },
   });
+  const updateAllDayNotifyTimeMutation = useMutation({
+    mutationFn: (allDayNotifyTime: string) =>
+      services.reminders.updateAllDayNotifyTime(allDayNotifyTime),
+    onSuccess: (result) => queryClient.setQueryData(['settings', 'current'], result.settings),
+  });
 
   const reconcileExpiredReminders = useCallback(async () => {
     await services.reminders.cleanup();
@@ -124,7 +137,7 @@ export function useRemindersQuery() {
 
   useEffect(() => {
     const nextTarget = (reminders ?? []).reduce<number | null>((next, reminder) => {
-      const target = new Date(reminder.targetNotifyAt).getTime();
+      const target = new Date(reminder.expiresAt).getTime();
       if (target <= Date.now()) return next;
       return next === null ? target : Math.min(next, target);
     }, null);
@@ -172,6 +185,7 @@ export function useRemindersQuery() {
       id: string,
       input: Parameters<typeof services.reminders.updateSchedule>[1],
     ) => updateScheduleMutation.mutateAsync({ id, input }),
+    updateAllDayNotifyTime: (time: string) => updateAllDayNotifyTimeMutation.mutateAsync(time),
     isCreating: createMutation.isPending,
     isDeletingReminders: deleteManyMutation.isPending,
   };

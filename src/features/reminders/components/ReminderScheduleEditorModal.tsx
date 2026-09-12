@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { format, startOfDay } from 'date-fns';
+import { useReducedMotion } from 'react-native-reanimated';
+import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette } from '../../../constants/colors';
@@ -14,10 +16,12 @@ import {
   type ReminderScheduleDraft,
 } from '../utils/reminderScheduleEditor';
 import { formatReminderDetailDate, formatReminderDetailTime } from '../utils/reminderDateFormat';
+import { ReminderAllDaySlider } from './ReminderAllDaySlider';
 
 type ReminderScheduleEditorModalProps = {
   visible: boolean;
-  reminder: Pick<Reminder, 'targetAt' | 'previousNotifyAt'>;
+  reminder: Pick<Reminder, 'targetAt' | 'previousNotifyAt' | 'allDay'>;
+  allDayNotifyTime?: string;
   isSaving: boolean;
   onConfirm: (draft: ReminderScheduleDraft) => void;
   onClose: () => void;
@@ -34,6 +38,7 @@ const pickerDisplay = Platform.select({
 export function ReminderScheduleEditorModal({
   visible,
   reminder,
+  allDayNotifyTime = '09:00',
   isSaving,
   onConfirm,
   onClose,
@@ -44,12 +49,13 @@ export function ReminderScheduleEditorModal({
   const [activePicker, setActivePicker] = useState<ActivePicker>(null);
   const wasVisibleRef = useRef(false);
   const safeAreaInsets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
 
   const initialDraft = createReminderScheduleDraft(reminder);
   const previousNotifyTime = format(new Date(reminder.previousNotifyAt), 'HH:mm');
   const evaluated = useMemo(
-    () => evaluateReminderScheduleDraft(draft, previousNotifyTime),
-    [draft, previousNotifyTime],
+    () => evaluateReminderScheduleDraft(draft, previousNotifyTime, new Date(), allDayNotifyTime),
+    [draft, previousNotifyTime, allDayNotifyTime],
   );
   const minimumDate = startOfDay(new Date());
   const datePickerValue = useMemo(
@@ -64,7 +70,9 @@ export function ReminderScheduleEditorModal({
   }, [draft.targetTime]);
   const previousDate = evaluated.schedule?.previousNotifyAt ?? new Date(reminder.previousNotifyAt);
   const hasChanges =
-    draft.targetDate !== initialDraft.targetDate || draft.targetTime !== initialDraft.targetTime;
+    draft.targetDate !== initialDraft.targetDate ||
+    draft.targetTime !== initialDraft.targetTime ||
+    draft.allDay !== initialDraft.allDay;
   const previousNoticeText = !evaluated.isPreviousFuture
     ? '前日のお知らせ時刻は過ぎているため、当日だけお知らせします'
     : hasChanges
@@ -143,138 +151,154 @@ export function ReminderScheduleEditorModal({
           if (!isSaving) onClose();
         }}
       >
-        <View style={styles.modalOverlay}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="日時変更をキャンセル"
-            accessibilityState={{ disabled: isSaving }}
-            disabled={isSaving}
-            onPress={onClose}
-            style={styles.backdrop}
-          />
+        <GestureHandlerRootView style={styles.modalGestureRoot}>
+          <View style={styles.modalOverlay}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="日時変更をキャンセル"
+              accessibilityState={{ disabled: isSaving }}
+              disabled={isSaving}
+              onPress={onClose}
+              style={styles.backdrop}
+            />
 
-          <View accessibilityViewIsModal style={styles.panel}>
-            <ScrollView
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.content,
-                { paddingBottom: Math.max(18, safeAreaInsets.bottom + 8) },
-              ]}
-            >
-              <View style={styles.actionBar}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="日時変更をキャンセル"
-                  accessibilityState={{ disabled: isSaving }}
-                  disabled={isSaving}
-                  hitSlop={6}
-                  onPress={onClose}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    pressed && !isSaving ? styles.actionButtonPressed : null,
-                    isSaving ? styles.actionButtonDisabled : null,
-                  ]}
-                >
-                  <Text style={styles.cancelActionText}>キャンセル</Text>
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="日時変更を完了"
-                  accessibilityState={{ disabled: isSaveDisabled }}
-                  disabled={isSaveDisabled}
-                  hitSlop={6}
-                  onPress={() => onConfirm(draft)}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    pressed && !isSaveDisabled ? styles.actionButtonPressed : null,
-                    isSaveDisabled ? styles.actionButtonDisabled : null,
-                  ]}
-                >
-                  <Text style={styles.completeActionText}>{isSaving ? '保存中…' : '完了'}</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.scheduleSurface}>
-                <Text style={styles.scheduleLabel}>お知らせ日時</Text>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="日付を変更"
-                  accessibilityHint={formatReminderDetailDate(datePickerValue)}
-                  accessibilityState={{ selected: activePicker === 'date', disabled: isSaving }}
-                  disabled={isSaving}
-                  onPress={() => setActivePicker('date')}
-                  style={({ pressed }) => [
-                    styles.scheduleDateButton,
-                    activePicker === 'date' ? styles.scheduleValueActive : null,
-                    isSaving ? styles.scheduleValueDisabled : null,
-                    pressed ? styles.scheduleValuePressed : null,
-                  ]}
-                >
-                  <Text
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.82}
-                    numberOfLines={1}
-                    style={styles.scheduleDateValue}
-                  >
-                    {formatReminderDetailDate(datePickerValue)}
-                  </Text>
-                </Pressable>
-
-                <View style={styles.scheduleDivider} />
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="時刻を変更"
-                  accessibilityHint={formatReminderDetailTime(timePickerValue)}
-                  accessibilityState={{ selected: activePicker === 'time', disabled: isSaving }}
-                  disabled={isSaving}
-                  onPress={() => setActivePicker('time')}
-                  style={({ pressed }) => [
-                    styles.scheduleTimeButton,
-                    activePicker === 'time' ? styles.scheduleValueActive : null,
-                    isSaving ? styles.scheduleValueDisabled : null,
-                    pressed ? styles.scheduleValuePressed : null,
-                  ]}
-                >
-                  <Text numberOfLines={1} style={styles.scheduleTimeValue}>
-                    {formatReminderDetailTime(timePickerValue)}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {Platform.OS === 'ios' ? renderPicker() : null}
-
-              {!evaluated.isTargetFuture ? (
-                <Text style={styles.targetWarning}>過去の日時には変更できません</Text>
-              ) : null}
-
-              <View
-                accessible
-                accessibilityRole="text"
-                accessibilityLabel={previousNoticeText}
-                style={styles.previousNotice}
+            <View accessibilityViewIsModal style={styles.panel}>
+              <ScrollView
+                bounces={false}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                  styles.content,
+                  { paddingBottom: Math.max(18, safeAreaInsets.bottom + 8) },
+                ]}
               >
-                <Ionicons
-                  name="notifications-outline"
-                  size={18}
-                  color={evaluated.isPreviousFuture ? palette.muted : palette.peachDeep}
-                />
-                <Text
-                  style={[
-                    styles.previousNoticeText,
-                    !evaluated.isPreviousFuture ? styles.previousNoticeTextPast : null,
-                  ]}
+                <View style={styles.actionBar}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="日時変更をキャンセル"
+                    accessibilityState={{ disabled: isSaving }}
+                    disabled={isSaving}
+                    hitSlop={6}
+                    onPress={onClose}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      pressed && !isSaving ? styles.actionButtonPressed : null,
+                      isSaving ? styles.actionButtonDisabled : null,
+                    ]}
+                  >
+                    <Text style={styles.cancelActionText}>キャンセル</Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="日時変更を完了"
+                    accessibilityState={{ disabled: isSaveDisabled }}
+                    disabled={isSaveDisabled}
+                    hitSlop={6}
+                    onPress={() => onConfirm(draft)}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      pressed && !isSaveDisabled ? styles.actionButtonPressed : null,
+                      isSaveDisabled ? styles.actionButtonDisabled : null,
+                    ]}
+                  >
+                    <Text style={styles.completeActionText}>{isSaving ? '保存中…' : '完了'}</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.scheduleSurface}>
+                  <Text style={styles.scheduleLabel}>お知らせ日時</Text>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="日付を変更"
+                    accessibilityHint={formatReminderDetailDate(datePickerValue)}
+                    accessibilityState={{ selected: activePicker === 'date', disabled: isSaving }}
+                    disabled={isSaving}
+                    onPress={() => setActivePicker('date')}
+                    style={({ pressed }) => [
+                      styles.scheduleDateButton,
+                      activePicker === 'date' ? styles.scheduleValueActive : null,
+                      isSaving ? styles.scheduleValueDisabled : null,
+                      pressed ? styles.scheduleValuePressed : null,
+                    ]}
+                  >
+                    <Text
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.82}
+                      numberOfLines={1}
+                      style={styles.scheduleDateValue}
+                    >
+                      {formatReminderDetailDate(datePickerValue)}
+                    </Text>
+                  </Pressable>
+
+                  {!draft.allDay ? <View style={styles.scheduleDivider} /> : null}
+
+                  {!draft.allDay ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="時刻を変更"
+                      accessibilityHint={formatReminderDetailTime(timePickerValue)}
+                      accessibilityState={{ selected: activePicker === 'time', disabled: isSaving }}
+                      disabled={isSaving}
+                      onPress={() => setActivePicker('time')}
+                      style={({ pressed }) => [
+                        styles.scheduleTimeButton,
+                        activePicker === 'time' ? styles.scheduleValueActive : null,
+                        isSaving ? styles.scheduleValueDisabled : null,
+                        pressed ? styles.scheduleValuePressed : null,
+                      ]}
+                    >
+                      <Text numberOfLines={1} style={styles.scheduleTimeValue}>
+                        {formatReminderDetailTime(timePickerValue)}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+
+                  <View style={styles.editorSliderSpacing}>
+                    <ReminderAllDaySlider
+                      allDay={Boolean(draft.allDay)}
+                      dateLabel={formatReminderDetailDate(datePickerValue)}
+                      time={formatReminderDetailTime(timePickerValue)}
+                      allDayNotifyTime={allDayNotifyTime}
+                      disabled={isSaving}
+                      reduceMotion={Boolean(reduceMotion)}
+                      onChange={(allDay) => setDraft((current) => ({ ...current, allDay }))}
+                    />
+                  </View>
+                </View>
+
+                {Platform.OS === 'ios' ? renderPicker() : null}
+
+                {!evaluated.isTargetFuture ? (
+                  <Text style={styles.targetWarning}>過去の日時には変更できません</Text>
+                ) : null}
+
+                <View
+                  accessible
+                  accessibilityRole="text"
+                  accessibilityLabel={previousNoticeText}
+                  style={styles.previousNotice}
                 >
-                  {previousNoticeText}
-                </Text>
-              </View>
-            </ScrollView>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={18}
+                    color={evaluated.isPreviousFuture ? palette.muted : palette.peachDeep}
+                  />
+                  <Text
+                    style={[
+                      styles.previousNoticeText,
+                      !evaluated.isPreviousFuture ? styles.previousNoticeTextPast : null,
+                    ]}
+                  >
+                    {previousNoticeText}
+                  </Text>
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </GestureHandlerRootView>
       </Modal>
 
       {visible && Platform.OS === 'android' ? renderPicker() : null}
@@ -283,6 +307,9 @@ export function ReminderScheduleEditorModal({
 }
 
 const styles = StyleSheet.create({
+  modalGestureRoot: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     alignItems: 'center',
@@ -347,6 +374,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(197,215,241,0.68)',
     borderRadius: 24,
     backgroundColor: '#F3F7FE',
+  },
+  editorSliderSpacing: {
+    marginTop: 10,
   },
   scheduleLabel: {
     paddingHorizontal: 8,

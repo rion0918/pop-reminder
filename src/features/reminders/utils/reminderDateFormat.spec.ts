@@ -6,6 +6,7 @@ import {
   formatReminderDetailDate,
   formatReminderDetailTime,
   formatReminderBubbleDateTime,
+  formatReminderDateTime,
   formatReminderInputDate,
   shouldShowPreviousNotification,
 } from './reminderDateFormat';
@@ -21,6 +22,12 @@ test('widget date labels include weekdays after the day after tomorrow', () => {
     formatReminderBubbleDateTime(new Date(2027, 0, 1, 18, 0), now),
     '2027/1/1（金） 18:00',
   );
+});
+
+test('all-day date labels omit a clock time', () => {
+  const now = new Date(2026, 6, 12, 10);
+  assert.equal(formatReminderBubbleDateTime(new Date(2026, 6, 13), now, true), '明日 終日');
+  assert.equal(formatReminderDateTime(new Date(2026, 6, 13), true), '2026/7/13 終日');
 });
 
 test('detail date separates a Japanese calendar date, weekday, and time', () => {

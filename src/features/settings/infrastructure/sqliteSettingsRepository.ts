@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS_ID = 'default';
 const defaultSettings: NewAppSettingsRow = {
   id: DEFAULT_SETTINGS_ID,
   previousNotifyTime: '20:00',
+  allDayNotifyTime: '09:00',
   ...DEFAULT_QUICK_ADD_PRESET_TIMES,
   autoDeleteEnabled: true,
   ...DEFAULT_NOTIFICATION_PERMISSION_SETTINGS,
@@ -36,6 +37,7 @@ function toDomain(row: CurrentAppSettingsRow): AppSettings {
   return {
     id: row.id,
     previousNotifyTime: row.previousNotifyTime,
+    allDayNotifyTime: row.allDayNotifyTime,
     defaultTargetTime: row.defaultTargetTime,
     noonTargetTime: row.noonTargetTime,
     eveningTargetTime: row.eveningTargetTime,
@@ -54,6 +56,7 @@ async function get() {
     .select({
       id: appSettings.id,
       previousNotifyTime: appSettings.previousNotifyTime,
+      allDayNotifyTime: appSettings.allDayNotifyTime,
       defaultTargetTime: appSettings.defaultTargetTime,
       noonTargetTime: appSettings.noonTargetTime,
       eveningTargetTime: appSettings.eveningTargetTime,
@@ -99,6 +102,10 @@ export const sqliteSettingsRepository: SettingsRepository = {
         input.previousNotifyTime && isTimeString(input.previousNotifyTime)
           ? input.previousNotifyTime
           : current.previousNotifyTime,
+      allDayNotifyTime:
+        input.allDayNotifyTime && isTimeString(input.allDayNotifyTime)
+          ? input.allDayNotifyTime
+          : current.allDayNotifyTime,
       ...nextPresetTimes,
       autoDeleteEnabled: input.autoDeleteEnabled ?? current.autoDeleteEnabled,
       notificationPermissionIntroSeen:
@@ -112,6 +119,7 @@ export const sqliteSettingsRepository: SettingsRepository = {
       .update(appSettings)
       .set({
         previousNotifyTime: next.previousNotifyTime,
+        allDayNotifyTime: next.allDayNotifyTime,
         defaultTargetTime: next.defaultTargetTime,
         noonTargetTime: next.noonTargetTime,
         eveningTargetTime: next.eveningTargetTime,
