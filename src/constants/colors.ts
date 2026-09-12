@@ -7,6 +7,8 @@ export const themeOptions: AppTheme[] = [...APP_THEME_OPTIONS];
 export const palette = {
   ink: '#263151',
   muted: '#7280A3',
+  disabledBackground: '#E5E7EB',
+  disabledText: '#6B7280',
   line: '#DCE9F7',
   white: '#FFFFFF',
   cloud: '#F7FBFF',

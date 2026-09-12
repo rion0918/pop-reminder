@@ -211,6 +211,11 @@ export function ReminderInputSheet({
   }, [selectedTargetDate, time]);
 
   const isTargetFuture = targetAt.getTime() > Date.now();
+  const disabledPresetTimes = presets
+    .filter(
+      (preset) => buildTargetDateTime(selectedTargetDate, preset.time).getTime() <= Date.now(),
+    )
+    .map((preset) => preset.time);
 
   const handleDraftTitleChange = useCallback((text: string) => {
     draftTitleRef.current = text;
@@ -411,7 +416,7 @@ export function ReminderInputSheet({
     const subscription = voiceInput.subscribe((event) => {
       if (event.type === 'start') {
         setVoiceStatusValue('listening');
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
         AccessibilityInfo.announceForAccessibility('音声入力を開始しました');
         return;
       }
@@ -955,6 +960,7 @@ export function ReminderInputSheet({
             onChange={handleTargetTimeChange}
             onSelectCustomTime={openTimePicker}
             presets={presets}
+            disabledTimes={disabledPresetTimes}
             variant="compact"
             style={styles.timeSelector}
           />

@@ -1,50 +1,27 @@
 # pop-reminder エージェントガイド
 
-## 最優先の制約
+Expo / React Native の Android・iOS リマインダーアプリ。依存バージョンと実行コマンドは `package.json`、検証契約はテスト・Biome・CI を正とする。
 
-- 以下のプロジェクト固有のレイヤー境界を守り、変更は目的に必要な範囲だけに留める。
-- 画面から SQLite、通知、Widget のネイティブ実装を直接呼び出さない。
-- `expo-sqlite` の直接 import は `src/db/` と `src/widget/` に限定する。
-- `expo-notifications` の直接 import は `src/lib/notifications/` に限定する。
-- reminders のユースケースは `src/features/reminders/application/` の Port だけを参照し、外部実装は `src/bootstrap/appServices.ts` で接続する。
-- ハーネスの真実は説明文書ではなく、テスト、Biome ルール、package scripts、CI に置く。
-- `biome.json`、`lefthook.yml`、`flake.nix`、`package.json`、`pnpm-lock.yaml`、`AGENTS.md`、`.codex/hooks/**`、`scripts/mvh-*`、`tools/biome-rules/**` は保護対象。明示承認なしに変更しない。
-- 必要な参照ファイルが見つからない場合、または検証が失敗した場合は、成功扱いにせず停止して報告する。
-- 権限境界を越える操作や保護対象の変更が必要になった場合は、明示承認なしに進めない。
+## 作業範囲と完了条件
 
-## プロジェクト概要
+- 要求された振る舞いに必要な変更だけを行う。承認済みの範囲で、実装・関連検証・自分の変更に起因する失敗の修正まで進める。
+- 自分の変更に起因するローカル検証の失敗は、修正して対象の検証を再実行する。無関係な既存エラーは切り分け、完了した確認と残る阻害要因を報告する。失敗や未検証を成功扱いにしない。
+- 必須の参照や権限が不足し、根拠を持って進められない作業は停止して報告する。
+- `biome.json`、`lefthook.yml`、`flake.nix`、`package.json`、`pnpm-lock.yaml`、`AGENTS.md`、`.codex/hooks/**`、`scripts/mvh-*`、`tools/biome-rules/**` は保護対象。変更や権限境界を越える操作には明示承認が必要。検証を通すために保護を緩めない。
 
-- Expo SDK 54、React Native 0.81、React 19、TypeScript 5.9、Expo Router 6 の Android / iOS 対応アプリ。
-- `src/app/` が typed routes を有効にした Expo Router の入口で、起動初期化と通知・Widget の deep link を受け取る。
-- `src/features/reminders/` が domain、application、infrastructure、presentation、泡 UI、入力・詳細・検索・一覧、Zustand UI store を持つ。
-- `src/features/settings/` が domain、application、infrastructure、presentation、設定画面を持つ。
-- `src/bootstrap/` が Adapter、QueryClient、起動処理、Deep Link intent を組み立てる。
-- SQLite / Drizzle の schema と DB client は `src/db/`、ローカル通知の channel・権限・予約・キャンセルは `src/lib/notifications/` に集約する。
-- Android Widget は `src/widget/` にあり、通常アプリとは別の SQLite 接続で snapshot を読み、データ変更後に更新する。
-- NativeWind / Tailwind と Reanimated を UI の基本に使い、色・画面トークンは `src/constants/colors.ts` と `tailwind.config.js` を参照する。
-- iOS の泡破裂は `ReminderBubbleBurst.native.tsx`、Android は `ReminderBubbleBurst.android.tsx` を使う。
+## アプリ固有の境界
 
-## 実装時の境界
+- 画面から SQLite・通知・Widget のネイティブ実装を直接呼ばない。`expo-sqlite` の直接 import は `src/db/` と `src/widget/`、`expo-notifications` は `src/lib/notifications/` に限定する。
+- reminders のユースケースは `src/features/reminders/application/` の Port のみに依存し、Adapter は `src/bootstrap/appServices.ts` で接続する。
+- Router の入口は `src/app/`、画面実装は `src/features/*/screens/` に分ける。
+- DB のテーブル定義は `src/db/schema.ts`、起動時の互換初期化は `src/db/client.ts` に置く。専用 migration パッケージは導入しない。
+- 永続データは SQLite、読み込み・mutation・画面間同期は TanStack Query、Quick Add draft・開発用設定は Zustand、選択・検索・削除アニメーションは画面ローカルに置く。
+- reminders の追加・削除・タイトル更新では `src/widget/widgetUpdateService.tsx` の同期契約を維持する。Widget は通常アプリとは別の SQLite 接続で snapshot を読む。
+- プラットフォーム差分は既存の `.native.tsx`・`.android.tsx` の解決規則に沿わせる。
 
-- ルートファイルは `src/app/`、画面の実装は各 feature の `src/features/*/screens/` に置く。新しい画面は Router の入口と feature 画面を分ける。
-- DB のテーブル定義と起動時の互換初期化は `src/db/schema.ts` と `src/db/client.ts` に置く。専用 migration パッケージは使わない。
-- reminders の CRUD Adapter は `src/features/reminders/infrastructure/sqliteReminderRepository.ts`、副作用を伴うユースケースは `src/features/reminders/application/reminderUseCases.ts` を参照する。
-- 入力の trim・文字数・日付時刻検証は `src/features/reminders/schemas/reminderSchema.ts` と日付 service/util を参照する。
-- 永続データは SQLite、読み込み・mutation・画面間同期はTanStack Query、Quick Add draftと開発用設定はZustand、選択・検索・削除アニメーションは画面ローカルに置く。
-- reminders の追加・削除・タイトル更新では `src/widget/widgetUpdateService.tsx` の同期契約を維持する。
-- 通知や Widget の実機挙動を変更したら、Development Build を使い、`docs/QA_DEVELOPMENT_BUILD.md` と関連テストを更新する。
-- プラットフォーム差分は既存の `.native.tsx`、`.android.tsx` の解決規則に沿わせ、共通ファイルに分岐を増やしすぎない。
+## 検証と参照
 
-## テストと検証
-
-- テストランナーは Node.js 標準 `node --import tsx --test`。対象は `config.release.test.js` と `src/**/*.spec.ts(x)`。
-- DB binding、通知 channel、Widget 同期、deep link、レスポンシブ UI、source contract、プラットフォーム実装は既存 spec の近くにテストを追加する。
-- 実装契約の確認には `src/test-utils/sourceAssertions.ts`、アーキテクチャ違反の確認には `tools/biome-rules/` を使う。
-- 標準ゲートは `pnpm run mvh:verify`。Prettier、保護ファイル guard、Biome、test、typecheck、Expo lint を順に実行する。
-- 個別確認には `pnpm test`、`pnpm run typecheck`、`pnpm run lint`、`pnpm run format:check`、`pnpm run biome:check`、`pnpm run doctor` を使う。
-- リリース相当の確認は `pnpm run verify:release`。Android / iOS の Expo export まで実行する。
-
-## 開発・実機・参照資料
-
-- 通知、SQLite、Android Widget の実機挙動は Expo Go ではなく Development Build で確認する。
-- 環境、セットアップ、Development Build、EAS、MVH のコマンドと、技術構成・境界・代表実装の参照先は `.agents/references/project-operations.md` に集約する。該当する作業では、実行や実装の前にその参照ファイルを読む。
+- 標準ゲートは `pnpm run mvh:verify`。変更に対応する既存 spec を使い、合格後の繰り返しや検証範囲の拡大は、新たな変更・失敗・未解決の懸念がある場合に行う。
+- 通知・SQLite・Android Widget の実機確認には Development Build を使う。通知や Widget の実機挙動を変えた場合は `docs/QA_DEVELOPMENT_BUILD.md` と関連テストを更新する。
+- セットアップ・ビルド・MVH の運用、または実装の参照先が必要なときは [.agents/references/project-operations.md](.agents/references/project-operations.md) の該当節を読む。
+- リリース準備では `docs/RELEASE_ANDROID_IOS.md` を参照し、`pnpm run verify:release` で確認する。

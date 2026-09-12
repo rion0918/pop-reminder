@@ -93,6 +93,22 @@ test('quick add supports cancellable on-device voice input without truncating th
   });
 });
 
+test('voice input gives one heavy impact on the listening start event', () => {
+  const startEvent = source.slice(
+    source.indexOf("if (event.type === 'start')"),
+    source.indexOf("if (event.type === 'result')"),
+  );
+  assertSourceIncludes(startEvent, [
+    /setVoiceStatusValue\('listening'\);\s*void Haptics\.impactAsync\(Haptics\.ImpactFeedbackStyle\.Heavy\)\.catch\(\(\) => \{\}\);/,
+  ]);
+  assert.equal((startEvent.match(/Haptics\.impactAsync/g) ?? []).length, 1);
+  const beginVoiceInput = source.slice(
+    source.indexOf('const beginVoiceInput = useCallback'),
+    source.indexOf('beginVoiceInputRef.current ='),
+  );
+  assert.equal(beginVoiceInput.includes('Haptics.impactAsync'), false);
+});
+
 test('Android voice completion parses the transcript and applies only concrete fields', () => {
   assertSourceIncludes(source, [
     /import \{ parseVoiceReminder \} from '\.\.\/domain\/voiceReminderParser';/,
@@ -334,6 +350,13 @@ test('quick add accepts configured presets for display and today correction', ()
     ],
     excludes: [/function getNextAvailableTimeForToday/],
   });
+});
+
+test('quick add disables past time presets for the selected date, including the current minute', () => {
+  assertSourceIncludes(source, [
+    /const disabledPresetTimes = presets\s*\.filter\(\s*\(preset\) => buildTargetDateTime\(selectedTargetDate, preset\.time\)\.getTime\(\) <= Date\.now\(\),?\s*\)\s*\.map\(\(preset\) => preset\.time\);/,
+    /<TimeSelector[\s\S]*disabledTimes=\{disabledPresetTimes\}/,
+  ]);
 });
 
 test('custom date picker uses platform native display styles', () => {

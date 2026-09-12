@@ -1,48 +1,30 @@
 ---
 name: pr-review
-description: "Use when reviewing a pull request or PR diff for size classification, code quality, or approve/request-changes decisions in Antigravity or CI. Do not use for implementation tasks, generic code review without a PR or diff, or merge execution."
+description: Classify PR risk and recommend approval or changes for a pull request or PR diff. Excludes implementation and merge execution.
 ---
 
-# PR Review Guidelines & Size Classification
+# PR Review
 
-This document defines the rules and criteria for automated PR size labeling and code review evaluation across Antigravity and Codex workflows.
+Apply the repository's `AGENTS.md` for architecture, protected files, and verification. This skill produces a review recommendation; publishing reviews or labels and merging require explicit user authorization.
 
-## Scope and precedence
+## Size classification
 
-This skill adds PR-specific size and review criteria. The project `AGENTS.md` remains authoritative for repository architecture, protected files, testing gates, and permission boundaries. This skill does not authorize publishing a review, merging, or other external mutation unless the user explicitly requests it.
+Assess impact and risk, using these labels:
 
-## 1. PR Size Classification Matrix
+| Label     | Scope and risk                                       |
+| --------- | ---------------------------------------------------- |
+| `size/XS` | Localized documentation, skills, or low-risk config. |
+| `size/S`  | Single component or utility, tests, or minor UI fix. |
+| `size/M`  | One feature or multi-file change with clear scope.   |
+| `size/L`  | Cross-feature, schema, or shared state changes.      |
+| `size/XL` | System-wide architecture, security, or migration.    |
 
-Assign size labels (`size/XS` ~ `size/XL`) based on **impact scope** and **risk level** rather than raw diff line count.
+- `size/XS` is limited to documentation (`*.md`, `docs/`), skills (`.agents/`), or explicitly approved low-risk config (`.coderabbit.yaml`, `.gitignore`, `.gitattributes`, `.editorconfig`). Workflow, build, production code, and schema changes are excluded.
+- Notification, SQLite schema, Widget synchronization, and core data model changes are at least `size/M`; use `size/L` for broad impact.
+- For the automated label calculation, consult `.github/workflows/pr-size-and-automerge.yml`; its path and diff thresholds are the executable source of truth.
 
-| Label     | Criteria                               | Examples                                                                                                                                          |
-| --------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `size/XS` | Localized impact, virtually zero risk. | Typo corrections, comment additions/fixes, minor document or non-production config tweaks, patch version dependency bumps with zero code changes. |
-| `size/S`  | Narrow scope, low risk.                | Single component/utility fix, test additions/refactoring, minor UI adjustments.                                                                   |
-| `size/M`  | Multi-file impact with clear scope.    | Single feature implementation or enhancement, internal component refactoring.                                                                     |
-| `size/L`  | Broad impact or key domain changes.    | Multi-feature changes, database schema modifications, shared state contract updates.                                                              |
-| `size/XL` | System-wide or critical path changes.  | Core architecture overhaul, authentication/security model changes, major database migrations.                                                     |
+## Code Review & Approval Criteria
 
-### Classification Guidelines
+Report actionable regressions with their trigger, impact, and affected location. Check relevant tests and the project's UI/application/adapter boundaries, especially notification and Widget consistency after reminder mutations.
 
-- **Component Scope**: Count how many domain modules or layers are touched.
-- **Behavioral Impact**: Check for breaking interface changes, database migrations, or public API modifications.
-- **Domain Risk**: Changes affecting notifications, SQLite DB schemas, widget synchronizations, or core data models must be rated at least `size/M` or `size/L`.
-- **`size/XS` Allowlist**: `size/XS` is strictly restricted to documentation (`*.md`, `docs/`), skill files (`.agents/`), or explicitly approved low-risk config files (`.coderabbit.yaml`, `.gitignore`, `.gitattributes`, `.editorconfig`). Do **NOT** assign `size/XS` to workflow files, build configs, production code, or database schemas.
-
----
-
-## 2. Code Review & Approval Criteria
-
-Perform code review according to the following standards:
-
-1. **Code Quality & Consistency**: Follows existing TypeScript, React Native, Expo, and Biome conventions.
-2. **Defensive Coding & Bugs**: Avoids unhandled null/undefined values, unhandled async errors, or race conditions.
-3. **Performance**: Avoids unnecessary rerenders or unindexed DB queries.
-4. **Domain Boundaries**: Complies with layered architecture (UI components should not bypass application services or call SQLite directly).
-5. **Testing**: Includes tests for newly introduced logic or bug fixes.
-
-### Approval Condition
-
-- Submit an `APPROVE` review if the PR contains no critical bugs, security vulnerabilities, or architecture boundary violations.
-- If there are minor suggestions or questions, include them in the review comment while approving if non-blocking, or request changes if blocking.
+Recommend `APPROVE` when no blocking bug, security issue, or architecture violation remains. Recommend `REQUEST_CHANGES` for blocking findings; keep optional suggestions separate. State verification gaps that affect confidence in the decision.

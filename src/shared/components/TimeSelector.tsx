@@ -12,6 +12,7 @@ export type TimeSelectorProps = {
   presets?: TimePreset[];
   variant?: 'regular' | 'compact';
   disabled?: boolean;
+  disabledTimes?: string[];
   style?: StyleProp<ViewStyle>;
 };
 
@@ -22,6 +23,7 @@ export function TimeSelector({
   presets = DEFAULT_TIME_PRESETS,
   variant = 'regular',
   disabled = false,
+  disabledTimes = [],
   style,
 }: TimeSelectorProps) {
   const isPresetTime = presets.some((preset) => preset.time === value);
@@ -30,6 +32,7 @@ export function TimeSelector({
 
   const renderPresetChip = (preset: TimePreset) => {
     const active = value === preset.time;
+    const isDisabled = disabled || disabledTimes.includes(preset.time);
     const presetChipClassName = `min-w-0 flex-1 items-center justify-center gap-[2px] border px-[8px] py-[7px] ${
       isCompact ? 'min-h-[42px] rounded-[14px] px-[3px] py-[5px]' : 'min-h-[42px] rounded-[16px]'
     } ${active ? 'border-app-lavender-deep bg-app-lavender-deep' : 'border-app-line bg-app-cloud'}`;
@@ -38,21 +41,26 @@ export function TimeSelector({
       <Pressable
         key={preset.time}
         accessibilityRole="button"
-        accessibilityState={{ selected: active, disabled }}
-        disabled={disabled}
+        accessibilityState={{ selected: active, disabled: isDisabled }}
+        disabled={isDisabled}
         onPress={() => onChange(preset.time)}
         className={presetChipClassName}
-        style={({ pressed }) => [pressed ? styles.pressedChip : null]}
+        style={({ pressed }) => [
+          pressed && !isDisabled ? styles.pressedChip : null,
+          isDisabled ? styles.disabledChip : null,
+        ]}
       >
         <Text
           className={`font-extrabold ${isCompact ? 'text-[12px]' : 'text-[13px]'} ${
             active ? 'text-app-white' : 'text-app-ink'
           }`}
+          style={isDisabled ? styles.disabledText : null}
         >
           {preset.label}
         </Text>
         <Text
           className={`text-[12px] font-extrabold ${active ? 'text-app-white' : 'text-app-muted'}`}
+          style={isDisabled ? styles.disabledText : null}
         >
           {preset.time}
         </Text>
@@ -128,6 +136,13 @@ export function TimeSelector({
 }
 
 const styles = StyleSheet.create({
+  disabledChip: {
+    backgroundColor: palette.disabledBackground,
+    borderColor: palette.disabledBackground,
+  },
+  disabledText: {
+    color: palette.disabledText,
+  },
   pressedChip: {
     opacity: 0.78,
     transform: [{ scale: 0.97 }],
