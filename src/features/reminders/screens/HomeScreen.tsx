@@ -919,7 +919,7 @@ export function HomeScreen() {
   const isAddButtonDisabled = isSaving;
   const isBubbleIdleDisabled = isSaving;
   const isEmptyHome = !loading && !error && reminders.length === 0;
-  const nextReminder = reminders[0] ?? null;
+  const nextReminder = reminders.find((reminder) => !reminder.allDay) ?? null;
   const nextReminderIsExpired = nextReminder
     ? nextReminder.status === 'expired' || new Date(nextReminder.expiresAt).getTime() <= Date.now()
     : false;

@@ -226,6 +226,20 @@ test('quick add keeps the title input focused while saving', () => {
   assertSourceIncludes(imeSafeTitleInputSource, [/submitBehavior="blurAndSubmit"/]);
 });
 
+test('quick add keeps the past-date notice for timed reminders only', () => {
+  assertSourceIncludes(source, [
+    /!allDay && !isTargetFuture \?/,
+    /過去の日時は選べません。お知らせを受け取る未来の日時を選んでください。/,
+  ]);
+  assertSourceContract(source, {
+    excludes: [
+      /本日のお知らせ時刻は過ぎています。今日いっぱい表示します。/,
+      /allDayNotificationPassed/,
+      /const allDayNotifyAt =/,
+    ],
+  });
+});
+
 test('widget quick add waits for the sheet to open before focusing the title input', () => {
   const openBlock = source.slice(
     source.indexOf('if (!isPresentedRef.current && !isClosingRef.current) {'),
@@ -274,12 +288,13 @@ test('quick add sheet keeps compact dynamic sizing while bounding the resized sa
       /18 \+ safeAreaInsets\.bottom/,
       /maxDynamicContentSize=\{quickAddMaxDynamicContentSize\}/,
       /bottomInset=\{safeAreaInsets\.bottom\}/,
-      /footerComponent=\{QuickAddFooter\}/,
-      /enableFooterMarginAdjustment/,
+      /<BottomSheetScrollView[\s\S]*<ReminderAllDaySlider[\s\S]*<PrimaryButton[\s\S]*<\/BottomSheetScrollView>/,
       /paddingBottom: quickAddContentBottomPadding/,
       /keyboardShouldPersistTaps="handled"/,
     ],
     excludes: [
+      /footerComponent=/,
+      /enableFooterMarginAdjustment/,
       /BottomSheetKeyboardAwareScrollView/,
       /KeyboardAwareScrollView/,
       /quickAddKeyboardBottomOffset/,

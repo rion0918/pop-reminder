@@ -1,13 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ComponentProps } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -26,13 +18,7 @@ import type { DateTimePickerEvent } from '@react-native-community/datetimepicker
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { addDays, format, set, startOfDay } from 'date-fns';
-import {
-  BottomSheetBackdrop,
-  BottomSheetFooter,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
-import type { BottomSheetFooterProps } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -58,14 +44,6 @@ import {
 import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { parseVoiceReminder } from '../domain/voiceReminderParser';
 import { getVoiceReminderSchedulePatch } from '../presentation/voiceReminderSchedule';
-
-// Keep the footer component type stable while the slider changes the draft mid-gesture.
-const QuickAddFooterContext = createContext<ReactNode>(null);
-
-function QuickAddFooter(props: BottomSheetFooterProps) {
-  const content = useContext(QuickAddFooterContext);
-  return <BottomSheetFooter {...props}>{content}</BottomSheetFooter>;
-}
 
 type VoiceInputStatus = 'idle' | 'starting' | 'listening' | 'stopping';
 
@@ -132,20 +110,6 @@ export function ReminderInputSheet({
   isSaving = false,
   onSave,
 }: ReminderInputSheetProps) {
-  const footerContentRef = useRef<ReactNode>(null);
-  // BottomSheetModal renders in a portal: provide footer content inside that portal,
-  // with stable component types so changing allDay never unmounts the active gesture.
-  const FooterContainer = useMemo(
-    () =>
-      function QuickAddFooterContainer({ children }: PropsWithChildren) {
-        return (
-          <QuickAddFooterContext.Provider value={footerContentRef.current}>
-            {children}
-          </QuickAddFooterContext.Provider>
-        );
-      },
-    [],
-  );
   const voiceInput = useAppServices().voiceInput;
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -257,14 +221,6 @@ export function ReminderInputSheet({
     seconds: 59,
     milliseconds: 999,
   });
-  const [allDayHours, allDayMinutes] = allDayNotifyTime.split(':').map(Number);
-  const allDayNotifyAt = set(selectedTargetDate, {
-    hours: allDayHours,
-    minutes: allDayMinutes,
-    seconds: 0,
-    milliseconds: 0,
-  });
-  const allDayNotificationPassed = allDay && allDayNotifyAt.getTime() <= Date.now();
   const isTargetFuture = allDay
     ? endOfTargetDay.getTime() > Date.now()
     : targetAt.getTime() > Date.now();
@@ -902,36 +858,9 @@ export function ReminderInputSheet({
     [presets, selectedTargetDate, setTargetTime],
   );
 
-  footerContentRef.current = (
-    <View style={[styles.footer, { paddingBottom: quickAddContentBottomPadding }]}>
-      <View style={styles.actionRow}>
-        <ReminderAllDaySlider
-          allDay={allDay}
-          dateLabel={selectedDateLabel}
-          time={time}
-          allDayNotifyTime={allDayNotifyTime}
-          disabled={isSaving || voiceStatus !== 'idle'}
-          reduceMotion={reduceMotionEnabled}
-          onChange={setAllDay}
-        />
-        <PrimaryButton
-          label={isSaving ? '追加中' : '追加'}
-          icon="cloud-outline"
-          onPress={handleSave}
-          disabled={
-            isSaving || voiceStatus !== 'idle' || (!allDay && !isTimeValid) || !isTargetFuture
-          }
-          style={styles.saveButton}
-        />
-      </View>
-    </View>
-  );
-
   return (
     <>
       <BottomSheetModal
-        containerComponent={FooterContainer}
-        footerComponent={QuickAddFooter}
         name="quick-reminder-input"
         ref={sheetRef}
         stackBehavior="replace"
@@ -951,8 +880,7 @@ export function ReminderInputSheet({
         backgroundStyle={styles.sheetBackground}
       >
         <BottomSheetScrollView
-          enableFooterMarginAdjustment
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: quickAddContentBottomPadding }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -1052,15 +980,31 @@ export function ReminderInputSheet({
             />
           ) : null}
 
-          {allDayNotificationPassed ? (
-            <Text style={styles.timingNoticeText}>
-              本日のお知らせ時刻は過ぎています。今日いっぱい表示します。
-            </Text>
-          ) : !isTargetFuture ? (
+          {!allDay && !isTargetFuture ? (
             <Text style={styles.timingNoticeText}>
               過去の日時は選べません。お知らせを受け取る未来の日時を選んでください。
             </Text>
           ) : null}
+          <View style={styles.actionRow}>
+            <ReminderAllDaySlider
+              allDay={allDay}
+              dateLabel={selectedDateLabel}
+              time={time}
+              allDayNotifyTime={allDayNotifyTime}
+              disabled={isSaving || voiceStatus !== 'idle'}
+              reduceMotion={reduceMotionEnabled}
+              onChange={setAllDay}
+            />
+            <PrimaryButton
+              label={isSaving ? '追加中' : '追加'}
+              icon="cloud-outline"
+              onPress={handleSave}
+              disabled={
+                isSaving || voiceStatus !== 'idle' || (!allDay && !isTimeValid) || !isTargetFuture
+              }
+              style={styles.saveButton}
+            />
+          </View>
         </BottomSheetScrollView>
       </BottomSheetModal>
 
@@ -1138,9 +1082,7 @@ const styles = StyleSheet.create({
     width: 48,
     backgroundColor: '#C6D0E4',
   },
-  footer: { paddingHorizontal: 16, backgroundColor: palette.white },
   content: {
-    paddingBottom: 8,
     paddingHorizontal: 16,
   },
   inputHeader: {

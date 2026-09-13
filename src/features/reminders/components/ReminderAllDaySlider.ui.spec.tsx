@@ -72,23 +72,14 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const { View, TextInput } = jest.requireActual<typeof import('react-native')>('react-native');
   return {
     BottomSheetModal: React.forwardRef(function MockBottomSheetModal(
-      {
-        children,
-        footerComponent: Footer,
-        containerComponent: Container,
-      }: {
-        children: React.ReactNode;
-        footerComponent: React.ComponentType;
-        containerComponent: React.ComponentType<React.PropsWithChildren>;
-      },
+      { children }: { children: React.ReactNode },
       ref,
     ) {
       React.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
-      return React.createElement(Container, null, children, React.createElement(Footer));
+      return React.createElement(View, null, children);
     }),
     BottomSheetScrollView: View,
     BottomSheetBackdrop: View,
-    BottomSheetFooter: View,
     BottomSheetTextInput: TextInput,
   };
 });
