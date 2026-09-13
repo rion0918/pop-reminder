@@ -6,6 +6,7 @@ import {
   formatReminderDetailDate,
   formatReminderDetailTime,
   formatReminderBubbleDateTime,
+  formatHomeReminderBubbleDateTime,
   formatReminderDateTime,
   formatReminderInputDate,
   shouldShowPreviousNotification,
@@ -28,6 +29,23 @@ test('all-day date labels omit a clock time', () => {
   const now = new Date(2026, 6, 12, 10);
   assert.equal(formatReminderBubbleDateTime(new Date(2026, 6, 13), now, true), '明日 終日');
   assert.equal(formatReminderDateTime(new Date(2026, 6, 13), true), '2026/7/13 終日');
+});
+
+test('home bubbles shorten dates outside the current month', () => {
+  assert.equal(
+    formatHomeReminderBubbleDateTime(new Date(2026, 6, 31, 18), now),
+    '7/31（金） 18:00',
+  );
+  assert.equal(formatHomeReminderBubbleDateTime(new Date(2026, 7, 1, 18), now), '8月');
+  assert.equal(formatHomeReminderBubbleDateTime(new Date(2026, 7, 1), now, true), '8月');
+  assert.equal(formatHomeReminderBubbleDateTime(new Date(2027, 0, 1, 18), now), '2027年');
+  assert.equal(formatHomeReminderBubbleDateTime(new Date(2027, 0, 1), now, true), '2027年');
+});
+
+test('home bubble shortening handles the year boundary', () => {
+  const yearEnd = new Date(2026, 11, 31, 10);
+  assert.equal(formatHomeReminderBubbleDateTime(new Date(2026, 11, 31, 18), yearEnd), '今日 18:00');
+  assert.equal(formatHomeReminderBubbleDateTime(new Date(2027, 0, 1, 18), yearEnd), '2027年');
 });
 
 test('detail date separates a Japanese calendar date, weekday, and time', () => {

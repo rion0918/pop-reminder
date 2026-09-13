@@ -189,6 +189,7 @@ test('natural search layout remains unchanged while home layouts stay inside the
   assertSourceIncludes(boardSource, [
     /verticalLayoutMode\?: BubbleVerticalLayoutMode/,
     /verticalLayoutMode = 'natural'/,
+    /compactDateLabel=\{verticalLayoutMode === 'homeTimeline'\}/,
     /verticalLayoutMode/,
     /resolveBoardSizeMeasurement/,
   ]);

@@ -20,7 +20,10 @@ import {
   getReminderBubbleTypography,
   getReminderTitleVisualLength,
 } from '../utils/reminderBubbleVisuals';
-import { formatReminderBubbleDateTime } from '../utils/reminderDateFormat';
+import {
+  formatHomeReminderBubbleDateTime,
+  formatReminderBubbleDateTime,
+} from '../utils/reminderDateFormat';
 import { getReminderDueColor } from '../utils/reminderDueColor';
 import { homeVisualTokens, palette } from '../../../constants/colors';
 import { ReminderBubbleBurst } from './ReminderBubbleBurst';
@@ -41,6 +44,7 @@ type ReminderBubbleProps = {
   width?: number;
   height?: number;
   currentDate: Date;
+  compactDateLabel?: boolean;
   style?: ViewStyle;
   isSelected?: boolean;
   selectionMode?: boolean;
@@ -70,6 +74,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   width,
   height,
   currentDate,
+  compactDateLabel = false,
   style,
   isSelected,
   selectionMode,
@@ -111,6 +116,9 @@ export const ReminderBubble = memo(function ReminderBubble({
     onMotionComplete: onDeleteMotionComplete,
   });
   const { progress: deleteMotionProgress, membraneMode } = motion;
+  const dateLabel = compactDateLabel
+    ? formatHomeReminderBubbleDateTime(reminder.targetAt, currentDate, reminder.allDay)
+    : formatReminderBubbleDateTime(reminder.targetAt, currentDate, reminder.allDay);
   const surfaceKey = JSON.stringify([
     reminder.title,
     reminder.targetAt,
@@ -118,7 +126,7 @@ export const ReminderBubble = memo(function ReminderBubble({
     bubbleHeight,
     color,
     typography,
-    formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay),
+    dateLabel,
   ]);
   const selectionProgress = useSharedValue(0);
 
@@ -414,7 +422,7 @@ export const ReminderBubble = memo(function ReminderBubble({
               },
             ]}
           >
-            {formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay)}
+            {dateLabel}
           </Text>
         </View>
       </Animated.View>

@@ -15,6 +15,11 @@ const colorsSource = readSource(import.meta.url, '../../../constants/colors.ts')
 test('reminder bubble typography is derived from bubble size and title length', () => {
   assertSourceContract(source, {
     includes: [
+      /formatHomeReminderBubbleDateTime/,
+      /formatReminderBubbleDateTime/,
+      /compactDateLabel\?: boolean;/,
+      /const dateLabel = compactDateLabel\s*\?/,
+      /formatHomeReminderBubbleDateTime[\s\S]*formatReminderBubbleDateTime/,
       /getReminderBubbleTypography/,
       /getReminderTitleVisualLength/,
       /const typography = getReminderBubbleTypography\(\s*bubbleWidth,\s*bubbleHeight,\s*titleVisualLength,?\s*\);/,

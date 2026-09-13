@@ -1,4 +1,4 @@
-import { addDays, format, isSameDay, isSameYear } from 'date-fns';
+import { addDays, format, isSameDay, isSameMonth, isSameYear } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 function toDate(value: Date | string) {
@@ -80,4 +80,17 @@ export function formatReminderBubbleDateTime(
   const dateFormat = target.getFullYear() === now.getFullYear() ? 'M/d（EEE）' : 'yyyy/M/d（EEE）';
 
   return `${format(target, dateFormat, { locale: ja })} ${time}`;
+}
+
+export function formatHomeReminderBubbleDateTime(
+  value: Date | string,
+  now = new Date(),
+  allDay = false,
+) {
+  const target = toDate(value);
+  if (isSameMonth(target, now)) {
+    return formatReminderBubbleDateTime(target, now, allDay);
+  }
+
+  return isSameYear(target, now) ? format(target, 'M月') : format(target, 'yyyy年');
 }

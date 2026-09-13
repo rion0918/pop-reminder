@@ -681,6 +681,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
                 width={width}
                 height={height}
                 currentDate={colorReferenceDate}
+                compactDateLabel={verticalLayoutMode === 'homeTimeline'}
                 isSelected={selectedReminderId === reminder.id || isMultiSelected}
                 selectionMode={selectionMode}
                 isMultiSelected={isMultiSelected}
