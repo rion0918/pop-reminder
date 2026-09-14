@@ -30,6 +30,7 @@ jest.mock('react-native-gesture-handler', () => {
         const gesture: Record<string, unknown> = { callbacks };
         for (const name of [
           'enabled',
+          'minDistance',
           'activeOffsetX',
           'failOffsetY',
           'onStart',
@@ -104,6 +105,44 @@ async function measure(view: Awaited<ReturnType<typeof render>>) {
     nativeEvent: { layout: { width: 240, height: 48 } },
   });
 }
+
+test('quick add claims slider movement before the sheet pan, without rejecting vertical drift', async () => {
+  const view = await render(<ReminderInputSheet />);
+  await measure(view);
+  const gesture = view.getByTestId('slider-gesture');
+  // These native recognizer settings govern the race with the parent sheet.
+  // Callback-only gesture mocks cannot reproduce native gesture arbitration.
+  expect(gesture.props.minDistance).toBe(0);
+  expect(gesture.props.activeOffsetX).toBeUndefined();
+  expect(gesture.props.failOffsetY).toBeUndefined();
+});
+
+test.each([false, true])(
+  'early activation ignores taps and vertical movement, but allows diagonal swipes (allDay=%s)',
+  async (allDay) => {
+    const view = await render(<ReminderAllDaySlider {...props} allDay={allDay} />);
+    await measure(view);
+    await fireEvent(view.getByTestId('slider-gesture'), 'start');
+    await fireEvent(view.getByTestId('slider-gesture'), 'finalize');
+    await fireEvent(view.getByTestId('slider-gesture'), 'start');
+    await fireEvent(view.getByTestId('slider-gesture'), 'update', {
+      translationX: 0,
+      translationY: 60,
+    });
+    await fireEvent(view.getByTestId('slider-gesture'), 'finalize');
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(Haptics.impactAsync).not.toHaveBeenCalled();
+    await fireEvent(view.getByTestId('slider-gesture'), 'start');
+    await fireEvent(view.getByTestId('slider-gesture'), 'update', {
+      translationX: allDay ? -184 : 184,
+      translationY: 60,
+    });
+    await fireEvent(view.getByTestId('slider-gesture'), 'finalize');
+    expect(props.onChange).toHaveBeenCalledTimes(1);
+    expect(props.onChange).toHaveBeenCalledWith(!allDay);
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+  },
+);
 
 test('commits within 4pt of the far edge, once per drag, and supports the reverse drag', async () => {
   const view = await render(<ReminderAllDaySlider {...props} />);
@@ -235,4 +274,70 @@ test('the preview sits in the thumb path and becomes an all-day preview at the o
   expect(track.getByText('←')).toBeOnTheScreen();
   expect(track.queryByText('20:00')).toBeNull();
   expect(view.queryByText('左へスライドで時刻指定')).toBeNull();
+});
+
+test('only the water surface stretches during a drag and settles after cancellation or commit', async () => {
+  const view = await render(<ReminderAllDaySlider {...props} />);
+  await measure(view);
+  for (const translationX of [90, 184]) {
+    await fireEvent(view.getByTestId('slider-gesture'), 'start');
+    await fireEvent(view.getByTestId('slider-gesture'), 'update', { translationX: 40 });
+    // Refresh animated styles: this mock does not run UI-thread subscriptions.
+    await view.rerender(<ReminderAllDaySlider {...props} />);
+    expect(view.getByTestId('all-day-slider-surface')).toHaveStyle({
+      transform: [{ scaleX: 1.04 }, { scaleY: 0.97 }],
+    });
+    expect(within(view.getByTestId('all-day-slider-surface')).queryByText('終日')).toBeNull();
+    expect(view.getByTestId('all-day-slider-thumb')).toHaveStyle({
+      transform: [{ translateX: 40 }],
+    });
+    await fireEvent(view.getByTestId('slider-gesture'), 'update', { translationX });
+    if (translationX === 90) {
+      await fireEvent(view.getByTestId('slider-gesture'), 'finalize');
+    }
+    await view.rerender(<ReminderAllDaySlider {...props} />);
+    expect(view.getByTestId('all-day-slider-surface')).toHaveStyle({
+      transform: [{ scaleX: 1 }, { scaleY: 1 }],
+    });
+  }
+  expect(props.onChange).toHaveBeenCalledTimes(1);
+  expect(props.onChange).toHaveBeenCalledWith(true);
+});
+
+test.each([{ disabled: true }, { allDay: true }, { reduceMotion: true }])(
+  'a prop change clears the active water stretch: %j',
+  async (changedProps) => {
+    const view = await render(<ReminderAllDaySlider {...props} />);
+    await measure(view);
+    await fireEvent(view.getByTestId('slider-gesture'), 'start');
+    await fireEvent(view.getByTestId('slider-gesture'), 'update', { translationX: 90 });
+    await view.rerender(<ReminderAllDaySlider {...props} />);
+    expect(view.getByTestId('all-day-slider-surface')).toHaveStyle({
+      transform: [{ scaleX: 1.04 }, { scaleY: 0.97 }],
+    });
+    await view.rerender(<ReminderAllDaySlider {...props} {...changedProps} />);
+    await view.rerender(<ReminderAllDaySlider {...props} {...changedProps} />);
+    expect(view.getByTestId('all-day-slider-surface')).toHaveStyle({
+      transform: [{ scaleX: 1 }, { scaleY: 1 }],
+    });
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(Haptics.impactAsync).not.toHaveBeenCalled();
+  },
+);
+
+test('reduced motion keeps the water round during dragging, cancellation and commit', async () => {
+  const view = await render(<ReminderAllDaySlider {...props} reduceMotion />);
+  await measure(view);
+  for (const translationX of [90, 184]) {
+    await fireEvent(view.getByTestId('slider-gesture'), 'start');
+    await fireEvent(view.getByTestId('slider-gesture'), 'update', { translationX });
+    await view.rerender(<ReminderAllDaySlider {...props} reduceMotion />);
+    expect(view.getByTestId('all-day-slider-surface')).toHaveStyle({
+      transform: [{ scaleX: 1 }, { scaleY: 1 }],
+    });
+    await fireEvent(view.getByTestId('slider-gesture'), 'finalize');
+  }
+  expect(withSpring).not.toHaveBeenCalled();
+  expect(props.onChange).toHaveBeenCalledTimes(1);
+  expect(props.onChange).toHaveBeenCalledWith(true);
 });
