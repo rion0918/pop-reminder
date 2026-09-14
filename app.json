@@ -26,7 +26,7 @@
     },
     "android": {
       "package": "com.rion0918.popreminder",
-      "versionCode": 2,
+      "versionCode": 18,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.HIGH_SAMPLING_RATE_SENSORS"
