@@ -14,7 +14,9 @@ export function parseAndroidDevices(output) {
     .filter((line) => line && !line.startsWith('List of devices attached'))
     .map((line) => {
       const [id, status, ...detail] = line.split(/\s+/);
-      return { id, status, detail: detail.join(' ') };
+      const detailText = detail.join(' ');
+      const model = detail.find((item) => item.startsWith('model:'))?.slice('model:'.length);
+      return { id, status, detail: detailText, model };
     })
     .filter((device) => device.status === 'device');
 }
@@ -112,9 +114,12 @@ function getDevices(platform, target) {
   return parseIosPhysicalDevices(readCommand('xcrun', ['xctrace', 'list', 'devices']));
 }
 
-function runNative(platform, deviceId) {
+function runNative(platform, device) {
   const expoTarget = platform === 'android' ? 'run:android' : 'run:ios';
-  const result = spawnSync('pnpm', ['exec', 'expo', expoTarget, '--device', deviceId], {
+  // Expo CLI resolves Android devices by its model name (e.g. `XIG03`),
+  // while adb identifies them by a serial (e.g. `b6676935dd85`).
+  const expoDeviceName = platform === 'android' ? device.model || device.id : device.id;
+  const result = spawnSync('pnpm', ['exec', 'expo', expoTarget, '--device', expoDeviceName], {
     stdio: 'inherit',
   });
 
@@ -147,7 +152,7 @@ function main() {
     const devices = getDevices(platform, target);
     const selectedDevice = selectTargetDevice(devices, target, platform, requestedDevice);
     console.log(`起動対象: ${selectedDevice.id} (${selectedDevice.detail})`);
-    process.exit(runNative(platform, selectedDevice.id));
+    process.exit(runNative(platform, selectedDevice));
   } catch (error) {
     console.error(error.message);
     process.exit(1);

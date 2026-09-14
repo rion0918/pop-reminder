@@ -44,11 +44,13 @@ offline-device\toffline
     id: 'emulator-5554',
     status: 'device',
     detail: 'product:sdk_gphone model:sdk_gphone',
+    model: 'sdk_gphone',
   });
   assert.deepEqual(selectTargetDevice(devices, 'device'), {
     id: '192.168.1.25:41237',
     status: 'device',
     detail: 'product:XIG03 model:XIG03',
+    model: 'XIG03',
   });
 });
 
