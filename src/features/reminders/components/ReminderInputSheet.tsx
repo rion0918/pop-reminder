@@ -501,6 +501,7 @@ export function ReminderInputSheet({
             if (schedulePatch.customTargetDate !== null) {
               setCustomTargetDate(schedulePatch.customTargetDate);
             }
+            if (schedulePatch.allDay !== null) setAllDay(schedulePatch.allDay);
             if (schedulePatch.targetTime !== null) setTargetTime(schedulePatch.targetTime);
           } catch {
             // Keep the raw transcript and existing schedule if parsing unexpectedly fails.
@@ -534,6 +535,7 @@ export function ReminderInputSheet({
     replaceDraftTitle,
     setCustomTargetDate,
     setDateOffset,
+    setAllDay,
     setTargetTime,
     voiceInput,
   ]);

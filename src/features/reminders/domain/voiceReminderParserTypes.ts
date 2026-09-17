@@ -19,6 +19,10 @@ export type ParsedReminder = {
   };
   date: ParsedField<string>;
   time: ParsedField<string>;
+  allDay: {
+    detected: boolean;
+    sourceText: string | null;
+  };
   relativeDateTime: {
     detected: boolean;
     sourceText: string | null;

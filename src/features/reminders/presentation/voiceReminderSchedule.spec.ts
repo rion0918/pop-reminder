@@ -20,6 +20,7 @@ test('maps parsed nearby dates to the existing quick-add date chips', () => {
     dateOffset: 1,
     customTargetDate: null,
     targetTime: null,
+    allDay: null,
   });
 });
 
@@ -28,19 +29,31 @@ test('maps dates outside the quick-add chips to a custom date without changing t
     dateOffset: null,
     customTargetDate: '2026-10-01',
     targetTime: null,
+    allDay: null,
   });
 });
 
-test('keeps non-parsed date and time fields untouched', () => {
+test('keeps non-parsed date, time, and all-day fields untouched', () => {
   assert.deepEqual(getVoiceReminderSchedulePatch(parse('来週に会議'), now), {
     dateOffset: null,
     customTargetDate: null,
     targetTime: null,
+    allDay: null,
   });
   assert.deepEqual(getVoiceReminderSchedulePatch(parse('15時に会議'), now), {
     dateOffset: null,
     customTargetDate: null,
     targetTime: '15:00',
+    allDay: null,
+  });
+});
+
+test('prioritizes all-day over a spoken time and leaves the selected UI time unchanged', () => {
+  assert.deepEqual(getVoiceReminderSchedulePatch(parse('明日終日9時に健康診断'), now), {
+    dateOffset: 1,
+    customTargetDate: null,
+    targetTime: null,
+    allDay: true,
   });
 });
 
@@ -49,5 +62,6 @@ test('keeps an explicit past date as a custom target instead of future-correctin
     dateOffset: null,
     customTargetDate: '2025-01-05',
     targetTime: null,
+    allDay: null,
   });
 });

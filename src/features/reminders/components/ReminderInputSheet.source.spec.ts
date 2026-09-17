@@ -121,6 +121,7 @@ test('Android voice completion parses the transcript and applies only concrete f
     /if \(schedulePatch\.dateOffset !== null\) setDateOffset\(schedulePatch\.dateOffset\)/,
     /if \(schedulePatch\.customTargetDate !== null\)/,
     /setCustomTargetDate\(schedulePatch\.customTargetDate\)/,
+    /if \(schedulePatch\.allDay !== null\) setAllDay\(schedulePatch\.allDay\)/,
     /if \(schedulePatch\.targetTime !== null\) setTargetTime\(schedulePatch\.targetTime\)/,
   ]);
   assertSourceContract(source, {

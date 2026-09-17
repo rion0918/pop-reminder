@@ -18,6 +18,7 @@ export type {
 
 const CORRECTION_PATTERN = /いや|じゃなくて|じゃなく|ではなく|違う|訂正|やっぱり|やっぱ/g;
 const TEMPORAL_PLACEHOLDER = '\u0000';
+const ALL_DAY_PATTERN = /終日|一日中|1日中|丸1日/g;
 
 function joinSourceText(candidates: TemporalCandidate[]) {
   return candidates.length > 0
@@ -140,6 +141,15 @@ function removeRanges(text: string, ranges: { start: number; end: number }[]) {
   return result;
 }
 
+function maskRanges(text: string, ranges: { start: number; end: number }[]) {
+  let result = text;
+  for (const range of [...ranges].sort((first, second) => second.start - first.start)) {
+    result =
+      result.slice(0, range.start) + ' '.repeat(range.end - range.start) + result.slice(range.end);
+  }
+  return result;
+}
+
 const OPERATION_WORDS =
   '(?:リマインドして|リマインダー(?:を|に)?(?:入れて|追加して)|通知して|知らせて|覚えといて|覚えておいて|忘れないようにして|忘れないように通知して|アラームして|セットして)(?:ください|お願いします|お願いいたします)?';
 
@@ -206,10 +216,16 @@ function makeField(
 export function parseVoiceReminder(input: ReminderParserInput): ParsedReminder {
   const originalText = input.text;
   const normalizedText = normalizeVoiceReminderText(originalText);
-  const dateCandidates = findDateCandidates(normalizedText, {
+  const allDayMatches = [...normalizedText.matchAll(ALL_DAY_PATTERN)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    sourceText: match[0],
+  }));
+  const temporalSearchText = maskRanges(normalizedText, allDayMatches);
+  const dateCandidates = findDateCandidates(temporalSearchText, {
     currentDateTime: input.currentDateTime,
   });
-  const timeCandidates = findTimeCandidates(normalizedText, {
+  const timeCandidates = findTimeCandidates(temporalSearchText, {
     currentDateTime: input.currentDateTime,
   });
 
@@ -285,6 +301,13 @@ export function parseVoiceReminder(input: ReminderParserInput): ParsedReminder {
     title: { value: title, status: title ? 'parsed' : 'empty' },
     date: makeField(date.value, date.status, date.sourceText),
     time: makeField(time.value, time.status, time.sourceText),
+    allDay: {
+      detected: allDayMatches.length > 0,
+      sourceText:
+        allDayMatches.length > 0
+          ? allDayMatches.map((match) => match.sourceText).join(' / ')
+          : null,
+    },
     relativeDateTime: {
       detected: relativeCandidates.length > 0,
       sourceText: joinSourceText(relativeCandidates),

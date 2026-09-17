@@ -6,6 +6,7 @@ export type VoiceReminderSchedulePatch = {
   dateOffset: 0 | 1 | 2 | null;
   customTargetDate: string | null;
   targetTime: string | null;
+  allDay: boolean | null;
 };
 
 function parseLocalDateValue(value: string) {
@@ -28,10 +29,12 @@ export function getVoiceReminderSchedulePatch(
   parsed: ParsedReminder,
   now: Date,
 ): VoiceReminderSchedulePatch {
+  const allDay = parsed.allDay.detected;
   const patch: VoiceReminderSchedulePatch = {
     dateOffset: null,
     customTargetDate: null,
-    targetTime: parsed.time.status === 'parsed' ? parsed.time.value : null,
+    targetTime: allDay || parsed.time.status !== 'parsed' ? null : parsed.time.value,
+    allDay: allDay ? true : null,
   };
 
   if (parsed.date.status !== 'parsed' || !parsed.date.value) return patch;
