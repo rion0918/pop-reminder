@@ -317,7 +317,7 @@ export function SettingsScreen() {
         );
       }
       if (messages.length > 0) {
-        Alert.alert('前日のお知らせ時刻を変更しました', messages.join('\n'));
+        Alert.alert('前日のお知らせの時刻を変更しました', messages.join('\n'));
       }
     } catch (error) {
       console.warn('Failed to update shared previous notification time', error);
@@ -336,7 +336,7 @@ export function SettingsScreen() {
       setAllDayTime(result.settings.allDayNotifyTime ?? value);
       if (result.skippedPastCount > 0) {
         Alert.alert(
-          '終日のお知らせ時刻を変更しました',
+          '終日のお知らせの時刻を変更しました',
           `${result.skippedPastCount}件は新しい時刻を過ぎているため、当日のお知らせを見送りました。`,
         );
       }
@@ -1015,6 +1015,7 @@ export function SettingsScreen() {
       <TimePickerModal
         visible={isPreviousTimePickerOpen}
         value={previousTime}
+        title="前日のお知らせの時刻を選択"
         hint="選んだ時刻に前日のお知らせが届きます"
         onConfirm={handleTimePickerChange}
         onClose={() => setIsPreviousTimePickerOpen(false)}
@@ -1022,7 +1023,7 @@ export function SettingsScreen() {
       <TimePickerModal
         visible={isAllDayTimePickerOpen}
         value={allDayTime}
-        title="終日のお知らせ時刻"
+        title="終日のお知らせの時刻を選択"
         hint="終日リマインダーに当日のお知らせが届きます"
         onConfirm={(value) => {
           setIsAllDayTimePickerOpen(false);

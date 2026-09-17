@@ -166,7 +166,7 @@ jest.mock('../../../shared/components/AppScreen', () => {
 jest.mock('../../../shared/components/TimePickerModal', () => ({
   TimePickerModal: ({
     visible,
-    title = '前日の時刻',
+    title = '前日のお知らせの時刻を選択',
     value,
     onConfirm,
   }: {
@@ -236,12 +236,19 @@ describe('SettingsScreen raise-to-speak setup', () => {
 
   it('edits the previous notification time from the timeline', async () => {
     const view = await render(<SettingsScreen />);
-    await fireEvent.press(view.getByLabelText('前日のお知らせ時刻を変更'));
-    await fireEvent.press(view.getByLabelText('前日の時刻'));
+    await fireEvent.press(view.getByLabelText('前日のお知らせの時刻を変更'));
+    await fireEvent.press(view.getByLabelText('前日のお知らせの時刻を選択'));
     await waitFor(() => expect(mockPreviousTimeUpdate).toHaveBeenCalledWith('20:15'));
-    expect(view.getByLabelText('前日のお知らせ時刻を変更')).toHaveAccessibilityValue({
+    expect(view.getByLabelText('前日のお知らせの時刻を変更')).toHaveAccessibilityValue({
       text: '20:15',
     });
+    view.unmount();
+  });
+
+  it('uses the consistent time label for the all-day notification picker', async () => {
+    const view = await render(<SettingsScreen />);
+    await fireEvent.press(view.getByText('終日のお知らせ', { exact: true }));
+    expect(view.getByLabelText('終日のお知らせの時刻を選択')).toBeOnTheScreen();
     view.unmount();
   });
 
@@ -257,9 +264,9 @@ describe('SettingsScreen raise-to-speak setup', () => {
   it('prevents reopening the previous-time picker while saving', async () => {
     mockPreviousTimePending = true;
     const view = await render(<SettingsScreen />);
-    expect(view.getByLabelText('前日のお知らせ時刻を変更')).toBeDisabled();
-    await fireEvent.press(view.getByLabelText('前日のお知らせ時刻を変更'));
-    expect(view.queryByLabelText('前日の時刻')).toBeNull();
+    expect(view.getByLabelText('前日のお知らせの時刻を変更')).toBeDisabled();
+    await fireEvent.press(view.getByLabelText('前日のお知らせの時刻を変更'));
+    expect(view.queryByLabelText('前日のお知らせの時刻を選択')).toBeNull();
     view.unmount();
   });
 

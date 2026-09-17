@@ -140,7 +140,7 @@ export function SettingsNotificationTimeline({
     <View style={styles.timeline}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="前日のお知らせ時刻を変更"
+        accessibilityLabel="前日のお知らせの時刻を変更"
         accessibilityValue={{ text: value }}
         accessibilityState={{ disabled: pending }}
         disabled={pending}

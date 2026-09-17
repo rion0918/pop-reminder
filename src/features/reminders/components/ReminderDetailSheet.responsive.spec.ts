@@ -38,8 +38,8 @@ test('reminder detail sheet sizes to content and keeps delete action reachable',
 });
 
 test('reminder detail sheet presents the editable target and hides an elapsed previous notification', () => {
-  const targetLabelIndex = source.indexOf('当日にもう一度お知らせ');
-  const previousLabelIndex = source.indexOf('まず、前日にお知らせ');
+  const targetLabelIndex = source.indexOf('予定日時');
+  const previousLabelIndex = source.indexOf('前日のお知らせ');
 
   assert.notEqual(targetLabelIndex, -1);
   assert.notEqual(previousLabelIndex, -1);
@@ -49,18 +49,22 @@ test('reminder detail sheet presents the editable target and hides an elapsed pr
     includes: [
       />ふわっと思い出す予定<\/Text>/,
       /numberOfLines=\{2\}/,
-      /まず、前日にお知らせ/,
-      /当日にもう一度お知らせ/,
+      /前日のお知らせ/,
+      /予定日時/,
       /formatReminderDetailDate/,
       /formatReminderDetailTime/,
       /formatReminderDetailAccessibilityDateTime/,
       /accessibilityLabel=\{`前日のお知らせ、\$\{previousAccessibilityDateTime\}`\}/,
-      /accessibilityLabel="当日のお知らせ日時を編集"/,
+      /accessibilityLabel="予定日時を編集"/,
       /accessibilityHint=\{targetAccessibilityDateTime\}/,
       /ImageBackground/,
       /reminder-detail-bubbles\.png/,
       /styles\.targetScheduleCard/,
       /styles\.targetTimeHint/,
+      /targetScheduleCard: \{[\s\S]*minHeight: 188,/,
+      /targetScheduleBackground: \{[\s\S]*minHeight: 188,/,
+      /targetScheduleBackgroundImage: \{[\s\S]*opacity: 0\.64,/,
+      /targetScheduleTime: \{[\s\S]*fontSize: 42,[\s\S]*lineHeight: 48,/,
       /const shouldDisplayPreviousNotification = shouldShowPreviousNotification\([\s\S]*reminder\.previousNotifyAt,[\s\S]*\);/,
       /\{shouldDisplayPreviousNotification \? \(/,
       /styles\.scheduleDivider/,
@@ -84,7 +88,7 @@ test('reminder detail sheet presents the editable target and hides an elapsed pr
 test('reminder detail sheet opens the schedule editor and saves its result', () => {
   assertSourceContract(source, {
     includes: [
-      /accessibilityLabel="当日のお知らせ日時を編集"/,
+      /accessibilityLabel="予定日時を編集"/,
       /onUpdateSchedule:/,
       /const handleScheduleConfirm = useCallback/,
       /ReminderScheduleEditorModal/,

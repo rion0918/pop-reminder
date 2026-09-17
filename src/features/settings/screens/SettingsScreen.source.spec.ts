@@ -162,6 +162,18 @@ test('settings edits the shared previous time directly from its value button', (
   });
 });
 
+test('settings uses consistent time labels for editable notification times', () => {
+  assertSourceIncludes(source, [
+    /title="前日のお知らせの時刻を選択"/,
+    /title="終日のお知らせの時刻を選択"/,
+    /Alert\.alert\('前日のお知らせの時刻を変更しました'/,
+    /'終日のお知らせの時刻を変更しました'/,
+  ]);
+  assertSourceContract(source, {
+    excludes: [/前日のお知らせ時刻を変更/, /終日のお知らせ時刻/, /前日の時刻/],
+  });
+});
+
 test('settings uses distinct time-of-day icons for quick-add preset times', () => {
   assertSourceIncludes(source, [
     /key: 'defaultTargetTime', label: '朝', icon: 'partly-sunny-outline'/,
@@ -277,7 +289,7 @@ test('settings visual controls use wrapping layouts and accessible selection', (
     /lavender: 'ドリーム'/,
     /mint: 'ブリーズ'/,
     /accessibilityState=\{\{ selected: active \}\}/,
-    /accessibilityLabel="前日のお知らせ時刻を変更"/,
+    /accessibilityLabel="前日のお知らせの時刻を変更"/,
     /disabled=\{pending\}/,
     /flexWrap: 'wrap'/,
     /minHeight: 100/,

@@ -76,7 +76,7 @@ function NotificationTimeline({
     <View style={styles.scheduleSection}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="当日のお知らせ日時を編集"
+        accessibilityLabel="予定日時を編集"
         accessibilityHint={targetAccessibilityDateTime}
         accessibilityState={{ disabled: isScheduleEditingDisabled }}
         disabled={isScheduleEditingDisabled}
@@ -97,7 +97,7 @@ function NotificationTimeline({
             <View style={styles.targetScheduleIcon}>
               <Ionicons name="notifications-outline" size={24} color={palette.lavenderDeep} />
             </View>
-            <Text style={styles.targetScheduleLabel}>当日にもう一度お知らせ</Text>
+            <Text style={styles.targetScheduleLabel}>予定日時</Text>
           </View>
           <Text style={styles.targetScheduleDate}>
             {formatReminderDetailDate(reminder.targetNotifyAt)}
@@ -125,7 +125,7 @@ function NotificationTimeline({
             </View>
             <View style={styles.previousScheduleContent}>
               <View style={styles.previousScheduleLabelRow}>
-                <Text style={styles.previousScheduleLabel}>まず、前日にお知らせ</Text>
+                <Text style={styles.previousScheduleLabel}>前日のお知らせ</Text>
               </View>
               <Text style={styles.previousScheduleDate}>
                 {formatReminderDetailDate(reminder.previousNotifyAt)}
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 14,
-    marginBottom: 22,
+    marginBottom: 16,
   },
   headerCopy: {
     minWidth: 0,
@@ -587,8 +587,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: palette.ink,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: '900',
   },
   titlePressable: {
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   targetScheduleCard: {
-    minHeight: 252,
+    minHeight: 188,
     overflow: 'hidden',
     borderRadius: 26,
     borderWidth: 1,
@@ -632,22 +632,23 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   targetScheduleBackground: {
-    minHeight: 252,
-    paddingHorizontal: 20,
-    paddingVertical: 22,
+    minHeight: 188,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
   },
   targetScheduleBackgroundImage: {
     borderRadius: 25,
+    opacity: 0.64,
   },
   targetScheduleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   targetScheduleIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -658,42 +659,42 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flex: 1,
     color: palette.lavenderDeep,
-    fontSize: 17,
-    lineHeight: 23,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '900',
   },
   targetScheduleDate: {
-    marginTop: 14,
-    marginLeft: 68,
+    marginTop: 10,
+    marginLeft: 56,
     color: palette.lavenderDeep,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '800',
   },
   targetScheduleTime: {
     marginTop: 2,
-    marginLeft: 68,
+    marginLeft: 56,
     color: palette.ink,
-    fontSize: 50,
-    lineHeight: 58,
+    fontSize: 42,
+    lineHeight: 48,
     fontWeight: '900',
     letterSpacing: -1,
   },
   targetTimeHint: {
     alignSelf: 'flex-start',
-    marginTop: 12,
-    marginLeft: 68,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    marginTop: 8,
+    marginLeft: 56,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: 'rgba(151,132,214,0.18)',
     backgroundColor: 'rgba(255,255,255,0.52)',
   },
   targetTimeHintText: {
     color: palette.lavenderDeep,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '800',
   },
   scheduleDivider: {
