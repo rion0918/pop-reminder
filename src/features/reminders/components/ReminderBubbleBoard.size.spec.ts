@@ -4,13 +4,11 @@ import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAsse
 
 const source = readSource(import.meta.url, './ReminderBubbleBoard.tsx');
 
-test('bubble board gives extra size to long reminder titles', () => {
+test('bubble board uses shared readable size buckets for reminder titles', () => {
   assertSourceIncludes(source, [
-    /if \(visualLength >= 32\) \{/,
-    /return 1\.64;/,
-    /if \(visualLength >= 24\) \{/,
-    /return 1\.52;/,
-    /if \(visualLength >= 32\) \{\n {4}return bucketMin \+ \(visibleCount >= 8 \? 26 : 34\);/,
+    /getReminderBubbleDimensions/,
+    /selectVisibleReminders/,
+    /onVisibleReminderIdsChange\?: \(ids: string\[\]\) => void;/,
   ]);
 });
 
@@ -18,11 +16,10 @@ test('bubble board lays out long titles with wide bubble dimensions', () => {
   assertSourceIncludes(source, [
     /type BubbleDimensions = \{/,
     /width: number;\n {2}height: number;\n {2}collisionSize: number;/,
-    /function getBubbleDimensions\(\s*reminder: Reminder,\s*boardSize: BoardSize,\s*visibleCount: number,\s*\): BubbleDimensions/,
-    /const aspectRatio = titleVisualLength >= 32 \? 1\.72 : titleVisualLength >= 24 \? 1\.56 : 1;/,
-    /return \{\n {4}width,\n {4}height,\n {4}collisionSize: Math\.max\(width, height\),\n {2}\};/,
-    /width: cachedLayout\.width,/,
-    /height: cachedLayout\.height,/,
+    /function getBubbleDimensions\(/,
+    /getReminderBubbleDimensions\(/,
+    /width: dimensions\.width,/,
+    /height: dimensions\.height,/,
     /<ReminderBubble[\s\S]*key=\{reminder\.id\}[\s\S]*reminder=\{reminder\}[\s\S]*index=\{visualIndex\}[\s\S]*size=\{size\}[\s\S]*width=\{width\}[\s\S]*height=\{height\}/,
   ]);
 });
@@ -34,6 +31,21 @@ test('bubble board freezes only same-mode measurements while an overlay is open'
     /lastMeasuredContentModeRef/,
     /contentModeChanged/,
     /resolveBoardSizeMeasurement/,
+  ]);
+});
+
+test('bubble board freezes the calculated layout and springs positions after release', () => {
+  assertSourceIncludes(source, [
+    /const calculatedBoardLayout = useMemo\(/,
+    /const frozenBoardLayoutRef = useRef<SelectedBoardLayout>\(calculatedBoardLayout\);/,
+    /const boardLayout =\s*freezeLayout && hasCommittedBoardLayoutRef\.current\s*\?\s*frozenBoardLayoutRef\.current\s*:\s*calculatedBoardLayout;/,
+    /function useBubblePositionStyle\(left: number, top: number\)/,
+    /const REMINDER_BUBBLE_LAYOUT_SPRING = \{\n {2}damping: 28,\n {2}stiffness: 240,\n {2}mass: 0\.8,\n {2}overshootClamping: true,\n\} as const;/,
+    /positionLeft\.value = withSpring\(left, REMINDER_BUBBLE_LAYOUT_SPRING\);/,
+    /positionTop\.value = withSpring\(top, REMINDER_BUBBLE_LAYOUT_SPRING\);/,
+    /if \(reduceMotion\) \{[\s\S]*positionLeft\.value = left;[\s\S]*positionTop\.value = top;/,
+    /<PositionedReminderBubble/,
+    /<OverflowBubble[\s\S]*left=\{overflowBubble\.left\}[\s\S]*top=\{overflowBubble\.top\}/,
   ]);
 });
 

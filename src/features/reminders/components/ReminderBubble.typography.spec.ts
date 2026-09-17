@@ -30,9 +30,9 @@ test('reminder bubble typography is derived from bubble size and title length', 
     includes: [
       /export type ReminderBubbleTypography = \{/,
       /export function getReminderBubbleTypography/,
-      /titleVisualLength <= 8/,
-      /titleAdjustsFontSizeToFit: !isShortTitle/,
-      /titleMinFontScale: isShortTitle \? 1 : isLongTitle \? 0\.72 : 0\.9/,
+      /titleVisualLength <= 4/,
+      /titleAdjustsFontSizeToFit: false/,
+      /titleMinFontScale: 1/,
     ],
     excludes: [/const baseTitleFontSize =/, /const titleFontReduction =/],
   });
@@ -42,7 +42,7 @@ test('long reminder bubble titles avoid tail ellipsis', () => {
   assertSourceContract(visualsSource, {
     includes: [
       /const isLongTitle = titleVisualLength > 24;/,
-      /titleLineCount = isShortTitle \? 1 : isMediumTitle \? 2 : isLongTitle \? 4 : 3;/,
+      /titleLineCount = isShortTitle \? 1 : isMediumTitle \? 2 : isLongTitle \? 5 : 4;/,
       /titleEllipsizeMode: 'clip'/,
     ],
   });
@@ -59,10 +59,14 @@ test('reminder bubble can render as a wide bubble for long text', () => {
     /const bubbleWidth = width \?\? size;/,
     /const bubbleHeight = height \?\? size;/,
     /getReminderBubbleTypography/,
+    /onTextLayout=\{onTitleLayout\}/,
     /width: bubbleWidth,/,
     /height: bubbleHeight,/,
   ]);
-  assertSourceIncludes(visualsSource, [/const textMeasure = Math\.min\(height, width \/ 1\.45\);/]);
+  assertSourceIncludes(visualsSource, [
+    /export function getReminderBubbleDimensions/,
+    /const aspectRatio =\s*bucket === 'short' \|\| bucket === 'medium' \? 1 : bucket === 'long' \? 1\.1 : 1\.15/,
+  ]);
 });
 
 test('reminder bubble uses shared home visual tokens for iOS-like Android rendering', () => {

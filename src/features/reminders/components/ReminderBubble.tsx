@@ -1,6 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type TextLayoutEvent,
+  type ViewStyle,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   cancelAnimation,
@@ -57,6 +64,7 @@ type ReminderBubbleProps = {
   onPress?: (reminder: Reminder) => void;
   onLongPress?: (reminder: Reminder) => void;
   onDeleteMotionComplete?: (reminderId: string, phase: BubbleDeleteMotionPhase) => void;
+  onTitleLayout?: (event: TextLayoutEvent) => void;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -87,6 +95,7 @@ export const ReminderBubble = memo(function ReminderBubble({
   onPress,
   onLongPress,
   onDeleteMotionComplete,
+  onTitleLayout,
 }: ReminderBubbleProps) {
   const color = getReminderDueColor(reminder.targetAt, currentDate);
   const gradient = color.gradient as [string, string, string];
@@ -393,10 +402,12 @@ export const ReminderBubble = memo(function ReminderBubble({
         <View style={styles.bottomReflection} />
         <View style={styles.textLayer}>
           <Text
-            adjustsFontSizeToFit={typography.titleAdjustsFontSizeToFit}
+            adjustsFontSizeToFit={false}
             ellipsizeMode={typography.titleEllipsizeMode}
-            minimumFontScale={typography.titleMinFontScale}
-            numberOfLines={typography.titleLineCount}
+            lineBreakStrategyIOS="push-out"
+            minimumFontScale={1}
+            onTextLayout={onTitleLayout}
+            textBreakStrategy="balanced"
             style={[
               styles.title,
               {
@@ -409,10 +420,11 @@ export const ReminderBubble = memo(function ReminderBubble({
             {reminder.title}
           </Text>
           <Text
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            minimumFontScale={0.82}
+            adjustsFontSizeToFit={false}
+            lineBreakStrategyIOS="push-out"
+            ellipsizeMode="clip"
+            minimumFontScale={1}
+            textBreakStrategy="balanced"
             style={[
               styles.time,
               {
@@ -623,6 +635,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
+    maxWidth: '100%',
+    flexShrink: 1,
     textAlign: 'center',
     fontWeight: '800',
     textShadowColor: 'rgba(255,255,255,0.58)',
@@ -630,6 +644,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   time: {
+    maxWidth: '100%',
+    flexShrink: 1,
     color: 'rgba(38,49,81,0.76)',
     textAlign: 'center',
     fontWeight: '800',

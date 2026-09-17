@@ -62,6 +62,134 @@ export type FloatingItemLayout = {
   centerY: number;
 };
 
+type BubbleLayoutItem = {
+  id: string;
+  dimensions: BubbleDimensions;
+};
+
+// Reserve space for the independent idle motion of adjacent bubbles.
+const BUBBLE_MOTION_GAP = 10;
+
+export function makeFittingBubbleLayout(
+  items: readonly BubbleLayoutItem[],
+  boardSize: BoardSize,
+  verticalLayoutMode: BubbleVerticalLayoutMode,
+): FloatingItemLayout[] | null {
+  const horizontalInset = getEdgeClearance(boardSize);
+  const verticalInset = getVerticalEdgeClearance(boardSize, verticalLayoutMode, items.length);
+  const availableWidth = boardSize.width - horizontalInset * 2;
+  const availableHeight = boardSize.height - verticalInset * 2;
+  if (
+    items.some(
+      ({ dimensions }) => dimensions.width > availableWidth || dimensions.height > availableHeight,
+    )
+  ) {
+    return null;
+  }
+
+  const placed: PlacedBubble[] = [];
+  const preferred = items.map(({ id, dimensions }, index) =>
+    makeLayoutForItem(
+      id,
+      dimensions,
+      boardSize,
+      placed,
+      hashString(id) % 97,
+      index,
+      items.length,
+      verticalLayoutMode,
+    ),
+  );
+  const allowedOverlap = items.length > 7 ? MAX_DENSE_SOFT_OVERLAP_RATIO : MAX_SOFT_OVERLAP_RATIO;
+  const fits = preferred.every((layout, index) => {
+    if (
+      verticalLayoutMode === 'homeTimeline' &&
+      index > 0 &&
+      layout.centerY < preferred[index - 1].centerY
+    )
+      return false;
+    return preferred.slice(0, index).every((other, otherIndex) => {
+      const size = items[index].dimensions.collisionSize;
+      const otherSize = items[otherIndex].dimensions.collisionSize;
+      const minimumDistance =
+        (size + otherSize) / 2 - Math.min(size, otherSize) * allowedOverlap + BUBBLE_MOTION_GAP;
+      return (
+        Math.hypot(layout.centerX - other.centerX, layout.centerY - other.centerY) >=
+        minimumDistance
+      );
+    });
+  });
+  if (fits) return preferred;
+
+  // Find the shortest stack of rows while preserving reminder order. Each row
+  // can use the full measured width, including on landscape and tablet boards.
+  const heights = Array<number>(items.length + 1).fill(Number.POSITIVE_INFINITY);
+  const rowStarts = Array<number>(items.length + 1).fill(0);
+  heights[0] = 0;
+  for (let end = 1; end <= items.length; end += 1) {
+    let rowWidth = 0;
+    let rowHeight = 0;
+    for (let start = end - 1; start >= 0; start -= 1) {
+      rowWidth += items[start].dimensions.width + (start < end - 1 ? BUBBLE_MOTION_GAP : 0);
+      if (rowWidth > availableWidth) break;
+      rowHeight = Math.max(rowHeight, items[start].dimensions.height);
+      const height = heights[start] + rowHeight + (start > 0 ? BUBBLE_MOTION_GAP : 0);
+      if (height < heights[end]) {
+        heights[end] = height;
+        rowStarts[end] = start;
+      }
+    }
+  }
+  if (heights[items.length] > availableHeight) return null;
+
+  const rows: BubbleLayoutItem[][] = [];
+  for (let end = items.length; end > 0; end = rowStarts[end]) {
+    rows.unshift(items.slice(rowStarts[end], end));
+  }
+  // Use only spare space to break row/column alignment, so floating offsets
+  // never reduce capacity or consume the gap reserved for idle motion.
+  const spareHeight = availableHeight - heights[items.length];
+  const verticalSpread = Math.min(32, spareHeight / Math.max(1, rows.length));
+  const freeHeight = spareHeight - verticalSpread * rows.length;
+  const rowGap = BUBBLE_MOTION_GAP + Math.min(24, freeHeight / Math.max(1, rows.length - 1));
+  let top = verticalInset + (freeHeight - (rowGap - BUBBLE_MOTION_GAP) * (rows.length - 1)) / 2;
+  return rows.flatMap((row) => {
+    const rowHeight = Math.max(...row.map(({ dimensions }) => dimensions.height));
+    const rowWidth =
+      row.reduce((sum, { dimensions }) => sum + dimensions.width, 0) +
+      BUBBLE_MOTION_GAP * (row.length - 1);
+    const seed = hashString(row.map(({ id }) => id).join(':'));
+    const reverseRow = unitFromHash(seed, 120) > 0.5;
+    const gapWeights = Array.from(
+      { length: row.length + 1 },
+      (_, index) => 0.4 + unitFromHash(seed, index + 100),
+    );
+    const weightTotal = gapWeights.reduce((sum, weight) => sum + weight, 0);
+    const freeWidth = availableWidth - rowWidth;
+    let left = horizontalInset + (freeWidth * gapWeights[0]) / weightTotal;
+    const layouts = row.map(({ id, dimensions }, index) => {
+      const variation = unitFromHash(hashString(id), 110);
+      const offsetY =
+        verticalSpread *
+        (verticalLayoutMode === 'homeTimeline'
+          ? (index + 0.15 + variation * 0.7) / row.length
+          : variation);
+      const bubbleLeft = reverseRow ? boardSize.width - left - dimensions.width : left;
+      const layout = {
+        left: bubbleLeft,
+        top: top + (rowHeight - dimensions.height) / 2 + offsetY,
+        centerX: bubbleLeft + dimensions.width / 2,
+        centerY: top + rowHeight / 2 + offsetY,
+      };
+      left +=
+        dimensions.width + BUBBLE_MOTION_GAP + (freeWidth * gapWeights[index + 1]) / weightTotal;
+      return layout;
+    });
+    top += rowHeight + verticalSpread + rowGap;
+    return layouts;
+  });
+}
+
 type BoardSizeMeasurementOptions = {
   freezeLayout: boolean;
   contentModeChanged: boolean;

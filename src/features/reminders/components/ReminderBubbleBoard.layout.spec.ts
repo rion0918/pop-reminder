@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { assertSourceIncludes, readSource } from '../../../test-utils/sourceAssertions';
+import { getReminderBubbleDimensions } from '../utils/reminderBubbleVisuals';
 import {
   DENSE_FLOATING_SLOTS,
   FLOATING_SLOTS,
@@ -9,6 +10,7 @@ import {
   getTemporalYRatio,
   getVerticalEdgeClearance,
   makeGridSlots,
+  makeFittingBubbleLayout,
   makeLayoutForItem,
   resolveBoardSizeMeasurement,
 } from './reminderBubbleLayout';
@@ -198,7 +200,7 @@ test('natural search layout remains unchanged while home layouts stay inside the
   assertSourceIncludes(layoutSource, [/export function resolveBoardSizeMeasurement/]);
 });
 
-test('overflow joins the home timeline as its final item and invalidates cached reminder layouts', () => {
+test('overflow joins the home timeline as its final item', () => {
   const boardSize = { width: 390, height: 622 };
   const itemSize = 90;
   const timelineItemCount = 13;
@@ -229,12 +231,97 @@ test('overflow joins the home timeline as its final item and invalidates cached 
 
   assert.ok(overflowLayout.centerY >= (reminderLayouts[11]?.centerY ?? 0));
   assert.equal(overflowLayout.top + itemSize, boardSize.height - verticalClearance);
-  assertSourceIncludes(boardSource, [
-    /const timelineItemCount =\s*visibleReminders\.length \+\s*\(verticalLayoutMode === 'homeTimeline' && overflowCount > 0 \? 1 : 0\);/,
-    /const boardKey = `\$\{LAYOUT_VERSION\}:[^`]*\$\{timelineItemCount\}`;/,
-    /reminderIndex,\s*timelineItemCount,\s*verticalLayoutMode/,
-    /visibleReminders\.length,\s*visibleReminders\.length \+ 1,\s*verticalLayoutMode/,
-  ]);
+});
+
+test('fitting layout uses the measured aspect ratio for rows without shrinking bubbles', () => {
+  const scenarios = [
+    { width: 288, height: 258, count: 4 },
+    { width: 350, height: 534, count: 12 },
+    { width: 390, height: 622, count: 13 },
+    { width: 622, height: 350, count: 13 },
+  ];
+  for (const { width, height, count } of scenarios) {
+    for (const mode of ['homeTimeline', 'natural'] as const) {
+      const boardSize = { width, height };
+      const items = Array.from({ length: count }, (_, index) => ({
+        id: `item-${index}`,
+        dimensions: { width: 96, height: 96, collisionSize: 96 },
+      }));
+      const layouts = makeFittingBubbleLayout(items, boardSize, mode);
+      assert.ok(layouts, `${width}x${height}: ${count} bubbles (${mode})`);
+      assert.equal(layouts.length, count);
+      assert.deepEqual(makeFittingBubbleLayout(items, boardSize, mode), layouts);
+      layouts.forEach((layout, index) => {
+        assert.ok(layout.left >= getEdgeClearance(boardSize));
+        assert.ok(layout.left + 96 <= width - getEdgeClearance(boardSize));
+        assert.ok(layout.top >= getVerticalEdgeClearance(boardSize, mode, count));
+        assert.ok(layout.top + 96 <= height - getVerticalEdgeClearance(boardSize, mode, count));
+        if (mode === 'homeTimeline' && index > 0) {
+          assert.ok(layout.centerY >= layouts[index - 1].centerY);
+        }
+        for (const other of layouts.slice(0, index)) {
+          assert.ok(
+            Math.hypot(layout.centerX - other.centerX, layout.centerY - other.centerY) >=
+              96 * 0.84 + 10,
+          );
+        }
+      });
+    }
+  }
+});
+
+test('dense bubbles have distinct heights and irregular spacing without losing capacity', () => {
+  for (const mode of ['homeTimeline', 'natural'] as const) {
+    const items = Array.from({ length: 12 }, (_, index) => ({
+      id: `floating-${index}`,
+      dimensions: { width: 96, height: 96, collisionSize: 96 },
+    }));
+    const layouts = makeFittingBubbleLayout(items, { width: 350, height: 534 }, mode);
+    assert.ok(layouts);
+    assert.equal(layouts.length, 12);
+    assert.equal(new Set(layouts.map(({ centerY }) => Math.round(centerY))).size, 12);
+    const gaps = layouts
+      .slice(1)
+      .map((layout, index) => Math.round(layout.centerY - layouts[index].centerY));
+    assert.ok(new Set(gaps).size >= 6);
+    assert.deepEqual(makeFittingBubbleLayout(items, { width: 350, height: 534 }, mode), layouts);
+  }
+});
+
+test('fitting layout rejects oversized content and crowded boards', () => {
+  const large = { id: 'large', dimensions: { width: 180, height: 160, collisionSize: 180 } };
+  assert.equal(makeFittingBubbleLayout([large], { width: 180, height: 300 }, 'homeTimeline'), null);
+  assert.equal(
+    makeFittingBubbleLayout(
+      Array.from({ length: 12 }, (_, index) => ({ ...large, id: `large-${index}` })),
+      { width: 320, height: 280 },
+      'homeTimeline',
+    ),
+    null,
+  );
+});
+
+test('mixed short and forty-character bubbles stay within portrait boards in deadline order', () => {
+  for (const width of [320, 360, 390, 430]) {
+    const boardSize = { width, height: 622 };
+    const items = [40, 4, 12, 24].map((length, index) => ({
+      id: `mixed-${index}`,
+      dimensions: getReminderBubbleDimensions(length, width, boardSize.height),
+    }));
+    const layouts = makeFittingBubbleLayout(items, boardSize, 'homeTimeline');
+    assert.ok(layouts);
+    layouts.forEach((layout, index) => {
+      const { width: bubbleWidth, height: bubbleHeight } = items[index].dimensions;
+      assert.ok(layout.left >= getEdgeClearance(boardSize));
+      assert.ok(layout.left + bubbleWidth <= width - getEdgeClearance(boardSize));
+      assert.ok(layout.top >= getVerticalEdgeClearance(boardSize, 'homeTimeline', items.length));
+      assert.ok(
+        layout.top + bubbleHeight <=
+          boardSize.height - getVerticalEdgeClearance(boardSize, 'homeTimeline', items.length),
+      );
+      if (index > 0) assert.ok(layout.centerY >= layouts[index - 1].centerY);
+    });
+  }
 });
 
 test('dense home timeline fills representative safe corridors without changing deadline order', () => {

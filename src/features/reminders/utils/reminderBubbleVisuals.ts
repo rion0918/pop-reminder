@@ -10,6 +10,12 @@ export type ReminderBubbleTypography = {
   bubblePadding: number;
 };
 
+export type ReminderBubbleDimensions = {
+  width: number;
+  height: number;
+  collisionSize: number;
+};
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -24,45 +30,77 @@ export function getReminderTitleVisualLength(title: string) {
   }, 0);
 }
 
+function getTitleBucket(titleVisualLength: number) {
+  if (titleVisualLength <= 4) return 'short';
+  if (titleVisualLength <= 12) return 'medium';
+  if (titleVisualLength <= 24) return 'long';
+  return 'veryLong';
+}
+
+export function getReminderBubbleDimensions(
+  titleVisualLength: number,
+  boardWidth: number,
+  boardHeight: number,
+  measuredTitleHeight?: number,
+): ReminderBubbleDimensions {
+  const bucket = getTitleBucket(titleVisualLength);
+  const baseSize =
+    bucket === 'short' ? 96 : bucket === 'medium' ? 112 : bucket === 'long' ? 128 : 148;
+  const titleFontSize = bucket === 'short' ? 20 : bucket === 'medium' ? 18 : 16;
+  const titleLineHeight = titleFontSize + 4;
+  const titleLineCount =
+    bucket === 'short' ? 1 : bucket === 'medium' ? 2 : bucket === 'long' ? 4 : 5;
+  const measuredTextHeight = measuredTitleHeight ?? titleLineHeight * titleLineCount;
+  const contentHeight = measuredTextHeight + 36 + 6 + 20;
+  const edgeClearance = Math.min(boardWidth, boardHeight) * 0.055;
+  const height = Math.round(
+    clamp(
+      Math.max(baseSize, contentHeight),
+      88,
+      Math.max(88, Math.min(boardHeight - edgeClearance * 2, 180)),
+    ),
+  );
+  const aspectRatio =
+    bucket === 'short' || bucket === 'medium' ? 1 : bucket === 'long' ? 1.1 : 1.15;
+  const widthHint =
+    bucket === 'short' ? 80 : bucket === 'medium' ? 112 : bucket === 'long' ? 128 : 148;
+  const width = Math.round(
+    clamp(
+      Math.max(widthHint, height * aspectRatio),
+      Math.min(88, boardWidth),
+      Math.max(Math.min(boardWidth - edgeClearance * 2, 180), Math.min(88, boardWidth)),
+    ),
+  );
+
+  return {
+    width,
+    height,
+    collisionSize: Math.max(width, height),
+  };
+}
+
 export function getReminderBubbleTypography(
   width: number,
   height: number,
   titleVisualLength: number,
 ): ReminderBubbleTypography {
-  const isShortTitle = titleVisualLength <= 8;
-  const isMediumTitle = titleVisualLength <= 16;
+  const isShortTitle = titleVisualLength <= 4;
+  const isMediumTitle = titleVisualLength <= 12;
   const isLongTitle = titleVisualLength > 24;
-  const textMeasure = Math.min(height, width / 1.45);
-  const titleLineCount = isShortTitle ? 1 : isMediumTitle ? 2 : isLongTitle ? 4 : 3;
-  const titleFontSize = isShortTitle
-    ? clamp(textMeasure * 0.16, 16, 24)
-    : isMediumTitle
-      ? clamp(textMeasure * 0.13, 14, 21)
-      : isLongTitle
-        ? clamp(textMeasure * 0.082, 11, 14)
-        : clamp(textMeasure * 0.108, 13, 18);
-  const timeFontSize = isShortTitle
-    ? clamp(textMeasure * 0.095, 12, 16)
-    : isLongTitle
-      ? clamp(textMeasure * 0.072, 10, 12)
-      : clamp(textMeasure * 0.085, 11, 14);
-  const baseBubblePadding = clamp(textMeasure * 0.14, 12, 23);
+  const titleLineCount = isShortTitle ? 1 : isMediumTitle ? 2 : isLongTitle ? 5 : 4;
+  const titleFontSize = isShortTitle ? 20 : isMediumTitle ? 18 : 16;
+  const timeFontSize = 12;
+  const baseBubblePadding = clamp(Math.min(height, width) * 0.1, 10, 14);
 
   return {
     titleFontSize: Math.round(titleFontSize),
     titleLineCount,
-    titleLineHeight: Math.round(titleFontSize + (isShortTitle ? 5 : isLongTitle ? 2 : 4)),
-    titleMinFontScale: isShortTitle ? 1 : isLongTitle ? 0.72 : 0.9,
-    titleAdjustsFontSizeToFit: !isShortTitle,
+    titleLineHeight: titleFontSize + 4,
+    titleMinFontScale: 1,
+    titleAdjustsFontSizeToFit: false,
     titleEllipsizeMode: 'clip',
-    timeFontSize: Math.round(timeFontSize),
-    timeMarginTop: isShortTitle
-      ? Math.round(clamp(textMeasure * 0.045, 5, 9))
-      : isLongTitle
-        ? 2
-        : 4,
-    bubblePadding: Math.round(
-      isShortTitle ? baseBubblePadding : Math.max(10, baseBubblePadding - (isLongTitle ? 5 : 3)),
-    ),
+    timeFontSize,
+    timeMarginTop: 6,
+    bubblePadding: Math.round(baseBubblePadding),
   };
 }

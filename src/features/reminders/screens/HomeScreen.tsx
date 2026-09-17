@@ -173,13 +173,11 @@ export function HomeScreen() {
     (reminder) =>
       reminder.status === 'active' && new Date(reminder.expiresAt).getTime() > Date.now(),
   ).length;
-  const visibleReminderIds = useMemo(
+  const [visibleReminderIds, setVisibleReminderIds] = useState<Set<string>>(
     () => new Set(reminders.slice(0, MAX_VISIBLE_HOME_BUBBLES).map((reminder) => reminder.id)),
-    [reminders],
   );
   const selectedCount = selectedReminderIds.size;
-  const allVisibleRemindersSelected =
-    visibleReminderIds.size > 0 && selectedCount === visibleReminderIds.size;
+  const allRemindersSelected = reminders.length > 0 && selectedCount === reminders.length;
   const isSelectionBusy = isDeletingReminders || isBulkDeletionInProgress;
 
   const [deleteMotion, setDeleteMotion] = useState<BubbleDeleteMotion | null>(null);
@@ -266,11 +264,12 @@ export function HomeScreen() {
   }, [isSelectionMode]);
 
   useEffect(() => {
+    const reminderIds = new Set(reminders.map((reminder) => reminder.id));
     setSelectedReminderIds((current) => {
-      const next = new Set([...current].filter((id) => visibleReminderIds.has(id)));
+      const next = new Set([...current].filter((id) => reminderIds.has(id)));
       return next.size === current.size ? current : next;
     });
-  }, [visibleReminderIds]);
+  }, [reminders]);
 
   useEffect(() => {
     if (
@@ -364,12 +363,21 @@ export function HomeScreen() {
     [isSelectionBusy, isSelectionMode],
   );
 
+  const handleVisibleReminderIdsChange = useCallback((ids: string[]) => {
+    setVisibleReminderIds((current) => {
+      if (current.size === ids.length && ids.every((id) => current.has(id))) return current;
+      return new Set(ids);
+    });
+  }, []);
+
   const toggleSelectAll = useCallback(() => {
     if (isSelectionBusy) return;
 
     void triggerReminderSelectionHaptic();
-    setSelectedReminderIds(allVisibleRemindersSelected ? new Set() : new Set(visibleReminderIds));
-  }, [allVisibleRemindersSelected, isSelectionBusy, visibleReminderIds]);
+    setSelectedReminderIds(
+      allRemindersSelected ? new Set() : new Set(reminders.map((reminder) => reminder.id)),
+    );
+  }, [allRemindersSelected, isSelectionBusy, reminders]);
 
   useFocusEffect(
     useCallback(() => {
@@ -627,8 +635,11 @@ export function HomeScreen() {
         const deletedIds = await deleteReminders(ids, { deferCache: true });
         analytics.captureReminderDeleted({ surface: 'home', count: deletedIds.length });
         const motions = makeBulkDeleteMotions(deletedIds);
+        const visibleMotions = motions.filter((motion) =>
+          visibleReminderIds.has(motion.reminderId),
+        );
         const motionCompletion = Promise.all(
-          motions.map((motion) => waitForDeleteMotion(motion.reminderId, motion.phase)),
+          visibleMotions.map((motion) => waitForDeleteMotion(motion.reminderId, motion.phase)),
         );
 
         setBulkDeleteMotions(motions);
@@ -653,7 +664,15 @@ export function HomeScreen() {
         }
       }
     },
-    [analytics, cancelSelection, deleteReminders, refresh, removeReminders, waitForDeleteMotion],
+    [
+      analytics,
+      cancelSelection,
+      deleteReminders,
+      refresh,
+      removeReminders,
+      visibleReminderIds,
+      waitForDeleteMotion,
+    ],
   );
 
   const handleBulkDeletePress = useCallback(() => {
@@ -1042,13 +1061,14 @@ export function HomeScreen() {
           selectionMode={isSelectionMode}
           deleteMotion={deleteMotion}
           deleteMotions={bulkDeleteMotions}
-          freezeLayout={isQuickAddOpen}
+          freezeLayout={isQuickAddOpen || isBulkDeletionInProgress || Boolean(deleteMotion)}
           idleDisabled={isBubbleIdleDisabled}
           interactionDisabled={isSelectionBusy}
           onReminderPress={handleReminderPress}
           onReminderLongPress={handleReminderLongPress}
           onDeleteMotionComplete={handleDeleteMotionComplete}
           onOverflowPress={handleOpenReminderList}
+          onVisibleReminderIdsChange={handleVisibleReminderIdsChange}
           onEmptyPress={handlePressAdd}
           emptyDisabled={isAddButtonDisabled}
           verticalLayoutMode="homeTimeline"
@@ -1075,7 +1095,7 @@ export function HomeScreen() {
       {isSelectionMode ? (
         <ReminderSelectionBar
           selectedCount={selectedCount}
-          allSelected={allVisibleRemindersSelected}
+          allSelected={allRemindersSelected}
           busy={isSelectionBusy}
           compact={isCompactPhoneWidth}
           onToggleAll={toggleSelectAll}

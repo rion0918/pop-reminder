@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import type { ViewStyle } from 'react-native';
 
 import type { Reminder } from '../types/reminder';
 import { ReminderBubbleBoard } from './ReminderBubbleBoard';
@@ -11,10 +12,25 @@ jest.mock('./ReminderBubble', () => {
   >('../utils/reminderDateFormat');
 
   return {
-    ReminderBubble: ({ reminder, currentDate }: { reminder: Reminder; currentDate: Date }) =>
+    ReminderBubble: ({
+      reminder,
+      currentDate,
+      width,
+      height,
+      style,
+    }: {
+      reminder: Reminder;
+      currentDate: Date;
+      width: number;
+      height: number;
+      style: Pick<ViewStyle, 'left' | 'top'>;
+    }) =>
       React.createElement(
         Text,
-        { accessibilityLabel: `bubble-${reminder.id}` },
+        {
+          accessibilityLabel: `bubble-${reminder.id}`,
+          style: [style, { width, height }],
+        },
         `${reminder.title}|${formatReminderBubbleDateTime(reminder.targetAt, currentDate)}`,
       ),
   };
@@ -56,6 +72,154 @@ describe('ReminderBubbleBoard', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('shows all six short reminders when the measured portrait board has room', async () => {
+    const reminders = Array.from({ length: 6 }, (_, index) =>
+      makeReminder({ id: `short-${index}`, title: '予定' }),
+    );
+    const onVisibleReminderIdsChange = jest.fn();
+    const view = await render(
+      <ReminderBubbleBoard
+        reminders={reminders}
+        verticalLayoutMode="homeTimeline"
+        onVisibleReminderIdsChange={onVisibleReminderIdsChange}
+      />,
+    );
+    await fireEvent(view.getByTestId('reminder-bubble-board'), 'layout', {
+      nativeEvent: { layout: { width: 350, height: 534 } },
+    });
+
+    expect(view.getAllByLabelText(/^bubble-short-/)).toHaveLength(6);
+    expect(view.queryByLabelText(/ほか.*件のリマインダー/)).not.toBeOnTheScreen();
+    expect(onVisibleReminderIdsChange).toHaveBeenLastCalledWith(
+      reminders.map((reminder) => reminder.id),
+    );
+  });
+
+  it('recalculates capacity on resize and reserves room for a working overflow button', async () => {
+    const reminders = Array.from({ length: 16 }, (_, index) =>
+      makeReminder({ id: `resize-${index}`, title: '予定' }),
+    );
+    const onVisibleReminderIdsChange = jest.fn();
+    const onOverflowPress = jest.fn();
+    const view = await render(
+      <ReminderBubbleBoard
+        reminders={reminders}
+        verticalLayoutMode="homeTimeline"
+        onVisibleReminderIdsChange={onVisibleReminderIdsChange}
+        onOverflowPress={onOverflowPress}
+      />,
+    );
+    for (const { width, height, expectedCount } of [
+      { width: 288, height: 258, expectedCount: 3 },
+      { width: 390, height: 622, expectedCount: 12 },
+      { width: 622, height: 390, expectedCount: 12 },
+      { width: 288, height: 258, expectedCount: 3 },
+    ]) {
+      await fireEvent(view.getByTestId('reminder-bubble-board'), 'layout', {
+        nativeEvent: { layout: { width, height } },
+      });
+      expect(view.getAllByLabelText(/^bubble-resize-/)).toHaveLength(expectedCount);
+      expect(onVisibleReminderIdsChange).toHaveBeenLastCalledWith(
+        reminders.slice(0, expectedCount).map(({ id }) => id),
+      );
+      await fireEvent.press(
+        view.getByLabelText(`ほか${16 - expectedCount}件のリマインダーを一覧で開く`),
+      );
+    }
+    expect(onOverflowPress).toHaveBeenCalledTimes(4);
+  });
+
+  it('keeps the visible layout and overflow snapshot while frozen, then reflows after release', async () => {
+    const reminders = Array.from({ length: 16 }, (_, index) =>
+      makeReminder({ id: `delete-${index}`, title: '予定' }),
+    );
+    const onVisibleReminderIdsChange = jest.fn();
+    const view = await render(
+      <ReminderBubbleBoard
+        reminders={reminders}
+        verticalLayoutMode="homeTimeline"
+        onVisibleReminderIdsChange={onVisibleReminderIdsChange}
+      />,
+    );
+    await fireEvent(view.getByTestId('reminder-bubble-board'), 'layout', {
+      nativeEvent: { layout: { width: 390, height: 622 } },
+    });
+
+    const initialVisibleIds = reminders.slice(0, 12).map(({ id }) => id);
+    expect(onVisibleReminderIdsChange).toHaveBeenLastCalledWith(initialVisibleIds);
+
+    const remainingReminders = reminders.slice(1);
+    await view.rerender(
+      <ReminderBubbleBoard
+        reminders={reminders}
+        freezeLayout
+        verticalLayoutMode="homeTimeline"
+        onVisibleReminderIdsChange={onVisibleReminderIdsChange}
+      />,
+    );
+
+    await view.rerender(
+      <ReminderBubbleBoard
+        reminders={remainingReminders}
+        freezeLayout
+        verticalLayoutMode="homeTimeline"
+        onVisibleReminderIdsChange={onVisibleReminderIdsChange}
+      />,
+    );
+
+    expect(view.getByLabelText('bubble-delete-0')).toBeOnTheScreen();
+    expect(view.getByLabelText('ほか4件のリマインダーを一覧で開く')).toBeOnTheScreen();
+    expect(onVisibleReminderIdsChange).toHaveBeenLastCalledWith(initialVisibleIds);
+
+    await view.rerender(
+      <ReminderBubbleBoard
+        reminders={remainingReminders}
+        freezeLayout={false}
+        verticalLayoutMode="homeTimeline"
+        onVisibleReminderIdsChange={onVisibleReminderIdsChange}
+      />,
+    );
+
+    expect(view.queryByLabelText('bubble-delete-0')).not.toBeOnTheScreen();
+    expect(view.getByLabelText('ほか3件のリマインダーを一覧で開く')).toBeOnTheScreen();
+    expect(onVisibleReminderIdsChange).toHaveBeenLastCalledWith(
+      remainingReminders.slice(0, 12).map(({ id }) => id),
+    );
+  });
+
+  it('commits the first measured layout even when the board starts frozen', async () => {
+    const view = await render(<ReminderBubbleBoard reminders={[makeReminder()]} freezeLayout />);
+    await fireEvent(view.getByTestId('reminder-bubble-board'), 'layout', {
+      nativeEvent: { layout: { width: 390, height: 622 } },
+    });
+
+    expect(view.getByLabelText('bubble-reminder-1')).toBeOnTheScreen();
+  });
+
+  it('keeps the bubble dimension stable when the title changes within the same length bucket', async () => {
+    const reminder = makeReminder({ title: '予定' });
+    const view = await render(<ReminderBubbleBoard reminders={[reminder]} />);
+    await fireEvent(view.getByTestId('reminder-bubble-board'), 'layout', {
+      nativeEvent: { layout: { width: 390, height: 622 } },
+    });
+    expect(view.getByLabelText('bubble-reminder-1')).toHaveStyle({ height: 96 });
+    await view.rerender(<ReminderBubbleBoard reminders={[{ ...reminder, title: '変更' }]} />);
+    expect(view.getByLabelText('bubble-reminder-1')).toHaveStyle({ height: 96 });
+  });
+
+  it('keeps a list entry point when even one bubble cannot fit', async () => {
+    const onOverflowPress = jest.fn();
+    const view = await render(
+      <ReminderBubbleBoard reminders={[makeReminder()]} onOverflowPress={onOverflowPress} />,
+    );
+    await fireEvent(view.getByTestId('reminder-bubble-board'), 'layout', {
+      nativeEvent: { layout: { width: 100, height: 80 } },
+    });
+    expect(view.queryByLabelText('bubble-reminder-1')).not.toBeOnTheScreen();
+    await fireEvent.press(view.getByLabelText('ほか1件のリマインダーを一覧で開く'));
+    expect(onOverflowPress).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes the displayed schedule and title when the reminder order is unchanged', async () => {

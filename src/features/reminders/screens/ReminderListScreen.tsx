@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
@@ -21,6 +21,7 @@ import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
 import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
 import type { Reminder } from '../types/reminder';
+import { filterReminders, type SearchFilter } from '../domain/reminderFilter';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';
 import { triggerReminderSelectionHaptic } from '../utils/reminderSelectionFeedback';
@@ -43,6 +44,7 @@ function handleBack(router: ReturnType<typeof useRouter>) {
 
 export function ReminderListScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ query?: string; filter?: string }>();
   const analytics = useAppServices().analytics;
   const { settings } = useAppSettings();
   const {
@@ -62,8 +64,18 @@ export function ReminderListScreen() {
   const [colorReferenceDate, setColorReferenceDate] = useState(() => new Date());
   const longPressTriggeredIdRef = useRef<string | null>(null);
   const selectedReminder = reminders.find((reminder) => reminder.id === selectedReminderId) ?? null;
+  const listQuery = typeof params.query === 'string' ? params.query : '';
+  const listFilter: SearchFilter =
+    params.filter === 'today' || params.filter === 'tomorrow' || params.filter === 'week'
+      ? params.filter
+      : 'all';
+  const displayedReminders = useMemo(
+    () => filterReminders(reminders, listQuery, listFilter),
+    [listFilter, listQuery, reminders],
+  );
   const selectedCount = selectedReminderIds.size;
-  const allRemindersSelected = reminders.length > 0 && selectedCount === reminders.length;
+  const allRemindersSelected =
+    displayedReminders.length > 0 && selectedCount === displayedReminders.length;
 
   useFocusEffect(
     useCallback(() => {
@@ -101,19 +113,19 @@ export function ReminderListScreen() {
     setSelectedReminderIds((current) =>
       toggleAllReminderSelection(
         current,
-        reminders.map((reminder) => reminder.id),
+        displayedReminders.map((reminder) => reminder.id),
       ),
     );
-  }, [reminders]);
+  }, [displayedReminders]);
 
   useEffect(() => {
     setSelectedReminderIds((current) =>
       retainVisibleReminderSelection(
         current,
-        reminders.map((reminder) => reminder.id),
+        displayedReminders.map((reminder) => reminder.id),
       ),
     );
-  }, [reminders]);
+  }, [displayedReminders]);
 
   useFocusEffect(
     useCallback(() => {
@@ -280,7 +292,7 @@ export function ReminderListScreen() {
       >
         <View className="min-w-0 flex-1">
           <Text numberOfLines={1} className="text-[12px] font-extrabold text-app-muted">
-            表示中の7個も含めて
+            {listQuery || listFilter !== 'all' ? '検索条件に一致する泡' : '表示中の泡'}
           </Text>
           <Text
             className="mt-[5px] text-[22px] font-black leading-[29px] text-app-ink"
@@ -297,7 +309,7 @@ export function ReminderListScreen() {
             className="text-[14px] font-black text-app-lavender-deep"
             style={styles.noFontPadding}
           >
-            {reminders.length}件
+            {displayedReminders.length}件
           </Text>
         </View>
       </View>
@@ -318,7 +330,7 @@ export function ReminderListScreen() {
             {error}
           </Text>
         </View>
-      ) : reminders.length === 0 ? (
+      ) : displayedReminders.length === 0 ? (
         <View className="flex-1 items-center justify-center px-[28px]">
           <View className="mb-[18px] h-[72px] w-[72px] items-center justify-center rounded-[36px] border-2 border-[rgba(255,255,255,0.68)] bg-[rgba(255,255,255,0.40)]">
             <Ionicons name="ellipse-outline" size={30} color={palette.lavenderDeep} />
@@ -332,7 +344,7 @@ export function ReminderListScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {reminders.map((reminder) => {
+          {displayedReminders.map((reminder) => {
             const dueColor = getReminderDueColor(reminder.targetAt, colorReferenceDate);
             const isSelected = selectedReminderIds.has(reminder.id);
 
@@ -423,7 +435,7 @@ export function ReminderListScreen() {
         </ScrollView>
       )}
 
-      {isSelectionMode && !loading && !error && reminders.length > 0 ? (
+      {isSelectionMode && !loading && !error && displayedReminders.length > 0 ? (
         <ReminderSelectionBar
           selectedCount={selectedCount}
           allSelected={allRemindersSelected}

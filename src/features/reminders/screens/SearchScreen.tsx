@@ -83,6 +83,16 @@ export function SearchScreen() {
     setFilter('all');
   }, [clearSearchQuery]);
 
+  const handleOpenFilteredReminderList = useCallback(() => {
+    router.push({
+      pathname: '/reminders-list',
+      params: {
+        query: query.trim() || undefined,
+        filter: filter === 'all' ? undefined : filter,
+      },
+    });
+  }, [filter, query, router]);
+
   const handleDeleteReminder = useCallback(
     async (reminder: Reminder) => {
       try {
@@ -299,6 +309,7 @@ export function SearchScreen() {
             reminders={filteredReminders}
             idleDisabled={Boolean(selectedReminder)}
             onReminderPress={(reminder) => setSelectedReminderId(reminder.id)}
+            onOverflowPress={handleOpenFilteredReminderList}
           />
         </View>
       )}

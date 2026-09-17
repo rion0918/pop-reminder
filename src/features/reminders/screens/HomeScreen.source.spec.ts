@@ -155,8 +155,18 @@ test('home keeps non-deleted reminder bubbles floating during burst delete work'
 test('opening quick add keeps reminder bubble positions pinned', () => {
   assertSourceIncludes(source, [
     /<ReminderBubbleBoard/,
-    /freezeLayout=\{isQuickAddOpen\}/,
+    /freezeLayout=\{isQuickAddOpen \|\| isBulkDeletionInProgress \|\| Boolean\(deleteMotion\)\}/,
     /verticalLayoutMode="homeTimeline"/,
+  ]);
+});
+
+test('home pins the bubble layout throughout single and bulk deletion motion', () => {
+  assertSourceIncludes(source, [
+    /setIsBulkDeletionInProgress\(true\);[\s\S]*setBulkDeleteMotions\(motions\)/,
+    /setDeleteMotion\(\{ reminderId: reminder\.id, phase: 'bursting' \}\);/,
+    /setBulkDeleteMotions\(\[\]\);[\s\S]*removeReminders\(deletedIds\)/,
+    /removeReminder\(reminder\.id\);[\s\S]*setDeleteMotion\(null\);/,
+    /finally \{[\s\S]*setIsBulkDeletionInProgress\(false\);/,
   ]);
 });
 
@@ -478,7 +488,7 @@ test('home supports long-press multi-selection and sequential bulk deletion', ()
     /`\$\{selectedCount\}件を削除`/,
     /deleteReminders\(ids, \{ deferCache: true \}\)/,
     /const motions = makeBulkDeleteMotions\(deletedIds\);/,
-    /Promise\.all\(\s*motions\.map/,
+    /Promise\.all\(\s*visibleMotions\.map/,
     /setBulkDeleteMotions\(motions\);/,
     /deleteMotions=\{bulkDeleteMotions\}/,
     /removeReminders\(deletedIds\);[\s\S]*void refresh\(\{ silent: true \}\);/,
@@ -487,7 +497,11 @@ test('home supports long-press multi-selection and sequential bulk deletion', ()
     /disabled=\{isSelectionMode \|\| isSelectionBusy\}/,
     /isSelectionMode \? styles\.nextReminderCardInactive : null/,
     /isSelectionMode \? '選択モードを閉じる' : '設定を開く'/,
-    /allSelected=\{allVisibleRemindersSelected\}/,
+    /const allRemindersSelected = reminders\.length > 0 && selectedCount === reminders\.length;/,
+    /allSelected=\{allRemindersSelected\}/,
+    /new Set\(reminders\.map\(\(reminder\) => reminder\.id\)\)/,
+    /const visibleMotions = motions\.filter\(\(motion\) =>[\s\S]*visibleReminderIds\.has\(motion\.reminderId\)/,
+    /visibleMotions\.map\(\(motion\) => waitForDeleteMotion/,
   ]);
 });
 
