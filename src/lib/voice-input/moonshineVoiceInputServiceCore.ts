@@ -59,7 +59,7 @@ function calculateVolume(samples: Float32Array) {
 export function createMoonshineVoiceInputService(
   options: MoonshineServiceOptions,
 ): VoiceInputService & { releaseForBackground(): void } {
-  const { native, permissions, apiLevel, sampleRate = 16_000, maxDurationMs = 8_000 } = options;
+  const { native, permissions, apiLevel, sampleRate = 16_000, maxDurationMs = 60_000 } = options;
   const listeners = new Set<(event: VoiceInputEvent) => void>();
   const maxSamples = Math.floor((sampleRate * maxDurationMs) / 1_000);
   let state: SessionState = 'idle';

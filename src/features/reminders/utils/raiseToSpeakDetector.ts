@@ -2,7 +2,6 @@ export const RAISE_TO_SPEAK_UPDATE_INTERVAL_MS = 50;
 export const RAISE_TO_SPEAK_SIDE_TILT_HOLD_MS = 200;
 export const RAISE_TO_SPEAK_PORTRAIT_HOLD_MS = 350;
 export const RAISE_TO_SPEAK_COOLDOWN_MS = 1_500;
-export const RAISE_TO_SPEAK_MAX_LISTENING_MS = 8_000;
 
 const SIDE_TILT_ANGLE_DEGREES = 40;
 const SIDE_TILT_UPRIGHT_PLANE_RATIO = 0.7;
@@ -15,7 +14,6 @@ export type RaiseToSpeakDetectorState = {
   phase: RaiseToSpeakPhase;
   sideTiltedSince: number | null;
   portraitSince: number | null;
-  listeningStartedAt: number | null;
   cooldownUntil: number | null;
 };
 
@@ -25,7 +23,7 @@ export type RaiseToSpeakSample = {
 };
 
 export type RaiseToSpeakAction = 'none' | 'start' | 'stop';
-export type RaiseToSpeakStopReason = 'portrait' | 'timeout';
+export type RaiseToSpeakStopReason = 'portrait';
 
 export type SideTiltMeasurement = {
   sideTilted: boolean;
@@ -90,7 +88,6 @@ export function createRaiseToSpeakDetectorState(): RaiseToSpeakDetectorState {
     phase: 'idle',
     sideTiltedSince: null,
     portraitSince: null,
-    listeningStartedAt: null,
     cooldownUntil: null,
   };
 }
@@ -123,17 +120,6 @@ export function reduceRaiseToSpeakDetector(
   }
 
   if (state.phase === 'listening') {
-    if (
-      state.listeningStartedAt !== null &&
-      sample.timestamp - state.listeningStartedAt >= RAISE_TO_SPEAK_MAX_LISTENING_MS
-    ) {
-      return {
-        state: enterCooldown(sample.timestamp),
-        action: 'stop',
-        stopReason: 'timeout',
-      };
-    }
-
     const portraitSince = sample.sideTilted ? null : (state.portraitSince ?? sample.timestamp);
     if (
       portraitSince !== null &&
@@ -160,7 +146,6 @@ export function reduceRaiseToSpeakDetector(
         phase: 'listening',
         sideTiltedSince,
         portraitSince: null,
-        listeningStartedAt: sample.timestamp,
       },
       action: 'start',
     };

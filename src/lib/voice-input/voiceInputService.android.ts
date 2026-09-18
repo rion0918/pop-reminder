@@ -16,7 +16,7 @@ import type { VoiceInputPermissionResponse, VoiceInputService } from './voiceInp
 
 const MOONSHINE_MODEL_PATH = 'models/moonshine-tiny-ja';
 const SAMPLE_RATE = 16_000;
-const RECORDING_MAX_DURATION_MS = 8_000;
+const RECORDING_MAX_DURATION_MS = 60_000;
 const recordAudioPermission = PermissionsAndroid.PERMISSIONS.RECORD_AUDIO;
 let canAskForMicrophonePermissionAgain = true;
 let forcedVoiceInputEngine: 'os' | 'moonshine' | null = null;

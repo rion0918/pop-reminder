@@ -5,7 +5,6 @@ import {
   createRaiseToSpeakDetectorState,
   getSideTiltMeasurement,
   isSideTiltedVoicePose,
-  RAISE_TO_SPEAK_MAX_LISTENING_MS,
   reduceRaiseToSpeakDetector,
 } from './raiseToSpeakDetector';
 
@@ -136,49 +135,33 @@ test('cooldown prevents a duplicate start until the phone returns to portrait', 
   assert.equal(result.action, 'start');
 });
 
-test('listening stops at the safety timeout and reset drops all pending state', () => {
-  assert.equal(RAISE_TO_SPEAK_MAX_LISTENING_MS, 8_000);
-
+test('listening continues while the phone stays tilted beyond eight seconds', () => {
   let state = createRaiseToSpeakDetectorState();
   ({ state } = reduceRaiseToSpeakDetector(state, sample(0, true)));
   ({ state } = reduceRaiseToSpeakDetector(state, sample(200, true)));
 
-  let result = reduceRaiseToSpeakDetector(state, sample(8_199, true));
+  const result = reduceRaiseToSpeakDetector(state, sample(8_200, true));
   assert.equal(result.action, 'none');
-
-  result = reduceRaiseToSpeakDetector(result.state, sample(8_200, true));
-  assert.equal(result.action, 'stop');
-  assert.equal(result.state.phase, 'cooldown');
-  assert.equal(result.stopReason, 'timeout');
-
-  assert.deepEqual(createRaiseToSpeakDetectorState(), {
-    phase: 'idle',
-    sideTiltedSince: null,
-    portraitSince: null,
-    listeningStartedAt: null,
-    cooldownUntil: null,
-  });
+  assert.equal(result.state.phase, 'listening');
+  assert.equal(result.stopReason, undefined);
 });
 
-test('a timed-out listening session cannot restart until a fresh tilt cycle', () => {
+test('a long listening session still stops after returning to portrait', () => {
   let state = createRaiseToSpeakDetectorState();
   ({ state } = reduceRaiseToSpeakDetector(state, sample(0, true)));
   ({ state } = reduceRaiseToSpeakDetector(state, sample(200, true)));
 
-  let result = reduceRaiseToSpeakDetector(state, sample(8_200, true));
-  state = result.state;
-  assert.equal(result.action, 'stop');
-
-  result = reduceRaiseToSpeakDetector(state, sample(9_800, true));
+  let result = reduceRaiseToSpeakDetector(state, sample(30_000, true));
   state = result.state;
   assert.equal(result.action, 'none');
-  assert.equal(state.phase, 'cooldown');
+  assert.equal(state.phase, 'listening');
 
-  result = reduceRaiseToSpeakDetector(state, sample(9_801, false));
+  result = reduceRaiseToSpeakDetector(state, sample(30_001, false));
   state = result.state;
-  assert.equal(state.phase, 'idle');
+  assert.equal(result.action, 'none');
 
-  ({ state } = reduceRaiseToSpeakDetector(state, sample(9_900, true)));
-  result = reduceRaiseToSpeakDetector(state, sample(10_100, true));
-  assert.equal(result.action, 'start');
+  result = reduceRaiseToSpeakDetector(state, sample(30_351, false));
+  assert.equal(result.action, 'stop');
+  assert.equal(result.state.phase, 'cooldown');
+  assert.equal(result.stopReason, 'portrait');
 });

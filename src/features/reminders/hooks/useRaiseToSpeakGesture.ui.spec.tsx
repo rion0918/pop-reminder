@@ -49,7 +49,7 @@ type HarnessProps = {
   blocked: boolean;
   trackTiltProgress?: boolean;
   onStart: () => void;
-  onStop: (reason: 'portrait' | 'timeout' | 'interrupted') => void;
+  onStop: (reason: 'portrait' | 'interrupted') => void;
 };
 
 function Harness({ enabled, blocked, trackTiltProgress, onStart, onStop }: HarnessProps) {
@@ -215,7 +215,7 @@ describe('useRaiseToSpeakGesture', () => {
     });
   });
 
-  it('forwards the timeout stop reason from the detector', async () => {
+  it('keeps listening while the phone stays tilted beyond eight seconds', async () => {
     const onStart = jest.fn();
     const onStop = jest.fn();
     const view = await render(
@@ -238,7 +238,7 @@ describe('useRaiseToSpeakGesture', () => {
     });
 
     expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onStop).toHaveBeenLastCalledWith('timeout');
+    expect(onStop).not.toHaveBeenCalled();
     await act(async () => {
       view.unmount();
     });

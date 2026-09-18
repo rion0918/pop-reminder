@@ -28,7 +28,7 @@ let mockRaiseGestureOptions: {
   enabled: boolean;
   blocked: boolean;
   onStart: () => void | Promise<void>;
-  onStop: (reason: 'portrait' | 'timeout' | 'interrupted') => void;
+  onStop: (reason: 'portrait' | 'interrupted') => void;
 } | null = null;
 
 function makeSettings(): AppSettings {
@@ -414,7 +414,7 @@ describe('SettingsScreen raise-to-speak setup', () => {
     expect(view.queryByLabelText('左右に傾けて音声入力の設定をキャンセル')).toBeNull();
   });
 
-  it.each(['timeout', 'interrupted'] as const)(
+  it.each(['interrupted'] as const)(
     'does not complete setup when calibration ends because of %s',
     async (reason) => {
       const view = await render(<SettingsScreen />);
