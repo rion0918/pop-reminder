@@ -8,10 +8,16 @@
 
 ```mermaid
 graph TB
-    subgraph Client [Client UI Layer]
+    subgraph Presentation [Presentation Layer]
         AppUI[Expo Router Screens]
         BubbleUI[Skia / Reanimated Bubble UI]
         WidgetUI[Android Widget Layer]
+    end
+
+    subgraph Application [Application & Port Layer]
+        ReminderUseCases[Reminder Use Cases]
+        SettingsUseCases[Settings Use Cases]
+        Ports[Ports]
     end
 
     subgraph StateDomain [State & Domain Layer]
@@ -20,7 +26,7 @@ graph TB
         ZodSchemas[Zod Schemas]
     end
 
-    subgraph PersistenceNative [Persistence & Native Layer]
+    subgraph Infrastructure [Adapter & Native Layer]
         Drizzle[Drizzle ORM & SQLite]
         Notifications[Expo Notifications Gateway]
         Haptics[Expo Haptics Engine]
@@ -28,15 +34,23 @@ graph TB
         AndroidSTT[Android On-device STT]
     end
 
+    Bootstrap[appServices Composition Root]
+
     AppUI --> TanStack
     AppUI --> ZustandStore
     AppUI --> BubbleUI
-    TanStack --> Drizzle
-    AppUI --> Notifications
-    AppUI --> Purchases
-    AppUI --> AndroidSTT
+    TanStack --> ReminderUseCases
+    AppUI --> SettingsUseCases
+    ReminderUseCases --> Ports
+    SettingsUseCases --> Ports
+    Ports -.-> Drizzle
+    Ports -.-> Notifications
+    Ports -.-> Purchases
+    Ports -.-> AndroidSTT
     BubbleUI --> Haptics
     WidgetUI --> Drizzle
+    Bootstrap --> ReminderUseCases
+    Bootstrap --> SettingsUseCases
 ```
 
 ---
@@ -45,7 +59,7 @@ graph TB
 
 | 技術 / ライブラリ | バージョン | 用途・説明                                                            |
 | :---------------- | :--------- | :-------------------------------------------------------------------- |
-| **Expo SDK**      | `~54.0.35` | アプリケーション基盤、ネイティブ設定管理およびビルド統合              |
+| **Expo SDK**      | `~54.0.37` | アプリケーション基盤、ネイティブ設定管理およびビルド統合              |
 | **React Native**  | `0.81.5`   | iOS / Android のクロスプラットフォーム Native UI レンダリング         |
 | **React**         | `19.1.0`   | コンポーネント指向 UI ライブラリ                                      |
 | **TypeScript**    | `~5.9.3`   | 型安全なアプリケーション開発環境                                      |

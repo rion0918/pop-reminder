@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-export const REMINDER_TITLE_MAX_LENGTH = 40;
+import { REMINDER_TITLE_MAX_LENGTH } from '../domain/reminder';
+
+export { REMINDER_TITLE_MAX_LENGTH } from '../domain/reminder';
 
 export const reminderTitleSchema = z
   .string()
@@ -20,4 +22,4 @@ export const createReminderInputSchema = z.object({
   allDay: z.boolean().optional().default(false),
 });
 
-export type CreateReminderInput = z.infer<typeof createReminderInputSchema>;
+export type CreateReminderInput = z.input<typeof createReminderInputSchema>;

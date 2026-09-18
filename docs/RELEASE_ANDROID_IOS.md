@@ -132,6 +132,18 @@ EAS のクラウドビルド枠を使い切った場合でも、EAS CLI と Andr
 
 EAS に保存済みの Keystore をローカルへ取得します。`credentials.json` と `credentials/android/keystore.jks` は秘密情報なので、Git にコミットしません。
 
+#### Android署名Credentialを公開してしまった場合
+
+公開済みの `credentials.json`、Keystore、またはそのパスワードは漏えい済みとして扱います。次の順序を崩しません。
+
+1. Play Console の「アプリの完全性」で、公開Credentialが Upload key か App signing key かを確認する。
+2. Upload key の場合は新しいKeystoreを生成し、Play ConsoleでUpload keyのリセットを申請してからEASへ登録する。App signing keyの場合は、Play Consoleが案内する鍵アップグレード手続きを使用する。
+3. EASから新しいCredentialを取得し、ローカルの `credentials.json` と `credentials/android/keystore.jks` を更新する。
+4. 署名更新が完了したことを確認してから、Git履歴から対象ファイルを全ブランチ・タグについて除去し、リモート履歴を更新する。
+5. `git ls-files`、`git log --all -- credentials.json credentials/android/keystore.jks`、GitHubのSecret scanningで残存がないことを確認する。
+
+Credentialファイルはリポジトリ外の安全なローカル保管場所でのみ扱います。Keystore、パスワード、Alias、秘密鍵の内容をログ・Pull Request・チャットへ貼り付けません。
+
 ```bash
 pnpm exec eas credentials --platform android
 ```

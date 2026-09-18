@@ -1,6 +1,11 @@
-import { normalizeReminderTitle, type Reminder } from '../domain/reminder';
+import {
+  normalizeReminderTitle,
+  type CreateReminderInput,
+  type Reminder,
+} from '../domain/reminder';
 import { FREE_ACTIVE_REMINDER_LIMIT } from '../../purchases/domain/proAccess';
 import {
+  buildAllDayTargetNotifyAt,
   buildPreviousNotifyAt,
   buildReminderSchedule,
   validateReminderScheduleInput,
@@ -11,13 +16,7 @@ import type {
   ReminderNotificationScheduleOptions,
 } from './ports';
 
-export type CreateReminderInput = {
-  title: string;
-  dateOffset: 0 | 1 | 2;
-  customTargetDate?: string | null;
-  targetTime: string;
-  allDay?: boolean;
-};
+export type { CreateReminderInput } from '../domain/reminder';
 
 type CreateReminderOptions = {
   useTestNotifications?: boolean;
@@ -87,7 +86,11 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       options?: CreateReminderOptions,
     ): Promise<CreateReminderResult> {
       const title = normalizeReminderTitle(input.title);
-      validateReminderScheduleInput({ ...input, previousNotifyTime: '00:00', now: options?.now });
+      validateReminderScheduleInput({
+        ...input,
+        previousNotifyTime: '00:00',
+        now: options?.now,
+      });
       const accessState = await proAccess.getState();
       if (accessState === 'free') {
         const activeReminders = await reminders.listActive(options?.now);
@@ -170,6 +173,28 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
             await notifications.cancelOne(oldPreviousNotificationId);
           }
 
+          if (reminder.allDay === true) {
+            const expectedTargetNotifyAt = buildAllDayTargetNotifyAt(
+              reminder.targetAt,
+              currentSettings.allDayNotifyTime ?? '09:00',
+            ).toISOString();
+
+            if (reminder.targetNotifyAt !== expectedTargetNotifyAt) {
+              const oldTargetNotificationId = reminder.targetNotificationId;
+              const reconciled = await reminders.updateTargetSchedule(reminder.id, {
+                targetAt: reminder.targetAt,
+                targetNotifyAt: expectedTargetNotifyAt,
+                targetNotificationId: null,
+              });
+              if (!reconciled) {
+                remaining += 1;
+                continue;
+              }
+              reminder = reconciled;
+              await notifications.cancelOne(oldTargetNotificationId);
+            }
+          }
+
           if (reminder.targetNotificationId === null) {
             const targetResult = await notifications.scheduleTarget(reminder, {
               permissionMode: 'check-only',
@@ -187,7 +212,7 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
                 await notifications.cancelOne(targetResult.notificationId);
                 remaining += 1;
               }
-            } else {
+            } else if (targetResult.status === 'not-scheduled') {
               remaining += 1;
             }
           }
@@ -364,6 +389,24 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       const updatedReminder = await reminders.updateTitle(id, normalizedTitle);
       if (!updatedReminder) return null;
 
+      const emptyNotificationIds = {
+        previousNotificationId: null,
+        targetNotificationId: null,
+      } as const;
+      const clearNotificationIds = async () => {
+        try {
+          return (
+            (await reminders.updateNotificationIds(updatedReminder.id, emptyNotificationIds)) ?? {
+              ...updatedReminder,
+              ...emptyNotificationIds,
+            }
+          );
+        } catch (error) {
+          console.warn('Failed to clear reminder notification ids after title update', error);
+          return { ...updatedReminder, ...emptyNotificationIds };
+        }
+      };
+
       try {
         const notification = await notifications.schedule(updatedReminder, {});
         const hasReplacement =
@@ -372,18 +415,30 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
 
         if (hasReplacement) {
           await notifications.cancel(reminder);
-          return (
-            (await reminders.updateNotificationIds(updatedReminder.id, notification.ids)) ??
-            updatedReminder
-          );
+          try {
+            const persisted = await reminders.updateNotificationIds(
+              updatedReminder.id,
+              notification.ids,
+            );
+            if (!persisted) throw new Error('Reminder notification ids could not be persisted');
+            return persisted;
+          } catch (error) {
+            await notifications.cancel({ ...updatedReminder, ...notification.ids });
+            console.warn('Failed to persist reminder notification ids after title update', error);
+            return await clearNotificationIds();
+          }
         }
+
+        await notifications.cancel(reminder);
+        return await clearNotificationIds();
       } catch (error) {
+        await notifications.cancel(reminder);
+        const cleared = await clearNotificationIds();
         console.warn('Failed to refresh reminder notifications after title update', error);
+        return cleared;
       } finally {
         await widget.sync();
       }
-
-      return updatedReminder;
     },
 
     async updateSchedule(
@@ -587,19 +642,10 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
       let skippedPastCount = 0;
       let failedReminderCount = 0;
       for (const reminder of activeReminders.filter((item) => item.allDay === true)) {
-        const schedule = buildReminderSchedule({
-          dateOffset: 0,
-          customTargetDate: (() => {
-            const date = new Date(reminder.targetAt);
-            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          })(),
-          targetTime: '00:00',
-          allDay: true,
+        const nextTargetNotifyAt = buildAllDayTargetNotifyAt(
+          reminder.targetAt,
           allDayNotifyTime,
-          previousNotifyTime: currentSettings.previousNotifyTime,
-          now,
-        });
-        const nextTargetNotifyAt = schedule.targetNotifyAt.toISOString();
+        ).toISOString();
         if (nextTargetNotifyAt === reminder.targetNotifyAt) continue;
         try {
           const updated = await reminders.updateTargetSchedule(reminder.id, {

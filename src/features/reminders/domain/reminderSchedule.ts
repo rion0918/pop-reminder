@@ -31,6 +31,12 @@ function parseTime(value: string) {
   return { hours, minutes };
 }
 
+export function buildAllDayTargetNotifyAt(value: Date | string, allDayNotifyTime: string) {
+  const target = value instanceof Date ? value : new Date(value);
+  const notify = parseTime(allDayNotifyTime);
+  return setLocalTime(startOfLocalDay(target), notify.hours, notify.minutes);
+}
+
 function parseLocalDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new Error('Reminder target date is invalid');
@@ -64,7 +70,9 @@ export function buildReminderSchedule({
   const notify = parseTime(allDay ? allDayNotifyTime : targetTime);
   const previous = parseTime(previousNotifyTime);
   const targetAt = setLocalTime(targetDay, target.hours, target.minutes);
-  const targetNotifyAt = setLocalTime(targetDay, notify.hours, notify.minutes);
+  const targetNotifyAt = allDay
+    ? buildAllDayTargetNotifyAt(targetDay, allDayNotifyTime)
+    : setLocalTime(targetDay, notify.hours, notify.minutes);
 
   return {
     targetAt,

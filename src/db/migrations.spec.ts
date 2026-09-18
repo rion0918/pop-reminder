@@ -81,6 +81,47 @@ test('migration rerun is idempotent', async () => {
   assert.deepEqual(fake.statements, []);
 });
 
+test('current database repairs a missing all-day reminder column', async () => {
+  const fake = makeTableAwareDatabase(7, {
+    reminders: ['id'],
+    app_settings: [
+      'id',
+      'analytics_consent',
+      'notification_channel_version',
+      'all_day_notify_time',
+    ],
+  });
+
+  await runDatabaseMigrations(fake.database);
+
+  assert.equal(fake.getVersion(), 7);
+  assert.deepEqual(fake.getColumns('reminders'), ['id', 'all_day']);
+  assert.deepEqual(fake.getColumns('app_settings'), [
+    'id',
+    'analytics_consent',
+    'notification_channel_version',
+    'all_day_notify_time',
+  ]);
+});
+
+test('current database repairs missing all-day settings and compatibility columns', async () => {
+  const fake = makeTableAwareDatabase(7, {
+    reminders: ['id', 'all_day'],
+    app_settings: ['id'],
+  });
+
+  await runDatabaseMigrations(fake.database);
+
+  assert.equal(fake.getVersion(), 7);
+  assert.deepEqual(fake.getColumns('reminders'), ['id', 'all_day']);
+  assert.deepEqual(fake.getColumns('app_settings'), [
+    'id',
+    'analytics_consent',
+    'notification_channel_version',
+    'all_day_notify_time',
+  ]);
+});
+
 test('legacy version 5 database repairs a missing analytics consent column', async () => {
   const fake = makeDatabase(5, [
     'id',
@@ -153,3 +194,38 @@ test('v4 database adds analytics consent and leaves notification compatibility t
   );
   assert.match(fake.statements.join('\n'), /PRAGMA user_version = 6/);
 });
+
+function makeTableAwareDatabase(
+  userVersion: number,
+  initialColumns: Record<'reminders' | 'app_settings', string[]>,
+) {
+  let version = userVersion;
+  const columns = {
+    reminders: [...initialColumns.reminders],
+    app_settings: [...initialColumns.app_settings],
+  };
+  const statements: string[] = [];
+  const database: MigrationDatabase = {
+    execAsync: async (sql) => {
+      statements.push(sql);
+      const versionMatch = sql.match(/PRAGMA user_version = (\d+)/);
+      if (versionMatch) version = Number(versionMatch[1]);
+
+      const columnMatch = sql.match(/ALTER TABLE (reminders|app_settings)\s+ADD COLUMN (\w+)/);
+      if (columnMatch) columns[columnMatch[1] as keyof typeof columns].push(columnMatch[2]);
+    },
+    getFirstAsync: async <T>() => ({ user_version: version }) as T,
+    getAllAsync: async <T>(sql: string) => {
+      const table = sql.match(/table_info\((reminders|app_settings)\)/)?.[1] as
+        keyof typeof columns | undefined;
+      return (table ? columns[table] : []).map((name) => ({ name })) as T[];
+    },
+  };
+
+  return {
+    database,
+    statements,
+    getVersion: () => version,
+    getColumns: (table: keyof typeof columns) => columns[table],
+  };
+}

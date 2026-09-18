@@ -10,6 +10,7 @@ import {
 const source = readSource(import.meta.url, './ReminderInputSheet.tsx');
 const imeSafeTitleInputSource = readSource(import.meta.url, './ImeSafeReminderTitleInput.tsx');
 const titleInputStylesSource = readSource(import.meta.url, './reminderTitleInputStyles.ts');
+const reminderDomainSource = readSource(import.meta.url, '../domain/reminder.ts');
 const dateChipsSource = readSource(import.meta.url, './DateChips.tsx');
 const rootLayoutSource = readSource(import.meta.url, '../../../app/_layout.tsx');
 const timeSelectorSource = readSource(
@@ -20,9 +21,10 @@ const reminderSchemaSource = readSource(import.meta.url, '../schemas/reminderSch
 
 test('quick add shows a live accessible title character count from the validation limit', () => {
   assertSourceIncludes(reminderSchemaSource, [
-    /export const REMINDER_TITLE_MAX_LENGTH = 40;/,
+    /import \{ REMINDER_TITLE_MAX_LENGTH \} from '\.\.\/domain\/reminder';/,
     /\.max\(REMINDER_TITLE_MAX_LENGTH, 'タイトルは40文字以内で保存できます'\)/,
   ]);
+  assertSourceIncludes(reminderDomainSource, [/export const REMINDER_TITLE_MAX_LENGTH = 40;/]);
   assertSourceIncludes(imeSafeTitleInputSource, [
     /import \{ REMINDER_TITLE_MAX_LENGTH \} from '\.\.\/schemas\/reminderSchema';/,
     /const \[titleLength, setTitleLength\] = useState/,

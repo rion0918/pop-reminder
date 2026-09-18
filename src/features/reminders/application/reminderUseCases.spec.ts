@@ -46,6 +46,7 @@ function notScheduledNotification(
 function makeDependencies(events: string[]): ReminderApplicationDependencies {
   let current: Reminder | null = reminder;
   let previousNotifyTime = '20:00';
+  let allDayNotifyTime = '09:00';
   let notificationChannelMigrationVersion = 0;
 
   return {
@@ -101,6 +102,7 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
       get: async () => ({
         id: 'default',
         previousNotifyTime,
+        allDayNotifyTime,
         defaultTargetTime: '08:00',
         noonTargetTime: '12:00',
         eveningTargetTime: '18:00',
@@ -118,6 +120,25 @@ function makeDependencies(events: string[]): ReminderApplicationDependencies {
         return {
           id: 'default',
           previousNotifyTime: nextPreviousNotifyTime,
+          defaultTargetTime: '08:00',
+          noonTargetTime: '12:00',
+          eveningTargetTime: '18:00',
+          nightTargetTime: '20:00',
+          autoDeleteEnabled: true,
+          notificationPermissionIntroSeen: false,
+          raiseToSpeakEnabled: false,
+          raiseToSpeakIntroSeen: false,
+          analyticsConsent: 'unknown',
+          theme: 'sky',
+        };
+      },
+      updateAllDayNotifyTime: async (nextAllDayNotifyTime) => {
+        events.push(`settings-all-day:${nextAllDayNotifyTime}`);
+        allDayNotifyTime = nextAllDayNotifyTime;
+        return {
+          id: 'default',
+          previousNotifyTime,
+          allDayNotifyTime: nextAllDayNotifyTime,
           defaultTargetTime: '08:00',
           noonTargetTime: '12:00',
           eveningTargetTime: '18:00',
@@ -393,6 +414,14 @@ test('create rejects invalid runtime schedule input before reading adapters', as
   assert.deepEqual(events, []);
 });
 
+test('create rejects invalid titles before reading adapters', async () => {
+  const events: string[] = [];
+  const useCases = createReminderUseCases(makeDependencies(events));
+
+  await assert.rejects(useCases.create({ title: '   ', dateOffset: 1, targetTime: '08:00' }));
+  assert.deepEqual(events, []);
+});
+
 test('delete returns false for a missing reminder and never calls gateways', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);
@@ -489,7 +518,117 @@ test('title update returns persisted update when replacement scheduling fails', 
 
   const result = await createReminderUseCases(dependencies).updateTitle(reminder.id, ' New title ');
   assert.equal(result?.title, 'New title');
-  assert.deepEqual(events, ['update-title', 'schedule', 'widget']);
+  assert.deepEqual(events, ['update-title', 'schedule', 'cancel', 'notification-ids', 'widget']);
+});
+
+test('title update clears old notification ids and retries after replacement scheduling fails', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  let current: Reminder = {
+    ...reminder,
+    previousNotificationId: 'old-previous',
+    targetNotificationId: 'old-target',
+  };
+  dependencies.reminders.getById = async () => current;
+  dependencies.reminders.updateTitle = async (_id, title) => {
+    events.push('update-title');
+    current = { ...current, title };
+    return current;
+  };
+  dependencies.reminders.updateNotificationIds = async (_id, ids) => {
+    events.push(
+      `notification-ids:${ids.previousNotificationId ?? 'null'}:${ids.targetNotificationId ?? 'null'}`,
+    );
+    current = { ...current, ...ids };
+    return current;
+  };
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.reminders.updatePreviousSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.schedule = async () => {
+    events.push('schedule-failed');
+    throw new Error('schedule failed');
+  };
+  dependencies.notifications.scheduleTarget = async () => ({
+    status: 'scheduled',
+    notificationId: 'new-target',
+  });
+  dependencies.notifications.schedulePrevious = async () => ({
+    status: 'scheduled',
+    notificationId: 'new-previous',
+  });
+
+  const useCases = createReminderUseCases(dependencies);
+  const updated = await useCases.updateTitle(reminder.id, 'New title');
+
+  assert.equal(updated?.title, 'New title');
+  assert.equal(updated?.previousNotificationId, null);
+  assert.equal(updated?.targetNotificationId, null);
+  assert.deepEqual(events, [
+    'update-title',
+    'schedule-failed',
+    'cancel',
+    'notification-ids:null:null',
+    'widget',
+  ]);
+
+  events.length = 0;
+  const retryResult = await useCases.retryPendingNotifications(new Date('2026-07-12T09:00:00'));
+
+  assert.deepEqual(retryResult, { scheduled: 2, remaining: 0 });
+  assert.equal(current.previousNotificationId, 'new-previous');
+  assert.equal(current.targetNotificationId, 'new-target');
+});
+
+test('title update cleans up replacement notifications when notification id persistence fails', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  let current: Reminder = {
+    ...reminder,
+    previousNotificationId: 'old-previous',
+    targetNotificationId: 'old-target',
+  };
+  let persistenceAttempts = 0;
+  dependencies.reminders.getById = async () => current;
+  dependencies.reminders.updateTitle = async (_id, title) => {
+    current = { ...current, title };
+    return current;
+  };
+  dependencies.reminders.updateNotificationIds = async (_id, ids) => {
+    persistenceAttempts += 1;
+    events.push(
+      `notification-ids:${ids.previousNotificationId ?? 'null'}:${ids.targetNotificationId ?? 'null'}`,
+    );
+    if (persistenceAttempts === 1) {
+      throw new Error('database unavailable');
+    }
+    current = { ...current, ...ids };
+    return current;
+  };
+  dependencies.notifications.schedule = async () => scheduledNotification;
+  dependencies.notifications.cancel = async (candidate) => {
+    events.push(
+      `cancel:${candidate.previousNotificationId ?? 'null'}:${candidate.targetNotificationId ?? 'null'}`,
+    );
+  };
+
+  const result = await createReminderUseCases(dependencies).updateTitle(reminder.id, 'New title');
+
+  assert.equal(result?.title, 'New title');
+  assert.equal(result?.previousNotificationId, null);
+  assert.equal(result?.targetNotificationId, null);
+  assert.deepEqual(events, [
+    'cancel:old-previous:old-target',
+    'notification-ids:previous:target',
+    'cancel:previous:target',
+    'notification-ids:null:null',
+    'widget',
+  ]);
 });
 
 test('schedule update changes date and time and replaces both notifications', async () => {
@@ -904,6 +1043,167 @@ test('retryPendingNotifications leaves blocked reminders pending', async () => {
 
   assert.deepEqual(result, { scheduled: 0, remaining: 1 });
   assert.deepEqual(events, ['schedule-target']);
+});
+
+test('all-day notification time updates target schedules and replaces the target notification', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = {
+    ...reminder,
+    id: 'all-day-reminder',
+    allDay: true,
+    targetAt: new Date(2030, 0, 2, 0).toISOString(),
+    targetNotifyAt: new Date(2030, 0, 2, 9).toISOString(),
+    targetNotificationId: 'old-target',
+    previousNotifyAt: new Date(2030, 0, 1, 20).toISOString(),
+    previousNotificationId: 'previous',
+  };
+  let current = candidate;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    events.push(`update-target:${update.targetNotificationId ?? 'null'}`);
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.scheduleTarget = async () => {
+    events.push('schedule-target');
+    return { status: 'scheduled', notificationId: 'new-target' };
+  };
+
+  const result = await createReminderUseCases(dependencies).updateAllDayNotifyTime('10:00', {
+    now: new Date(2030, 0, 1, 10),
+  });
+
+  assert.equal(result.changedReminderCount, 1);
+  assert.equal(result.failedReminderCount, 0);
+  assert.equal(current.targetNotifyAt, new Date(2030, 0, 2, 10).toISOString());
+  assert.equal(current.targetNotificationId, 'new-target');
+  assert.deepEqual(events, [
+    'settings-all-day:10:00',
+    'update-target:null',
+    'cancel-one:old-target',
+    'schedule-target',
+    'update-target:new-target',
+  ]);
+});
+
+test('all-day notification scheduling failure is repaired by the next retry', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = {
+    ...reminder,
+    id: 'all-day-reminder',
+    allDay: true,
+    targetAt: new Date(2030, 0, 2, 0).toISOString(),
+    targetNotifyAt: new Date(2030, 0, 2, 9).toISOString(),
+    targetNotificationId: 'old-target',
+    previousNotifyAt: new Date(2030, 0, 1, 20).toISOString(),
+    previousNotificationId: 'previous',
+  };
+  let current = candidate;
+  let scheduleAttempts = 0;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.scheduleTarget = async () => {
+    scheduleAttempts += 1;
+    if (scheduleAttempts === 1) {
+      return {
+        status: 'not-scheduled',
+        reason: 'notification-permission-denied',
+        notificationId: null,
+      };
+    }
+    return { status: 'scheduled', notificationId: 'new-target' };
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  const updateResult = await useCases.updateAllDayNotifyTime('10:00', {
+    now: new Date(2030, 0, 1, 10),
+  });
+  assert.equal(updateResult.failedReminderCount, 1);
+  assert.equal(current.targetNotificationId, null);
+
+  const retryResult = await useCases.retryPendingNotifications(new Date(2030, 0, 1, 10));
+  assert.deepEqual(retryResult, { scheduled: 1, remaining: 0 });
+  assert.equal(current.targetNotificationId, 'new-target');
+});
+
+test('all-day notification DB update failure is repaired by retry reconciliation', async () => {
+  const dependencies = makeDependencies([]);
+  const candidate: Reminder = {
+    ...reminder,
+    id: 'all-day-reminder',
+    allDay: true,
+    targetAt: new Date(2030, 0, 2, 0).toISOString(),
+    targetNotifyAt: new Date(2030, 0, 2, 9).toISOString(),
+    targetNotificationId: 'old-target',
+    previousNotifyAt: new Date(2030, 0, 1, 20).toISOString(),
+    previousNotificationId: 'previous',
+  };
+  let current = candidate;
+  let updateAttempts = 0;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    updateAttempts += 1;
+    if (updateAttempts === 1) return null;
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.scheduleTarget = async () => ({
+    status: 'scheduled',
+    notificationId: 'new-target',
+  });
+
+  const useCases = createReminderUseCases(dependencies);
+  const updateResult = await useCases.updateAllDayNotifyTime('10:00', {
+    now: new Date(2030, 0, 1, 10),
+  });
+  assert.equal(updateResult.failedReminderCount, 1);
+  assert.equal(current.targetNotifyAt, new Date(2030, 0, 2, 9).toISOString());
+
+  const retryResult = await useCases.retryPendingNotifications(new Date(2030, 0, 1, 10));
+  assert.deepEqual(retryResult, { scheduled: 1, remaining: 0 });
+  assert.equal(current.targetNotifyAt, new Date(2030, 0, 2, 10).toISOString());
+  assert.equal(current.targetNotificationId, 'new-target');
+});
+
+test('past all-day notification times are skipped and are not left pending for retry', async () => {
+  const dependencies = makeDependencies([]);
+  const candidate: Reminder = {
+    ...reminder,
+    id: 'all-day-reminder',
+    allDay: true,
+    targetAt: new Date(2030, 0, 1, 0).toISOString(),
+    targetNotifyAt: new Date(2030, 0, 1, 9).toISOString(),
+    targetNotificationId: 'old-target',
+    previousNotifyAt: new Date(2029, 11, 31, 20).toISOString(),
+    previousNotificationId: 'previous',
+  };
+  let current = candidate;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.scheduleTarget = async () => ({
+    status: 'skipped',
+    reason: 'time-passed',
+    notificationId: null,
+  });
+
+  const useCases = createReminderUseCases(dependencies);
+  const updateResult = await useCases.updateAllDayNotifyTime('08:00', {
+    now: new Date(2030, 0, 1, 10),
+  });
+  assert.equal(updateResult.skippedPastCount, 1);
+  assert.equal(updateResult.failedReminderCount, 0);
+  assert.equal(current.targetNotificationId, null);
+
+  const retryResult = await useCases.retryPendingNotifications(new Date(2030, 0, 1, 10));
+  assert.deepEqual(retryResult, { scheduled: 0, remaining: 0 });
 });
 
 test('cleanup cancels expired reminders before deleting them', async () => {

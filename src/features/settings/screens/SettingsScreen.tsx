@@ -334,11 +334,19 @@ export function SettingsScreen() {
     try {
       const result = await updateAllDayNotifyTime(value);
       setAllDayTime(result.settings.allDayNotifyTime ?? value);
+      const messages: string[] = [];
       if (result.skippedPastCount > 0) {
-        Alert.alert(
-          '終日のお知らせの時刻を変更しました',
+        messages.push(
           `${result.skippedPastCount}件は新しい時刻を過ぎているため、当日のお知らせを見送りました。`,
         );
+      }
+      if (result.failedReminderCount > 0) {
+        messages.push(
+          `${result.failedReminderCount}件の終日通知を予約できませんでした。次回起動時に再試行します。`,
+        );
+      }
+      if (messages.length > 0) {
+        Alert.alert('終日のお知らせの時刻を変更しました', messages.join('\n'));
       }
     } catch (error) {
       console.warn('Failed to update all-day notification time', error);

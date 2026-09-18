@@ -6,18 +6,56 @@ export type MigrationDatabase = {
 
 const CURRENT_DATABASE_VERSION = 7;
 
+async function repairCurrentSchema(database: MigrationDatabase) {
+  let repaired = false;
+  const reminderColumns = await database.getAllAsync<{ name: string }>(
+    'PRAGMA table_info(reminders)',
+  );
+  if (!reminderColumns.some((column) => column.name === 'all_day')) {
+    await database.execAsync(
+      'ALTER TABLE reminders ADD COLUMN all_day INTEGER NOT NULL DEFAULT 0;',
+    );
+    repaired = true;
+  }
+
+  let settingsColumns = await database.getAllAsync<{ name: string }>(
+    'PRAGMA table_info(app_settings)',
+  );
+  const settingsRepairs = [
+    [
+      'analytics_consent',
+      "ALTER TABLE app_settings ADD COLUMN analytics_consent TEXT NOT NULL DEFAULT 'unknown';",
+    ],
+    [
+      'notification_channel_version',
+      'ALTER TABLE app_settings ADD COLUMN notification_channel_version INTEGER NOT NULL DEFAULT 0;',
+    ],
+    [
+      'all_day_notify_time',
+      "ALTER TABLE app_settings ADD COLUMN all_day_notify_time TEXT NOT NULL DEFAULT '09:00';",
+    ],
+  ] as const;
+
+  for (const [name, statement] of settingsRepairs) {
+    if (settingsColumns.some((column) => column.name === name)) continue;
+    await database.execAsync(statement);
+    repaired = true;
+    settingsColumns = [...settingsColumns, { name }];
+  }
+
+  return repaired;
+}
+
 export async function runDatabaseMigrations(database: MigrationDatabase) {
   const result = await database.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let version = result?.user_version ?? 0;
   if (version >= CURRENT_DATABASE_VERSION) {
-    const columns = await database.getAllAsync<{ name: string }>('PRAGMA table_info(app_settings)');
-    if (
-      columns.some((column) => column.name === 'analytics_consent') &&
-      columns.some((column) => column.name === 'notification_channel_version') &&
-      columns.some((column) => column.name === 'all_day_notify_time')
-    ) {
+    const repaired = await repairCurrentSchema(database);
+    if (!repaired) {
       return;
     }
+    await database.execAsync(`PRAGMA user_version = ${CURRENT_DATABASE_VERSION};`);
+    return;
   }
 
   if (version < 1) {

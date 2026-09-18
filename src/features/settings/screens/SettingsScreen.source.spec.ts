@@ -127,6 +127,7 @@ test('settings applies the shared previous time to existing reminders with obser
       /isUpdatingPreviousNotifyTime/,
       /result\.skippedPastCount/,
       /result\.failedReminderCount/,
+      /終日通知を予約できませんでした。次回起動時に再試行します。/,
       /pending=\{isUpdatingPreviousNotifyTime\}/,
     ],
     excludes: [

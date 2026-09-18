@@ -1,5 +1,15 @@
 export type ReminderStatus = 'active' | 'expired';
 
+export const REMINDER_TITLE_MAX_LENGTH = 40;
+
+export type CreateReminderInput = {
+  title: string;
+  dateOffset: 0 | 1 | 2;
+  customTargetDate?: string | null;
+  targetTime: string;
+  allDay?: boolean;
+};
+
 export type Reminder = {
   id: string;
   title: string;
@@ -23,8 +33,10 @@ export type CreateReminderDraft = Pick<
 export function normalizeReminderTitle(title: string) {
   const normalized = title.trim();
 
-  if (normalized.length < 1 || normalized.length > 40) {
-    throw new Error('Reminder title must contain between 1 and 40 characters');
+  if (normalized.length < 1 || normalized.length > REMINDER_TITLE_MAX_LENGTH) {
+    throw new Error(
+      `Reminder title must contain between 1 and ${REMINDER_TITLE_MAX_LENGTH} characters`,
+    );
   }
 
   return normalized;

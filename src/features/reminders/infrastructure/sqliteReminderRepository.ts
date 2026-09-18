@@ -100,12 +100,6 @@ export const sqliteReminderRepository: ReminderRepository = {
   },
 
   async updateNotificationIds(id, notificationIds) {
-    if (
-      notificationIds.previousNotificationId === null &&
-      notificationIds.targetNotificationId === null
-    ) {
-      return getById(id);
-    }
     await db
       .update(reminders)
       .set({ ...notificationIds, updatedAt: new Date().toISOString() })
