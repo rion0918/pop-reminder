@@ -60,10 +60,10 @@ test('keeps both UI schedule fields when no date or time is spoken', () => {
 
 test('detects conservative all-day phrases without treating their numeric parts as dates', () => {
   const cases = [
-    ['明日終日会議', '終日', '終日会議'],
-    ['明日一日中会議', '1日中', '1日中会議'],
-    ['明日1日中会議', '1日中', '1日中会議'],
-    ['明日丸一日会議', '丸1日', '丸1日会議'],
+    ['明日終日会議', '終日', '会議'],
+    ['明日一日中会議', '1日中', '会議'],
+    ['明日1日中会議', '1日中', '会議'],
+    ['明日丸一日会議', '丸1日', '会議'],
   ] as const;
 
   for (const [text, sourceText, title] of cases) {
@@ -83,7 +83,7 @@ test('detects all-day independently from a spoken time', () => {
 
   assert.equal(result.allDay.detected, true);
   assert.equal(result.allDay.sourceText, '終日');
-  assert.equal(result.title.value, '終日 健康診断');
+  assert.equal(result.title.value, '健康診断');
   assert.equal(result.date.value, '2026-09-21');
   assert.equal(result.time.value, '09:00');
 });

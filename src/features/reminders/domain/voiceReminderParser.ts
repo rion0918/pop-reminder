@@ -157,6 +157,7 @@ function cleanTitle(
   text: string,
   candidates: TemporalCandidate[],
   correctionRanges: { start: number; end: number }[],
+  allDayRanges: { start: number; end: number }[],
 ) {
   const temporalRanges = [
     ...new Map(
@@ -166,7 +167,7 @@ function cleanTitle(
       ]),
     ).values(),
   ];
-  let result = removeRanges(text, [...temporalRanges, ...correctionRanges]);
+  let result = removeRanges(text, [...temporalRanges, ...allDayRanges, ...correctionRanges]);
 
   result = result.replace(
     new RegExp(`${TEMPORAL_PLACEHOLDER}\\s*(?:と|または)\\s*(?=${TEMPORAL_PLACEHOLDER})`, 'g'),
@@ -290,7 +291,12 @@ export function parseVoiceReminder(input: ReminderParserInput): ParsedReminder {
   }
 
   const resultCandidates = candidates.filter((candidate) => !candidate.superseded);
-  const title = cleanTitle(normalizedText, candidates, correctionResult.correctionRanges);
+  const title = cleanTitle(
+    normalizedText,
+    candidates,
+    correctionResult.correctionRanges,
+    allDayMatches,
+  );
   const relativeCandidates = resultCandidates.filter(
     (candidate) => candidate.relativeDateTime && candidate.field === 'time',
   );
