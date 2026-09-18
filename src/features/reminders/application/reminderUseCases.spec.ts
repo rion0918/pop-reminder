@@ -1451,6 +1451,114 @@ test('past target migration keeps the legacy notification until the null ID is p
   ]);
 });
 
+test('target channel migration rolls back when the legacy notification cannot be cancelled', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = { ...reminder, targetNotificationId: 'legacy-target' };
+  let current = candidate;
+  let shouldFailCancellation = true;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-target']);
+  dependencies.notifications.scheduleTarget = async () => {
+    events.push('schedule-target');
+    return { status: 'scheduled', notificationId: 'new-target' };
+  };
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    events.push(`update-target:${update.targetNotificationId ?? 'null'}`);
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.cancelOne = async (notificationId) => {
+    events.push(`cancel-one:${notificationId ?? 'null'}`);
+    if (notificationId === 'legacy-target' && shouldFailCancellation) {
+      shouldFailCancellation = false;
+      throw new Error('cancel failed');
+    }
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, 'legacy-target');
+  assert.deepEqual(events, [
+    'schedule-target',
+    'update-target:new-target',
+    'cancel-one:legacy-target',
+    'cancel-one:new-target',
+    'update-target:legacy-target',
+  ]);
+
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, 'new-target');
+  assert.deepEqual(events, [
+    'schedule-target',
+    'update-target:new-target',
+    'cancel-one:legacy-target',
+    'cancel-one:new-target',
+    'update-target:legacy-target',
+    'schedule-target',
+    'update-target:new-target',
+    'cancel-one:legacy-target',
+    'notification-channel-version:1',
+  ]);
+});
+
+test('previous channel migration rolls back when the legacy notification cannot be cancelled', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = { ...reminder, previousNotificationId: 'legacy-previous' };
+  let current = candidate;
+  let shouldFailCancellation = true;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-previous']);
+  dependencies.notifications.schedulePrevious = async () => {
+    events.push('schedule-previous');
+    return { status: 'scheduled', notificationId: 'new-previous' };
+  };
+  dependencies.reminders.updatePreviousSchedule = async (_id, update) => {
+    events.push(`update-previous:${update.previousNotificationId ?? 'null'}`);
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.notifications.cancelOne = async (notificationId) => {
+    events.push(`cancel-one:${notificationId ?? 'null'}`);
+    if (notificationId === 'legacy-previous' && shouldFailCancellation) {
+      shouldFailCancellation = false;
+      throw new Error('cancel failed');
+    }
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.previousNotificationId, 'legacy-previous');
+  assert.deepEqual(events, [
+    'schedule-previous',
+    'update-previous:new-previous',
+    'cancel-one:legacy-previous',
+    'cancel-one:new-previous',
+    'update-previous:legacy-previous',
+  ]);
+
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.previousNotificationId, 'new-previous');
+  assert.deepEqual(events, [
+    'schedule-previous',
+    'update-previous:new-previous',
+    'cancel-one:legacy-previous',
+    'cancel-one:new-previous',
+    'update-previous:legacy-previous',
+    'schedule-previous',
+    'update-previous:new-previous',
+    'cancel-one:legacy-previous',
+    'notification-channel-version:1',
+  ]);
+});
+
 test('listVisible includes retained expired reminders only when auto-delete is disabled', async () => {
   const events: string[] = [];
   const dependencies = makeDependencies(events);

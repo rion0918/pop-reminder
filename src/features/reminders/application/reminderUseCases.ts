@@ -287,7 +287,27 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
               }
               if (updated) {
                 currentReminder = updated;
-                await notifications.cancelOne(oldNotificationId);
+                try {
+                  await notifications.cancelOne(oldNotificationId);
+                } catch (error) {
+                  migrationPending = true;
+                  console.warn('Failed to cancel legacy target notification', error);
+                  try {
+                    await notifications.cancelOne(result.notificationId);
+                  } catch (cleanupError) {
+                    console.warn('Failed to cancel replacement target notification', cleanupError);
+                  }
+                  try {
+                    const restored = await reminders.updateTargetSchedule(currentReminder.id, {
+                      targetAt: currentReminder.targetAt,
+                      targetNotifyAt: currentReminder.targetNotifyAt,
+                      targetNotificationId: oldNotificationId,
+                    });
+                    if (restored) currentReminder = restored;
+                  } catch (restoreError) {
+                    console.warn('Failed to restore legacy target notification id', restoreError);
+                  }
+                }
               } else {
                 migrationPending = true;
                 await notifications.cancelOne(result.notificationId);
@@ -305,7 +325,22 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
               }
               if (updated) {
                 currentReminder = updated;
-                await notifications.cancelOne(oldNotificationId);
+                try {
+                  await notifications.cancelOne(oldNotificationId);
+                } catch (error) {
+                  migrationPending = true;
+                  console.warn('Failed to cancel legacy target notification', error);
+                  try {
+                    const restored = await reminders.updateTargetSchedule(currentReminder.id, {
+                      targetAt: currentReminder.targetAt,
+                      targetNotifyAt: currentReminder.targetNotifyAt,
+                      targetNotificationId: oldNotificationId,
+                    });
+                    if (restored) currentReminder = restored;
+                  } catch (restoreError) {
+                    console.warn('Failed to restore legacy target notification id', restoreError);
+                  }
+                }
               } else {
                 migrationPending = true;
               }
@@ -339,7 +374,29 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
               }
               if (updated) {
                 currentReminder = updated;
-                await notifications.cancelOne(oldNotificationId);
+                try {
+                  await notifications.cancelOne(oldNotificationId);
+                } catch (error) {
+                  migrationPending = true;
+                  console.warn('Failed to cancel legacy previous notification', error);
+                  try {
+                    await notifications.cancelOne(result.notificationId);
+                  } catch (cleanupError) {
+                    console.warn(
+                      'Failed to cancel replacement previous notification',
+                      cleanupError,
+                    );
+                  }
+                  try {
+                    const restored = await reminders.updatePreviousSchedule(currentReminder.id, {
+                      previousNotifyAt: currentReminder.previousNotifyAt,
+                      previousNotificationId: oldNotificationId,
+                    });
+                    if (restored) currentReminder = restored;
+                  } catch (restoreError) {
+                    console.warn('Failed to restore legacy previous notification id', restoreError);
+                  }
+                }
               } else {
                 migrationPending = true;
                 await notifications.cancelOne(result.notificationId);
@@ -356,7 +413,21 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
               }
               if (updated) {
                 currentReminder = updated;
-                await notifications.cancelOne(oldNotificationId);
+                try {
+                  await notifications.cancelOne(oldNotificationId);
+                } catch (error) {
+                  migrationPending = true;
+                  console.warn('Failed to cancel legacy previous notification', error);
+                  try {
+                    const restored = await reminders.updatePreviousSchedule(currentReminder.id, {
+                      previousNotifyAt: currentReminder.previousNotifyAt,
+                      previousNotificationId: oldNotificationId,
+                    });
+                    if (restored) currentReminder = restored;
+                  } catch (restoreError) {
+                    console.warn('Failed to restore legacy previous notification id', restoreError);
+                  }
+                }
               } else {
                 migrationPending = true;
               }

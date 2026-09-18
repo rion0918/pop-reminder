@@ -15,6 +15,12 @@ type ReminderNotificationTarget = Pick<
   'id' | 'title' | 'allDay' | 'previousNotifyAt' | 'targetNotifyAt'
 >;
 
+function buildTargetNotificationBody(reminder: Pick<Reminder, 'title' | 'allDay'>) {
+  return reminder.allDay
+    ? `今日の「${reminder.title}」をお知らせします`
+    : `「${reminder.title}」の時間をお知らせします`;
+}
+
 export const REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-alerts';
 const LEGACY_SILENT_REMINDER_NOTIFICATION_CHANNEL_ID = 'reminder-silent';
 
@@ -190,9 +196,7 @@ export async function scheduleTargetReminderNotification(
   try {
     const notificationId = await scheduleIfFuture({
       title: 'ふわっと。',
-      body: reminder.allDay
-        ? `今日の「${reminder.title}」をお知らせします`
-        : `「${reminder.title}」の時間をお知らせします`,
+      body: buildTargetNotificationBody(reminder),
       date: targetDate,
       reminderId: reminder.id,
     });
@@ -253,7 +257,7 @@ export async function scheduleReminderNotifications(
   try {
     targetNotificationId = await scheduleIfFuture({
       title: 'ふわっと。',
-      body: `「${reminder.title}」の時間をお知らせします`,
+      body: buildTargetNotificationBody(reminder),
       date: targetDate,
       reminderId: reminder.id,
     });
@@ -351,9 +355,12 @@ export async function cancelScheduledReminderNotification(notificationId: string
     return;
   }
 
-  await Notifications.cancelScheduledNotificationAsync(notificationId).catch((error) => {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notificationId);
+  } catch (error) {
     console.warn('Failed to cancel notification', error);
-  });
+    throw error;
+  }
 }
 
 export async function cancelAllScheduledNotifications() {

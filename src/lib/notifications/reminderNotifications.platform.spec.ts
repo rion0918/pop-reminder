@@ -66,3 +66,19 @@ test('notification gateway can replace target and previous notifications indepen
     /cancelOne: cancelScheduledReminderNotification/,
   ]);
 });
+
+test('target notification body is shared by single and full scheduling paths', () => {
+  assertSourceIncludes(source, [
+    /function buildTargetNotificationBody\(/,
+    /body: buildTargetNotificationBody\(reminder\)/,
+  ]);
+  assert.equal(/body: `「\$\{reminder\.title\}」の時間をお知らせします`/.test(source), false);
+});
+
+test('notification cancellation surfaces native failures', () => {
+  assertSourceIncludes(source, [
+    /await Notifications\.cancelScheduledNotificationAsync\(notificationId\)/,
+    /console\.warn\('Failed to cancel notification', error\)/,
+    /throw error/,
+  ]);
+});
