@@ -23,7 +23,7 @@
 | ---------------------- | ------------------------------------------------------ |
 | Android package        | `com.rion0918.popreminder`                             |
 | ユーザー向けバージョン | `0.1.0`                                                |
-| Android versionCode    | `1`                                                    |
+| Android versionCode    | EAS の remote 自動採番（今回のローカル AAB は `25`）   |
 | target API             | `36`                                                   |
 | AAB                    | EAS production build で作成した App Bundle             |
 | テストトラック         | 内部テスト（一般公開ではない）                         |
@@ -95,7 +95,7 @@ pnpm exec expo export --platform ios --output-dir /private/tmp/pop-reminder-expo
 ### 3.1 ビルド前の確認
 
 - `app.json` と `android/app/build.gradle` の package が `com.rion0918.popreminder` で一致している。
-- Android の versionCode は、Play Console に既にアップロードした値より大きい。今回の初回値は `1` です。
+- Android の versionCode は、Play Console に既にアップロードした値より大きい。production profile は EAS の remote 自動採番を使うため、`app.json` の値だけで判断しません。
 - iOS の buildNumber は、App Store Connect に既にアップロードした値より大きい。
 - PostHog は同意前にクライアントを作成せず、同意前に通信しない。
 - Google Play Data safety、Privacy Policy、アプリ内同意文言が実装と一致している。
@@ -124,7 +124,88 @@ eas build --profile production --platform android
 
 `eas.json` の production profile は Android App Bundle（`buildType: app-bundle`）と SDK 54 用の `sdk-54` イメージを使用します。ビルドが完了したら、EAS が表示するダウンロード URL から `.aab` を保存します。
 
-### 4.2.1 Android音声モデルの同梱確認
+### 4.2.1 EAS 無料枠を使わないローカル AAB ビルド
+
+EAS のクラウドビルド枠を使い切った場合でも、EAS CLI と Android SDK が入った Mac では、EAS の署名資格情報を使ってローカルビルドできます。Google Play へ手動アップロードするだけなら、EAS の `Submissions: Google Service Account` は不要です。
+
+#### 初回だけ: Android 資格情報を同期する
+
+EAS に保存済みの Keystore をローカルへ取得します。`credentials.json` と `credentials/android/keystore.jks` は秘密情報なので、Git にコミットしません。
+
+```bash
+pnpm exec eas credentials --platform android
+```
+
+メニューでは次を選びます。
+
+1. `credentials.json: Upload/Download credentials between EAS servers and your local json`
+2. `Download credentials from EAS to credentials.json`
+
+Play Console の Upload key を更新した場合は、先に EAS へ新しい Keystore を登録してから、この同期をやり直します。
+
+#### Mac のビルド環境を設定する
+
+Android Studio に付属する JDK と、プロジェクトで使用する Android SDK / NDK を明示します。NDK のディレクトリ名は、実際にインストールされているバージョンへ合わせます。
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.1.12297006"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+```
+
+`/tmp` が `/private/tmp` へのシンボリックリンクになっている macOS では、CMake が論理パスと実体パスを混同して `libworklets.so` を見つけられないことがあります。`TMPDIR` 配下の専用ディレクトリをローカルビルドの作業場所に指定します。
+
+```bash
+export EAS_LOCAL_BUILD_WORKINGDIR="${TMPDIR%/}/pop-reminder-eas-build"
+mkdir -p "$EAS_LOCAL_BUILD_WORKINGDIR"
+mkdir -p dist
+```
+
+#### AAB を作成する
+
+```bash
+pnpm exec eas build \
+  --platform android \
+  --profile production \
+  --local \
+  --clear-cache \
+  --output ./dist/pop-reminder.aab
+```
+
+初回は `expo-updates` のインストール確認が表示されます。現行版で EAS Update を使わない場合は `n` を入力します。ビルドはローカルで実行されますが、`versionCode` の自動採番と Keystore の取得には EAS への接続が必要です。
+
+ビルドが成功したら、AAB の存在とサイズを確認します。
+
+```bash
+ls -lh dist/pop-reminder.aab
+```
+
+#### AAB の内容を検証する
+
+```bash
+node scripts/verify-android-aab.mjs dist/pop-reminder.aab
+```
+
+このコマンドが成功した AAB だけを Play Console へアップロードします。`jarsigner` で署名も確認する場合は、ビルド時と同じ JDK を指定します。
+
+```bash
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+PATH="/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin:$PATH" \
+jarsigner -verify dist/pop-reminder.aab
+```
+
+`jarsigner` の自己署名証明書・タイムスタンプに関する警告は、ローカルの Upload key で署名した AAB では表示されることがあります。終了コードが `0` であることを確認します。
+
+#### ローカルビルド時の注意
+
+- `eas.json` の `appVersionSource` が `remote`、production の `autoIncrement` が有効なため、失敗した試行でも EAS 側の versionCode が進むことがあります。番号に欠番があっても問題ありません。
+- `android/` ディレクトリが存在するため、`app.json` の `android.package` より native code の `applicationId` が優先されます。
+- ログ、ターミナル出力、チャットに Keystore や秘密鍵の内容を貼り付けません。漏えいした場合は、Play App Signing の Upload key をローテーションし、EAS の資格情報を更新してから AAB を作り直します。
+- `credentials.json` と `credentials/android/keystore.jks` は配布物ではなく秘密情報です。作業後も Git の変更一覧に残っていないことを確認します。
+
+### 4.2.2 Android音声モデルの同梱確認
 
 Android native projectを管理しているため、EASではPrebuildが走らない場合があります。AABをPlay Consoleへアップロードする前に、ビルド時生成されたMoonshineモデルが実際に含まれることを確認します。
 
@@ -149,7 +230,7 @@ pnpm run verify:android:aab /absolute/path/to/production.aab
 Play Console の App Bundle 詳細で、次を確認します。
 
 - ファイル形式が App Bundle。
-- version が `1 (0.1.0)`（初回）である。
+- version が `0.1.0`、versionCode が Play Console で未使用かつ今回の AAB の値と一致している。
 - target SDK が `36` である。
 - package が `com.rion0918.popreminder` である。
 - Google Play App Signing が有効である。
