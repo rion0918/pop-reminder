@@ -1254,10 +1254,10 @@ test('legacy silent-channel notifications are migrated once without duplicating 
   assert.equal(current.targetNotificationId, 'new-target');
   assert.equal(current.previousNotificationId, 'new-previous');
   assert.deepEqual(events, [
-    'cancel-one:legacy-target',
     'update-target:new-target',
-    'cancel-one:legacy-previous',
+    'cancel-one:legacy-target',
     'update-previous:new-previous',
+    'cancel-one:legacy-previous',
     'notification-channel-version:1',
   ]);
 });
@@ -1310,8 +1310,143 @@ test('failed channel migration remains pending for the next startup', async () =
 
   await useCases.migrateLegacyNotificationChannels();
   assert.deepEqual(events, [
-    'cancel-one:legacy-target',
     'update-target:new-target',
+    'cancel-one:legacy-target',
+    'notification-channel-version:1',
+  ]);
+});
+
+test('target channel migration keeps the legacy notification when database persistence fails', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = { ...reminder, targetNotificationId: 'legacy-target' };
+  let current = candidate;
+  let shouldFail = true;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-target']);
+  dependencies.notifications.scheduleTarget = async () => {
+    events.push('schedule-target');
+    return { status: 'scheduled', notificationId: 'new-target' };
+  };
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    events.push(`update-target:${update.targetNotificationId ?? 'null'}`);
+    if (shouldFail) {
+      shouldFail = false;
+      return null;
+    }
+    current = { ...current, ...update };
+    return current;
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, 'legacy-target');
+  assert.deepEqual(events, [
+    'schedule-target',
+    'update-target:new-target',
+    'cancel-one:new-target',
+  ]);
+
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, 'new-target');
+  assert.deepEqual(events, [
+    'schedule-target',
+    'update-target:new-target',
+    'cancel-one:new-target',
+    'schedule-target',
+    'update-target:new-target',
+    'cancel-one:legacy-target',
+    'notification-channel-version:1',
+  ]);
+});
+
+test('previous channel migration keeps the legacy notification when database persistence throws', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = { ...reminder, previousNotificationId: 'legacy-previous' };
+  let current = candidate;
+  let shouldFail = true;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-previous']);
+  dependencies.notifications.schedulePrevious = async () => {
+    events.push('schedule-previous');
+    return { status: 'scheduled', notificationId: 'new-previous' };
+  };
+  dependencies.reminders.updatePreviousSchedule = async (_id, update) => {
+    events.push(`update-previous:${update.previousNotificationId ?? 'null'}`);
+    if (shouldFail) {
+      shouldFail = false;
+      throw new Error('database unavailable');
+    }
+    current = { ...current, ...update };
+    return current;
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.previousNotificationId, 'legacy-previous');
+  assert.deepEqual(events, [
+    'schedule-previous',
+    'update-previous:new-previous',
+    'cancel-one:new-previous',
+  ]);
+
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.previousNotificationId, 'new-previous');
+  assert.deepEqual(events, [
+    'schedule-previous',
+    'update-previous:new-previous',
+    'cancel-one:new-previous',
+    'schedule-previous',
+    'update-previous:new-previous',
+    'cancel-one:legacy-previous',
+    'notification-channel-version:1',
+  ]);
+});
+
+test('past target migration keeps the legacy notification until the null ID is persisted', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  const candidate: Reminder = { ...reminder, targetNotificationId: 'legacy-target' };
+  let current = candidate;
+  let shouldFail = true;
+  dependencies.reminders.listActive = async () => [current];
+  dependencies.notifications.getLegacyScheduledNotificationIds = async () =>
+    new Set(['legacy-target']);
+  dependencies.notifications.scheduleTarget = async () => ({
+    status: 'skipped',
+    reason: 'time-passed',
+    notificationId: null,
+  });
+  dependencies.reminders.updateTargetSchedule = async (_id, update) => {
+    events.push(`update-target:${update.targetNotificationId ?? 'null'}`);
+    if (shouldFail) {
+      shouldFail = false;
+      return null;
+    }
+    current = { ...current, ...update };
+    return current;
+  };
+
+  const useCases = createReminderUseCases(dependencies);
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, 'legacy-target');
+  assert.deepEqual(events, ['update-target:null']);
+
+  await useCases.migrateLegacyNotificationChannels();
+
+  assert.equal(current.targetNotificationId, null);
+  assert.deepEqual(events, [
+    'update-target:null',
+    'update-target:null',
+    'cancel-one:legacy-target',
     'notification-channel-version:1',
   ]);
 });

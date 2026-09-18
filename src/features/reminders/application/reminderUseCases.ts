@@ -275,27 +275,37 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
               permissionMode: 'check-only',
             });
             if (result.status === 'scheduled') {
-              await notifications.cancelOne(oldNotificationId);
-              const updated = await reminders.updateTargetSchedule(currentReminder.id, {
-                targetAt: currentReminder.targetAt,
-                targetNotifyAt: currentReminder.targetNotifyAt,
-                targetNotificationId: result.notificationId,
-              });
+              let updated: Reminder | null = null;
+              try {
+                updated = await reminders.updateTargetSchedule(currentReminder.id, {
+                  targetAt: currentReminder.targetAt,
+                  targetNotifyAt: currentReminder.targetNotifyAt,
+                  targetNotificationId: result.notificationId,
+                });
+              } catch (error) {
+                console.warn('Failed to persist migrated target notification', error);
+              }
               if (updated) {
                 currentReminder = updated;
+                await notifications.cancelOne(oldNotificationId);
               } else {
-                await notifications.cancelOne(result.notificationId);
                 migrationPending = true;
+                await notifications.cancelOne(result.notificationId);
               }
             } else if (result.status === 'skipped') {
-              await notifications.cancelOne(oldNotificationId);
-              const updated = await reminders.updateTargetSchedule(currentReminder.id, {
-                targetAt: currentReminder.targetAt,
-                targetNotifyAt: currentReminder.targetNotifyAt,
-                targetNotificationId: null,
-              });
+              let updated: Reminder | null = null;
+              try {
+                updated = await reminders.updateTargetSchedule(currentReminder.id, {
+                  targetAt: currentReminder.targetAt,
+                  targetNotifyAt: currentReminder.targetNotifyAt,
+                  targetNotificationId: null,
+                });
+              } catch (error) {
+                console.warn('Failed to persist skipped target notification migration', error);
+              }
               if (updated) {
                 currentReminder = updated;
+                await notifications.cancelOne(oldNotificationId);
               } else {
                 migrationPending = true;
               }
@@ -318,25 +328,35 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
               permissionMode: 'check-only',
             });
             if (result.status === 'scheduled') {
-              await notifications.cancelOne(oldNotificationId);
-              const updated = await reminders.updatePreviousSchedule(currentReminder.id, {
-                previousNotifyAt: currentReminder.previousNotifyAt,
-                previousNotificationId: result.notificationId,
-              });
+              let updated: Reminder | null = null;
+              try {
+                updated = await reminders.updatePreviousSchedule(currentReminder.id, {
+                  previousNotifyAt: currentReminder.previousNotifyAt,
+                  previousNotificationId: result.notificationId,
+                });
+              } catch (error) {
+                console.warn('Failed to persist migrated previous notification', error);
+              }
               if (updated) {
                 currentReminder = updated;
+                await notifications.cancelOne(oldNotificationId);
               } else {
-                await notifications.cancelOne(result.notificationId);
                 migrationPending = true;
+                await notifications.cancelOne(result.notificationId);
               }
             } else if (result.status === 'skipped') {
-              await notifications.cancelOne(oldNotificationId);
-              const updated = await reminders.updatePreviousSchedule(currentReminder.id, {
-                previousNotifyAt: currentReminder.previousNotifyAt,
-                previousNotificationId: null,
-              });
+              let updated: Reminder | null = null;
+              try {
+                updated = await reminders.updatePreviousSchedule(currentReminder.id, {
+                  previousNotifyAt: currentReminder.previousNotifyAt,
+                  previousNotificationId: null,
+                });
+              } catch (error) {
+                console.warn('Failed to persist skipped previous notification migration', error);
+              }
               if (updated) {
                 currentReminder = updated;
+                await notifications.cancelOne(oldNotificationId);
               } else {
                 migrationPending = true;
               }
