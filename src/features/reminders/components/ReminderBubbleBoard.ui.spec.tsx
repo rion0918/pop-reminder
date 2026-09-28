@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ViewStyle } from 'react-native';
 
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import { ReminderBubbleBoard } from './ReminderBubbleBoard';
 
 jest.mock('./ReminderBubble', () => {

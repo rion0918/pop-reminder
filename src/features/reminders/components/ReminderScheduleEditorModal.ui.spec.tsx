@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import { ReminderScheduleEditorModal } from './ReminderScheduleEditorModal';
 
 jest.mock('react-native-gesture-handler', () => ({

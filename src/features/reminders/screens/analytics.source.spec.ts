@@ -42,7 +42,7 @@ test('reminder list captures only successful edit and delete outcomes', () => {
 test('settings captures permission results and exposes persisted analytics consent controls', () => {
   assertSourceContract(settingsSource, {
     includes: [
-      /const \{ reminders: reminderServices, analytics, purchases \} = useAppServices\(\);/,
+      /const \{ analytics, purchases \} = useAppServices\(\);/,
       /const permission = await requestNotificationPermissions\(\);/,
       /analytics\.captureNotificationPermissionUpdated\(\{/,
       /status: permission\.status/,

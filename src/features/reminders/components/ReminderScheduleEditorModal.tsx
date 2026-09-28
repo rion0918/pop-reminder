@@ -9,7 +9,7 @@ import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette } from '../../../constants/colors';
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import {
   createReminderScheduleDraft,
   evaluateReminderScheduleDraft,

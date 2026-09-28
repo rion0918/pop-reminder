@@ -15,7 +15,7 @@
 
 ## Consequences
 
-- Home、一覧、検索は同じquery cacheを共有する。
+- Homeと一覧は同じquery cacheを共有する。
 - domain/applicationはExpoやSQLiteから独立してテストできる。
 - Query cacheは再起動時に破棄され、SQLiteから再取得される。
 - outbox、クラウド同期、競合解決、楽観更新のrollbackは導入しない。

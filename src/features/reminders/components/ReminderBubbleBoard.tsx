@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { palette } from '../../../constants/colors';
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import {
   getReminderBubbleDimensions,
   getReminderTitleVisualLength,

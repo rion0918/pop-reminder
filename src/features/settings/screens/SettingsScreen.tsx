@@ -196,7 +196,7 @@ const thirdPartyLicensesDocument: LegalDocument = {
 
 export function SettingsScreen() {
   const router = useRouter();
-  const { reminders: reminderServices, analytics, purchases } = useAppServices();
+  const { analytics, purchases } = useAppServices();
   const raiseToSpeak = useAppServices().raiseToSpeak;
   const { proAccessState, isProAccessLoading, refreshProAccess } = useProAccessQuery();
   const {
@@ -208,6 +208,7 @@ export function SettingsScreen() {
     updatePreviousNotifyTime,
     isUpdatingPreviousNotifyTime,
     updateAllDayNotifyTime,
+    retryPendingNotifications,
   } = useAppSettings();
   const {
     cancelAllScheduledNotifications,
@@ -251,11 +252,11 @@ export function SettingsScreen() {
   }, [getNotificationPermissionStatus]);
   const retryPendingReminderNotifications = useCallback(async () => {
     try {
-      await reminderServices.retryPendingNotifications();
+      await retryPendingNotifications();
     } catch (error) {
       console.warn('Failed to retry pending reminder notifications', error);
     }
-  }, [reminderServices]);
+  }, [retryPendingNotifications]);
 
   useEffect(() => {
     if (!settings) {

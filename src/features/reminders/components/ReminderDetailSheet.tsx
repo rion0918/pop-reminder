@@ -18,7 +18,7 @@ import type {
   UpdateReminderScheduleInput,
   UpdateReminderScheduleResult,
 } from '../application/reminderUseCases';
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import { reminderTitleSchema } from '../schemas/reminderSchema';
 import {
   ImeSafeReminderTitleInput,

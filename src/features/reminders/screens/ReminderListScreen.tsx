@@ -20,7 +20,7 @@ import { useAppSettingsQuery as useAppSettings } from '../../settings/presentati
 import { ReminderDetailSheet } from '../components/ReminderDetailSheet';
 import { ReminderSelectionBar } from '../components/ReminderSelectionBar';
 import { useRemindersQuery as useReminders } from '../presentation/useRemindersQuery';
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import { filterReminders, type SearchFilter } from '../domain/reminderFilter';
 import { formatReminderDateTime } from '../utils/reminderDateFormat';
 import { getMsUntilNextDay, getReminderDueColor } from '../utils/reminderDueColor';

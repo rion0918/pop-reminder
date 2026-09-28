@@ -36,6 +36,9 @@ export function useAppSettingsQuery() {
     mutationFn: services.settings.updateAnalyticsConsent,
     onSuccess: (settings) => queryClient.setQueryData(currentSettingsQueryKey, settings),
   });
+  const retryPendingNotificationsMutation = useMutation({
+    mutationFn: () => services.reminders.retryPendingNotifications(),
+  });
 
   return {
     settings: query.data ?? null,
@@ -45,6 +48,7 @@ export function useAppSettingsQuery() {
     updateAnalyticsConsent: analyticsConsentMutation.mutateAsync,
     updatePreviousNotifyTime: previousNotifyTimeMutation.mutateAsync,
     updateAllDayNotifyTime: allDayNotifyTimeMutation.mutateAsync,
+    retryPendingNotifications: retryPendingNotificationsMutation.mutateAsync,
     isUpdatingPreviousNotifyTime: previousNotifyTimeMutation.isPending,
   };
 }

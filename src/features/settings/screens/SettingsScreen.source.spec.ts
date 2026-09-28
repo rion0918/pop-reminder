@@ -8,6 +8,18 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './SettingsScreen.tsx');
+const settingsQuerySource = readSource(import.meta.url, '../presentation/useAppSettingsQuery.ts');
+
+test('settings retries reminder notifications through a presentation mutation', () => {
+  assertSourceContract(source, {
+    includes: [/await retryPendingNotifications\(\)/],
+    excludes: [/reminders: reminderServices/, /reminderServices\.retryPendingNotifications\(\)/],
+  });
+  assertSourceIncludes(settingsQuerySource, [
+    /retryPendingNotificationsMutation = useMutation/,
+    /services\.reminders\.retryPendingNotifications\(\)/,
+  ]);
+});
 
 test('settings uses the dream theme before a persisted theme is available', () => {
   assertSourceIncludes(source, [/settings\?\.theme \?\? 'lavender'/]);

@@ -118,6 +118,7 @@ jest.mock('../presentation/useAppSettingsQuery', () => {
         updateAnalyticsConsent: (analyticsConsent: AppSettings['analyticsConsent']) =>
           update({ analyticsConsent }),
         updatePreviousNotifyTime: mockPreviousTimeUpdate,
+        retryPendingNotifications: jest.fn(async () => ({ scheduled: 0, remaining: 0 })),
         isUpdatingPreviousNotifyTime: mockPreviousTimePending,
       };
     },

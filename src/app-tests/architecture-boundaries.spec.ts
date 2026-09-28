@@ -237,6 +237,24 @@ test('app routes delegate infrastructure setup to bootstrap', () => {
   }
 });
 
+test('feature screens are reachable from app routes', () => {
+  const reachable = new Set<string>();
+  const pending = [...routePaths];
+
+  while (pending.length > 0) {
+    const path = pending.pop();
+    if (!path || reachable.has(path)) continue;
+    reachable.add(path);
+    pending.push(...(importGraph.get(path)?.localTargets ?? []));
+  }
+
+  for (const { path } of allProductionSources) {
+    if (/^features\/[^/]+\/screens\/[^/]+\.tsx$/.test(path)) {
+      assert.ok(reachable.has(path), `${path} has no app route`);
+    }
+  }
+});
+
 test('RevenueCat SDK imports stay inside the purchase infrastructure adapter', () => {
   const revenueCatPaths = [...importGraph.entries()]
     .filter(([, node]) =>

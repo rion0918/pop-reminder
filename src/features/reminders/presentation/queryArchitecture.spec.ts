@@ -14,11 +14,11 @@ const settingsQuerySource = readSource(
   import.meta.url,
   '../../settings/presentation/useAppSettingsQuery.ts',
 );
-const screensSource = [
+const screenSources = [
   readSource(import.meta.url, '../screens/HomeScreen.tsx'),
   readSource(import.meta.url, '../screens/ReminderListScreen.tsx'),
-  readSource(import.meta.url, '../screens/SearchScreen.tsx'),
-].join('\n');
+];
+const screensSource = screenSources.join('\n');
 
 test('all reminder screens share the active reminders query cache', () => {
   assertSourceIncludes(querySource, [
@@ -28,11 +28,9 @@ test('all reminder screens share the active reminders query cache', () => {
     /queryClient\.invalidateQueries\(\{ queryKey: activeRemindersQueryKey \}\)/,
   ]);
   assertSourceIncludes(queryMutationsSource, [/\['reminders', 'active'\] as const/]);
-  assertSourceIncludes(screensSource, [
-    /useRemindersQuery as useReminders/,
-    /useRemindersQuery as useReminders/,
-    /useRemindersQuery as useReminders/,
-  ]);
+  for (const screenSource of screenSources) {
+    assertSourceIncludes(screenSource, [/useRemindersQuery as useReminders/]);
+  }
 });
 
 test('app focus and target time both trigger SQLite reconciliation', () => {

@@ -22,7 +22,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { Reminder } from '../types/reminder';
+import type { Reminder } from '../domain/reminder';
 import {
   getReminderBubbleTypography,
   getReminderTitleVisualLength,
