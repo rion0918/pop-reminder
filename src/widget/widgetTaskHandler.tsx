@@ -1,4 +1,4 @@
-import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
+import { requestWidgetUpdateById, type WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { widgetServices } from '../bootstrap/appServices';
 import { initializeDatabase } from '../db/client';
@@ -41,14 +41,18 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       stage = 'snapshot';
       const snapshot = await getWidgetSnapshot();
       stage = 'render';
-      props.renderWidget(
-        <PopReminderWidget
-          reminders={snapshot.reminders}
-          theme={snapshot.theme}
-          widgetWidth={props.widgetInfo.width}
-          widgetHeight={props.widgetInfo.height}
-        />,
-      );
+      await requestWidgetUpdateById({
+        widgetName: props.widgetInfo.widgetName,
+        widgetId: props.widgetInfo.widgetId,
+        renderWidget: ({ width, height }) => (
+          <PopReminderWidget
+            reminders={snapshot.reminders}
+            theme={snapshot.theme}
+            widgetWidth={width}
+            widgetHeight={height}
+          />
+        ),
+      });
     } catch (error) {
       console.warn('[Widget] Task failed', {
         widgetId: props.widgetInfo.widgetId,

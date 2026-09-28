@@ -180,3 +180,83 @@ index 23668933974ae89ad6e9b46c446d4200d79a58a3..39951b3078c9dbc8157addc7962a5e29
 -  });
 +  }
  }
+diff --git a/android/src/main/java/com/reactnativeandroidwidget/RNWidgetUtil.java b/android/src/main/java/com/reactnativeandroidwidget/RNWidgetUtil.java
+--- a/android/src/main/java/com/reactnativeandroidwidget/RNWidgetUtil.java
++++ b/android/src/main/java/com/reactnativeandroidwidget/RNWidgetUtil.java
+@@ -6,6 +6,7 @@
+ import android.appwidget.AppWidgetProviderInfo;
+ import android.content.ComponentName;
+ import android.content.Context;
++import android.os.Bundle;
+ import android.util.DisplayMetrics;
+ import android.util.TypedValue;
+ 
+@@ -45,7 +46,24 @@
+     }
+ 
+     private static int getWidgetSizeInDp(Context context, int widgetId, String key) {
+-        return AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId).getInt(key, 0);
++        AppWidgetManager manager = AppWidgetManager.getInstance(context);
++        Bundle options = manager.getAppWidgetOptions(widgetId);
++        int size = options.getInt(key, 0);
++        if (size > 0) return size;
++
++        boolean width = key.equals(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
++            || key.equals(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH);
++        String alternate = width
++            ? (key.equals(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
++                ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
++            : (key.equals(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
++                ? AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT : AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT);
++        size = options.getInt(alternate, 0);
++        if (size > 0) return size;
++
++        AppWidgetProviderInfo provider = manager.getAppWidgetInfo(widgetId);
++        int minimumPx = provider == null ? 0 : (width ? provider.minWidth : provider.minHeight);
++        return Math.max(1, (int) Math.ceil(pxToDp(context, minimumPx)));
+     }
+ 
+     public static WritableArray getWidgetInfo(ReactApplicationContext context, String widgetName) {
+diff --git a/android/src/main/java/com/reactnativeandroidwidget/RNWidgetImageProvider.java b/android/src/main/java/com/reactnativeandroidwidget/RNWidgetImageProvider.java
+--- a/android/src/main/java/com/reactnativeandroidwidget/RNWidgetImageProvider.java
++++ b/android/src/main/java/com/reactnativeandroidwidget/RNWidgetImageProvider.java
+@@ -85,23 +85,26 @@
+ 
+     static void writeImage(Context context, String imageName, Bitmap bitmap) {
+         File folder = getFolderWithImages(context);
+-        if (!folder.exists()) folder.mkdirs();
+-        File file = new File(folder, imageName);
+-
+-        FileOutputStream fos = null;
+         try {
+-            fos = new FileOutputStream(file);
+-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-        } finally {
++            if (!folder.exists() && !folder.mkdirs()) {
++                throw new IOException("Cannot create widget image directory: " + folder);
++            }
++            File file = new File(folder, imageName);
++            File temporary = File.createTempFile(imageName, ".tmp", folder);
+             try {
+-                if (fos != null) {
+-                    fos.close();
++                try (FileOutputStream output = new FileOutputStream(temporary)) {
++                    if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
++                        throw new IOException("Cannot encode widget image: " + imageName);
++                    }
+                 }
+-            } catch (IOException e) {
+-                e.printStackTrace();
++                if (!temporary.renameTo(file)) {
++                    throw new IOException("Cannot replace widget image: " + file);
++                }
++            } finally {
++                temporary.delete();
+             }
++        } catch (IOException e) {
++            throw new IllegalStateException("Failed to write widget image: " + imageName, e);
+         }
+     }
+ 

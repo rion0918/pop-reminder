@@ -1,9 +1,17 @@
-import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
+import type { WidgetInfo, WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 const mockInitialize = jest.fn(async () => {});
 const mockSnapshot = jest.fn(async () => ({ reminders: [], theme: 'lavender' }));
 const mockDelete = jest.fn(async (_id: string) => true);
 const mockUpdate = jest.fn(async () => {});
+const mockUpdateById = jest.fn(
+  async ({ renderWidget }: { renderWidget: (info: WidgetInfo) => unknown }) => {
+    renderWidget({ width: 360, height: 320 } as WidgetInfo);
+  },
+);
+jest.mock('react-native-android-widget', () => ({
+  requestWidgetUpdateById: (args: Parameters<typeof mockUpdateById>[0]) => mockUpdateById(args),
+}));
 jest.mock('../db/client', () => ({ initializeDatabase: () => mockInitialize() }));
 jest.mock('../bootstrap/appServices', () => ({
   widgetServices: { reminders: { delete: (id: string) => mockDelete(id) } },
@@ -69,10 +77,25 @@ test('an old event render completes before deletion and rapid duplicate deletion
   expect(mockDelete).not.toHaveBeenCalled();
   release({ reminders: [], theme: 'lavender' });
   await Promise.all([update, deletion]);
-  expect(old.renderWidget).toHaveBeenCalledTimes(1);
+  expect(mockUpdateById).toHaveBeenCalledTimes(1);
   mockDelete.mockResolvedValueOnce(false);
   await widgetTaskHandler(props('WIDGET_CLICK'));
   expect(mockUpdate).toHaveBeenCalledTimes(1);
+});
+
+test('queued widget event renders with current dimensions after its size changes', async () => {
+  const event = props('WIDGET_RESIZED');
+  await widgetTaskHandler(event);
+
+  expect(mockUpdateById).toHaveBeenCalledWith(
+    expect.objectContaining({ widgetId: 1, widgetName: 'PopReminderWidget' }),
+  );
+  const request = mockUpdateById.mock.calls[0][0];
+  const widget = request.renderWidget({ width: 360, height: 320 } as WidgetInfo) as {
+    props: { widgetWidth: number; widgetHeight: number };
+  };
+  expect(widget.props).toEqual(expect.objectContaining({ widgetWidth: 360, widgetHeight: 320 }));
+  expect(event.renderWidget).not.toHaveBeenCalled();
 });
 
 test('failure does not poison subsequent widget tasks or render an empty success', async () => {

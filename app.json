@@ -40,7 +40,6 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundImage": "./assets/app-icon.png",
         "backgroundColor": "#EFF8FF"
       },
       "splash": {

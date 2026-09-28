@@ -91,7 +91,7 @@ EAS クラウドのビルド枠に達したら、同じ release 対象を維持�
 
 **Mac に Android Studio の JDK、Android SDK、NDK、Node.js、pnpm、EAS CLI が必要**です。`eas whoami` でログインを確認します。EAS CLI と EAS サーバーへの接続は使いますが、EAS のクラウドビルド枠は消費しません。`eas.json` の `android.image: sdk-54` はローカルでは適用されないため、Mac 側の SDK / NDK を使用します。
 
-1. Android Studio の JDK と SDK / NDK を確認する。次はこの Mac の標準的な配置例です。NDK の版は `android/build.gradle` が要求するものと一致させる。
+1. `nix develop` を使う場合は先に入る。続けて、今回のローカルビルドで成功した Mac の配置例を同じターミナルで設定する。NDK の版は `android/build.gradle` が要求するものと一致させる。
 
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
@@ -102,23 +102,31 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 java -version
 ```
 
-2. EAS の production 環境変数と Mac 上でビルドに渡る値を照合する。特に RevenueCat と PostHog の `EXPO_PUBLIC_` 変数が欠けていないか確認する。EAS の **Secret** 可視性の変数はローカルビルドに自動提供されないため、必要な値はローカル環境に安全に設定する。値をターミナルへ表示しない。
-3. macOS の `/tmp` のシンボリックリンクによる CMake のパス不一致を避けるため、作業場所を `TMPDIR` に指定する。AAB の出力先だけを `dist/` にする。
+2. **同じターミナルで**試行ごとの新しい作業場所を指定する。`$HOME/tmp` はこの Mac で `/tmp` のシンボリックリンクを経由しない場所として確認済み。
 
 ```bash
-export EAS_LOCAL_BUILD_WORKINGDIR="${TMPDIR%/}/pop-reminder-eas-build"
+export EAS_LOCAL_BUILD_WORKINGDIR="$HOME/tmp/pop-reminder-eas-build-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$EAS_LOCAL_BUILD_WORKINGDIR" dist
 ```
 
-4. 次を実行し、完了を待つ。`expo-updates` の追加確認が出ても、このリリースで EAS Update を導入しないなら `n` を選ぶ。
+3. EAS の production 環境変数と Mac 上でビルドに渡る値を照合する。特に RevenueCat と PostHog の `EXPO_PUBLIC_` 変数が欠けていないか確認する。EAS の **Secret** 可視性の変数はローカルビルドに自動提供されないため、必要な値はローカル環境に安全に設定する。値をターミナルへ表示しない。
+4. 次を実行し、完了を待つ。今回成功した EAS CLI `24.8.0` を指定して再現性を保つ。通常は作業ディレクトリを保持する設定を追加しない。
 
 ```bash
-eas build --platform android --profile production --local --output ./dist/pop-reminder.aab
+npx -y eas-cli@24.8.0 build --platform android --profile production --local --output ./dist/pop-reminder.aab --non-interactive
 ```
 
 5. [共通の AAB 検証](#3-どちらの経路でも同じ-aab-検証)へ進む。ローカルビルドでも EAS の remote `versionCode` 自動採番と managed Keystore の取得が行われる。採番に欠番が出ても、Play に未使用の番号なら問題ない。
 
 `eas build --local` の制約: EAS のビルドキャッシュとクラウド用の `image` 指定は使われず、マシン側のツールが必要です。ビルド失敗時は最初に表示されるエラーを確認し、修正後に再実行します。資格情報ファイルをダウンロードして Gradle に直接渡す手順へ切り替えないでください。
+
+ビルドログには Keystore のデータとパスワードが含まれる場合があります。EAS の実行引数を含む行や未加工のログ全体を Issue・チャットへ貼らず、共有前に署名情報を除去します。
+
+#### `libworklets.so` が見つからない場合
+
+以前の失敗だけでは依存関係の不整合とは判断できません。今回、Reanimated `4.1.7` と Worklets `0.5.1` のまま、EAS CLI `24.8.0`、Android Studio JDK 21、SDK、NDK `27.1.12297006`、試行ごとに作る新しい `$HOME/tmp` 作業ディレクトリでローカル EAS ビルドが成功しました。Worklets の CMake / native library タスクが完了した後、Reanimated の CMake タスクも成功しています。依存関係の更新なしで `dist/pop-reminder.aab` を生成できることを確認済みです。
+
+同じエラーが再発したら、まず上記の JDK / SDK / NDK と EAS CLI の版、新しい作業ディレクトリを確認して再実行します。それでも失敗する場合は Gradle の最初の CMake エラーと、その直前の Worklets タスク結果を調べます。依存更新は、そのログで不整合を確認してから検討します。失敗した試行でも EAS remote `versionCode` が進むことがあるため、次のビルド前に番号を再確認します。
 
 ## 3. どちらの経路でも同じ AAB 検証
 
@@ -252,6 +260,7 @@ App Privacy は Device ID、Product Interaction、Purchase History の実際の�
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | EAS クラウドの枠に達した                | 同じコミットで 2B の `--local` に切り替える。`credentials.json` のダウンロードは不要。                                                                         |
 | ローカルビルドで JDK / SDK / NDK エラー | `JAVA_HOME`、`ANDROID_HOME`、NDK の実際のインストール版、`android/build.gradle` の要求版を確認する。                                                           |
+| `libworklets.so` が見つからない         | 上の確認済みの環境変数と新しい作業ディレクトリを使う。再発したら最初の CMake エラーと Worklets タスク結果を確認してから依存変更を判断する。                    |
 | `expo-updates` のインストール確認       | このリリースで EAS Update を使わないなら `n`。依存関係の変更は別作業。                                                                                         |
 | `versionCode` 重複                      | EAS の remote 番号と Play Console の最大値を確認し、必要なら `eas build:version:set` で基準値を合わせる。`app.json` の値だけを書き換えて解決したと判断しない。 |
 | AAB を Play Console が拒否              | package、未使用の `versionCode`、Upload key 証明書、AAB 形式、Play のエラー文を確認する。                                                                      |

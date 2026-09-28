@@ -382,11 +382,11 @@ test('Android notification QA documents inexact DATE trigger tolerance', () => {
   assert.doesNotMatch(qaDocument, /^- \[ \] Android 12以降.*指定時刻に通知が届く$/m);
 });
 
-test('Android adaptive icon uses a transparent foreground asset', () => {
+test('Android adaptive icon uses a transparent foreground over the brand background color', () => {
   const adaptiveIconPath = join(__dirname, 'assets/adaptive-icon.png');
 
   assert.equal(appConfig.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
-  assert.equal(appConfig.expo.android.adaptiveIcon.backgroundImage, './assets/app-icon.png');
+  assert.equal(appConfig.expo.android.adaptiveIcon.backgroundImage, undefined);
   assert.equal(appConfig.expo.android.adaptiveIcon.backgroundColor, '#EFF8FF');
   assert.equal(existsSync(adaptiveIconPath), true);
   assert.equal(readPngColorType(adaptiveIconPath), 6);
@@ -408,6 +408,10 @@ test('brand image sources and committed native assets stay in sync', () => {
     join(__dirname, 'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'),
     'utf8',
   );
+  const androidColorsXml = readFileSync(
+    join(__dirname, 'android/app/src/main/res/values/colors.xml'),
+    'utf8',
+  );
 
   assert.deepEqual(readPngDimensions(appIconPath), { width: 1024, height: 1024 });
   assert.equal(readPngColorType(appIconPath), 2);
@@ -418,10 +422,11 @@ test('brand image sources and committed native assets stay in sync', () => {
   for (const nativeSplashPath of iosNativeSplashPaths) {
     assert.equal(readFileSha256(nativeSplashPath), readFileSha256(iosSplashPath));
   }
-  assert.match(androidAdaptiveXml, /@mipmap\/ic_launcher_background/);
+  assert.match(androidAdaptiveXml, /@color\/iconBackground/);
+  assert.match(androidColorsXml, /<color name="iconBackground">#EFF8FF<\/color>/);
   assert.equal(
     existsSync(
-      join(__dirname, 'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.webp'),
+      join(__dirname, 'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.webp'),
     ),
     true,
   );
@@ -448,6 +453,17 @@ test('release runbook documents Android-first and iOS-later commands', () => {
   assert.match(runbook, /初回リリースの正式機能/);
   assert.doesNotMatch(runbook, /Widgetは別タスク/);
   assert.doesNotMatch(runbook, /削除依頼/);
+});
+
+test('local EAS runbook records the verified build environment and protects signing logs', () => {
+  const runbook = readFileSync(join(__dirname, 'docs/RELEASE_ANDROID_IOS.md'), 'utf8');
+
+  assert.match(runbook, /EAS_LOCAL_BUILD_WORKINGDIR="\$HOME\/tmp\/pop-reminder-eas-build-\$\(date/);
+  assert.match(runbook, /eas-cli@24\.8\.0/);
+  assert.match(runbook, /ビルドログ.*Keystore.*パスワード/);
+  assert.match(runbook, /Reanimated `4\.1\.7` と Worklets `0\.5\.1`/);
+  assert.match(runbook, /依存関係の更新なしで.*成功/s);
+  assert.doesNotMatch(runbook, /Reanimated `4\.3\.x`.*Worklets `0\.8\.x`/s);
 });
 
 test('store listing draft documents privacy and platform release notes', () => {
