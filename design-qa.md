@@ -1,65 +1,51 @@
-# Design QA: リマインド0件時のホーム画面刷新
-
-## Comparison target
-
-- source visual truth: `/Users/hasimotorion/.codex/generated_images/019f684d-c801-7cd2-a30d-12f308eac6d6/exec-b26a6cb4-4a10-4194-891f-392f3ef749fb.png`
-- implementation screenshot: `/Users/hasimotorion/ghq/github.com/rion0918/pop-reminder/design-qa-assets/empty-home-390x844.png`
-- compact implementation screenshot: `/Users/hasimotorion/ghq/github.com/rion0918/pop-reminder/design-qa-assets/empty-home-compact-360x780.png`
-- interaction screenshot: `/Users/hasimotorion/ghq/github.com/rion0918/pop-reminder/design-qa-assets/empty-home-quick-add-390x844.png`
-- viewport: 390×844、360×780
-- state: 読込完了、エラーなし、リマインド0件、skyテーマ
-
-## Full-view comparison evidence
-
-- post-fix comparison: `/Users/hasimotorion/ghq/github.com/rion0918/pop-reminder/design-qa-assets/empty-home-comparison-390x844.png`
-- before-fix comparison: `/Users/hasimotorion/ghq/github.com/rion0918/pop-reminder/design-qa-assets/empty-home-comparison-before-spacing-fix-390x844.png`
-- 390×844では見出し、286pxの追加用バブル、案内文がモックと同じ順序と重心で収まり、期限色凡例とFABは表示されない。
-- 360×780ではバブルが269pxへ縮小し、本文の折返し、下端のはみ出し、ページスクロールは発生しない。
-
-Focused region comparisonは不要。390×844の結合画像で、見出しの折返し、泡の膜・光沢・色リム、案内文、ヘッダーまで判読でき、別クロップによる追加判断が不要な大きさだった。
-
-## Findings
-
-- P0/P1/P2の未解決差分なし。
-- Fonts and typography: 既存ホームと同じシステムフォント、ウェイト、色を維持。見出しは2行、案内文は1行で切れない。生成モックよりわずかに太いが、既存デザインシステムを維持する意図した差分。
-- Spacing and layout rhythm: 初回比較で縦方向が詰まっていたため修正済み。ボード高から上余白と案内文間隔を計算し、390×844ではモックの重心に合わせ、短い端末では間隔を縮める。
-- Colors and visual tokens: 現在のskyテーマと既存の淡い青・ラベンダー・ピーチのガラス表現を維持。モック下部の強い青い霞は、背景を刷新しないという仕様に合わせて追加していない。
-- Image quality and asset fidelity: ヘッダーは既存アプリアイコンを使用。追加用バブルは既存バブルと同じコードネイティブなガラス表現で、輪郭、ハイライト、反射に破綻や圧縮劣化なし。モックより彩度が控えめなのは既存UI再利用による許容差。
-- Copy and content: 「最初のリマインドを\nふわっと残そう。」「泡をタップして追加」が一致。中央の＋、アイコン、文字、丸いタッチ表示はない。
-
-## Comparison history
-
-1. Initial comparison
-   - finding: [P2] 見出し、泡、案内文の縦リズムがモックより上寄りかつ詰まっていた。
-   - evidence: `design-qa-assets/empty-home-comparison-before-spacing-fix-390x844.png`
-   - fix: ボード高に応じた上余白と案内文間隔を追加し、コンパクト高では自動的に縮むようにした。
-2. Post-fix comparison
-   - evidence: `design-qa-assets/empty-home-comparison-390x844.png`、`design-qa-assets/empty-home-compact-360x780.png`
-   - result: 先のP2は解消。新しいP0/P1/P2差分なし。
-
-## Primary interactions tested
-
-- アクセシブル名「リマインダーを追加」のボタンが1件だけ存在することを確認。
-- 泡全体をクリックし、入力シートとタイトル入力欄が表示されることを確認。
-- 390×844と360×780で文字切れ、泡の収まり、全画面スクロールの有無を確認。
-- Reduce Motion、保存中無効化、読込中・エラー優先、1件以上の既存UI維持はsource contractと190件のテストで確認。
-
-## Console check
-
-- QA画面の表示と操作は完了。追加用バブル自体からのconsole errorはない。
-- Web export は対象外とし、ネイティブ実行（Android / iOS）で表示・操作を確認した。
-
-## Implementation checklist
-
-- [x] 0件確定時だけ追加用バブルを表示
-- [x] 0件時の期限色凡例、FAB、104px余白を非表示
-- [x] 全域タップ、アクセシビリティ、押下反応、Reduce Motion対応
-- [x] Quick Add接続と保存中だけの無効化
-- [x] 390×844とコンパクト幅の視覚確認
-- [x] `pnpm run mvh:verify`
-
-## Follow-up polish
-
-- P3: モックは泡の青・ピンクの色リムがやや強い。既存バブルとの統一を優先して現状維持とする。
+# Android Widget — Glass design QA
 
 final result: passed
+
+## 対象と証拠
+
+- 選択したデザイン: `/Users/hasimotorion/.codex/generated_images/01a0e07a-5d8c-7201-b384-61a9d14617d4/exec-ad6dc5a8-0886-4eaf-962c-7dd5d88baf4e.png`
+- 合意した調整: 外周の発光を弱め、文字の可読性と直近予定・即時追加を優先する。
+- 実装: `src/widget/PopReminderWidget.tsx`。Android Development Build の `AndroidWidget.createPreview` で本番コンポーネントをネイティブ描画した。Webの代替モックではない。
+- 標準表示: `design-qa-assets/widget-glass/standard.png`、360×280dp、945×735px、密度2.625。
+- 比較元: 1402×1122px。壁紙の余白を除いた範囲 `(120,120)–(1286,1001)` を720×560pxへ正規化。生成画像は厳密なdp計測値ではないため、このわずかな縦横比差を機能上の不具合として扱わない。
+- 同一状態の全体比較: `design-qa-assets/widget-glass/comparison.png`。2026-09-27の「牛乳を買う／今日18:00」「歯医者を予約／明日10:00」、lavender。
+- 補助状態: `design-qa-assets/widget-glass/states.png`。250×180dp、空状態、期限済み、長い日本語、sky・mint。
+- 文字の重点比較: `design-qa-assets/widget-glass/long-title-comparison.png`。日時が切れた初回と、修正後を同じ領域で比較。
+- 各状態の `*.json` はAndroidが返したクリック領域。7状態すべてで追加リンクが1つ、追加領域が48dp以上、予定領域と非重複であることを確認した。
+
+## 比較履歴
+
+1. [P1・修正済み] 長いタイトルの2行表示で日時が下端から欠けた。`long-before.png` に記録。固定サイズのWidgetでは文字サイズを縮めずタイトルを1行で省略し、完全なタイトルと日時を詳細リンクのアクセシビリティラベルに保持した。`long.png` で日時が欠けないことを再確認した。
+2. [P2・修正済み] 初回は直近予定の文字が小さく、後続予定が縦積みで、選択した案の階層と異なった。標準サイズのタイトルを34、日時を24へ変更し、後続予定を日時・タイトルの横並びへ変更した。
+3. [P2・修正済み] Native Widgetライブラリでは背景グラデーションが同一Viewのborderを上書きし、ボタンの光沢が消えた。独立した細い内周borderを重ね、白の不透明度を0.42へ抑えた。最終 `comparison.png` と3テーマの描画で再確認した。
+
+## 必須の比較項目
+
+- **フォント・文字**: Androidの既存 `sans-serif-rounded` を維持。先頭20/34、日時16/24、後続14/12。先頭を強調し、長い文字列は縮小せず省略する。日時の長い年・期限済み表記も1行で省略され、全文は詳細ラベルに保持する。
+- **余白・配置**: 下端の追加を48/54dp高で固定。小サイズは直近1件。360×280dpは2件。後続の48dpタップ領域と追加領域は重ならない。拡大時は従来の最大8件の取得順を維持する。
+- **色・素材**: 3テーマの不透明な読み取り面を維持。縁の反射を細い線へ抑え、文字の下に壁紙・反射を置かない。背景・ボタンの両グラデーション端点について4.5:1以上の文字コントラストを自動テストした。背景のライブぼかし・屈折は実装していない。
+- **画像**: `assets/widget-glass-bubble.png` はImageGenで作成した透明PNG。大きいサイズで48dp、小サイズでは非表示。本文や追加操作の代わりに画像を使っていない。選択画面の2つの既存preview画像も最終compactのネイティブ描画へ更新した。
+- **コピー**: 「ふわっと。」「次のリマインド」「追加する」を維持。後続行は幅を保つため「次は」を省略し、既存の日付書式とタイトルを表示する。件数表示とWidget内削除ボタンは選択した設計どおり除外した。削除は詳細画面に残り、更新前Widgetから届く旧削除Intentも処理可能。
+
+## 操作・検証
+
+- 更新前の実装で新しいレイアウト・追加領域テストが失敗することを確認した後、実装して成功を確認。
+- `pnpm run mvh:verify` 成功。Node 457件、Jest 122件、format・保護ファイルguard・Biome・型チェック・Expo lint成功。
+- ネイティブ描画は7状態すべて成功。暫定検証エントリーを削除し、通常の `index.js` に戻した。
+- 通常のアプリでWidgetと同じ `popreminder://?action=add` を開き、追加Sheetとタイトル入力のカーソルを確認した。エミュレーターのIMEは手書き入力ツールバー表示だったため、一般的なソフトキーボード表示を確認済みとはしない。証拠は一時ファイル `/private/tmp/pop-reminder-widget-quick-add.png`。
+- 実機のランチャー上での追加・詳細タップ、リサイズ、TalkBack、通常キーボードの再確認は `docs/QA_DEVELOPMENT_BUILD.md` のチェックリストに残る。プレビューのクリック領域検証と実機での一連の操作を同一視しない。
+
+## 残る調整候補
+
+- [P3] 生成案のより強い反射・光学的屈折は採用していない。Androidの静的なWidget表現と「発光を抑え、文字を読みやすく」という合意に合わせた差分。
+- [P3] 先頭タイトルは生成案より少し控えめ。日本語の実用的な表示文字数と日時の余白を優先している。
+
+## 確認済みチェックリスト
+
+- [x] 直近予定と追加ボタンの階層
+- [x] 小サイズ・空状態・長いタイトル・期限済み
+- [x] 3テーマ・文字コントラスト・装飾画像
+- [x] ネイティブ描画の追加リンクとタップ領域
+- [x] 通常アプリの追加リンクとタイトルフォーカス
+- [x] 標準ゲート

@@ -34,3 +34,31 @@ test('widget theme resolver falls back to lavender for missing or invalid persis
   assert.equal(getWidgetTheme('unknown'), widgetThemes.lavender);
   assert.equal(getWidgetTheme(undefined), widgetThemes.lavender);
 });
+
+function luminance(hex: string) {
+  const channels = [1, 3, 5].map(
+    (offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255,
+  );
+  const linear = channels.map((channel) =>
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function contrast(first: string, second: string) {
+  const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+test('glass widget keeps opaque reading surfaces and at least 4.5:1 text contrast in every theme', () => {
+  for (const theme of Object.values(widgetThemes)) {
+    for (const background of [theme.surfaceGradient.from, theme.surfaceGradient.to]) {
+      assert.match(background, /^#[\da-f]{6}$/i);
+      assert.ok(contrast(theme.primaryText, background) >= 4.5);
+      assert.ok(contrast(theme.secondaryText, background) >= 4.5);
+    }
+    for (const background of [theme.addButtonGradient.from, theme.addButtonGradient.to]) {
+      assert.ok(contrast(theme.addButtonText, background) >= 4.5);
+    }
+  }
+});

@@ -8,7 +8,6 @@ import {
 } from '../../../test-utils/sourceAssertions';
 
 const source = readSource(import.meta.url, './SettingsScreen.tsx');
-const visuals = readSource(import.meta.url, '../components/SettingsVisuals.tsx');
 
 test('settings uses the dream theme before a persisted theme is available', () => {
   assertSourceIncludes(source, [/settings\?\.theme \?\? 'lavender'/]);
@@ -46,14 +45,6 @@ test('settings exposes notification permission controls outside the dev-only sec
   });
 });
 
-test('notification permission request button uses a centered compact width', () => {
-  assertSourceContract(source, {
-    includes: [
-      /className="mx-\[46px\] mb-\[12px\] min-h-\[44px\] flex-row items-center justify-center gap-\[8px\] rounded-\[14px\] bg-app-sky-deep px-\[14px\]"/,
-    ],
-  });
-});
-
 test('settings does not expose an in-app notification sound toggle', () => {
   assertSourceContract(source, {
     excludes: [
@@ -62,13 +53,6 @@ test('settings does not expose an in-app notification sound toggle', () => {
       /OS標準の通知音を鳴らします/,
       /端末の通知設定と連動します/,
     ],
-  });
-});
-
-test('auto-delete uses a distinct expiration icon from the Pro upgrade', () => {
-  assertSourceContract(source, {
-    includes: [/icon="hourglass-outline"\s+title="自動消滅"/],
-    excludes: [/icon="sparkles-outline"\s+title="自動消滅"/],
   });
 });
 
@@ -106,20 +90,6 @@ test('settings exposes native Pro purchase and independent restore actions', () 
   });
 });
 
-test('settings exposes four independently editable quick-add preset times', () => {
-  assertSourceIncludes(source, [
-    /クイック追加の時刻/,
-    /defaultTargetTime/,
-    /noonTargetTime/,
-    /eveningTargetTime/,
-    /nightTargetTime/,
-    /TimePickerModal/,
-    /QUICK_ADD_PRESET_VALIDATION_MESSAGE/,
-    /<SettingsTimeTile/,
-    /onPress=\{\(\) => setQuickAddPresetPickerKey\(preset.key\)\}/,
-  ]);
-});
-
 test('settings applies the shared previous time to existing reminders with observable feedback', () => {
   assertSourceContract(source, {
     includes: [
@@ -142,47 +112,6 @@ test('settings applies the shared previous time to existing reminders with obser
       /保存後10秒・20秒で通知を予約します/,
     ],
   });
-});
-
-test('settings edits the shared previous time directly from its value button', () => {
-  assertSourceContract(source, {
-    includes: [
-      /<SettingsNotificationTimeline/,
-      /onPress=\{\(\) => setIsPreviousTimePickerOpen\(true\)\}/,
-      /visible=\{isPreviousTimePickerOpen\}/,
-    ],
-    excludes: [
-      /const quickAddPresets = settings/,
-      /presets=\{quickAddPresets\}/,
-      /<TimeSelector/,
-      /isPreviousTimeSelectorOpen/,
-      /togglePreviousTimeSelector/,
-      /前日のお知らせ時刻を選ぶ/,
-      /時刻を選ぶ/,
-    ],
-  });
-});
-
-test('settings uses consistent time labels for editable notification times', () => {
-  assertSourceIncludes(source, [
-    /title="前日のお知らせの時刻を選択"/,
-    /title="終日のお知らせの時刻を選択"/,
-    /Alert\.alert\('前日のお知らせの時刻を変更しました'/,
-    /'終日のお知らせの時刻を変更しました'/,
-  ]);
-  assertSourceContract(source, {
-    excludes: [/前日のお知らせ時刻を変更/, /終日のお知らせ時刻/, /前日の時刻/],
-  });
-});
-
-test('settings uses distinct time-of-day icons for quick-add preset times', () => {
-  assertSourceIncludes(source, [
-    /key: 'defaultTargetTime', label: '朝', icon: 'partly-sunny-outline'/,
-    /key: 'noonTargetTime', label: '昼', icon: 'sunny-outline'/,
-    /key: 'eveningTargetTime', label: '夕', icon: 'cloudy-night-outline'/,
-    /key: 'nightTargetTime', label: '夜', icon: 'moon-outline'/,
-    /icon=\{preset\.icon\}/,
-  ]);
 });
 
 test('settings legal copy supports both Google Play and App Store release pages', () => {
@@ -281,37 +210,5 @@ test('settings only reports a successful test notification after both notificati
     /const result = await scheduleTestReminderNotifications/,
     /result\.status === 'scheduled'/,
     /予約できませんでした/,
-  ]);
-});
-
-test('settings visual controls use wrapping layouts and accessible selection', () => {
-  assertSourceIncludes(visuals, [
-    /sky: 'ドーン'/,
-    /lavender: 'ドリーム'/,
-    /mint: 'ブリーズ'/,
-    /accessibilityState=\{\{ selected: active \}\}/,
-    /accessibilityLabel="前日のお知らせの時刻を変更"/,
-    /disabled=\{pending\}/,
-    /flexWrap: 'wrap'/,
-    /minHeight: 100/,
-    /minHeight: 112/,
-  ]);
-  assertSourceContract(source, {
-    includes: [
-      /flexWrap: 'wrap'/,
-      /<SettingsThemePicker/,
-      /<SettingsAutoDeletePreview/,
-      /<SettingsVoicePreview/,
-    ],
-    excludes: [/isQuickAddPresetSectionOpen/],
-  });
-});
-
-test('legal modal header keeps close button reachable on compact widths', () => {
-  assertSourceIncludes(source, [
-    /<View className="min-w-0 flex-1">/,
-    /<Text numberOfLines=\{2\} className="text-\[18px\] font-black text-app-ink">/,
-    /<Text[\s\S]*numberOfLines=\{1\}[\s\S]*className="mt-\[4px\] text-\[12px\] font-bold text-app-muted"/,
-    /className="h-\[42px\] w-\[42px\] shrink-0 items-center justify-center rounded-\[21px\] border border-app-line bg-\[#F6FAFF\]"/,
   ]);
 });

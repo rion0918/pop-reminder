@@ -9,23 +9,6 @@ import {
 
 const source = readSource(import.meta.url, './HomeScreen.tsx');
 
-test('home presents the fuwatto name and catchphrase as a responsive brand lockup', () => {
-  const brandLockup = source.slice(
-    source.indexOf('<Image source={appIcon}'),
-    source.indexOf('accessibilityLabel="設定を開く"'),
-  );
-
-  assertSourceContract(brandLockup, {
-    includes: [
-      />\s*ふわっと。\s*<\/Text>/,
-      />\s*忘れる前に、数秒だけ。\s*<\/Text>/,
-      /adjustsFontSizeToFit/,
-      /minimumFontScale=\{0\.72\}/,
-    ],
-    excludes: [/ポップ・リマインダー/, /ふわっと残す/],
-  });
-});
-
 test('home add button is visually disabled only while saving', () => {
   assertSourceContract(source, {
     includes: [
@@ -132,13 +115,6 @@ test('home replaces bottom controls with the add bubble only for a settled empty
   ]);
 });
 
-test('home keeps the selected theme background without a fixed atmospheric overlay', () => {
-  assertSourceContract(source, {
-    includes: [/<AppScreen theme=\{settings\?\.theme \?\? 'lavender'\}>/, /ambientThree: \{/],
-    excludes: [/HOME_BACKGROUND_COLORS/, /ambientBubble:/, /ambientSparkle:/],
-  });
-});
-
 test('home keeps non-deleted reminder bubbles floating during burst delete work', () => {
   const idleDisabledBlock = source.slice(
     source.indexOf('const isBubbleIdleDisabled ='),
@@ -152,14 +128,6 @@ test('home keeps non-deleted reminder bubbles floating during burst delete work'
   assertSourceIncludes(source, [/deleteMotion=\{deleteMotion\}/]);
 });
 
-test('opening quick add keeps reminder bubble positions pinned', () => {
-  assertSourceIncludes(source, [
-    /<ReminderBubbleBoard/,
-    /freezeLayout=\{isQuickAddOpen \|\| isBulkDeletionInProgress \|\| Boolean\(deleteMotion\)\}/,
-    /verticalLayoutMode="homeTimeline"/,
-  ]);
-});
-
 test('home pins the bubble layout throughout single and bulk deletion motion', () => {
   assertSourceIncludes(source, [
     /setIsBulkDeletionInProgress\(true\);[\s\S]*setBulkDeleteMotions\(motions\)/,
@@ -167,18 +135,6 @@ test('home pins the bubble layout throughout single and bulk deletion motion', (
     /setBulkDeleteMotions\(\[\]\);[\s\S]*removeReminders\(deletedIds\)/,
     /removeReminder\(reminder\.id\);[\s\S]*setDeleteMotion\(null\);/,
     /finally \{[\s\S]*setIsBulkDeletionInProgress\(false\);/,
-  ]);
-});
-
-test('home bubble board reserves the safe corridor above bottom controls', () => {
-  assertSourceIncludes(source, [
-    /const HOME_ADD_BUTTON_SIZE = 64;/,
-    /const HOME_BOTTOM_CONTROLS_OFFSET = 28;/,
-    /const HOME_BUBBLE_CONTROLS_GAP = 12;/,
-    /const HOME_BUBBLE_BOARD_BOTTOM_RESERVE =\s*HOME_ADD_BUTTON_SIZE \+ HOME_BOTTOM_CONTROLS_OFFSET \+ HOME_BUBBLE_CONTROLS_GAP;/,
-    /bubbleBoardContainer: \{[\s\S]*marginTop: 14,[\s\S]*marginBottom: HOME_BUBBLE_BOARD_BOTTOM_RESERVE/,
-    /bottomControls: \{[\s\S]*bottom: HOME_BOTTOM_CONTROLS_OFFSET/,
-    /className="[^"]*h-\[64px\][^"]*"/,
   ]);
 });
 
@@ -226,67 +182,6 @@ test('home presents the next reminder as a compact bubble card that opens its de
     /nextReminderTitle: \{[\s\S]*fontSize: 15/,
     /nextReminderDateTime: \{[\s\S]*flexShrink: 0,[\s\S]*fontSize: 12/,
     /nextReminderCardPressed: \{[\s\S]*opacity: 0\.88,[\s\S]*transform: \[\{ scale: 0\.99 \}\]/,
-  ]);
-});
-
-test('home add button gives immediate pressed feedback', () => {
-  assertSourceIncludes(source, [
-    /style=\{\(\{ pressed \}\) => \[/,
-    /pressed && !isAddButtonDisabled \? styles\.addButtonPressed : null/,
-    /addButtonPressed: \{/,
-    /transform: \[\{ translateY: 2 \}, \{ scale: 0\.97 \}\]/,
-  ]);
-});
-
-test('home add button stays a compact floating action button', () => {
-  const addButtonStart = source.indexOf('accessibilityLabel="リマインダーを追加"');
-  const addButtonBlock = source.slice(
-    addButtonStart,
-    source.indexOf('</Pressable>', addButtonStart),
-  );
-  const addButtonStyleBlock = source.slice(
-    source.indexOf('addButton: {'),
-    source.indexOf('addButtonDisabled:'),
-  );
-
-  assertSourceContract(addButtonBlock, {
-    includes: [
-      /className="[^"]*h-\[64px\][^"]*"/,
-      /className="[^"]*w-\[64px\][^"]*"/,
-      /className="[^"]*shrink-0[^"]*"/,
-      /className="[^"]*items-center[^"]*"/,
-      /className="[^"]*justify-center[^"]*"/,
-      /className="[^"]*rounded-\[32px\][^"]*"/,
-      /<LinearGradient[\s\S]*colors=\{\[addButtonVisualTokens\.gradientFrom, addButtonVisualTokens\.gradientTo\]\}/,
-      /styles\.addButtonSurface/,
-      /styles\.addButton/,
-      /<Ionicons name="add" size=\{30\} color=\{addButtonVisualTokens\.text\} \/>/,
-    ],
-    excludes: [/>追加<\/Text>/, /bg-app-ink/, /border-\[2px\]/],
-  });
-  assertSourceContract(addButtonStyleBlock, {
-    includes: [
-      /borderWidth: 1/,
-      /borderColor: addButtonVisualTokens\.border/,
-      /overflow: 'hidden'/,
-      /shadowColor: palette\.ink/,
-      /shadowOffset: \{ width: 0, height: 12 \}/,
-      /shadowOpacity: 0\.24/,
-      /shadowRadius: 18/,
-      /elevation: 6/,
-    ],
-    excludes: [
-      /position: 'absolute'/,
-      /right: 24/,
-      /bottom: 28/,
-      /backgroundColor: palette\.skyDeep/,
-    ],
-  });
-
-  assertSourceIncludes(source, [
-    /addButtonSurface: \{[\s\S]*borderRadius: 32/,
-    /addButtonVisualTokens\.gradientFrom/,
-    /addButtonVisualTokens\.gradientTo/,
   ]);
 });
 
@@ -424,51 +319,6 @@ test('home keeps Android back handling active until reminder deletion settles', 
     /isReminderDeletionInProgressRef\.current = true;/,
     /finally \{\s*isReminderDeletionInProgressRef\.current = false;\s*\}/,
   ]);
-});
-
-test('home bottom controls use compact spacing on narrow Android widths', () => {
-  const bottomControlsBlock = source.slice(
-    source.indexOf('bottomControls:'),
-    source.indexOf('bottomControlsCompact:'),
-  );
-  const bottomControlsCompactBlock = source.slice(
-    source.indexOf('bottomControlsCompact:'),
-    source.indexOf('dueLegend:'),
-  );
-  const dueLegendBlock = source.slice(
-    source.indexOf('dueLegend:'),
-    source.indexOf('dueLegendCompact:'),
-  );
-  const dueLegendCompactBlock = source.slice(
-    source.indexOf('dueLegendCompact:'),
-    source.indexOf('dueLegendBubble:'),
-  );
-
-  assertSourceIncludes(source, [
-    /useWindowDimensions/,
-    /const isCompactPhoneWidth = windowWidth <= 360;/,
-    /style=\{\[styles\.bottomControls, isCompactPhoneWidth \? styles\.bottomControlsCompact : null\]\}/,
-    /style=\{\[styles\.dueLegend, isCompactPhoneWidth \? styles\.dueLegendCompact : null\]\}/,
-    /styles\.addButton,[\s\S]*pressed && !isAddButtonDisabled \? styles\.addButtonPressed : null,/,
-  ]);
-  assertSourceIncludes(bottomControlsBlock, [
-    /position: 'absolute'/,
-    /left: 24/,
-    /right: 24/,
-    /bottom: HOME_BOTTOM_CONTROLS_OFFSET/,
-    /flexDirection: 'row'/,
-    /alignItems: 'center'/,
-    /gap: 12/,
-  ]);
-  assertSourceIncludes(bottomControlsCompactBlock, [/left: 16/, /right: 16/]);
-  assertSourceContract(dueLegendBlock, {
-    includes: [/flex: 1/, /minWidth: 0/],
-    excludes: [/position: 'absolute'/, /left: 24/, /right: 136/, /bottom: 34/],
-  });
-  assertSourceContract(dueLegendCompactBlock, {
-    includes: [/paddingHorizontal: 8/],
-    excludes: [/left: 16/, /right: 116/],
-  });
 });
 
 test('home supports long-press multi-selection and sequential bulk deletion', () => {

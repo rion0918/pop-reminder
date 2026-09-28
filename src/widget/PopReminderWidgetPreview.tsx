@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '../constants/colors';
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
-import { getReminderDueColor } from '../features/reminders/utils/reminderDueColor';
 import { getWidgetTheme, type WidgetThemeTokens } from './widgetColors';
 import {
   getWidgetLayoutPlan,
@@ -16,7 +15,7 @@ import {
   WIDGET_DEFAULT_HEIGHT,
   WIDGET_DEFAULT_WIDTH,
   WIDGET_FONT_FAMILY,
-  WIDGET_ROW_ACTION_SIZE,
+  WIDGET_GLASS_BUBBLE,
 } from './widgetVisuals';
 
 export type WidgetPreviewReminder = {
@@ -48,8 +47,51 @@ function ReminderPreview({
   highlighted: boolean;
 }) {
   const typography = getWidgetTypography(mode);
-  const dueColor = getReminderDueColor(reminder.targetAt);
   const timeText = `${reminder.isExpired ? '期限済み · ' : ''}${formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay)}`;
+  if (!highlighted) {
+    return (
+      <View
+        style={[
+          styles.row,
+          {
+            left: layout.left,
+            top: layout.top,
+            width: layout.width,
+            height: layout.height,
+            borderTopWidth: 1,
+            borderTopColor: theme.accentSoft,
+          },
+        ]}
+      >
+        <Text
+          numberOfLines={1}
+          allowFontScaling={false}
+          style={{
+            width: Math.round(layout.width * 0.44),
+            marginRight: 8,
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.queueTimeFontSize,
+            color: theme.secondaryText,
+          }}
+        >
+          {timeText}
+        </Text>
+        <Text
+          numberOfLines={1}
+          allowFontScaling={false}
+          style={{
+            flex: 1,
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.queueTitleFontSize,
+            fontWeight: '500',
+            color: theme.primaryText,
+          }}
+        >
+          {reminder.title}
+        </Text>
+      </View>
+    );
+  }
   return (
     <View
       style={[
@@ -59,74 +101,53 @@ function ReminderPreview({
           top: layout.top,
           width: layout.width,
           height: layout.height,
-          backgroundColor: highlighted ? undefined : theme.queueSurface,
+          borderTopWidth: highlighted ? 0 : 1,
+          borderTopColor: theme.accentSoft,
         },
       ]}
     >
-      {highlighted ? (
-        <LinearGradient
-          colors={[theme.heroGradient.from, theme.heroGradient.to]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : null}
       <View
-        style={[
-          styles.detail,
-          { width: layout.width - WIDGET_ROW_ACTION_SIZE, height: layout.height },
-        ]}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          justifyContent: 'center',
+          paddingRight: typography.bubbleSize ? 8 : 0,
+        }}
       >
-        <View
+        <Text
+          numberOfLines={typography.titleLines}
+          ellipsizeMode="tail"
+          allowFontScaling={false}
           style={{
-            width: typography.bubbleSize,
-            height: typography.bubbleSize,
-            borderRadius: typography.bubbleSize / 2,
-            borderWidth: 1,
-            borderColor: dueColor.border,
-            overflow: 'hidden',
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.titleFontSize,
+            fontWeight: '700',
+            color: theme.primaryText,
           }}
         >
-          <LinearGradient
-            colors={[dueColor.gradient[0], dueColor.gradient[2]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.bubbleHighlight} />
-        </View>
-        <View style={styles.textContent}>
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            allowFontScaling={false}
-            style={{
-              fontFamily: WIDGET_FONT_FAMILY,
-              fontSize: typography.titleFontSize,
-              fontWeight: highlighted ? '600' : '500',
-              color: theme.primaryText,
-            }}
-          >
-            {reminder.title}
-          </Text>
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            allowFontScaling={false}
-            style={{
-              marginTop: 3,
-              fontFamily: WIDGET_FONT_FAMILY,
-              fontSize: typography.timeFontSize,
-              color: theme.secondaryText,
-            }}
-          >
-            {timeText}
-          </Text>
-        </View>
+          {reminder.title}
+        </Text>
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          allowFontScaling={false}
+          style={{
+            marginTop: 4,
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.timeFontSize,
+            color: theme.primaryText,
+          }}
+        >
+          {timeText}
+        </Text>
       </View>
-      <View style={styles.deleteButton} accessibilityLabel={`「${reminder.title}」を削除`}>
-        <Ionicons name="trash-outline" size={20} color={theme.secondaryText} />
-      </View>
+      {typography.bubbleSize > 0 ? (
+        <Image
+          source={WIDGET_GLASS_BUBBLE}
+          style={{ width: typography.bubbleSize, height: typography.bubbleSize }}
+          accessible={false}
+        />
+      ) : null}
     </View>
   );
 }
@@ -156,6 +177,7 @@ export function PopReminderWidgetPreview({
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      <View style={[styles.rim, { borderColor: colors.heroBorder }]} />
       <View
         style={[
           styles.header,
@@ -179,16 +201,19 @@ export function PopReminderWidgetPreview({
         >
           ふわっと。
         </Text>
-        <Text
-          numberOfLines={1}
-          allowFontScaling={false}
-          style={{
-            marginTop: 2,
-            fontFamily: WIDGET_FONT_FAMILY,
-            fontSize: typography.countFontSize,
-            color: colors.secondaryText,
-          }}
-        >{`表示中 ${plan.visibleReminderCount}件 / 全${reminders.length}件`}</Text>
+        {reminders.length > 0 ? (
+          <Text
+            numberOfLines={1}
+            allowFontScaling={false}
+            style={{
+              fontFamily: WIDGET_FONT_FAMILY,
+              fontSize: typography.labelFontSize,
+              color: colors.secondaryText,
+            }}
+          >
+            次のリマインド
+          </Text>
+        ) : null}
       </View>
       {rows.map((layout, index) => {
         const reminder = remindersById.get(layout.reminderId);
@@ -203,32 +228,7 @@ export function PopReminderWidgetPreview({
           />
         ) : null;
       })}
-      {reminders.length > 0 ? (
-        <View
-          style={[
-            styles.addButton,
-            {
-              left: plan.addButton.left,
-              top: plan.addButton.top,
-              width: plan.addButton.width,
-              height: plan.addButton.height,
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={[colors.addButtonGradient.from, colors.addButtonGradient.to]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <Text
-            allowFontScaling={false}
-            style={{ fontFamily: WIDGET_FONT_FAMILY, fontSize: 24, color: colors.addButtonText }}
-          >
-            ＋
-          </Text>
-        </View>
-      ) : (
+      {reminders.length === 0 ? (
         <View
           style={[
             styles.emptyState,
@@ -252,57 +252,92 @@ export function PopReminderWidgetPreview({
           >
             リマインダーはありません
           </Text>
-          <Text
-            allowFontScaling={false}
-            style={{
-              marginTop: 12,
-              fontFamily: WIDGET_FONT_FAMILY,
-              fontSize: 14,
-              fontWeight: '600',
-              color: colors.secondaryText,
-            }}
-          >
-            ＋ 追加する
-          </Text>
         </View>
-      )}
+      ) : null}
+      <View
+        accessibilityLabel="リマインダーを追加"
+        style={[
+          styles.addButton,
+          {
+            left: plan.addButton.left,
+            top: plan.addButton.top,
+            width: plan.addButton.width,
+            height: plan.addButton.height,
+            borderColor: colors.addButtonBorder,
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={[colors.addButtonGradient.from, colors.addButtonGradient.to]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            left: 1,
+            top: 1,
+            right: 1,
+            bottom: 1,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.addButtonBorder,
+          }}
+        />
+        <Ionicons
+          name="add-outline"
+          size={24}
+          color={colors.addButtonText}
+          style={{ marginRight: 6 }}
+        />
+        <Text
+          allowFontScaling={false}
+          style={{
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.addFontSize,
+            fontWeight: '600',
+            color: colors.addButtonText,
+          }}
+        >
+          追加する
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   surface: { position: 'relative', overflow: 'hidden', borderRadius: 24, borderWidth: 1 },
-  header: { position: 'absolute', justifyContent: 'center' },
+  rim: {
+    position: 'absolute',
+    left: 3,
+    top: 3,
+    right: 3,
+    bottom: 3,
+    borderRadius: 21,
+    borderWidth: 1,
+  },
+  header: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   row: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: 'hidden',
-  },
-  detail: { flexDirection: 'row', alignItems: 'center', paddingLeft: 12, paddingRight: 4 },
-  textContent: { flex: 1, minWidth: 0, marginLeft: 8, justifyContent: 'center' },
-  bubbleHighlight: {
-    position: 'absolute',
-    width: 3,
-    height: 3,
-    top: 2,
-    left: 3,
-    borderRadius: 2,
-    backgroundColor: '#FFFFFF',
-  },
-  deleteButton: {
-    width: WIDGET_ROW_ACTION_SIZE,
-    height: WIDGET_ROW_ACTION_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
   },
   addButton: {
     position: 'absolute',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: 18,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   emptyState: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },

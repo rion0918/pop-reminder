@@ -46,10 +46,10 @@ test('android widget prioritizes readable rows while promoting the first reminde
     { width: 250, height: 180, mode: 'compact', visible: 1 },
     { width: 320, height: 220, mode: 'compact', visible: 2 },
     { width: 360, height: 280, mode: 'list', visible: 2 },
-    { width: 360, height: 320, mode: 'expanded', visible: 3 },
-    { width: 480, height: 320, mode: 'expanded', visible: 3 },
-    { width: 360, height: 380, mode: 'expanded', visible: 4 },
-    { width: 360, height: 420, mode: 'expanded', visible: 5 },
+    { width: 360, height: 320, mode: 'expanded', visible: 2 },
+    { width: 480, height: 320, mode: 'expanded', visible: 2 },
+    { width: 360, height: 380, mode: 'expanded', visible: 3 },
+    { width: 360, height: 420, mode: 'expanded', visible: 4 },
     { width: 360, height: 460, mode: 'expanded', visible: 5 },
     { width: 360, height: 840, mode: 'expanded', visible: 8 },
   ] as const;
@@ -101,21 +101,21 @@ test('android widget keeps header, add action, hero, and queue inside every surf
 
     assertInside(plan.header, surfaceBounds);
     assertInside(plan.addButton, surfaceBounds);
-    assert.equal(plan.addButton.width, 48);
-    assert.equal(plan.addButton.height, 48);
+    assert.equal(plan.addButton.width, plan.header.width);
+    assert.ok(plan.addButton.height >= 48);
     assert.ok(plan.hero);
     assertInside(plan.hero, surfaceBounds);
-    assert.equal(plan.hero.height, 64);
+    assert.ok(plan.hero.height >= 64);
     assertInside(plan.queueBounds, surfaceBounds);
-    assert.equal(plan.addButton.top, plan.header.top);
-    assert.equal(plan.addButton.bottom, plan.header.bottom);
-    assert.ok(plan.header.right < plan.addButton.left);
+    assert.ok(plan.header.bottom <= plan.hero.top);
+    assert.ok(plan.queueBounds.bottom < plan.addButton.top);
+    assert.equal(plan.addButton.left, plan.header.left);
     assert.ok(plan.hero.bottom <= plan.queueBounds.top);
     assertRowsDoNotOverlap(plan.queueRows);
 
     for (const row of plan.queueRows) {
       assertInside(row, plan.queueBounds);
-      assert.equal(row.height, 64);
+      assert.equal(row.height, 48);
       assert.equal(row.left, plan.queueBounds.left);
       assert.equal(row.width, plan.queueBounds.width);
     }
@@ -127,10 +127,10 @@ test('empty widget reserves the complete content area for its add state', () => 
 
   assert.equal(plan.hero, null);
   assert.deepEqual(plan.queueRows, []);
-  assert.equal(plan.queueBounds.left, 8);
-  assert.equal(plan.queueBounds.right, 242);
-  assert.equal(plan.queueBounds.bottom, 172);
-  assert.equal(plan.header.right, 242);
+  assert.equal(plan.queueBounds.left, 12);
+  assert.equal(plan.queueBounds.right, 238);
+  assert.ok(plan.queueBounds.bottom < plan.addButton.top);
+  assert.equal(plan.header.right, 238);
 });
 
 test('hero and queue layout stays deterministic for the same size and reminder order', () => {

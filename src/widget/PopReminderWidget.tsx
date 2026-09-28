@@ -1,14 +1,13 @@
 import {
   FlexWidget,
+  ImageWidget,
   OverlapWidget,
-  SvgWidget,
   TextWidget,
   type ColorProp,
 } from 'react-native-android-widget';
 
 import type { AppTheme } from '../constants/colors';
 import { formatReminderBubbleDateTime } from '../features/reminders/utils/reminderDateFormat';
-import { getReminderDueColor } from '../features/reminders/utils/reminderDueColor';
 import { getWidgetTheme, type WidgetThemeTokens } from './widgetColors';
 import type { WidgetReminder } from './widgetReminderSnapshot';
 import {
@@ -19,11 +18,10 @@ import {
 } from './widgetBubbleLayout';
 import {
   getWidgetTypography,
-  makeWidgetTrashSvg,
   WIDGET_DEFAULT_HEIGHT,
   WIDGET_DEFAULT_WIDTH,
   WIDGET_FONT_FAMILY,
-  WIDGET_ROW_ACTION_SIZE,
+  WIDGET_GLASS_BUBBLE,
 } from './widgetVisuals';
 
 type PopReminderWidgetProps = {
@@ -33,6 +31,7 @@ type PopReminderWidgetProps = {
   widgetHeight?: number;
 };
 
+// Existing installed widgets can still dispatch this action until their next refresh.
 export const WIDGET_DELETE_REMINDER_ACTION = 'DELETE_REMINDER';
 
 function widgetGradient(gradient: {
@@ -50,14 +49,12 @@ function widgetGradient(gradient: {
 function WidgetHeader({
   layout,
   mode,
-  visibleCount,
-  fetchedCount,
+  hasReminders,
   theme,
 }: {
   layout: WidgetRect;
   mode: WidgetDisplayMode;
-  visibleCount: number;
-  fetchedCount: number;
+  hasReminders: boolean;
   theme: WidgetThemeTokens;
 }) {
   const typography = getWidgetTypography(mode);
@@ -68,7 +65,9 @@ function WidgetHeader({
         height: layout.height,
         marginTop: layout.top,
         marginLeft: layout.left,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}
     >
       <TextWidget
@@ -82,74 +81,18 @@ function WidgetHeader({
         maxLines={1}
         allowFontScaling={false}
       />
-      <TextWidget
-        text={`表示中 ${visibleCount}件 / 全${fetchedCount}件`}
-        style={{
-          fontFamily: WIDGET_FONT_FAMILY,
-          fontSize: typography.countFontSize,
-          color: theme.secondaryText as ColorProp,
-          marginTop: 2,
-        }}
-        maxLines={1}
-        allowFontScaling={false}
-      />
-    </FlexWidget>
-  );
-}
-
-function DueBubble({ size, reminder }: { size: number; reminder: WidgetReminder }) {
-  const dueColor = getReminderDueColor(reminder.targetAt);
-  return (
-    <OverlapWidget style={{ width: size, height: size }}>
-      <FlexWidget
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: 1,
-          borderColor: dueColor.border as ColorProp,
-          backgroundGradient: {
-            from: dueColor.gradient[0] as ColorProp,
-            to: dueColor.gradient[2] as ColorProp,
-            orientation: 'TL_BR',
-          },
-        }}
-      />
-      <FlexWidget
-        style={{
-          width: 3,
-          height: 3,
-          marginTop: 2,
-          marginLeft: 3,
-          borderRadius: 2,
-          backgroundColor: '#FFFFFF',
-        }}
-      />
-    </OverlapWidget>
-  );
-}
-
-function DeleteReminderButton({
-  reminder,
-  theme,
-}: {
-  reminder: WidgetReminder;
-  theme: WidgetThemeTokens;
-}) {
-  return (
-    <FlexWidget
-      style={{
-        width: WIDGET_ROW_ACTION_SIZE,
-        height: WIDGET_ROW_ACTION_SIZE,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 24,
-      }}
-      clickAction={WIDGET_DELETE_REMINDER_ACTION}
-      clickActionData={{ id: reminder.id }}
-      accessibilityLabel={`「${reminder.title}」を削除`}
-    >
-      <SvgWidget svg={makeWidgetTrashSvg(theme.secondaryText)} style={{ width: 20, height: 20 }} />
+      {hasReminders ? (
+        <TextWidget
+          text="次のリマインド"
+          style={{
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.labelFontSize,
+            color: theme.secondaryText as ColorProp,
+          }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+      ) : null}
     </FlexWidget>
   );
 }
@@ -169,6 +112,56 @@ function ReminderRow({
 }) {
   const typography = getWidgetTypography(mode);
   const timeText = `${reminder.isExpired ? '期限済み · ' : ''}${formatReminderBubbleDateTime(reminder.targetAt, new Date(), reminder.allDay)}`;
+  if (!highlighted) {
+    return (
+      <FlexWidget
+        style={{
+          width: layout.width,
+          height: layout.height,
+          marginTop: layout.top,
+          marginLeft: layout.left,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderTopWidth: 1,
+          borderTopColor: theme.accentSoft as ColorProp,
+        }}
+        clickAction="OPEN_URI"
+        clickActionData={{
+          uri: `popreminder://?action=view&id=${encodeURIComponent(reminder.id)}`,
+        }}
+        accessibilityLabel={`${reminder.title}、${timeText}、詳細を開く`}
+      >
+        <TextWidget
+          text={timeText}
+          style={{
+            width: Math.round(layout.width * 0.44),
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.queueTimeFontSize,
+            color: theme.secondaryText as ColorProp,
+            marginRight: 8,
+          }}
+          maxLines={1}
+          truncate="END"
+          allowFontScaling={false}
+        />
+        <FlexWidget style={{ flex: 1 }}>
+          <TextWidget
+            text={reminder.title}
+            style={{
+              width: 'match_parent',
+              fontFamily: WIDGET_FONT_FAMILY,
+              fontSize: typography.queueTitleFontSize,
+              fontWeight: '500',
+              color: theme.primaryText as ColorProp,
+            }}
+            maxLines={1}
+            truncate="END"
+            allowFontScaling={false}
+          />
+        </FlexWidget>
+      </FlexWidget>
+    );
+  }
   return (
     <FlexWidget
       style={{
@@ -178,58 +171,56 @@ function ReminderRow({
         marginLeft: layout.left,
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 18,
-        backgroundGradient: highlighted ? widgetGradient(theme.heroGradient) : undefined,
-        backgroundColor: highlighted ? undefined : (theme.queueSurface as ColorProp),
+        borderRadius: 12,
+        borderTopWidth: highlighted ? 0 : 1,
+        borderTopColor: theme.accentSoft as ColorProp,
       }}
+      clickAction="OPEN_URI"
+      clickActionData={{ uri: `popreminder://?action=view&id=${encodeURIComponent(reminder.id)}` }}
+      accessibilityLabel={`${reminder.title}、${timeText}、詳細を開く`}
     >
       <FlexWidget
         style={{
-          width: layout.width - WIDGET_ROW_ACTION_SIZE,
-          height: layout.height,
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingLeft: 12,
-          paddingRight: 4,
-          borderRadius: 18,
+          flex: 1,
+          justifyContent: 'center',
+          paddingRight: typography.bubbleSize ? 8 : 0,
         }}
-        clickAction="OPEN_URI"
-        clickActionData={{
-          uri: `popreminder://?action=view&id=${encodeURIComponent(reminder.id)}`,
-        }}
-        accessibilityLabel={`${reminder.title}、${timeText}、詳細を開く`}
       >
-        <DueBubble size={typography.bubbleSize} reminder={reminder} />
-        <FlexWidget style={{ flex: 1, marginLeft: 8, justifyContent: 'center' }}>
-          <TextWidget
-            text={reminder.title}
-            style={{
-              width: 'match_parent',
-              fontFamily: WIDGET_FONT_FAMILY,
-              fontSize: typography.titleFontSize,
-              fontWeight: highlighted ? '600' : '500',
-              color: theme.primaryText as ColorProp,
-            }}
-            truncate="END"
-            maxLines={1}
-            allowFontScaling={false}
-          />
-          <TextWidget
-            text={timeText}
-            style={{
-              width: 'match_parent',
-              marginTop: 3,
-              fontFamily: WIDGET_FONT_FAMILY,
-              fontSize: typography.timeFontSize,
-              color: theme.secondaryText as ColorProp,
-            }}
-            truncate="END"
-            maxLines={1}
-            allowFontScaling={false}
-          />
-        </FlexWidget>
+        <TextWidget
+          text={reminder.title}
+          style={{
+            width: 'match_parent',
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.titleFontSize,
+            fontWeight: '700',
+            color: theme.primaryText as ColorProp,
+          }}
+          truncate="END"
+          maxLines={typography.titleLines}
+          allowFontScaling={false}
+        />
+        <TextWidget
+          text={timeText}
+          style={{
+            width: 'match_parent',
+            marginTop: 4,
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: typography.timeFontSize,
+            color: theme.primaryText as ColorProp,
+          }}
+          truncate="END"
+          maxLines={1}
+          allowFontScaling={false}
+        />
       </FlexWidget>
-      <DeleteReminderButton reminder={reminder} theme={theme} />
+      {typography.bubbleSize > 0 ? (
+        <ImageWidget
+          image={WIDGET_GLASS_BUBBLE}
+          imageWidth={typography.bubbleSize}
+          imageHeight={typography.bubbleSize}
+          style={{ width: typography.bubbleSize, height: typography.bubbleSize }}
+        />
+      ) : null}
     </FlexWidget>
   );
 }
@@ -244,11 +235,7 @@ function EmptyState({ bounds, theme }: { bounds: WidgetRect; theme: WidgetThemeT
         marginLeft: bounds.left,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 18,
       }}
-      clickAction="OPEN_URI"
-      clickActionData={{ uri: 'popreminder://?action=add' }}
-      accessibilityLabel="リマインダーを追加"
     >
       <TextWidget
         text="リマインダーはありません"
@@ -261,51 +248,74 @@ function EmptyState({ bounds, theme }: { bounds: WidgetRect; theme: WidgetThemeT
         maxLines={2}
         allowFontScaling={false}
       />
-      <TextWidget
-        text="＋ 追加する"
-        style={{
-          fontFamily: WIDGET_FONT_FAMILY,
-          fontSize: 14,
-          fontWeight: '600',
-          color: theme.secondaryText as ColorProp,
-          marginTop: 12,
-        }}
-        maxLines={1}
-        allowFontScaling={false}
-      />
     </FlexWidget>
   );
 }
 
-function AddReminderButton({ layout, theme }: { layout: WidgetRect; theme: WidgetThemeTokens }) {
+function AddReminderButton({
+  layout,
+  mode,
+  theme,
+}: {
+  layout: WidgetRect;
+  mode: WidgetDisplayMode;
+  theme: WidgetThemeTokens;
+}) {
   return (
-    <FlexWidget
+    <OverlapWidget
       style={{
         width: layout.width,
         height: layout.height,
         marginTop: layout.top,
         marginLeft: layout.left,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 24,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: theme.addButtonBorder as ColorProp,
         backgroundGradient: widgetGradient(theme.addButtonGradient),
       }}
       clickAction="OPEN_URI"
       clickActionData={{ uri: 'popreminder://?action=add' }}
       accessibilityLabel="リマインダーを追加"
     >
-      <TextWidget
-        text="＋"
+      <FlexWidget
         style={{
-          fontFamily: WIDGET_FONT_FAMILY,
-          fontSize: 24,
-          color: theme.addButtonText as ColorProp,
-          textAlign: 'center',
+          width: layout.width,
+          height: layout.height,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
-        maxLines={1}
-        allowFontScaling={false}
+      >
+        <TextWidget
+          text="＋"
+          style={{ fontSize: 24, color: theme.addButtonText as ColorProp, marginRight: 6 }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+        <TextWidget
+          text="追加する"
+          style={{
+            fontFamily: WIDGET_FONT_FAMILY,
+            fontSize: getWidgetTypography(mode).addFontSize,
+            fontWeight: '600',
+            color: theme.addButtonText as ColorProp,
+          }}
+          maxLines={1}
+          allowFontScaling={false}
+        />
+      </FlexWidget>
+      <FlexWidget
+        style={{
+          width: layout.width - 4,
+          height: layout.height - 4,
+          marginTop: 2,
+          marginLeft: 2,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: theme.addButtonBorder as ColorProp,
+        }}
       />
-    </FlexWidget>
+    </OverlapWidget>
   );
 }
 
@@ -331,11 +341,21 @@ export function PopReminderWidget({
         overflow: 'hidden',
       }}
     >
+      <FlexWidget
+        style={{
+          width: widgetWidth - 6,
+          height: widgetHeight - 6,
+          marginLeft: 3,
+          marginTop: 3,
+          borderRadius: 21,
+          borderWidth: 1,
+          borderColor: colors.heroBorder as ColorProp,
+        }}
+      />
       <WidgetHeader
         layout={plan.header}
         mode={plan.mode}
-        visibleCount={plan.visibleReminderCount}
-        fetchedCount={reminders.length}
+        hasReminders={reminders.length > 0}
         theme={colors}
       />
       {rows.map((layout, index) => {
@@ -352,7 +372,7 @@ export function PopReminderWidget({
         ) : null;
       })}
       {reminders.length === 0 ? <EmptyState bounds={plan.queueBounds} theme={colors} /> : null}
-      {reminders.length > 0 ? <AddReminderButton layout={plan.addButton} theme={colors} /> : null}
+      <AddReminderButton layout={plan.addButton} mode={plan.mode} theme={colors} />
     </OverlapWidget>
   );
 }

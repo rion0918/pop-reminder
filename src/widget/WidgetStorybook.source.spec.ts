@@ -49,9 +49,8 @@ test('widget stories use a React Native preview backed by production widget cont
   assertSourceIncludes(previewSource, [
     /getWidgetLayoutPlan/,
     /getWidgetTheme/,
-    /getReminderDueColor/,
     /formatReminderBubbleDateTime/,
-    /WIDGET_ROW_ACTION_SIZE/,
+    /WIDGET_GLASS_BUBBLE/,
   ]);
   assertSourceContract(previewSource, {
     excludes: [/react-native-android-widget/, /expo-sqlite/],
