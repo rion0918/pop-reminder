@@ -8,11 +8,13 @@ import {
 
 const source = readSource(import.meta.url, './AppProviders.tsx');
 
-test('app resume retries pending reminder notifications without prompting for permission', () => {
+test('app resume cleans expired reminders before refreshing and retries pending notifications', () => {
   assertSourceIncludes(source, [
     /AppState\.addEventListener\('change'/,
     /state === 'active'/,
+    /appServices\.reminders[\s\S]*\.cleanup\(\)[\s\S]*focusManager\.setFocused\(true\)[\s\S]*invalidateQueries\(\{ queryKey: activeRemindersQueryKey \}\)/,
     /appServices\.reminders\.retryPendingNotifications\(\)/,
+    /Failed to clean up expired reminders after app resume/,
     /Failed to retry pending reminder notifications after app resume/,
   ]);
 });

@@ -574,7 +574,6 @@ export function createReminderUseCases(dependencies: ReminderApplicationDependen
         nextTargetAt === reminder.targetAt &&
         nextTargetNotifyAt === reminder.targetNotifyAt &&
         nextPreviousNotifyAt === reminder.previousNotifyAt &&
-        nextExpiresAt === reminder.expiresAt &&
         nextAllDay === (reminder.allDay ?? false)
       ) {
         return { reminder, notification: { status: 'unchanged' } };

@@ -31,13 +31,23 @@ export function AppProviders({ children }: PropsWithChildren) {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       const isActive = state === 'active';
-      focusManager.setFocused(isActive);
-      if (isActive) {
-        void queryClient.invalidateQueries({ queryKey: activeRemindersQueryKey });
-        void appServices.reminders.retryPendingNotifications().catch((error) => {
-          console.warn('Failed to retry pending reminder notifications after app resume', error);
-        });
+      if (!isActive) {
+        focusManager.setFocused(false);
+        return;
       }
+
+      const cleanupTask = appServices.reminders.cleanup();
+      void cleanupTask
+        .catch((error) => {
+          console.warn('Failed to clean up expired reminders after app resume', error);
+        })
+        .finally(() => {
+          focusManager.setFocused(true);
+          void queryClient.invalidateQueries({ queryKey: activeRemindersQueryKey });
+        });
+      void appServices.reminders.retryPendingNotifications().catch((error) => {
+        console.warn('Failed to retry pending reminder notifications after app resume', error);
+      });
     });
     return () => subscription.remove();
   }, [queryClient]);

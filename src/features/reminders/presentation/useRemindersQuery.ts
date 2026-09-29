@@ -145,7 +145,7 @@ export function useRemindersQuery() {
 
     let timer: ReturnType<typeof setTimeout>;
     const scheduleRefresh = () => {
-      const remainingMs = Math.max(0, nextTarget + 1000 - Date.now());
+      const remainingMs = Math.max(0, nextTarget - Date.now());
       timer = setTimeout(
         () => {
           if (remainingMs > MAX_REFRESH_TIMER_MS) {

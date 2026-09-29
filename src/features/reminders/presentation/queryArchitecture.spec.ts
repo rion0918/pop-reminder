@@ -36,15 +36,17 @@ test('all reminder screens share the active reminders query cache', () => {
 test('app focus and target time both trigger SQLite reconciliation', () => {
   assertSourceIncludes(providersSource, [
     /const isActive = state === 'active'/,
-    /focusManager\.setFocused\(isActive\)/,
+    /appServices\.reminders\.cleanup\(\)[\s\S]*focusManager\.setFocused\(true\)[\s\S]*invalidateQueries\(\{ queryKey: activeRemindersQueryKey \}\)/,
   ]);
   assertSourceIncludes(querySource, [
     /const reconcileExpiredReminders = useCallback\(async \(\) => \{[\s\S]*await services\.reminders\.cleanup\(\);[\s\S]*await refetch\(\);/,
     /const scheduleRefresh = \(\) => \{/,
+    /Math\.max\(0, nextTarget - Date\.now\(\)\)/,
     /Math\.min\(remainingMs, MAX_REFRESH_TIMER_MS\)/,
     /scheduleRefresh\(\);/,
     /void reconcileExpiredReminders\(\);/,
   ]);
+  assertSourceContract(querySource, { excludes: [/nextTarget \+ 1000/] });
 });
 
 test('changing auto-delete refreshes the shared reminder cache', () => {

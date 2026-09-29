@@ -78,7 +78,7 @@ export function buildReminderSchedule({
     targetAt,
     previousNotifyAt: setLocalTime(addLocalDays(targetDay, -1), previous.hours, previous.minutes),
     targetNotifyAt,
-    expiresAt: setLocalTime(targetDay, 23, 59, 59, 999),
+    expiresAt: allDay ? addLocalDays(targetDay, 1) : targetAt,
   };
 }
 

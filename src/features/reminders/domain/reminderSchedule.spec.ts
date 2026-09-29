@@ -48,10 +48,7 @@ test('custom target date rebuilds target, previous, and expiration schedules', (
   assert.equal(schedule.previousNotifyAt.getDate(), 11);
   assert.equal(schedule.previousNotifyAt.getHours(), 20);
   assert.equal(schedule.previousNotifyAt.getMinutes(), 30);
-  assert.equal(schedule.expiresAt.getDate(), 12);
-  assert.equal(schedule.expiresAt.getHours(), 23);
-  assert.equal(schedule.expiresAt.getMinutes(), 59);
-  assert.equal(schedule.expiresAt.getSeconds(), 59);
+  assert.equal(schedule.expiresAt.getTime(), schedule.targetAt.getTime());
 });
 
 test('schedule editing rejects malformed calendar dates', () => {
@@ -72,7 +69,7 @@ test('schedule editing rejects invalid time strings', () => {
   assert.throws(() => buildPreviousNotifyAt(target, '9:00'));
 });
 
-test('all-day schedules notify in the morning but remain active until the day ends', () => {
+test('all-day schedules notify in the morning and expire at the next local midnight', () => {
   const schedule = buildReminderSchedule({
     dateOffset: 0,
     targetTime: '00:00',
@@ -84,6 +81,9 @@ test('all-day schedules notify in the morning but remain active until the day en
 
   assert.equal(schedule.targetAt.getHours(), 0);
   assert.equal(schedule.targetNotifyAt.getHours(), 9);
-  assert.equal(schedule.expiresAt.getHours(), 23);
-  assert.equal(schedule.expiresAt.getDate(), 12);
+  assert.equal(schedule.expiresAt.getDate(), 13);
+  assert.equal(schedule.expiresAt.getHours(), 0);
+  assert.equal(schedule.expiresAt.getMinutes(), 0);
+  assert.equal(schedule.expiresAt.getSeconds(), 0);
+  assert.equal(schedule.expiresAt.getMilliseconds(), 0);
 });

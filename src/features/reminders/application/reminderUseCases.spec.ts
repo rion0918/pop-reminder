@@ -214,6 +214,7 @@ test('create persists before notification scheduling and widget sync', async () 
   );
 
   assert.equal(result.reminder.title, 'Pay rent');
+  assert.equal(result.reminder.expiresAt, result.reminder.targetAt);
   assert.deepEqual(result.notification, scheduledNotification);
   assert.deepEqual(events, ['insert', 'schedule', 'notification-ids', 'widget']);
 });
@@ -664,8 +665,7 @@ test('schedule update changes date and time and replaces both notifications', as
   assert.equal(new Date(result?.reminder.targetAt ?? 0).getMinutes(), 30);
   assert.equal(new Date(result?.reminder.previousNotifyAt ?? 0).getDate(), 14);
   assert.equal(new Date(result?.reminder.previousNotifyAt ?? 0).getHours(), 20);
-  assert.equal(new Date(result?.reminder.expiresAt ?? 0).getDate(), 15);
-  assert.equal(new Date(result?.reminder.expiresAt ?? 0).getHours(), 23);
+  assert.equal(result?.reminder.expiresAt, result?.reminder.targetAt);
   assert.equal(result?.reminder.previousNotificationId, 'previous');
   assert.equal(result?.reminder.targetNotificationId, 'target');
   assert.equal(result?.notification.status, 'scheduled');
@@ -676,6 +676,31 @@ test('schedule update changes date and time and replaces both notifications', as
     'notification-ids',
     'widget',
   ]);
+});
+
+test('all-day schedule updates persist next local midnight as the expiration', async () => {
+  const events: string[] = [];
+  const dependencies = makeDependencies(events);
+  let current = reminder;
+  dependencies.reminders.getById = async () => current;
+  dependencies.reminders.updateSchedule = async (_id, update) => {
+    current = { ...current, ...update };
+    return current;
+  };
+  dependencies.reminders.updateNotificationIds = async (_id, ids) => {
+    current = { ...current, ...ids };
+    return current;
+  };
+
+  const result = await createReminderUseCases(dependencies).updateSchedule(
+    reminder.id,
+    { targetDate: '2026-07-15', targetTime: '08:00', allDay: true },
+    { now: new Date(2026, 6, 14, 9) },
+  );
+
+  assert.equal(result?.reminder.allDay, true);
+  assert.equal(result?.reminder.targetAt, new Date(2026, 6, 15, 0).toISOString());
+  assert.equal(result?.reminder.expiresAt, new Date(2026, 6, 16, 0).toISOString());
 });
 
 test('schedule update accepts a future time today and crosses a calendar year', async () => {
@@ -702,7 +727,7 @@ test('schedule update accepts a future time today and crosses a calendar year', 
     yearResult?.reminder.previousNotifyAt,
     new Date('2026-12-31T20:00:00').toISOString(),
   );
-  assert.equal(yearResult?.reminder.expiresAt, new Date('2027-01-01T23:59:59.999').toISOString());
+  assert.equal(yearResult?.reminder.expiresAt, yearResult?.reminder.targetAt);
 });
 
 test('rescheduling a retained expired reminder reactivates it', async () => {

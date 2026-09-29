@@ -123,6 +123,8 @@ test('release configuration removes Android permissions outside the feature scop
     'android.permission.WRITE_EXTERNAL_STORAGE',
     'android.permission.SYSTEM_ALERT_WINDOW',
     'android.permission.ACTIVITY_RECOGNITION',
+    'android.permission.FOREGROUND_SERVICE',
+    'android.permission.FOREGROUND_SERVICE_DATA_SYNC',
   ];
   const androidManifest = readFileSync(
     join(__dirname, 'android/app/src/main/AndroidManifest.xml'),
