@@ -57,6 +57,30 @@ export const Compact: Story = {
   },
 };
 
+export const TodayTimedAndAllDay: Story = {
+  args: {
+    reminders: [
+      { id: 'all-day', title: '書類を提出', targetAt: targetAt(0, 0), allDay: true },
+      { id: 'other-all-day', title: '本を返す', targetAt: targetAt(0, 0), allDay: true },
+      { id: 'timed', title: '歯医者', targetAt: targetAt(0, 23) },
+      ...reminders.slice(1),
+    ],
+    widgetWidth: 250,
+    widgetHeight: 180,
+  },
+};
+
+export const TodayAllDayOnly: Story = {
+  args: {
+    reminders: [
+      { id: 'all-day', title: '書類を提出', targetAt: targetAt(0, 0), allDay: true },
+      ...reminders.slice(1),
+    ],
+    widgetWidth: 250,
+    widgetHeight: 180,
+  },
+};
+
 export const LongTitle: Story = {
   args: {
     reminders: [

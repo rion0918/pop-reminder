@@ -371,6 +371,31 @@ export function PopReminderWidget({
           />
         ) : null;
       })}
+      {plan.allDaySummary ? (
+        <FlexWidget
+          style={{
+            width: plan.allDaySummary.width,
+            height: plan.allDaySummary.height,
+            marginTop: plan.allDaySummary.top,
+            marginLeft: plan.allDaySummary.left,
+            justifyContent: 'center',
+          }}
+        >
+          <TextWidget
+            text={plan.allDaySummary.text}
+            accessibilityLabel={plan.allDaySummary.text}
+            style={{
+              width: 'match_parent',
+              fontFamily: WIDGET_FONT_FAMILY,
+              fontSize: getWidgetTypography(plan.mode).queueTimeFontSize,
+              color: colors.secondaryText as ColorProp,
+            }}
+            maxLines={1}
+            truncate="END"
+            allowFontScaling={false}
+          />
+        </FlexWidget>
+      ) : null}
       {reminders.length === 0 ? <EmptyState bounds={plan.queueBounds} theme={colors} /> : null}
       <AddReminderButton layout={plan.addButton} mode={plan.mode} theme={colors} />
     </OverlapWidget>

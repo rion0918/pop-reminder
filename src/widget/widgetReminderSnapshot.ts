@@ -5,6 +5,7 @@ import {
   initializeDatabase,
   POP_REMINDER_DATABASE_NAME,
 } from '../db/client';
+import { addLocalDays, startOfLocalDay } from '../features/reminders/domain/localDate';
 
 import { coerceAppTheme, type AppTheme } from '../shared/domain/appTheme';
 
@@ -60,30 +61,44 @@ function getReminders(
   includeExpired: boolean,
 ): WidgetReminder[] {
   const nowIso = now.toISOString();
+  const todayStart = startOfLocalDay(now);
+  const todayStartIso = todayStart.toISOString();
+  const tomorrowStartIso = addLocalDays(todayStart, 1).toISOString();
+  const todayAllDayRows = db.getAllSync<ReminderRow>(
+    `SELECT id, title, all_day, target_at, target_notify_at, expires_at, status
+     FROM reminders
+     WHERE status = 'active' AND expires_at > ? AND all_day <> 0
+       AND target_at >= ? AND target_at < ?
+     ORDER BY target_at ASC`,
+    [nowIso, todayStartIso, tomorrowStartIso],
+  );
   const rows = includeExpired
     ? db.getAllSync<ReminderRow>(
         `SELECT id, title, all_day, target_at, target_notify_at, expires_at, status
          FROM reminders
-         WHERE (status = 'active' AND expires_at > ?)
+         WHERE ((status = 'active' AND expires_at > ?)
             OR status = 'expired'
-            OR (status = 'active' AND expires_at <= ?)
+            OR (status = 'active' AND expires_at <= ?))
+           AND NOT (status = 'active' AND expires_at > ? AND all_day <> 0
+             AND target_at >= ? AND target_at < ?)
          ORDER BY
            CASE WHEN status = 'active' AND expires_at > ? THEN 0 ELSE 1 END ASC,
            CASE WHEN status = 'active' AND expires_at > ? THEN target_at END ASC,
            CASE WHEN status = 'expired' OR expires_at <= ? THEN target_at END DESC
          LIMIT 20`,
-        [nowIso, nowIso, nowIso, nowIso, nowIso],
+        [nowIso, nowIso, nowIso, todayStartIso, tomorrowStartIso, nowIso, nowIso, nowIso],
       )
     : db.getAllSync<ReminderRow>(
         `SELECT id, title, all_day, target_at, target_notify_at, expires_at, status
          FROM reminders
          WHERE status = 'active' AND expires_at > ?
+           AND NOT (all_day <> 0 AND target_at >= ? AND target_at < ?)
          ORDER BY target_at ASC
          LIMIT 20`,
-        [nowIso],
+        [nowIso, todayStartIso, tomorrowStartIso],
       );
 
-  return rows.map((row) => ({
+  return [...todayAllDayRows, ...rows].map((row) => ({
     id: row.id,
     title: row.title,
     targetAt: row.target_at,
