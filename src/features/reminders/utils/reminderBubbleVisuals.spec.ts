@@ -21,14 +21,14 @@ test('shared reminder bubble typography keeps short titles large and centered in
   assert.equal(typography.timeFontSize, 12);
 });
 
-test('shared reminder bubble typography keeps long titles readable without shrinking', () => {
+test('shared reminder bubble typography limits long titles to two lines without shrinking', () => {
   const typography = getReminderBubbleTypography(181, 116, 30);
 
   assert.equal(typography.titleFontSize, 16);
-  assert.equal(typography.titleLineCount, 5);
+  assert.equal(typography.titleLineCount, 2);
   assert.equal(typography.titleAdjustsFontSizeToFit, false);
   assert.equal(typography.titleMinFontScale, 1);
-  assert.equal(typography.titleEllipsizeMode, 'clip');
+  assert.equal(typography.titleEllipsizeMode, 'tail');
   assert.ok(typography.bubblePadding >= 10);
 });
 
@@ -58,6 +58,8 @@ test('title length boundaries keep the minimum readable font size', () => {
     const dimensions = getReminderBubbleDimensions(visualLength, 390, 622);
 
     assert.equal(typography.titleFontSize, expectedFontSize);
+    assert.equal(typography.titleLineCount, visualLength <= 4 ? 1 : 2);
+    assert.equal(typography.titleEllipsizeMode, 'tail');
     assert.equal(typography.titleMinFontScale, 1);
     assert.equal(typography.titleAdjustsFontSizeToFit, false);
     assert.ok(dimensions.width / dimensions.height <= 1.15);

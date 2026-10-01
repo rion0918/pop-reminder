@@ -4,7 +4,7 @@ export type ReminderBubbleTypography = {
   titleLineHeight: number;
   titleMinFontScale: number;
   titleAdjustsFontSizeToFit: boolean;
-  titleEllipsizeMode: 'clip';
+  titleEllipsizeMode: 'tail';
   timeFontSize: number;
   timeMarginTop: number;
   bubblePadding: number;
@@ -86,8 +86,7 @@ export function getReminderBubbleTypography(
 ): ReminderBubbleTypography {
   const isShortTitle = titleVisualLength <= 4;
   const isMediumTitle = titleVisualLength <= 12;
-  const isLongTitle = titleVisualLength > 24;
-  const titleLineCount = isShortTitle ? 1 : isMediumTitle ? 2 : isLongTitle ? 5 : 4;
+  const titleLineCount = isShortTitle ? 1 : 2;
   const titleFontSize = isShortTitle ? 20 : isMediumTitle ? 18 : 16;
   const timeFontSize = 12;
   const baseBubblePadding = clamp(Math.min(height, width) * 0.1, 10, 14);
@@ -98,7 +97,7 @@ export function getReminderBubbleTypography(
     titleLineHeight: titleFontSize + 4,
     titleMinFontScale: 1,
     titleAdjustsFontSizeToFit: false,
-    titleEllipsizeMode: 'clip',
+    titleEllipsizeMode: 'tail',
     timeFontSize,
     timeMarginTop: 6,
     bubblePadding: Math.round(baseBubblePadding),
