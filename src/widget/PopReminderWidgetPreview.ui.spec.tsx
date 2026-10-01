@@ -59,3 +59,28 @@ test('preview truncates long titles without shrinking and labels expired reminde
   expect(title.props.style.fontSize).toBeGreaterThanOrEqual(14);
   expect(view.getByText(/期限済み/)).toBeTruthy();
 });
+
+test('compact preview matches the native timed hero and all-day summary', async () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date(2030, 4, 12, 10));
+  try {
+    const view = await render(
+      <PopReminderWidgetPreview
+        reminders={[
+          {
+            id: 'all-day',
+            title: '書類を提出',
+            targetAt: new Date(2030, 4, 12).toISOString(),
+            allDay: true,
+          },
+          { id: 'timed', title: '歯医者', targetAt: new Date(2030, 4, 12, 14).toISOString() },
+        ]}
+      />,
+    );
+    expect(view.getByText('歯医者')).toBeTruthy();
+    expect(view.getByText('今日の終日：書類を提出')).toBeTruthy();
+    expect(view.getByText('今日 14:00')).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
+});

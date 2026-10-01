@@ -139,3 +139,120 @@ test('hero and queue layout stays deterministic for the same size and reminder o
 
   assert.deepEqual(second, first);
 });
+
+const today = new Date(2030, 4, 12, 10);
+const allDayReminder = {
+  id: 'all-day',
+  title: '書類を提出',
+  targetAt: new Date(2030, 4, 12).toISOString(),
+  allDay: true,
+  isExpired: false,
+};
+const timedReminder = {
+  id: 'timed',
+  title: '歯医者',
+  targetAt: new Date(2030, 4, 12, 14).toISOString(),
+  isExpired: false,
+};
+const tomorrowReminder = {
+  id: 'tomorrow',
+  title: '明日の予定',
+  targetAt: new Date(2030, 4, 13, 9).toISOString(),
+  isExpired: false,
+};
+
+test('today timed reminders take the hero while all-day reminders remain in a summary', () => {
+  const plan = getWidgetLayoutPlan(
+    [allDayReminder, { ...allDayReminder, id: 'second-all-day' }, timedReminder, tomorrowReminder],
+    250,
+    180,
+    today,
+  );
+
+  assert.equal(plan.hero?.reminderId, 'timed');
+  assert.equal(plan.allDaySummary?.text, '今日の終日：書類を提出 ほか1件');
+  assert.deepEqual(plan.queueRows, []);
+});
+
+test('all-day summary, timed hero, queue, and add action never overlap at supported sizes', () => {
+  for (const { width, height } of [
+    { width: 250, height: 180 },
+    { width: 320, height: 220 },
+    { width: 360, height: 280 },
+    { width: 360, height: 320 },
+    { width: 480, height: 320 },
+    { width: 360, height: 420 },
+    { width: 360, height: 840 },
+  ]) {
+    const plan = getWidgetLayoutPlan(
+      [allDayReminder, timedReminder, tomorrowReminder],
+      width,
+      height,
+      today,
+    );
+    assert.ok(plan.hero);
+    assert.ok(plan.allDaySummary);
+    const bounds = { left: 0, top: 0, right: width, bottom: height, width, height };
+    assertInside(plan.hero, bounds);
+    assertInside(plan.allDaySummary, bounds);
+    assert.ok(plan.hero.height >= 48);
+    assert.ok(plan.hero.bottom <= plan.allDaySummary.top);
+    assert.ok(plan.allDaySummary.bottom <= plan.queueBounds.top);
+    assert.ok(plan.queueBounds.bottom < plan.addButton.top);
+    for (const row of plan.queueRows) assertInside(row, plan.queueBounds);
+    assert.ok(!plan.queueRows.some((row) => row.reminderId === allDayReminder.id));
+  }
+});
+
+test('today all-day stays ahead of tomorrow when no upcoming timed reminder remains today', () => {
+  const plan = getWidgetLayoutPlan(
+    [allDayReminder, tomorrowReminder, { ...timedReminder, isExpired: true }],
+    360,
+    320,
+    new Date(2030, 4, 12, 15),
+  );
+  assert.equal(plan.hero?.reminderId, 'all-day');
+  assert.equal(plan.allDaySummary, null);
+  assert.equal(plan.queueRows[0]?.reminderId, 'tomorrow');
+});
+
+test('the earliest upcoming time wins and expired all-day reminders are not summarized', () => {
+  const plan = getWidgetLayoutPlan(
+    [
+      { ...allDayReminder, isExpired: true },
+      { ...timedReminder, id: 'later', targetAt: new Date(2030, 4, 12, 18).toISOString() },
+      timedReminder,
+    ],
+    250,
+    180,
+    today,
+  );
+  assert.equal(plan.hero?.reminderId, 'timed');
+  assert.equal(plan.allDaySummary, null);
+});
+
+test('tomorrow all-day is the next reminder when today has no plans', () => {
+  const plan = getWidgetLayoutPlan(
+    [{ ...allDayReminder, targetAt: new Date(2030, 4, 13).toISOString() }, tomorrowReminder],
+    250,
+    180,
+    today,
+  );
+  assert.equal(plan.hero?.reminderId, 'all-day');
+  assert.equal(plan.allDaySummary, null);
+});
+
+test('all-day grouping follows local midnight rather than the UTC date', () => {
+  const plan = getWidgetLayoutPlan(
+    [
+      allDayReminder,
+      { ...timedReminder, targetAt: new Date(2030, 4, 12, 1).toISOString() },
+      tomorrowReminder,
+    ],
+    250,
+    180,
+    new Date(2030, 4, 12, 0, 30),
+  );
+  assert.equal(plan.hero?.reminderId, 'timed');
+  assert.equal(plan.allDaySummary?.text, '今日の終日：書類を提出');
+});

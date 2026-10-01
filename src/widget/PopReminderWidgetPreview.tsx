@@ -228,6 +228,31 @@ export function PopReminderWidgetPreview({
           />
         ) : null;
       })}
+      {plan.allDaySummary ? (
+        <View
+          style={{
+            position: 'absolute',
+            left: plan.allDaySummary.left,
+            top: plan.allDaySummary.top,
+            width: plan.allDaySummary.width,
+            height: plan.allDaySummary.height,
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            accessibilityLabel={plan.allDaySummary.text}
+            numberOfLines={1}
+            allowFontScaling={false}
+            style={{
+              fontFamily: WIDGET_FONT_FAMILY,
+              fontSize: typography.queueTimeFontSize,
+              color: colors.secondaryText,
+            }}
+          >
+            {plan.allDaySummary.text}
+          </Text>
+        </View>
+      ) : null}
       {reminders.length === 0 ? (
         <View
           style={[

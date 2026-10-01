@@ -1,7 +1,11 @@
+import { isSameLocalDay } from '../features/reminders/domain/localDate';
+
 export type WidgetLayoutReminder = {
   id: string;
   title: string;
   targetAt?: string;
+  allDay?: boolean;
+  isExpired?: boolean;
 };
 
 export type WidgetRect = {
@@ -27,6 +31,7 @@ export type WidgetLayoutPlan = {
   header: WidgetRect;
   addButton: WidgetRect;
   hero: WidgetReminderLayout | null;
+  allDaySummary: (WidgetRect & { text: string }) | null;
   queueBounds: WidgetRect;
   queueRows: WidgetReminderLayout[];
 };
@@ -62,7 +67,29 @@ export function getWidgetLayoutPlan(
   reminders: WidgetLayoutReminder[],
   widgetWidth: number,
   widgetHeight: number,
+  now = new Date(),
 ): WidgetLayoutPlan {
+  const todayReminders = reminders.filter(
+    (reminder) =>
+      !reminder.isExpired && reminder.targetAt && isSameLocalDay(new Date(reminder.targetAt), now),
+  );
+  const todayAllDay = todayReminders.filter((reminder) => reminder.allDay);
+  const nextTimed = todayReminders
+    .filter((reminder) => !reminder.allDay && new Date(reminder.targetAt ?? '') > now)
+    .sort((first, second) => (first.targetAt ?? '').localeCompare(second.targetAt ?? ''))[0];
+  const heroReminder = nextTimed ?? todayAllDay[0] ?? reminders[0];
+  const summarizeAllDay = Boolean(nextTimed && todayAllDay.length);
+  const todayAllDayIds = new Set(todayAllDay.map((reminder) => reminder.id));
+  const orderedReminders = heroReminder
+    ? [
+        heroReminder,
+        ...reminders.filter(
+          (reminder) =>
+            reminder.id !== heroReminder.id &&
+            !(summarizeAllDay && todayAllDayIds.has(reminder.id)),
+        ),
+      ]
+    : [];
   const mode = getWidgetDisplayMode(widgetWidth, widgetHeight);
   const compact = mode === 'compact';
   const padding = compact ? 12 : WIDGET_SURFACE_PADDING;
@@ -70,15 +97,25 @@ export function getWidgetLayoutPlan(
   const header = makeRect(padding, padding, width, compact ? 18 : 24);
   const addHeight = compact ? 48 : 54;
   const addButton = makeRect(padding, widgetHeight - padding - addHeight, width, addHeight);
-  const contentTop = header.bottom + (compact ? 6 : 10);
+  const contentTop = header.bottom + (compact ? (summarizeAllDay ? 0 : 6) : 10);
   const contentBottom = addButton.top - 8;
-  const hero = reminders.length
+  const hero = heroReminder
     ? {
         ...makeRect(padding, contentTop, width, compact ? 64 : 92),
-        reminderId: reminders[0].id,
+        reminderId: heroReminder.id,
       }
     : null;
-  const queueTop = hero ? Math.min(contentBottom, hero.bottom + (compact ? 4 : 8)) : contentTop;
+  const allDaySummary =
+    summarizeAllDay && hero
+      ? {
+          ...makeRect(padding, hero.bottom + (compact ? 0 : 8), width, compact ? 18 : 24),
+          text: `今日の終日：${todayAllDay[0].title}${todayAllDay.length > 1 ? ` ほか${todayAllDay.length - 1}件` : ''}`,
+        }
+      : null;
+  const contentEnd = allDaySummary ?? hero;
+  const queueTop = contentEnd
+    ? Math.min(contentBottom, contentEnd.bottom + (compact ? 4 : 8))
+    : contentTop;
   const queueBounds = makeRect(padding, queueTop, width, Math.max(0, contentBottom - queueTop));
   const capacity = Math.max(
     0,
@@ -86,7 +123,7 @@ export function getWidgetLayoutPlan(
       (queueBounds.height + WIDGET_QUEUE_GAP) / (WIDGET_QUEUE_ROW_HEIGHT + WIDGET_QUEUE_GAP),
     ),
   );
-  const visibleReminderIds = reminders
+  const visibleReminderIds = orderedReminders
     .slice(0, Math.min(WIDGET_MAX_VISIBLE_REMINDERS, 1 + capacity))
     .map((reminder) => reminder.id);
 
@@ -94,10 +131,11 @@ export function getWidgetLayoutPlan(
     mode,
     visibleReminderCount: visibleReminderIds.length,
     visibleReminderIds,
-    overflowCount: Math.max(0, reminders.length - visibleReminderIds.length),
+    overflowCount: Math.max(0, orderedReminders.length - visibleReminderIds.length),
     header,
     addButton,
     hero,
+    allDaySummary,
     queueBounds,
     queueRows: makeQueueRows(visibleReminderIds.slice(1), queueBounds),
   };

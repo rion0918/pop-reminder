@@ -71,3 +71,64 @@ test('native widget keeps compact focus and limits expanded reminders without cl
   expect(view.getByText('予定7')).toBeTruthy();
   expect(view.queryByText('予定8')).toBeNull();
 });
+
+describe('today timed and all-day reminders', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2030, 4, 12, 10));
+  });
+  afterEach(() => jest.useRealTimers());
+
+  const mixedReminders = [
+    {
+      id: 'all-day',
+      title: '書類を提出',
+      targetAt: new Date(2030, 4, 12).toISOString(),
+      allDay: true,
+      isExpired: false,
+    },
+    {
+      id: 'other-all-day',
+      title: '本を返す',
+      targetAt: new Date(2030, 4, 12).toISOString(),
+      allDay: true,
+      isExpired: false,
+    },
+    {
+      id: 'timed',
+      title: '歯医者',
+      targetAt: new Date(2030, 4, 12, 14).toISOString(),
+      isExpired: false,
+    },
+  ];
+
+  test('compact widget keeps the next time and the all-day summary readable', async () => {
+    const view = await render(<PopReminderWidget reminders={mixedReminders} />);
+    const title = view.getByText('歯医者');
+    expect(title.props.style.fontSize).toBe(20);
+    expect(view.getByText('今日 14:00')).toBeTruthy();
+    const summary = view.getByText('今日の終日：書類を提出 ほか1件');
+    expect(summary.props.maxLines).toBe(1);
+    expect(summary.props.truncate).toBe('END');
+    expect(summary.props.allowFontScaling).toBe(false);
+    expect(view.getByLabelText(/歯医者.*詳細を開く/).props.clickActionData).toEqual({
+      uri: 'popreminder://?action=view&id=timed',
+    });
+    expect(view.getByLabelText('リマインダーを追加')).toBeTruthy();
+  });
+
+  test('the last timed reminder expiring returns the hero to today all-day', async () => {
+    const view = await render(<PopReminderWidget reminders={mixedReminders} />);
+    jest.setSystemTime(new Date(2030, 4, 12, 15));
+    await view.rerender(
+      <PopReminderWidget
+        reminders={mixedReminders.map((reminder) =>
+          reminder.id === 'timed' ? { ...reminder, isExpired: true } : reminder,
+        )}
+      />,
+    );
+    expect(view.getByText('書類を提出')).toBeTruthy();
+    expect(view.getByText('今日 終日')).toBeTruthy();
+    expect(view.queryByText(/今日の終日：/)).toBeNull();
+  });
+});
