@@ -489,9 +489,7 @@ export function ReminderDetailSheet({
                     pressed && !isTitleSaving ? styles.titlePressablePressed : null,
                   ]}
                 >
-                  <Text numberOfLines={2} ellipsizeMode="tail" style={styles.title}>
-                    {reminder?.title ?? ''}
-                  </Text>
+                  <Text style={styles.title}>{reminder?.title ?? ''}</Text>
                 </Pressable>
               )}
               {titleNotice ? <Text style={styles.titleNotice}>{titleNotice}</Text> : null}

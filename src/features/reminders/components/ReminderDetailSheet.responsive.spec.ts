@@ -48,7 +48,7 @@ test('reminder detail sheet presents the editable target and hides an elapsed pr
   assertSourceContract(source, {
     includes: [
       />ふわっと思い出す予定<\/Text>/,
-      /numberOfLines=\{2\}/,
+      /<Text style=\{styles\.title\}>/,
       /前日のお知らせ/,
       /予定日時/,
       /formatReminderDetailDate/,

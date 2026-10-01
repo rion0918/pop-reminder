@@ -406,12 +406,12 @@ export const ReminderBubble = memo(function ReminderBubble({
             ellipsizeMode={typography.titleEllipsizeMode}
             lineBreakStrategyIOS="push-out"
             minimumFontScale={1}
+            numberOfLines={typography.titleLineCount}
             onTextLayout={onTitleLayout}
             textBreakStrategy="balanced"
             style={[
               styles.title,
               {
-                color: color.accent,
                 fontSize: typography.titleFontSize,
                 lineHeight: typography.titleLineHeight,
               },
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     left: '16%',
     width: '66%',
     height: '58%',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.32)',
   },
   outerGlassRing: {
     position: 'absolute',
@@ -637,20 +637,15 @@ const styles = StyleSheet.create({
   title: {
     maxWidth: '100%',
     flexShrink: 1,
+    color: palette.ink,
     textAlign: 'center',
-    fontWeight: '800',
-    textShadowColor: 'rgba(255,255,255,0.58)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
+    fontWeight: '700',
   },
   time: {
     maxWidth: '100%',
     flexShrink: 1,
     color: 'rgba(38,49,81,0.76)',
     textAlign: 'center',
-    fontWeight: '800',
-    textShadowColor: 'rgba(255,255,255,0.62)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 7,
+    fontWeight: '500',
   },
 });
