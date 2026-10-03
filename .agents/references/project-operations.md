@@ -21,7 +21,7 @@ Use the relevant section for setup, builds, verification, or implementation navi
 - `pnpm test` runs Node tests (`config.release.test.js`, `*.test.js`, `*.spec.ts(x)` excluding UI specs), then Jest UI tests (`*.ui.spec.tsx`). See `package.json` and `jest.config.cjs` for exact selection.
 - Run an affected Node spec with `node --import tsx --test path/to/file.spec.ts`; a UI spec with `pnpm exec jest --config jest.config.cjs --runInBand path/to/file.ui.spec.tsx`.
 - Source contracts use `src/test-utils/sourceAssertions.ts`; architecture rules live in `tools/biome-rules/`.
-- For harness operation or approved protected-file changes, read `docs/MVH_HARNESS.md` and `docs/adr/0001-harness-policy.md`. Final verification of explicitly approved harness changes uses `MVH_ALLOW_PROTECTED_CONFIG_CHANGE=1 pnpm run mvh:verify`.
+- For harness operation or approved protected-file changes, read `docs/MVH_HARNESS.md`. Final verification of explicitly approved harness changes uses `MVH_ALLOW_PROTECTED_CONFIG_CHANGE=1 pnpm run mvh:verify`.
 - Release validation: `pnpm run verify:release` also checks Expo Doctor and Android/iOS exports.
 
 ## Implementation entry points
@@ -32,4 +32,4 @@ Use the relevant section for setup, builds, verification, or implementation navi
 - Input validation: `src/features/reminders/schemas/reminderSchema.ts` and the feature's date services/utilities.
 - Notifications: `src/lib/notifications/reminderNotifications.ts`; Widget synchronization: `src/widget/widgetUpdateService.tsx`.
 - UI uses NativeWind / Tailwind and Reanimated. Colors and tokens: `src/constants/colors.ts`, `tailwind.config.js`. Bubble burst: `ReminderBubbleBurst.native.tsx` for iOS, `ReminderBubbleBurst.android.tsx` for Android in `src/features/reminders/components/`.
-- For architecture decisions use `docs/NEW_ARCHITECTURE_ALIGNMENT.md`; for stack details use `docs/TECH_STACK.md`.
+- Before changes, read `docs/adr/README.md` and related Accepted ADRs. Record significant new decisions as Proposed ADRs, link them from the PR, and wait for the user's adoption confirmation before marking them Accepted. Use `docs/NEW_ARCHITECTURE_ALIGNMENT.md` for the current architecture guide and `docs/TECH_STACK.md` for stack details.

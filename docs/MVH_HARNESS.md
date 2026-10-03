@@ -10,7 +10,7 @@
 - `lefthook.yml` は `pre-commit` で `00-protected-harness-config`、`10-biome`、`20-test` の順に実行します。
 - `scripts/mvh-guard-protected-files.mjs` は `biome.json`、`lefthook.yml`、`package.json`、`.codex/hooks/**`、`scripts/mvh-*`、`tools/biome-rules/**` などの保護対象ファイルが無断変更されていないかを確認します。
 - `src/app-tests/mvh-harness.spec.ts` は package script、Codex hook、保護対象パスの期待値をテストで固定しています。
-- `docs/adr/0001-harness-policy.md` は、ハーネスの真実を実行可能なルール・テスト・CI に置く方針を記録します。
+- 判断の理由を記録・参照する手順は [ADR 運用ガイド・一覧](adr/README.md) を参照してください。ハーネスの検証契約は package scripts、テスト、Biome、CI で確認します。
 
 ## メリット
 
