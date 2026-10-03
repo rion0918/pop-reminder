@@ -10,9 +10,7 @@
 
 - **[技術スタック (TECH_STACK.md)](TECH_STACK.md)**: 使用テクノロジー、ライブラリ、ディレクトリ構造、コンポーネント依存関係。
 - **[Hexagonal Architecture 方針 (NEW_ARCHITECTURE_ALIGNMENT.md)](NEW_ARCHITECTURE_ALIGNMENT.md)**: Feature-First クリーンアーキテクチャ、Port & Adapter、データフローと状態所有権のガイドライン。
-- **[Architecture Decision Records (ADR)](adr/)**:
-  - [ADR 0001: Codex MVH ハーネス方針](adr/0001-harness-policy.md)
-  - [ADR 0002: Feature-First Hexagonal Architecture](adr/0002-feature-first-hexagonal.md)
+- **[ADR 運用ガイド・一覧](adr/README.md)**: Nygard形式の記録手順、テンプレート、判断の状態、Discussionsとの使い分け。
 
 ### 🧪 品質保証 & 開発ハーネス
 
@@ -37,9 +35,9 @@
 
 ## 🧭 ロール別ガイドライン
 
-| あなたの役割                   | 最初に読むべきドキュメント                                                                                       |
-| :----------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| **新規参加開発者**             | [README.md](../README.md) ➔ [TECH_STACK.md](TECH_STACK.md) ➔ [MVH_HARNESS.md](MVH_HARNESS.md)                    |
-| **アーキテクチャの変更提案者** | [NEW_ARCHITECTURE_ALIGNMENT.md](NEW_ARCHITECTURE_ALIGNMENT.md) ➔ [ADR 0002](adr/0002-feature-first-hexagonal.md) |
-| **QA / テスター**              | [QA_DEVELOPMENT_BUILD.md](QA_DEVELOPMENT_BUILD.md) ➔ [QA_CHECKLIST.md](QA_CHECKLIST.md)                          |
-| **リリース責任者**             | [RELEASE_ANDROID_IOS.md](RELEASE_ANDROID_IOS.md) ➔ [STORE_LISTING_DRAFT.md](STORE_LISTING_DRAFT.md)              |
+| あなたの役割                   | 最初に読むべきドキュメント                                                                                                    |
+| :----------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| **新規参加開発者**             | [README.md](../README.md) ➔ [TECH_STACK.md](TECH_STACK.md) ➔ [MVH_HARNESS.md](MVH_HARNESS.md)                                 |
+| **アーキテクチャの変更提案者** | [ADR 運用ガイド・一覧](adr/README.md) ➔ 関連するAccepted ADR ➔ [NEW_ARCHITECTURE_ALIGNMENT.md](NEW_ARCHITECTURE_ALIGNMENT.md) |
+| **QA / テスター**              | [QA_DEVELOPMENT_BUILD.md](QA_DEVELOPMENT_BUILD.md) ➔ [QA_CHECKLIST.md](QA_CHECKLIST.md)                                       |
+| **リリース責任者**             | [RELEASE_ANDROID_IOS.md](RELEASE_ANDROID_IOS.md) ➔ [STORE_LISTING_DRAFT.md](STORE_LISTING_DRAFT.md)                           |

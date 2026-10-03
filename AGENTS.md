@@ -19,6 +19,13 @@ Expo / React Native の Android・iOS リマインダーアプリ。依存バー
 - reminders の追加・削除・タイトル更新では `src/widget/widgetUpdateService.tsx` の同期契約を維持する。Widget は通常アプリとは別の SQLite 接続で snapshot を読む。
 - プラットフォーム差分は既存の `.native.tsx`・`.android.tsx` の解決規則に沿わせる。
 
+## ADR の参照と記録
+
+- 作業前に [ADR 運用ガイド・一覧](docs/adr/README.md) と、変更対象に関係する Accepted ADR を確認する。
+- 複数のモジュールに影響する判断、長く効く制約、後から採用理由を知る必要がある選択は、テンプレートを使って Proposed ADR として記録する。Accepted への変更はユーザーの採用確認後に行う。
+- 実装と Accepted ADR の矛盾や判断の変更が必要な場合は、変更前に理由を提示して相談する。採用後の判断変更は新しい ADR に記録し、旧記録を Superseded にして相互リンクする。
+- PR には関連 ADR と、相談に利用した Discussion のリンクを記載する。ADR が不要な場合は理由を短く記載する。Discussion は必要な相談にだけ使い、投稿は個別の指示を受けて行う。
+
 ## 検証と参照
 
 - 標準ゲートは `pnpm run mvh:verify`。変更に対応する既存 spec を使い、合格後の繰り返しや検証範囲の拡大は、新たな変更・失敗・未解決の懸念がある場合に行う。

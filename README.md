@@ -129,4 +129,4 @@ pnpm run mvh:verify
 - 📱 **[QA & 実機検証手順](docs/QA_DEVELOPMENT_BUILD.md)**: Development Build・通知・Widget テスト手順
 - 🚀 **[リリースガイド](docs/RELEASE_ANDROID_IOS.md)**: EAS Build / ストア配信手順
 - 💳 **[RevenueCatセットアップ](docs/REVENUECAT_SETUP.md)**: 買い切りPro / Paywall / 購入復元
-- 📝 **[ADR (意思決定記録)](docs/adr/)**: アーキテクチャ採択・ハーネス方針の記録
+- 📝 **[ADR 運用ガイド・一覧](docs/adr/README.md)**: Nygard形式で判断の理由を残す手順・テンプレート・Discussionsとの使い分け
