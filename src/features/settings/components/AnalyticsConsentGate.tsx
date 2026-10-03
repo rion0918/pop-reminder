@@ -10,6 +10,8 @@ const trackedPathnames = new Set(['/', '/reminders-list', '/settings']);
 
 export function AnalyticsConsentGate({ children }: PropsWithChildren) {
   const pathname = usePathname();
+  const currentPathnameRef = useRef(pathname);
+  currentPathnameRef.current = pathname;
   const { analytics } = useAppServices();
   const { settings, updateAnalyticsConsent } = useAppSettingsQuery();
   const [isSaving, setIsSaving] = useState(false);
@@ -21,7 +23,12 @@ export function AnalyticsConsentGate({ children }: PropsWithChildren) {
 
     const consent = settings?.analyticsConsent;
     if (consent === 'granted') {
-      void analytics.setCaptureEnabled(true);
+      void analytics.setCaptureEnabled(true).then((enabled) => {
+        const currentPathname = currentPathnameRef.current;
+        if (enabled && trackedPathnames.has(currentPathname)) {
+          analytics.captureScreen(currentPathname);
+        }
+      });
     } else if (consent === 'denied') {
       void analytics.setCaptureEnabled(false);
     }

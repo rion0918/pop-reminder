@@ -13,6 +13,7 @@ const mockServices = {
     configured: true,
     setCaptureEnabled: jest.fn(async () => false),
     captureScreen: jest.fn(),
+    captureAppActive: jest.fn(),
   },
   reminders: {
     cleanup: jest.fn(async () => 0),
@@ -59,6 +60,7 @@ function ReminderList() {
 
 test('returning from a widget deletion refreshes the cached reminder list', async () => {
   const subscribe = jest.spyOn(AppState, 'addEventListener');
+  subscribe.mockClear();
   const events: string[] = [];
   mockServices.reminders.cleanup.mockImplementation(async () => {
     events.push('cleanup');
@@ -88,6 +90,19 @@ test('returning from a widget deletion refreshes the cached reminder list', asyn
   });
   await waitFor(() => expect(mockServices.reminders.cleanup).toHaveBeenCalled());
   await waitFor(() => expect(view.getByText('empty')).toBeTruthy());
+  expect(mockServices.analytics.captureAppActive).toHaveBeenCalledWith({ source: 'resume' });
+  expect(mockServices.analytics.captureAppActive).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    for (const [event, listener] of subscribe.mock.calls) {
+      if (event === 'change') {
+        listener('inactive');
+        listener('active');
+        listener('active');
+      }
+    }
+  });
+  expect(mockServices.analytics.captureAppActive).toHaveBeenCalledTimes(1);
   expect(events.indexOf('cleanup')).toBeLessThan(events.indexOf('list'));
   subscribe.mockRestore();
+  view.unmount();
 });

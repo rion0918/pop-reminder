@@ -47,6 +47,8 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 API key が未設定の場合、分析機能は完全な no-op になり、設定画面の「匿名の利用状況を共有」は OFF・操作不可になります。
 
+改善用のPostHogダッシュボード、指標の定義、計測イベントと受信確認は [改善のための分析](docs/ANALYTICS.md) を参照してください。
+
 買い切りProの実購入を確認する場合は、RevenueCatの公開SDK keyも環境ごとに設定します。未設定または取得不能の場合は、購入済みユーザーを誤って制限しないよう無料件数制限をfail-openします。
 
 ```dotenv

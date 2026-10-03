@@ -9,15 +9,21 @@ import {
 const homeSource = readSource(import.meta.url, './HomeScreen.tsx');
 const listSource = readSource(import.meta.url, './ReminderListScreen.tsx');
 const settingsSource = readSource(import.meta.url, '../../settings/screens/SettingsScreen.tsx');
+const inputSource = readSource(import.meta.url, '../components/ReminderInputSheet.tsx');
 
 test('home captures quick-add entry and successful reminder outcomes', () => {
   assertSourceIncludes(homeSource, [
     /const \{ analytics, notificationSettings, purchases \} = useAppServices\(\);/,
     /const datePreset = useReminderUiStore\(\(state\) => state\.datePreset\);/,
     /quickAddSourceRef\.current = source;/,
-    /captureQuickAddOpened\(\{ source \}\)/,
+    /if \(!isQuickAddOpenRef\.current\) \{[\s\S]*captureQuickAddOpened\(\{ source, inputMode:/,
+    /captureQuickAddSubmitted\(\{ datePreset, allDay \}\)/,
+    /if \(!isQuickAddOpen && isQuickAddOpenRef\.current\) analytics\.captureQuickAddClosed\(\)/,
+    /if \(!didCreateReminder\) \{[\s\S]*captureReminderCreationFailed/,
     /captureProGateReached\(\{ source \}\)/,
     /captureProPaywallResult\(\{ placement: 'active_limit', outcome: result \}\)/,
+    /captureProPaywallRequested\(\{ placement: 'active_limit' \}\)/,
+    /const permission = await notificationSettings\.requestNotificationPermissions\(\);[\s\S]*source: 'quick_add',[\s\S]*status: permission\.status/,
     /const result = await createReminder\(/,
     /analytics\.captureReminderCreated\(/,
     /datePreset,/,
@@ -53,6 +59,7 @@ test('settings captures permission results and exposes persisted analytics conse
       /title="匿名の利用状況を共有"/,
       /value=\{isAnalyticsEnabled\}/,
       /captureProPaywallResult\(\{ placement: 'settings', outcome: result \}\)/,
+      /captureProPaywallRequested\(\{ placement: 'settings' \}\)/,
       /captureProRestoreResult\(\{ outcome: result \}\)/,
     ],
     excludes: [
@@ -62,5 +69,19 @@ test('settings captures permission results and exposes persisted analytics conse
       /analytics\.setCaptureEnabled/,
       /update\(\{ analyticsConsent/,
     ],
+  });
+});
+
+test('voice analytics records terminal outcomes without recording speech content', () => {
+  assertSourceContract(inputSource, {
+    includes: [
+      /captureVoiceInputStarted\(\)/,
+      /captureVoiceInputResult\(\{ outcome: 'cancelled' \}\)/,
+      /captureVoiceInputResult\(\{ outcome: 'permission-denied' \}\)/,
+      /captureVoiceInputResult\(\{ outcome: 'unavailable' \}\)/,
+      /captureVoiceInputResult\(\{ outcome: 'timeout' \}\)/,
+      /outcome: voiceReceivedTextRef\.current \? 'success' : 'empty'/,
+    ],
+    excludes: [/analytics\.capture[^;]*(transcript|draftTitle|event\.error)/],
   });
 });

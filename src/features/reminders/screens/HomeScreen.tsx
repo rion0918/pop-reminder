@@ -184,9 +184,11 @@ export function HomeScreen() {
 
   const openQuickAddForSource = useCallback(
     (source: QuickAddSource, options?: QuickAddOptions) => {
+      if (!isQuickAddOpenRef.current) {
+        quickAddSourceRef.current = source;
+        analytics.captureQuickAddOpened({ source, inputMode: options?.inputMode ?? 'text' });
+      }
       isQuickAddOpenRef.current = true;
-      quickAddSourceRef.current = source;
-      analytics.captureQuickAddOpened({ source });
       openQuickAdd(getQuickAddDefaultTime(), options);
     },
     [analytics, getQuickAddDefaultTime, openQuickAdd],
@@ -195,6 +197,7 @@ export function HomeScreen() {
   const showActiveLimitPaywall = useCallback(
     async (source: QuickAddSource) => {
       analytics.captureProGateReached({ source });
+      analytics.captureProPaywallRequested({ placement: 'active_limit' });
       const result = await purchases.presentProPaywallIfNeeded();
       analytics.captureProPaywallResult({ placement: 'active_limit', outcome: result });
 
@@ -244,8 +247,9 @@ export function HomeScreen() {
   );
 
   useEffect(() => {
+    if (!isQuickAddOpen && isQuickAddOpenRef.current) analytics.captureQuickAddClosed();
     isQuickAddOpenRef.current = isQuickAddOpen;
-  }, [isQuickAddOpen]);
+  }, [analytics, isQuickAddOpen]);
 
   useEffect(() => {
     selectedReminderRef.current = selectedReminder;
@@ -438,6 +442,7 @@ export function HomeScreen() {
     }
 
     isSavingRef.current = true;
+    let didCreateReminder = false;
     try {
       const result = await createReminder(
         {
@@ -452,6 +457,7 @@ export function HomeScreen() {
           permissionMode: options.permissionMode,
         },
       );
+      didCreateReminder = true;
       analytics.captureReminderCreated({
         source: quickAddSourceRef.current,
         datePreset,
@@ -492,6 +498,14 @@ export function HomeScreen() {
         }
       }
     } catch (saveError) {
+      if (!didCreateReminder) {
+        analytics.captureReminderCreationFailed({
+          reason:
+            saveError instanceof Error && saveError.name === 'ActiveReminderLimitReachedError'
+              ? 'active_limit'
+              : 'save_failed',
+        });
+      }
       console.warn('Failed to save reminder', saveError);
       if (saveError instanceof Error && saveError.name === 'ActiveReminderLimitReachedError') {
         Alert.alert(
@@ -515,6 +529,7 @@ export function HomeScreen() {
   };
 
   const handleSave = async (title: string) => {
+    analytics.captureQuickAddSubmitted({ datePreset, allDay });
     const input: PendingReminderSaveInput = {
       title,
       dateOffset,
@@ -559,7 +574,12 @@ export function HomeScreen() {
       try {
         if (requestPermission) {
           if (notificationPermissionCanAskAgain) {
-            await notificationSettings.requestNotificationPermissions();
+            const permission = await notificationSettings.requestNotificationPermissions();
+            analytics.captureNotificationPermissionUpdated({
+              source: 'quick_add',
+              status: permission.status,
+              canAskAgain: permission.canAskAgain,
+            });
           } else {
             await Linking.openSettings();
           }
@@ -575,6 +595,7 @@ export function HomeScreen() {
       }
     },
     [
+      analytics,
       isNotificationPermissionIntroBusy,
       notificationPermissionCanAskAgain,
       notificationSettings,

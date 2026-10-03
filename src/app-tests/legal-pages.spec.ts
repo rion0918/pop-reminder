@@ -24,7 +24,7 @@ test('published privacy policy documents local data, analytics, and purchases', 
 
   assert.match(privacy, /<meta name="viewport"/);
   assert.match(privacy, /プライバシーポリシー/);
-  assert.match(privacy, /最終更新日：2026年9月7日/);
+  assert.match(privacy, /最終更新日：2026年10月3日/);
   assert.match(privacy, /端末内に保存/);
   assert.match(privacy, /PostHog US\s+Cloud/);
   assert.match(privacy, /RevenueCat/);

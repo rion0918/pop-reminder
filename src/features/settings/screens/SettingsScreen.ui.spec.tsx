@@ -68,6 +68,7 @@ jest.mock('../../../bootstrap/appServicesContext', () => ({
       setCaptureEnabled: jest.fn(async () => true),
       captureNotificationPermissionUpdated: jest.fn(),
       captureProPaywallResult: jest.fn(),
+      captureProPaywallRequested: jest.fn(),
       captureProRestoreResult: jest.fn(),
     },
     purchases: {

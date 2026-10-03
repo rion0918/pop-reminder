@@ -111,6 +111,7 @@ export function ReminderInputSheet({
   onSave,
 }: ReminderInputSheetProps) {
   const voiceInput = useAppServices().voiceInput;
+  const analytics = useAppServices().analytics;
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -278,7 +279,10 @@ export function ReminderInputSheet({
       pendingVoiceStartAfterEndEditingRef.current = false;
       voiceOperationIdRef.current += 1;
       explicitVoiceAbortRef.current = true;
-      if (voiceStatusRef.current !== 'idle') voiceInput.abort();
+      if (voiceStatusRef.current !== 'idle') {
+        analytics.captureVoiceInputResult({ outcome: 'cancelled' });
+        voiceInput.abort();
+      }
       if (restoreBaseline) replaceDraftTitle(voiceBaselineTitleRef.current);
       voiceCommittedTranscriptRef.current = '';
       voiceReceivedTextRef.current = false;
@@ -288,6 +292,7 @@ export function ReminderInputSheet({
       completeVoiceInput();
     },
     [
+      analytics,
       clearVoiceStopFallback,
       completeVoiceInput,
       replaceDraftTitle,
@@ -301,6 +306,7 @@ export function ReminderInputSheet({
 
     clearVoiceStopFallback();
     if (voiceStatusRef.current === 'starting') {
+      analytics.captureVoiceInputResult({ outcome: 'cancelled' });
       voiceOperationIdRef.current += 1;
       explicitVoiceAbortRef.current = true;
       voiceInput.abort();
@@ -316,6 +322,7 @@ export function ReminderInputSheet({
       voiceStopFallbackRef.current = null;
       if (voiceStatusRef.current !== 'stopping') return;
 
+      analytics.captureVoiceInputResult({ outcome: 'timeout' });
       explicitVoiceAbortRef.current = true;
       voiceInput.abort();
       setVoiceVolume(0);
@@ -324,7 +331,7 @@ export function ReminderInputSheet({
       void Haptics.selectionAsync().catch(() => {});
       AccessibilityInfo.announceForAccessibility('音声入力を終了しました。内容を確認してください');
     }, VOICE_STOP_FALLBACK_MS);
-  }, [clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, voiceInput]);
+  }, [analytics, clearVoiceStopFallback, completeVoiceInput, setVoiceStatusValue, voiceInput]);
 
   const beginVoiceInput = useCallback(async () => {
     if (voiceStatusRef.current !== 'idle') return;
@@ -348,6 +355,7 @@ export function ReminderInputSheet({
     invalidateTitleFocusRequest();
     Keyboard.dismiss();
     setVoiceStatusValue('starting');
+    analytics.captureVoiceInputStarted();
 
     try {
       let availability = await voiceInput.getAvailability();
@@ -366,6 +374,7 @@ export function ReminderInputSheet({
       if (voiceOperationIdRef.current !== operationId) return;
 
       if (availability.status === 'model-unavailable') {
+        analytics.captureVoiceInputResult({ outcome: 'unavailable' });
         setTitleNotice(
           '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
         );
@@ -375,6 +384,7 @@ export function ReminderInputSheet({
       }
 
       if (availability.status === 'permission-denied') {
+        analytics.captureVoiceInputResult({ outcome: 'permission-denied' });
         setVoiceStatusValue('idle');
         completeVoiceInput();
         Alert.alert('マイクを利用できません', '端末の設定でマイクを許可してください。', [
@@ -387,6 +397,7 @@ export function ReminderInputSheet({
       }
 
       if (availability.status !== 'ready') {
+        analytics.captureVoiceInputResult({ outcome: 'unavailable' });
         setTitleNotice('この端末では日本語の端末内音声認識を利用できません。');
         setVoiceStatusValue('idle');
         completeVoiceInput();
@@ -396,11 +407,13 @@ export function ReminderInputSheet({
       await voiceInput.start();
     } catch {
       if (voiceOperationIdRef.current !== operationId) return;
+      analytics.captureVoiceInputResult({ outcome: 'error' });
       setTitleNotice('音声入力を開始できませんでした。手入力をお試しください。');
       setVoiceStatusValue('idle');
       completeVoiceInput();
     }
   }, [
+    analytics,
     clearVoiceStopFallback,
     completeVoiceInput,
     invalidateTitleFocusRequest,
@@ -471,6 +484,7 @@ export function ReminderInputSheet({
       if (event.type === 'error') {
         clearVoiceStopFallback();
         const wasExplicitAbort = explicitVoiceAbortRef.current && event.error === 'aborted';
+        analytics.captureVoiceInputResult({ outcome: wasExplicitAbort ? 'cancelled' : 'error' });
         explicitVoiceAbortRef.current = false;
         setVoiceVolume(0);
         setVoiceStatusValue('idle');
@@ -512,6 +526,9 @@ export function ReminderInputSheet({
         setVoiceStatusValue('idle');
         completeVoiceInput();
         if (shouldConfirmEnd) {
+          analytics.captureVoiceInputResult({
+            outcome: voiceReceivedTextRef.current ? 'success' : 'empty',
+          });
           void Haptics.selectionAsync().catch(() => {});
           AccessibilityInfo.announceForAccessibility(
             voiceReceivedTextRef.current
@@ -526,9 +543,13 @@ export function ReminderInputSheet({
       pendingVoiceStartAfterEndEditingRef.current = false;
       clearVoiceStopFallback();
       subscription.remove();
-      if (voiceStatusRef.current !== 'idle') voiceInput.abort();
+      if (voiceStatusRef.current !== 'idle') {
+        analytics.captureVoiceInputResult({ outcome: 'cancelled' });
+        voiceInput.abort();
+      }
     };
   }, [
+    analytics,
     clearVoiceStopFallback,
     completeVoiceInput,
     setVoiceStatusValue,

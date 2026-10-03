@@ -39,7 +39,8 @@ function makeClient() {
   return { captured, screens, calls, client };
 }
 
-test('analytics emits only the approved event schema without reminder content', () => {
+test('analytics emits only the approved event schema without reminder content', (t) => {
+  t.mock.method(Date, 'now', () => 1_000);
   const fake = makeClient();
   const analytics = createAnalyticsService(fake.client);
 
@@ -61,13 +62,21 @@ test('analytics emits only the approved event schema without reminder content', 
   analytics.captureProGateReached({ source: 'widget_deep_link' });
   analytics.captureProPaywallResult({ placement: 'active_limit', outcome: 'purchased' });
   analytics.captureProRestoreResult({ outcome: 'no-purchase' });
+  const visitId = fake.captured[0].properties?.quick_add_id;
 
   assert.deepEqual(fake.captured, [
-    { event: 'quick add opened', properties: { source: 'widget_deep_link' } },
+    {
+      event: 'quick add opened',
+      properties: { source: 'widget_deep_link', quick_add_id: visitId, input_mode: 'text' },
+    },
     {
       event: 'reminder created',
       properties: {
         source: 'widget_deep_link',
+        quick_add_id: visitId,
+        input_mode: 'text',
+        first_in_quick_add: true,
+        elapsed_seconds: 0,
         date_preset: 'nextWeek',
         notification_status: 'not-scheduled',
         notification_reason: 'notification-permission-denied',
@@ -98,12 +107,19 @@ test('analytics emits only the approved event schema without reminder content', 
     [...ALLOWED_ANALYTICS_EVENTS],
     [
       '$screen',
+      'app active',
       'quick add opened',
+      'quick add submitted',
+      'quick add closed',
+      'voice input started',
+      'voice input result',
       'reminder created',
+      'reminder creation failed',
       'reminder edited',
       'reminder deleted',
       'notification permission updated',
       'pro gate reached',
+      'pro paywall requested',
       'pro paywall result',
       'pro restore result',
     ],
@@ -152,6 +168,128 @@ test('analytics screen tracking forwards only the canonical pathname', () => {
   analytics.captureScreen('/settings');
 
   assert.deepEqual(fake.screens, [{ event: '/settings', properties: undefined }]);
+});
+
+test('quick add measures one sheet visit, repeated saves, and dismissal without content', (t) => {
+  let now = 1_000;
+  t.mock.method(Date, 'now', () => now);
+  const fake = makeClient();
+  const analytics = createAnalyticsService(fake.client);
+
+  analytics.captureQuickAddOpened({ source: 'home_button', inputMode: 'text' });
+  const visitId = fake.captured[0].properties?.quick_add_id;
+  assert.equal(typeof visitId, 'string');
+  analytics.captureQuickAddOpened({ source: 'raise_to_speak', inputMode: 'voice' });
+  analytics.captureVoiceInputStarted();
+  analytics.captureVoiceInputResult({ outcome: 'success' });
+  analytics.captureVoiceInputResult({ outcome: 'empty' });
+  now = 6_000;
+  analytics.captureQuickAddSubmitted({ datePreset: 'today', allDay: false });
+  analytics.captureReminderCreated({
+    source: 'home_button',
+    datePreset: 'today',
+    notificationStatus: 'scheduled',
+  });
+  analytics.captureReminderCreated({
+    source: 'home_button',
+    datePreset: 'tomorrow',
+    notificationStatus: 'scheduled',
+  });
+  now = 11_000;
+  analytics.captureQuickAddClosed();
+  analytics.captureQuickAddClosed();
+
+  assert.equal(fake.captured.filter(({ event }) => event === 'quick add opened').length, 1);
+  assert.equal(fake.captured.filter(({ event }) => event === 'voice input result').length, 1);
+  const created = fake.captured.filter(({ event }) => event === 'reminder created');
+  assert.equal(created[0].properties?.quick_add_id, visitId);
+  assert.equal(created[0].properties?.input_mode, 'voice');
+  assert.equal(created[0].properties?.first_in_quick_add, true);
+  assert.equal(created[0].properties?.elapsed_seconds, 5);
+  assert.equal(created[1].properties?.input_mode, 'text');
+  assert.equal(created[1].properties?.first_in_quick_add, false);
+  assert.equal(created[1].properties?.elapsed_seconds, undefined);
+  assert.deepEqual(fake.captured.at(-1), {
+    event: 'quick add closed',
+    properties: {
+      quick_add_id: visitId,
+      source: 'home_button',
+      outcome: 'created',
+      created_count: 2,
+      elapsed_seconds: 10,
+    },
+  });
+});
+
+test('consent gates activity and forgets unfinished input tracking on withdrawal', async () => {
+  const fake = makeClient();
+  fake.client.optedOut = true;
+  const analytics = createAnalyticsService(fake.client);
+  analytics.captureQuickAddOpened({ source: 'home_button' });
+  analytics.captureVoiceInputStarted();
+  analytics.captureAppActive({ source: 'resume' });
+  assert.deepEqual(fake.captured, []);
+
+  await analytics.setCaptureEnabled(true);
+  await analytics.setCaptureEnabled(true);
+  assert.equal(fake.captured.filter(({ event }) => event === 'app active').length, 1);
+  analytics.captureQuickAddOpened({ source: 'home_button' });
+  analytics.captureVoiceInputStarted();
+  await analytics.setCaptureEnabled(false);
+  await analytics.setCaptureEnabled(true);
+  const count = fake.captured.length;
+  analytics.captureQuickAddClosed();
+  analytics.captureVoiceInputResult({ outcome: 'success' });
+  assert.equal(fake.captured.length, count);
+});
+
+test('version and environment context accompany every captured event and screen', () => {
+  const fake = makeClient();
+  const context = {
+    analytics_version: 2,
+    environment: 'production' as const,
+    platform: 'android',
+    app_version: '0.1.0',
+    app_build: '12',
+  };
+  const analytics = createAnalyticsService(fake.client, { context });
+  analytics.captureScreen('/');
+  analytics.captureAppActive({ source: 'resume' });
+  assert.deepEqual(fake.screens[0], { event: '/', properties: context });
+  assert.deepEqual(fake.captured[0], {
+    event: 'app active',
+    properties: { ...context, source: 'resume' },
+  });
+});
+
+test('withdrawal during opt-in prevents measurement start and leaves the SDK opted out', async () => {
+  const fake = makeClient();
+  fake.client.optedOut = true;
+  let finishOptIn!: () => void;
+  let announceOptIn!: () => void;
+  const optInStarted = new Promise<void>((resolve) => {
+    announceOptIn = resolve;
+  });
+  const optInFinished = new Promise<void>((resolve) => {
+    finishOptIn = resolve;
+  });
+  fake.client.optIn = async () => {
+    announceOptIn();
+    await optInFinished;
+    fake.client.optedOut = false;
+  };
+  const analytics = createAnalyticsService(fake.client);
+  const enabling = analytics.setCaptureEnabled(true);
+  await optInStarted;
+  const disabling = analytics.setCaptureEnabled(false);
+  await Promise.resolve();
+  await Promise.resolve();
+  finishOptIn();
+  await Promise.all([enabling, disabling]);
+
+  assert.deepEqual(fake.captured, []);
+  assert.equal(fake.client.optedOut, true);
+  assert.equal(await analytics.getCaptureEnabled(), false);
 });
 
 test('analytics is a no-op without a configured client and isolates SDK failures', async () => {
@@ -228,12 +366,15 @@ test('lazy analytics does not create a client or capture before explicit consent
 
   assert.equal(await analytics.setCaptureEnabled(true), true);
   assert.equal(factoryCalls, 1);
+  assert.deepEqual(fake.captured, [
+    { event: 'app active', properties: { source: 'measurement_started' } },
+  ]);
   analytics.captureScreen('/');
   assert.deepEqual(fake.screens, [{ event: '/', properties: undefined }]);
 
   assert.equal(await analytics.setCaptureEnabled(false), false);
   analytics.captureQuickAddOpened({ source: 'home_button' });
-  assert.deepEqual(fake.captured, []);
+  assert.equal(fake.captured.length, 1);
 });
 
 test('analytics does not expose a deletion request identifier', () => {

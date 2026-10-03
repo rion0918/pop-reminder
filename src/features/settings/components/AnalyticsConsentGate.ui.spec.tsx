@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 const mockUpdateAnalyticsConsent = jest.fn();
 const mockCaptureScreen = jest.fn();
@@ -52,6 +52,14 @@ describe('AnalyticsConsentGate', () => {
 
     expect(mockSetCaptureEnabled).toHaveBeenCalledTimes(1);
     expect(mockSetCaptureEnabled).toHaveBeenCalledWith(true);
+    await waitFor(() => expect(mockCaptureScreen).toHaveBeenCalledWith('/settings'));
+  });
+
+  it('does not record the initial screen if restoring consent fails', async () => {
+    mockAnalyticsConsent = 'granted';
+    mockSetCaptureEnabled.mockResolvedValueOnce(false);
+    await render(<AnalyticsConsentGate>{null}</AnalyticsConsentGate>);
+    expect(mockCaptureScreen).not.toHaveBeenCalled();
   });
 
   it('persists consent before capturing the current screen', async () => {

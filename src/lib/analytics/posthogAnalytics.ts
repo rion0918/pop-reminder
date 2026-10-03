@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LegacyFileSystem from 'expo-file-system/legacy';
+import * as Application from 'expo-application';
+import { Platform } from 'react-native';
 import PostHog from 'posthog-react-native';
 
 import { createAnalyticsService, isAllowedAnalyticsEvent } from './analyticsService';
@@ -25,6 +27,19 @@ const allowedPostHogPropertyKeys = new Set([
   'can_ask_again',
   'placement',
   'outcome',
+  'status',
+  'reason',
+  'analytics_version',
+  'environment',
+  'platform',
+  'app_version',
+  'app_build',
+  'quick_add_id',
+  'input_mode',
+  'all_day',
+  'first_in_quick_add',
+  'elapsed_seconds',
+  'created_count',
 ]);
 
 const posthogStorage = {
@@ -99,4 +114,13 @@ function createPostHogClient() {
 
 export const posthogAnalytics = createAnalyticsService(createPostHogClient, {
   configured: Boolean(posthogApiKey),
+  context: {
+    analytics_version: 2,
+    environment: __DEV__ ? 'development' : 'production',
+    platform: Platform.OS,
+    ...(Application.nativeApplicationVersion
+      ? { app_version: Application.nativeApplicationVersion }
+      : {}),
+    ...(Application.nativeBuildVersion ? { app_build: Application.nativeBuildVersion } : {}),
+  },
 });

@@ -29,11 +29,18 @@ export function AppProviders({ children }: PropsWithChildren) {
   }, [pathname]);
 
   useEffect(() => {
+    let wasBackgrounded = false;
     const subscription = AppState.addEventListener('change', (state) => {
       const isActive = state === 'active';
+      if (state === 'background') wasBackgrounded = true;
       if (!isActive) {
         focusManager.setFocused(false);
         return;
+      }
+
+      if (wasBackgrounded) {
+        appServices.analytics.captureAppActive({ source: 'resume' });
+        wasBackgrounded = false;
       }
 
       const cleanupTask = appServices.reminders.cleanup();

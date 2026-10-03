@@ -77,7 +77,7 @@ type LegalDocument = {
 
 const privacyPolicyDocument: LegalDocument = {
   title: 'プライバシーポリシー',
-  updatedAt: '2026年9月7日',
+  updatedAt: '2026年10月3日',
   sections: [
     {
       title: '1. 基本方針',
@@ -97,7 +97,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '5. 匿名の利用状況について',
-      body: '品質改善のためPostHogの解析SDKを使用し、明示的な同意後に利用状況をPostHog の US Cloud（米国）へ送信します。初期状態は無効・未選択で、設定画面の「匿名の利用状況を共有」からいつでも停止・再開できます。共有しなくてもリマインダーの基本機能を利用できます。SDKが生成する匿名ID、イベントの発生時刻・識別子、SDK名・バージョンと、次の画面表示・操作結果を送信します。匿名IDは氏名やメールアドレスに紐付けませんが、同じアプリ利用のイベントを関連付けるための識別子です。対象は、ホーム・一覧・設定の画面表示、追加画面を開いた経路、作成・編集・削除の成功、日付プリセットの種類、編集箇所、削除件数、通知予約の成否・理由、通知権限の再確認可否、無料上限への到達経路、購入画面と購入復元の結果です。PostHogへの分析データに、リマインダーのタイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません。音声・録音・文字起こし・モーション値、端末モデル・OS・ロケールも含めません。タッチ操作の自動収集、セッションリプレイ、クラッシュの自動収集、位置情報の推定、リモートFeature Flag、広告SDKは使用しません。通信先には接続に必要なIPアドレスが伝わります。アプリからIPアドレスを分析イベントの項目として追加せず、SDKの位置情報推定を無効にしています。',
+      body: '品質改善のためPostHogの解析SDKを使用し、明示的な同意後に利用状況をPostHog の US Cloud（米国）へ送信します。初期状態は無効・未選択で、設定画面の「匿名の利用状況を共有」からいつでも停止・再開できます。共有しなくてもリマインダーの基本機能を利用できます。SDKが生成する匿名ID、イベントの発生時刻・識別子、SDK名・バージョン、アプリのバージョン・ビルド番号、Android／iOSなどのプラットフォーム、開発・本番ビルドの区分と、次の画面表示・操作結果を送信します。匿名IDは氏名やメールアドレスに紐付けませんが、同じアプリ利用のイベントを関連付けるための識別子です。対象は、ホーム・一覧・設定の画面表示、アプリの利用開始・再訪、追加画面を開いた経路・入力方法、保存操作・失敗・画面を閉じた結果、最初の保存までの所要時間、音声入力の開始・成功・失敗・キャンセルの結果、作成・編集・削除の成功、日付プリセットの種類、終日／時刻指定の区分、編集箇所、削除件数、通知予約の成否・理由、通知権限の状態・再確認可否、無料上限への到達経路、購入画面の表示要求・購入・復元・中断などの結果です。追加画面の一回の訪問を関連付けるために、一時的な匿名の訪問IDも送信します。PostHogへの分析データに、リマインダーのタイトル、リマインダーID、具体的な日付・時刻、設定値、価格、ストア取引ID、ディープリンクURLは送信しません。音声・録音・文字起こし・モーション値、端末モデル・OSのバージョン・ロケールも含めません。タッチ操作の自動収集、セッションリプレイ、クラッシュの自動収集、位置情報の推定、リモートFeature Flag、広告SDKは使用しません。通信先には接続に必要なIPアドレスが伝わります。アプリからIPアドレスを分析イベントの項目として追加せず、SDKの位置情報推定を無効にしています。',
     },
     {
       title: '6. 利用状況計測の停止と保持期間',
@@ -384,6 +384,7 @@ export function SettingsScreen() {
   const handleRequestNotificationPermission = async () => {
     const permission = await requestNotificationPermissions();
     analytics.captureNotificationPermissionUpdated({
+      source: 'settings',
       status: permission.status,
       canAskAgain: permission.canAskAgain,
     });
@@ -589,6 +590,7 @@ export function SettingsScreen() {
 
     setIsPurchaseActionPending(true);
     try {
+      analytics.captureProPaywallRequested({ placement: 'settings' });
       const result = await purchases.presentProPaywallIfNeeded();
       analytics.captureProPaywallResult({ placement: 'settings', outcome: result });
       await refreshProAccess();
