@@ -28,13 +28,17 @@ gradle.projectsEvaluated {
   def worklets = project(":react-native-worklets")
   def reanimated = project(":react-native-reanimated")
   [Debug: "Debug", Release: "RelWithDebInfo"].each { variant, cmakeVariant ->
-    def syncLibraries = worklets.tasks.register("sync${variant}LibrariesForReanimated", Sync) {
+    def syncLibraries = worklets.tasks.register("sync${variant}LibrariesForReanimated", Copy) {
       dependsOn worklets.tasks.named("externalNativeBuild${variant}")
       from(worklets.fileTree("${worklets.buildDir}/intermediates/cxx/${cmakeVariant}") {
         include "**/obj/*/libworklets.so"
       })
       into "${worklets.buildDir}/intermediates/cmake/${variant.toLowerCase()}/obj"
-      eachFile { path = "${file.parentFile.name}/${file.name}" }
+      eachFile {
+        path = "${file.parentFile.name}/${file.name}"
+        // Some AGP environments already produce the native library at this path.
+        if (new File(destinationDir, path).exists()) exclude()
+      }
       includeEmptyDirs = false
     }
     reanimated.tasks.matching { it.name.startsWith("buildCMake${cmakeVariant}[") }.configureEach {
