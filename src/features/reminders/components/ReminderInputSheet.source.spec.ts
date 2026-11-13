@@ -111,11 +111,11 @@ test('voice input gives one heavy impact on the listening start event', () => {
   assert.equal(beginVoiceInput.includes('Haptics.impactAsync'), false);
 });
 
-test('Android voice completion parses the transcript and applies only concrete fields', () => {
+test('voice completion parses the transcript and applies only concrete fields on both iOS and Android', () => {
   assertSourceIncludes(source, [
     /import \{ parseVoiceReminder \} from '\.\.\/domain\/voiceReminderParser';/,
     /import \{ getVoiceReminderSchedulePatch \} from '\.\.\/presentation\/voiceReminderSchedule';/,
-    /Platform\.OS === 'android' && shouldConfirmEnd && completedTranscript/,
+    /if \(shouldConfirmEnd && completedTranscript\)/,
     /currentDateTime: parseNow/,
     /currentUiDate: currentUiDateRef\.current/,
     /currentUiTime: currentUiTimeRef\.current/,
@@ -139,7 +139,7 @@ test('Android voice recognition replaces the draft while iOS keeps its existing 
   assertSourceIncludes(source, [
     /voiceVisibleTranscriptRef\.current = currentTranscript;/,
     /Platform\.OS === 'android'\s*\?\s*currentTranscript\s*:\s*joinVoiceText\(voiceBaselineTitleRef\.current, currentTranscript\)/,
-    /replaceDraftTitle\(parsed\.title\.value\)/,
+    /Platform\.OS === 'android'\s*\?\s*parsed\.title\.value\s*:\s*joinVoiceText\(voiceBaselineTitleRef\.current, parsed\.title\.value\)/,
   ]);
 });
 

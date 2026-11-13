@@ -182,8 +182,21 @@ test('local development uses the Expo-compatible Node version', () => {
 
   const nodeVersion = readFileSync(nodeVersionPath, 'utf8').trim();
 
-  assert.equal(nodeVersion, '24.16.0');
-  assert.match(flakeConfig, /nodejs_24/);
+  assert.equal(nodeVersion, '24.22.1');
+  assert.match(
+    flakeConfig,
+    /nodeVersion = pkgs\.lib\.trim \(builtins\.readFile \.\/\.node-version\)/,
+  );
+  assert.match(flakeConfig, /https:\/\/nodejs\.org\/dist\/v\$\{nodeVersion\}/);
+  assert.match(flakeConfig, /pnpm\.override \{ nodejs-slim = nodejs; \}/);
+});
+
+test('EAS builds use the security-patched Node version selected for CI', () => {
+  const nodeVersion = readFileSync(nodeVersionPath, 'utf8').trim();
+
+  for (const profile of ['development', 'preview', 'production']) {
+    assert.equal(easConfig.build[profile].node, nodeVersion, profile);
+  }
 });
 
 test('macOS development shell leaves native builds to the Apple toolchain', () => {
@@ -265,7 +278,7 @@ test('side-tilt voice uses Android on-device recognition with a bundled local fa
   assert.match(iosVoiceInput, /ExpoSpeechRecognition/);
   assert.match(
     iosInfoPlist,
-    /<key>NSMicrophoneUsageDescription<\/key>\s*<string>ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。<\/string>/,
+    /<key>NSMicrophoneUsageDescription<\/key>\s*<string>ふわっと。がリマインダーのタイトルを音声入力するために、マイクを使用します。<\/string>/,
   );
   assert.match(
     iosInfoPlist,
@@ -273,7 +286,7 @@ test('side-tilt voice uses Android on-device recognition with a bundled local fa
   );
   assert.match(
     iosInfoPlist,
-    /<key>NSSpeechRecognitionUsageDescription<\/key>\s*<string>ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。<\/string>/,
+    /<key>NSSpeechRecognitionUsageDescription<\/key>\s*<string>ふわっと。が音声を文字に変換するために、OSの音声認識を使用します。<\/string>/,
   );
   assert.match(
     androidManifest,
@@ -489,8 +502,8 @@ test('store listing draft documents privacy and platform release notes', () => {
   );
   assert.match(storeDraft, /RevenueCat/);
   assert.match(storeDraft, /左右に傾けて音声入力/);
-  assert.match(storeDraft, /音声認識は端末内/);
-  assert.match(storeDraft, /録音、文字起こし、モーション値は外部送信しません/);
+  assert.match(storeDraft, /音声認識はOS標準の音声認識機能/);
+  assert.match(storeDraft, /開発者は音声、録音、モーション値を保存、分析、収集しません/);
   assert.match(storeDraft, /買い切りの「Pro版ふわっと。」/);
   assert.match(storeDraft, /Android先行/);
   assert.match(storeDraft, /App Store後追い/);
@@ -554,7 +567,7 @@ test('privacy policy documents the current release data handling', () => {
   const privacyPolicy = readFileSync(privacyPolicyPath, 'utf8');
 
   assert.match(privacyPolicy, /プライバシーポリシー/);
-  assert.match(privacyPolicy, /最終更新日: 2026年10月3日/);
+  assert.match(privacyPolicy, /最終更新日: 2026年11月14日/);
   assert.match(privacyPolicy, /「ふわっと。」は/);
   assert.match(privacyPolicy, /端末内に保存/);
   assert.match(privacyPolicy, /開発者によるリマインダーの外部サーバー同期はありません/);
@@ -568,8 +581,11 @@ test('privacy policy documents the current release data handling', () => {
   assert.match(privacyPolicy, /AndroidとiOSの間で購入権利は共有されません/);
   assert.match(privacyPolicy, /通知権限/);
   assert.match(privacyPolicy, /マイクとモーション/);
-  assert.match(privacyPolicy, /音声認識は端末内/);
-  assert.match(privacyPolicy, /音声、録音、モーション値は保存、分析、外部送信しません/);
+  assert.match(privacyPolicy, /音声認識はOS標準の音声認識機能/);
+  assert.match(
+    privacyPolicy,
+    /開発者が音声、録音、文字起こし、モーション値を保存、分析、収集することはありません/,
+  );
   assert.doesNotMatch(privacyPolicy, /近接センサー|近接情報/);
   assert.match(privacyPolicy, /文字起こしを分析、外部送信することはありません/);
   assert.match(privacyPolicy, /データの削除/);

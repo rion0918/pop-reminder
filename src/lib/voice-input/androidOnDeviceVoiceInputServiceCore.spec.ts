@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  createAndroidOnDeviceVoiceInputService,
   type AndroidOnDeviceSpeechRecognitionModule,
+  createAndroidOnDeviceVoiceInputService,
 } from './androidOnDeviceVoiceInputServiceCore';
+import { REMINDER_CONTEXTUAL_STRINGS } from './orcaSpeechPipeline';
 
-function makeNative(installedLocales: string[] = ['ja-JP']) {
+function makeNative(installedLocales: string[] = ['ja-JP'], locales: string[] = ['ja-JP']) {
   const starts: Record<string, unknown>[] = [];
   const listeners = new Map<string, (event: unknown) => void>();
   const calls = { supportedLocales: 0, download: 0, abort: 0 };
@@ -27,7 +28,7 @@ function makeNative(installedLocales: string[] = ['ja-JP']) {
     }),
     async getSupportedLocales() {
       calls.supportedLocales += 1;
-      return { locales: ['ja-JP'], installedLocales };
+      return { locales, installedLocales };
     },
     async androidTriggerOfflineModelDownload() {
       calls.download += 1;
@@ -49,27 +50,63 @@ function makeNative(installedLocales: string[] = ['ja-JP']) {
   return { native, starts, calls };
 }
 
-test('Android on-device provider requires Android 13 and an installed Japanese locale', async () => {
-  const oldAndroid = makeNative();
+test('Android OS provider supports hybrid recognition on Android 9+ and enforces installed locales only when strict on-device is requested', async () => {
+  const unsupportedAndroid = makeNative();
   assert.deepEqual(
     await createAndroidOnDeviceVoiceInputService({
-      native: oldAndroid.native,
-      apiLevel: 32,
+      native: unsupportedAndroid.native,
+      apiLevel: 27,
     }).getAvailability(),
     { status: 'unsupported', canAskAgain: false },
   );
 
-  const missingLocale = makeNative([]);
+  const android12Hybrid = makeNative([]);
   assert.deepEqual(
     await createAndroidOnDeviceVoiceInputService({
-      native: missingLocale.native,
+      native: android12Hybrid.native,
+      apiLevel: 32,
+    }).getAvailability(),
+    { status: 'ready', canAskAgain: true },
+  );
+
+  const missingOfflinePackHybrid = makeNative([]);
+  assert.deepEqual(
+    await createAndroidOnDeviceVoiceInputService({
+      native: missingOfflinePackHybrid.native,
       apiLevel: 35,
+    }).getAvailability(),
+    { status: 'ready', canAskAgain: true },
+  );
+
+  assert.deepEqual(
+    await createAndroidOnDeviceVoiceInputService({
+      native: missingOfflinePackHybrid.native,
+      apiLevel: 35,
+      requiresOnDeviceRecognition: true,
     }).getAvailability(),
     { status: 'model-unavailable', canAskAgain: false },
   );
+
+  const unsupportedOnDeviceLocale = makeNative([], ['en-US']);
+  assert.deepEqual(
+    await createAndroidOnDeviceVoiceInputService({
+      native: unsupportedOnDeviceLocale.native,
+      apiLevel: 35,
+    }).getAvailability(),
+    { status: 'ready', canAskAgain: true },
+  );
+
+  assert.deepEqual(
+    await createAndroidOnDeviceVoiceInputService({
+      native: unsupportedOnDeviceLocale.native,
+      apiLevel: 35,
+      requiresOnDeviceRecognition: true,
+    }).getAvailability(),
+    { status: 'unsupported', canAskAgain: false },
+  );
 });
 
-test('Android on-device provider can prepare a missing locale and starts final-only', async () => {
+test('Android OS provider can prepare a missing offline locale and starts final-only with contextual biasing', async () => {
   const missing = makeNative([]);
   const missingService = createAndroidOnDeviceVoiceInputService({
     native: missing.native,
@@ -92,7 +129,9 @@ test('Android on-device provider can prepare a missing locale and starts final-o
     interimResults: false,
     maxAlternatives: 1,
     continuous: false,
-    requiresOnDeviceRecognition: true,
+    requiresOnDeviceRecognition: false,
+    addsPunctuation: true,
+    contextualStrings: [...REMINDER_CONTEXTUAL_STRINGS],
     recordingOptions: { persist: false },
     volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
   });

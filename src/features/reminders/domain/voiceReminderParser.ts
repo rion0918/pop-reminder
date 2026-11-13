@@ -191,7 +191,7 @@ function cleanTitle(
   result = result.replace(/(?:の\s*)?を\s*(?:お願いします|お願いいたします)\s*$/, ' ');
 
   const fillerPattern = new RegExp(
-    `(?:^|[、,])\\s*(えっと|えーと|えーっと|あのー|うーん|んー|なんか|まあ|その|あの)(?=\\s|[、,。]|${TEMPORAL_PLACEHOLDER}|$)`,
+    `(?:^|[、,])\\s*(えっと|えーと|えーっと|ええと|えー|あのー|あのう|あー|うーん|うー|んー|なんか|まあー|まあ|そのー|その|あの)(?=\\s|[、,。]|${TEMPORAL_PLACEHOLDER}|$)`,
     'g',
   );
   for (let previous = ''; previous !== result;) {

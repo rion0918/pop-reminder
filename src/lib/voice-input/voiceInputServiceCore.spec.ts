@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { REMINDER_CONTEXTUAL_STRINGS } from './orcaSpeechPipeline';
 import {
   createVoiceInputService,
   type NativeSpeechRecognitionModule,
@@ -8,11 +9,21 @@ import {
 
 function makeModule(overrides: Partial<NativeSpeechRecognitionModule> = {}) {
   const starts: Record<string, unknown>[] = [];
-  const calls = { requestMicrophone: 0, stop: 0, abort: 0 };
+  const calls = { requestCombined: 0, requestMicrophone: 0, stop: 0, abort: 0 };
   const listeners = new Map<string, (event: unknown) => void>();
   const module: NativeSpeechRecognitionModule = {
     isRecognitionAvailable: () => true,
     supportsOnDeviceRecognition: () => true,
+    getPermissionsAsync: async () => ({
+      granted: true,
+      status: 'granted',
+      canAskAgain: true,
+      expires: 'never',
+    }),
+    requestPermissionsAsync: async () => {
+      calls.requestCombined += 1;
+      return { granted: true, status: 'granted', canAskAgain: true, expires: 'never' };
+    },
     getMicrophonePermissionsAsync: async () => ({
       granted: true,
       status: 'granted',
@@ -47,7 +58,7 @@ function makeModule(overrides: Partial<NativeSpeechRecognitionModule> = {}) {
   };
 }
 
-test('iOS voice input starts Japanese on-device recognition without persisting audio', async () => {
+test('iOS voice input starts Japanese hybrid dictation recognition with contextual biasing without persisting audio', async () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
 
@@ -59,10 +70,12 @@ test('iOS voice input starts Japanese on-device recognition without persisting a
       interimResults: true,
       maxAlternatives: 1,
       continuous: true,
-      requiresOnDeviceRecognition: true,
+      requiresOnDeviceRecognition: false,
+      addsPunctuation: true,
+      contextualStrings: [...REMINDER_CONTEXTUAL_STRINGS],
       recordingOptions: { persist: false },
       volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
-      iosTaskHint: 'search',
+      iosTaskHint: 'dictation',
     },
   ]);
 });
@@ -82,7 +95,9 @@ test('Android platform recognizer can be configured for final-only short utteran
     interimResults: false,
     maxAlternatives: 1,
     continuous: false,
-    requiresOnDeviceRecognition: true,
+    requiresOnDeviceRecognition: false,
+    addsPunctuation: true,
+    contextualStrings: [...REMINDER_CONTEXTUAL_STRINGS],
     recordingOptions: { persist: false },
     volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
   });
@@ -90,7 +105,7 @@ test('Android platform recognizer can be configured for final-only short utteran
 
 test('iOS availability distinguishes permission and unsupported states', async () => {
   const permissionRequired = makeModule({
-    getMicrophonePermissionsAsync: async () => ({
+    getPermissionsAsync: async () => ({
       granted: false,
       status: 'undetermined',
       canAskAgain: true,
@@ -106,7 +121,7 @@ test('iOS availability distinguishes permission and unsupported states', async (
   );
 
   const denied = makeModule({
-    getMicrophonePermissionsAsync: async () => ({
+    getPermissionsAsync: async () => ({
       granted: false,
       status: 'denied',
       canAskAgain: false,
@@ -118,24 +133,42 @@ test('iOS availability distinguishes permission and unsupported states', async (
     { status: 'permission-denied', canAskAgain: false },
   );
 
-  const unsupported = makeModule({ supportsOnDeviceRecognition: () => false });
+  const noRecognition = makeModule({ isRecognitionAvailable: () => false });
   assert.deepEqual(
-    await createVoiceInputService(unsupported.module, {
+    await createVoiceInputService(noRecognition.module, {
       os: 'ios',
       apiLevel: 18,
     }).getAvailability(),
     { status: 'unsupported', canAskAgain: false },
   );
+
+  const hybridWhenOnDeviceUnsupported = makeModule({ supportsOnDeviceRecognition: () => false });
+  assert.deepEqual(
+    await createVoiceInputService(hybridWhenOnDeviceUnsupported.module, {
+      os: 'ios',
+      apiLevel: 18,
+    }).getAvailability(),
+    { status: 'ready', canAskAgain: true },
+  );
+
+  assert.deepEqual(
+    await createVoiceInputService(
+      hybridWhenOnDeviceUnsupported.module,
+      { os: 'ios', apiLevel: 18 },
+      { requiresOnDeviceRecognition: true },
+    ).getAvailability(),
+    { status: 'unsupported', canAskAgain: false },
+  );
 });
 
-test('iOS voice input normalizes results, lifecycle events, and public errors', () => {
+test('iOS voice input normalizes results, cleans Japanese fillers, and handles lifecycle events', () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
   const events: unknown[] = [];
   const subscription = service.subscribe((event) => events.push(event));
 
   fake.emit('start');
-  fake.emit('result', { results: [{ transcript: '買い物' }], isFinal: false });
+  fake.emit('result', { results: [{ transcript: 'えーと、買い物' }], isFinal: false });
   fake.emit('nomatch');
   fake.emit('error', { error: 'language-unavailable', message: 'model missing' });
   fake.emit('end');
@@ -153,7 +186,7 @@ test('iOS voice input normalizes results, lifecycle events, and public errors', 
   assert.equal(events.length, 5);
 });
 
-test('iOS preparation requests microphone permission and preserves stop and abort', async () => {
+test('iOS preparation requests combined speech permission in hybrid mode and preserves stop and abort', async () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
 
@@ -162,8 +195,17 @@ test('iOS preparation requests microphone permission and preserves stop and abor
   service.abort();
 
   assert.deepEqual(fake.calls, {
-    requestMicrophone: 1,
+    requestCombined: 1,
+    requestMicrophone: 0,
     stop: 1,
     abort: 1,
   });
+
+  const onDeviceService = createVoiceInputService(
+    fake.module,
+    { os: 'ios', apiLevel: 18 },
+    { requiresOnDeviceRecognition: true },
+  );
+  await onDeviceService.requestMicrophonePermission();
+  assert.equal(fake.calls.requestMicrophone, 1);
 });

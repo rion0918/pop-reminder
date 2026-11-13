@@ -4,6 +4,7 @@ import type {
   ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
 
+import { REMINDER_CONTEXTUAL_STRINGS, removeJapaneseFillerWords } from './orcaSpeechPipeline';
 import type {
   VoiceInputError,
   VoiceInputEvent,
@@ -18,6 +19,8 @@ type VoiceNativeEventName = 'start' | 'end' | 'result' | 'error' | 'nomatch' | '
 export type NativeSpeechRecognitionModule = {
   isRecognitionAvailable(): boolean;
   supportsOnDeviceRecognition(): boolean;
+  getPermissionsAsync?(): Promise<VoiceInputPermissionResponse>;
+  requestPermissionsAsync?(): Promise<VoiceInputPermissionResponse>;
   getMicrophonePermissionsAsync(): Promise<VoiceInputPermissionResponse>;
   requestMicrophonePermissionsAsync(): Promise<VoiceInputPermissionResponse>;
   start(options: ExpoSpeechRecognitionOptions): void;
@@ -31,9 +34,12 @@ type PlatformInfo = {
   apiLevel: number;
 };
 
-type VoiceInputStartOptions = {
+export type VoiceInputStartOptions = {
   interimResults?: boolean;
   continuous?: boolean;
+  requiresOnDeviceRecognition?: boolean;
+  addsPunctuation?: boolean;
+  contextualStrings?: readonly string[];
 };
 
 function normalizeSpeechRecognitionError(error: string): VoiceInputError {
@@ -52,16 +58,23 @@ export function createVoiceInputService(
   platform: PlatformInfo,
   startOptions: VoiceInputStartOptions = {},
 ) {
+  const requiresCombinedSpeechPermission =
+    platform.os === 'ios' && !(startOptions.requiresOnDeviceRecognition ?? false);
+
   const service: VoiceInputService = {
     async getAvailability() {
       if (
         !speechRecognition.isRecognitionAvailable() ||
-        !speechRecognition.supportsOnDeviceRecognition()
+        (Boolean(startOptions.requiresOnDeviceRecognition) &&
+          !speechRecognition.supportsOnDeviceRecognition())
       ) {
         return { status: 'unsupported', canAskAgain: false };
       }
 
-      const permission = await speechRecognition.getMicrophonePermissionsAsync();
+      const permission = await (requiresCombinedSpeechPermission &&
+      speechRecognition.getPermissionsAsync
+        ? speechRecognition.getPermissionsAsync()
+        : speechRecognition.getMicrophonePermissionsAsync());
       if (!permission.granted) {
         if (permission.canAskAgain) {
           return { status: 'permission-required', canAskAgain: true };
@@ -73,6 +86,9 @@ export function createVoiceInputService(
     },
 
     requestMicrophonePermission() {
+      if (requiresCombinedSpeechPermission && speechRecognition.requestPermissionsAsync) {
+        return speechRecognition.requestPermissionsAsync();
+      }
       return speechRecognition.requestMicrophonePermissionsAsync();
     },
 
@@ -82,10 +98,12 @@ export function createVoiceInputService(
         interimResults: startOptions.interimResults ?? true,
         maxAlternatives: 1,
         continuous: startOptions.continuous ?? true,
-        requiresOnDeviceRecognition: true,
+        requiresOnDeviceRecognition: startOptions.requiresOnDeviceRecognition ?? false,
+        addsPunctuation: startOptions.addsPunctuation ?? true,
+        contextualStrings: [...(startOptions.contextualStrings ?? REMINDER_CONTEXTUAL_STRINGS)],
         recordingOptions: { persist: false },
         volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
-        ...(platform.os === 'ios' ? { iosTaskHint: 'search' as const } : {}),
+        ...(platform.os === 'ios' ? { iosTaskHint: 'dictation' as const } : {}),
       };
       speechRecognition.start(options);
     },
@@ -105,9 +123,10 @@ export function createVoiceInputService(
         speechRecognition.addListener('nomatch', () => listener({ type: 'nomatch' })),
         speechRecognition.addListener('result', (event) => {
           const result = event as ExpoSpeechRecognitionResultEvent;
+          const rawTranscript = result.results[0]?.transcript ?? '';
           listener({
             type: 'result',
-            transcript: result.results[0]?.transcript ?? '',
+            transcript: removeJapaneseFillerWords(rawTranscript),
             isFinal: result.isFinal,
           });
         }),

@@ -1,4 +1,6 @@
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 const mockUpdateAnalyticsConsent = jest.fn();
 const mockCaptureScreen = jest.fn();
@@ -96,5 +98,41 @@ describe('AnalyticsConsentGate', () => {
 
     expect(mockUpdateAnalyticsConsent).toHaveBeenCalledWith('denied');
     expect(mockCaptureScreen).not.toHaveBeenCalled();
+  });
+
+  it('applies edge-to-edge modal flags, safe-area padding, and a scroll container', async () => {
+    const view = await render(
+      <SafeAreaInsetsContext.Provider value={{ top: 24, right: 32, bottom: 20, left: 32 }}>
+        <AnalyticsConsentGate>{null}</AnalyticsConsentGate>
+      </SafeAreaInsetsContext.Provider>,
+    );
+
+    const [modal] = view.container.queryAll(
+      (node) => node.type === 'RCTModalHostView' || node.type === 'Modal',
+    );
+    expect(modal).toBeDefined();
+    expect(modal.props.statusBarTranslucent).toBe(true);
+    expect(modal.props.navigationBarTranslucent).toBe(true);
+
+    const [overlay] = view.container.queryAll(
+      (node) => StyleSheet.flatten(node.props.style)?.paddingTop === 36,
+    );
+    expect(overlay).toBeDefined();
+    expect(StyleSheet.flatten(overlay.props.style)).toMatchObject({
+      paddingTop: 36,
+      paddingBottom: 32,
+      paddingLeft: 48,
+      paddingRight: 48,
+    });
+
+    const [card] = view.container.queryAll((node) => node.props.accessibilityViewIsModal === true);
+    expect(StyleSheet.flatten(card.props.style)).toMatchObject({
+      maxWidth: 420,
+      maxHeight: '100%',
+    });
+    expect(
+      view.container.queryAll((node) => node.type === 'RCTScrollView' || node.type === 'ScrollView')
+        .length,
+    ).toBeGreaterThan(0);
   });
 });

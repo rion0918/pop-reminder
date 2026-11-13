@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, Platform, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Accelerometer, DeviceMotion } from 'expo-sensors';
 
@@ -10,6 +10,7 @@ import {
   RAISE_TO_SPEAK_UPDATE_INTERVAL_MS,
   reduceRaiseToSpeakDetector,
   type RaiseToSpeakDetectorState,
+  type RaiseToSpeakScreenOrientation,
   type RaiseToSpeakStopReason,
 } from '../utils/raiseToSpeakDetector';
 
@@ -41,6 +42,9 @@ export function useRaiseToSpeakGesture({
   onStart,
   onStop,
 }: UseRaiseToSpeakGestureOptions) {
+  const { width, height } = useWindowDimensions();
+  const screenOrientation: RaiseToSpeakScreenOrientation =
+    width > height ? 'landscape' : 'portrait';
   const [isFocused, setIsFocused] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
   const [sensorStatus, setSensorStatus] = useState<RaiseToSpeakSensorStatus>('inactive');
@@ -49,10 +53,18 @@ export function useRaiseToSpeakGesture({
   const [tiltProgress, setTiltProgress] = useState<number | null>(null);
   const [retryVersion, setRetryVersion] = useState(0);
   const detectorRef = useRef<RaiseToSpeakDetectorState>(createRaiseToSpeakDetectorState());
+  const screenOrientationRef = useRef<RaiseToSpeakScreenOrientation>(screenOrientation);
   const onStartRef = useRef(onStart);
   const onStopRef = useRef(onStop);
   onStartRef.current = onStart;
   onStopRef.current = onStop;
+
+  if (screenOrientationRef.current !== screenOrientation) {
+    screenOrientationRef.current = screenOrientation;
+    if (detectorRef.current.phase !== 'listening') {
+      detectorRef.current = createRaiseToSpeakDetectorState();
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -118,7 +130,7 @@ export function useRaiseToSpeakGesture({
         setSensorStatus('active');
       }
       const timestamp = Date.now();
-      const tiltMeasurement = getSideTiltMeasurement(gravity);
+      const tiltMeasurement = getSideTiltMeasurement(gravity, screenOrientationRef.current);
       const result = reduceRaiseToSpeakDetector(detectorRef.current, {
         timestamp,
         sideTilted: tiltMeasurement.sideTilted,

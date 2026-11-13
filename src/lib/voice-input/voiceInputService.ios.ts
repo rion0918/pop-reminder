@@ -20,6 +20,8 @@ const unavailablePermission = {
 const nativeSpeechRecognition: NativeSpeechRecognitionModule = optionalSpeechRecognition ?? {
   isRecognitionAvailable: () => false,
   supportsOnDeviceRecognition: () => false,
+  getPermissionsAsync: async () => unavailablePermission,
+  requestPermissionsAsync: async () => unavailablePermission,
   getMicrophonePermissionsAsync: async () => unavailablePermission,
   requestMicrophonePermissionsAsync: async () => unavailablePermission,
   start() {},

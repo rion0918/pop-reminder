@@ -1,3 +1,4 @@
+import { removeJapaneseFillerWords, trimSilenceWithPreroll } from './orcaSpeechPipeline';
 import type {
   VoiceInputEvent,
   VoiceInputPermissionResponse,
@@ -167,12 +168,14 @@ export function createMoonshineVoiceInputService(
         });
         return;
       }
-      const transcription = currentEngine.transcribeSamples(currentSamples, sampleRate);
+      const processedSamples = trimSilenceWithPreroll(currentSamples, sampleRate);
+      const transcription = currentEngine.transcribeSamples(processedSamples, sampleRate);
       inFlightTranscription = transcription;
       const result = await transcription;
       if (inFlightTranscription === transcription) inFlightTranscription = null;
       if (!isActive(sessionId)) return;
-      const transcript = typeof result.text === 'string' ? result.text.trim() : '';
+      const rawTranscript = typeof result.text === 'string' ? result.text.trim() : '';
+      const transcript = removeJapaneseFillerWords(rawTranscript);
       if (transcript) {
         emit({ type: 'result', transcript, isFinal: true });
       } else {

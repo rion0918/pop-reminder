@@ -407,3 +407,38 @@ test('Moonshine destroys a model that finishes loading after background release'
   assert.deepEqual(await availability, { status: 'model-unavailable', canAskAgain: false });
   assert.equal(destroyCalls, 1);
 });
+
+test('Moonshine trims excess silence with pre-roll/post-roll and strips Japanese filler words', async () => {
+  const fake = makeNative();
+  let capturedSamples: number[] = [];
+  fake.native.createEngine = async () => ({
+    async transcribeSamples(samples) {
+      capturedSamples = samples;
+      return { text: 'えーと、明日牛乳を買う' };
+    },
+    async destroy() {},
+  });
+  const service = makeService(fake.native);
+  const events: VoiceInputEvent[] = [];
+  service.subscribe((event) => events.push(event));
+
+  await service.start();
+  // 16000 samples (1.0s) of silence, 100 samples of speech, 16000 samples (1.0s) of silence
+  const leadingSilence = new Array(16_000).fill(0);
+  const speech = new Array(100).fill(0.25);
+  const trailingSilence = new Array(16_000).fill(0);
+  fake.emit([...leadingSilence, ...speech, ...trailingSilence]);
+  service.stop();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  // 0.4s pre-roll (6400) + 1 active 20ms frame (320) + 0.6s post-roll (9600) = 16320 samples
+  assert.equal(capturedSamples.length, 16_320);
+  assert.deepEqual(
+    events.filter((event) => event.type !== 'volume'),
+    [
+      { type: 'start' },
+      { type: 'result', transcript: '明日牛乳を買う', isFinal: true },
+      { type: 'end' },
+    ],
+  );
+});

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,12 +17,16 @@ import Animated, {
   withSequence,
   withSpring,
 } from 'react-native-reanimated';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { palette } from '../../../constants/colors';
 import type {
   RaiseToSpeakSensorFailureReason,
   RaiseToSpeakSensorStatus,
 } from '../hooks/useRaiseToSpeakGesture';
+
+const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const FALLBACK_SAFE_AREA_INSETS_CONTEXT = createContext(ZERO_INSETS);
 
 const TILT_PHONE_ROTATION_DEGREES = 9;
 const CALIBRATION_POSE_TIMEOUT_MS = 10_000;
@@ -158,6 +163,8 @@ export function RaiseToSpeakIntroModal({
   onSuccessComplete = NOOP,
 }: RaiseToSpeakIntroModalProps) {
   const setupPhase = phase ?? (calibrating ? 'awaiting-tilt' : 'intro');
+  const safeAreaInsets =
+    useContext(SafeAreaInsetsContext ?? FALLBACK_SAFE_AREA_INSETS_CONTEXT) ?? ZERO_INSETS;
   const isCalibrating = setupPhase === 'awaiting-tilt' || setupPhase === 'awaiting-upright';
   const isDismissLocked =
     busy || setupPhase === 'preparing' || setupPhase === 'saving' || setupPhase === 'success';
@@ -287,86 +294,105 @@ export function RaiseToSpeakIntroModal({
     <Modal
       visible={visible}
       transparent
+      statusBarTranslucent
+      navigationBarTranslucent
       animationType={reduceMotionEnabled ? 'none' : 'fade'}
       onRequestClose={isDismissLocked ? undefined : onDismiss}
     >
-      <View style={styles.overlay}>
+      <View
+        style={[
+          styles.overlay,
+          {
+            paddingTop: Math.max(20, safeAreaInsets.top + 12),
+            paddingBottom: Math.max(20, safeAreaInsets.bottom + 12),
+            paddingLeft: Math.max(22, safeAreaInsets.left + 14),
+            paddingRight: Math.max(22, safeAreaInsets.right + 14),
+          },
+        ]}
+      >
         <View accessibilityViewIsModal style={styles.card}>
-          <TiltPhoneIllustration
-            active={visible && setupPhase === 'intro'}
-            reduceMotionEnabled={reduceMotionEnabled}
-            tiltProgress={isCalibrating ? tiltProgress : null}
-            phase={setupPhase}
-          />
-          <Text accessibilityLiveRegion="polite" style={styles.title}>
-            {title}
-          </Text>
-          <Text accessibilityLiveRegion="polite" style={styles.body}>
-            {body}
-          </Text>
-          {calibrationFeedback ? (
-            <Text accessibilityLiveRegion="polite" style={styles.message}>
-              {calibrationFeedback}
+          <ScrollView
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            style={styles.cardScroll}
+            contentContainerStyle={styles.cardContent}
+          >
+            <TiltPhoneIllustration
+              active={visible && setupPhase === 'intro'}
+              reduceMotionEnabled={reduceMotionEnabled}
+              tiltProgress={isCalibrating ? tiltProgress : null}
+              phase={setupPhase}
+            />
+            <Text accessibilityLiveRegion="polite" style={styles.title}>
+              {title}
             </Text>
-          ) : null}
-          {message ? (
-            <Text accessibilityLiveRegion="polite" style={styles.message}>
-              {message}
+            <Text accessibilityLiveRegion="polite" style={styles.body}>
+              {body}
             </Text>
-          ) : null}
+            {calibrationFeedback ? (
+              <Text accessibilityLiveRegion="polite" style={styles.message}>
+                {calibrationFeedback}
+              </Text>
+            ) : null}
+            {message ? (
+              <Text accessibilityLiveRegion="polite" style={styles.message}>
+                {message}
+              </Text>
+            ) : null}
 
-          <View style={styles.actions}>
-            {setupPhase === 'success' ? null : isCalibrating ||
-              setupPhase === 'preparing' ||
-              setupPhase === 'saving' ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
-                  disabled={isDismissLocked}
-                  onPress={onDismiss}
-                  style={[styles.choiceButton, styles.secondaryButton]}
-                >
-                  <Text style={styles.secondaryLabel}>キャンセル</Text>
-                </Pressable>
-                {canRetry ? (
+            <View style={styles.actions}>
+              {setupPhase === 'success' ? null : isCalibrating ||
+                setupPhase === 'preparing' ||
+                setupPhase === 'saving' ? (
+                <>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="傾きセンサーをもう一度試す"
-                    accessibilityState={{ disabled: isDismissLocked, busy }}
+                    accessibilityLabel="左右に傾けて音声入力の設定をキャンセル"
                     disabled={isDismissLocked}
-                    onPress={handleRetry}
+                    onPress={onDismiss}
+                    style={[styles.choiceButton, styles.secondaryButton]}
+                  >
+                    <Text style={styles.secondaryLabel}>キャンセル</Text>
+                  </Pressable>
+                  {canRetry ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="傾きセンサーをもう一度試す"
+                      accessibilityState={{ disabled: isDismissLocked, busy }}
+                      disabled={isDismissLocked}
+                      onPress={handleRetry}
+                      style={[styles.choiceButton, styles.primaryButton]}
+                    >
+                      <Text style={styles.primaryLabel}>もう一度試す</Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="今は音声入力を使わない"
+                    disabled={busy}
+                    onPress={onDismiss}
+                    style={[styles.choiceButton, styles.secondaryButton]}
+                  >
+                    <Text style={styles.secondaryLabel}>今はしない</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="左右に傾けて音声入力を使ってみる"
+                    accessibilityState={{ disabled: busy, busy }}
+                    disabled={busy}
+                    onPress={onEnable}
                     style={[styles.choiceButton, styles.primaryButton]}
                   >
-                    <Text style={styles.primaryLabel}>もう一度試す</Text>
+                    {busy ? <ActivityIndicator size="small" color={palette.white} /> : null}
+                    <Text style={styles.primaryLabel}>{busy ? '確認中…' : '動きを試す'}</Text>
                   </Pressable>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="今は音声入力を使わない"
-                  disabled={busy}
-                  onPress={onDismiss}
-                  style={[styles.choiceButton, styles.secondaryButton]}
-                >
-                  <Text style={styles.secondaryLabel}>今はしない</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="左右に傾けて音声入力を使ってみる"
-                  accessibilityState={{ disabled: busy, busy }}
-                  disabled={busy}
-                  onPress={onEnable}
-                  style={[styles.choiceButton, styles.primaryButton]}
-                >
-                  {busy ? <ActivityIndicator size="small" color={palette.white} /> : null}
-                  <Text style={styles.primaryLabel}>{busy ? '確認中…' : '動きを試す'}</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+                </>
+              )}
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -376,20 +402,29 @@ export function RaiseToSpeakIntroModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 22,
     backgroundColor: 'rgba(38,49,81,0.28)',
   },
   card: {
-    alignItems: 'center',
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '100%',
+    overflow: 'hidden',
     borderRadius: 28,
-    padding: 22,
     backgroundColor: 'rgba(255,255,255,0.98)',
     shadowColor: palette.shadow,
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.2,
     shadowRadius: 28,
     elevation: 9,
+  },
+  cardScroll: {
+    width: '100%',
+  },
+  cardContent: {
+    alignItems: 'center',
+    padding: 22,
   },
   tiltIllustration: {
     width: 190,
@@ -526,15 +561,19 @@ const styles = StyleSheet.create({
     minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     borderRadius: 17,
   },
   primaryButton: {
+    gap: 6,
     backgroundColor: palette.lavenderDeep,
   },
   primaryLabel: {
     color: palette.white,
     fontSize: 15,
     fontWeight: '900',
+    textAlign: 'center',
   },
   secondaryButton: {
     borderWidth: 1,
@@ -545,5 +584,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 13,
     fontWeight: '800',
+    textAlign: 'center',
   },
 });

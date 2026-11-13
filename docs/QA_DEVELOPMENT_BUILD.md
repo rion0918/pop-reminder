@@ -610,6 +610,7 @@ Development Build に検証用の `EXPO_PUBLIC_POSTHOG_API_KEY` と US Cloud hos
 - [ ] 6件目を追加した後に追加Sheetが閉じ、7件目の追加ボタンを押すと入力前にPaywallが表示される
 - [ ] Android Widgetの追加Deep Linkでも、7件目は同じPaywallへ進む
 - [ ] Paywallに「泡を、好きなだけ。」「買い切り・自動更新なし」、ストアのローカライズ済み価格、閉じる、購入復元が表示される
+- [ ] 日本向けGoogle Play版では価格が300円で、ライセンステスターの購入画面にテスト用の支払い方法が表示される
 - [ ] Paywallを閉じても既存6件は編集、削除、通知できる
 - [ ] 購入成功後は追加Sheetが開き、7件目以降を追加できる
 - [ ] 設定画面に「Pro版ふわっと。」「Pro利用中」が表示される
@@ -773,7 +774,7 @@ iOSはWidgetKitのTimelineで予測可能な時刻の表示切り替えと、デ
 - [ ] 追加Sheetと詳細Sheetを開いた状態でAndroid Backキーを押し、画面離脱ではなくSheetだけ閉じることを確認する
 - [ ] Android 小画面端末で Home、追加 Sheet、設定画面、一覧画面が崩れない
 - [ ] Google Play の配布ページから問い合わせ導線を用意する
-- [ ] Google Playの非消耗型商品 `fuwatto_pro_lifetime` が800円で有効になっている
+- [ ] Google Playの非消耗型商品 `fuwatto_pro_lifetime` が300円で有効になっている
 - [ ] RevenueCatのdefault offeringと`pro` entitlementがGoogle Play商品へ接続されている
 - [ ] ライセンステスターで購入、復元、返金後の権利取消を確認する
 
