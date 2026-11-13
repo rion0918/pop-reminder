@@ -19,6 +19,8 @@ type VoiceNativeEventName = 'start' | 'end' | 'result' | 'error' | 'nomatch' | '
 export type NativeSpeechRecognitionModule = {
   isRecognitionAvailable(): boolean;
   supportsOnDeviceRecognition(): boolean;
+  getPermissionsAsync?(): Promise<VoiceInputPermissionResponse>;
+  requestPermissionsAsync?(): Promise<VoiceInputPermissionResponse>;
   getMicrophonePermissionsAsync(): Promise<VoiceInputPermissionResponse>;
   requestMicrophonePermissionsAsync(): Promise<VoiceInputPermissionResponse>;
   start(options: ExpoSpeechRecognitionOptions): void;
@@ -56,6 +58,9 @@ export function createVoiceInputService(
   platform: PlatformInfo,
   startOptions: VoiceInputStartOptions = {},
 ) {
+  const requiresCombinedSpeechPermission =
+    platform.os === 'ios' && !(startOptions.requiresOnDeviceRecognition ?? false);
+
   const service: VoiceInputService = {
     async getAvailability() {
       if (
@@ -66,7 +71,10 @@ export function createVoiceInputService(
         return { status: 'unsupported', canAskAgain: false };
       }
 
-      const permission = await speechRecognition.getMicrophonePermissionsAsync();
+      const permission = await (requiresCombinedSpeechPermission &&
+      speechRecognition.getPermissionsAsync
+        ? speechRecognition.getPermissionsAsync()
+        : speechRecognition.getMicrophonePermissionsAsync());
       if (!permission.granted) {
         if (permission.canAskAgain) {
           return { status: 'permission-required', canAskAgain: true };
@@ -78,6 +86,9 @@ export function createVoiceInputService(
     },
 
     requestMicrophonePermission() {
+      if (requiresCombinedSpeechPermission && speechRecognition.requestPermissionsAsync) {
+        return speechRecognition.requestPermissionsAsync();
+      }
       return speechRecognition.requestMicrophonePermissionsAsync();
     },
 

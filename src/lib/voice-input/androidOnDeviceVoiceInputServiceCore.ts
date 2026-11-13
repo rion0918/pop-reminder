@@ -84,15 +84,13 @@ export function createAndroidOnDeviceVoiceInputService(
     const baseAvailability = await speechService.getAvailability();
     if (baseAvailability.status !== 'ready') return baseAvailability;
 
-    if (apiLevel < 33) {
+    if (!requiresOnDeviceRecognition) {
       return { status: 'ready', canAskAgain: true };
     }
 
     const supportedLocales = await getInstalledLocales();
     if (!supportedLocales) {
-      return requiresOnDeviceRecognition
-        ? { status: 'unsupported', canAskAgain: false }
-        : { status: 'ready', canAskAgain: true };
+      return { status: 'unsupported', canAskAgain: false };
     }
     if (
       supportedLocales.locales.length > 0 &&
@@ -100,10 +98,7 @@ export function createAndroidOnDeviceVoiceInputService(
     ) {
       return { status: 'unsupported', canAskAgain: false };
     }
-    if (
-      requiresOnDeviceRecognition &&
-      !hasLocale(supportedLocales.installedLocales, VOICE_INPUT_LOCALE)
-    ) {
+    if (!hasLocale(supportedLocales.installedLocales, VOICE_INPUT_LOCALE)) {
       return { status: 'model-unavailable', canAskAgain: false };
     }
     return { status: 'ready', canAskAgain: true };

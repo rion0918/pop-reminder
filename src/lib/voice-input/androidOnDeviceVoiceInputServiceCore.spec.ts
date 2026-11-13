@@ -87,11 +87,20 @@ test('Android OS provider supports hybrid recognition on Android 9+ and enforces
     { status: 'model-unavailable', canAskAgain: false },
   );
 
-  const unsupportedLocale = makeNative([], ['en-US']);
+  const unsupportedOnDeviceLocale = makeNative([], ['en-US']);
   assert.deepEqual(
     await createAndroidOnDeviceVoiceInputService({
-      native: unsupportedLocale.native,
+      native: unsupportedOnDeviceLocale.native,
       apiLevel: 35,
+    }).getAvailability(),
+    { status: 'ready', canAskAgain: true },
+  );
+
+  assert.deepEqual(
+    await createAndroidOnDeviceVoiceInputService({
+      native: unsupportedOnDeviceLocale.native,
+      apiLevel: 35,
+      requiresOnDeviceRecognition: true,
     }).getAvailability(),
     { status: 'unsupported', canAskAgain: false },
   );
