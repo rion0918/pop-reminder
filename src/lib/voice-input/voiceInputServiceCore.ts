@@ -4,6 +4,7 @@ import type {
   ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
 
+import { REMINDER_CONTEXTUAL_STRINGS, removeJapaneseFillerWords } from './orcaSpeechPipeline';
 import type {
   VoiceInputError,
   VoiceInputEvent,
@@ -31,9 +32,12 @@ type PlatformInfo = {
   apiLevel: number;
 };
 
-type VoiceInputStartOptions = {
+export type VoiceInputStartOptions = {
   interimResults?: boolean;
   continuous?: boolean;
+  requiresOnDeviceRecognition?: boolean;
+  addsPunctuation?: boolean;
+  contextualStrings?: readonly string[];
 };
 
 function normalizeSpeechRecognitionError(error: string): VoiceInputError {
@@ -56,7 +60,8 @@ export function createVoiceInputService(
     async getAvailability() {
       if (
         !speechRecognition.isRecognitionAvailable() ||
-        !speechRecognition.supportsOnDeviceRecognition()
+        (Boolean(startOptions.requiresOnDeviceRecognition) &&
+          !speechRecognition.supportsOnDeviceRecognition())
       ) {
         return { status: 'unsupported', canAskAgain: false };
       }
@@ -82,10 +87,12 @@ export function createVoiceInputService(
         interimResults: startOptions.interimResults ?? true,
         maxAlternatives: 1,
         continuous: startOptions.continuous ?? true,
-        requiresOnDeviceRecognition: true,
+        requiresOnDeviceRecognition: startOptions.requiresOnDeviceRecognition ?? false,
+        addsPunctuation: startOptions.addsPunctuation ?? true,
+        contextualStrings: [...(startOptions.contextualStrings ?? REMINDER_CONTEXTUAL_STRINGS)],
         recordingOptions: { persist: false },
         volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
-        ...(platform.os === 'ios' ? { iosTaskHint: 'search' as const } : {}),
+        ...(platform.os === 'ios' ? { iosTaskHint: 'dictation' as const } : {}),
       };
       speechRecognition.start(options);
     },
@@ -105,9 +112,10 @@ export function createVoiceInputService(
         speechRecognition.addListener('nomatch', () => listener({ type: 'nomatch' })),
         speechRecognition.addListener('result', (event) => {
           const result = event as ExpoSpeechRecognitionResultEvent;
+          const rawTranscript = result.results[0]?.transcript ?? '';
           listener({
             type: 'result',
-            transcript: result.results[0]?.transcript ?? '',
+            transcript: removeJapaneseFillerWords(rawTranscript),
             isFinal: result.isFinal,
           });
         }),

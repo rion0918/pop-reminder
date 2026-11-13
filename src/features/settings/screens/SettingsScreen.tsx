@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { ComponentProps } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { useNotificationDevStore } from '../../reminders/stores/notificationDevStore';
 import {
@@ -77,7 +78,7 @@ type LegalDocument = {
 
 const privacyPolicyDocument: LegalDocument = {
   title: 'プライバシーポリシー',
-  updatedAt: '2026年10月3日',
+  updatedAt: '2026年11月14日',
   sections: [
     {
       title: '1. 基本方針',
@@ -93,7 +94,7 @@ const privacyPolicyDocument: LegalDocument = {
     },
     {
       title: '4. 音声入力とセンサーについて',
-      body: '音声入力にマイクを、「左右に傾けて音声入力」にマイクとモーション（加速度など）を利用します。通常のマイクボタンはユーザーが押した場合だけ動作します。「左右に傾けて音声入力」は初期状態でOFFであり、案内または設定画面から明示的に有効化した場合だけ、アプリを操作している間の傾きを検出します。設定画面から停止でき、マイクなどの権限は端末の設定から変更できます。音声認識は端末内で日本語を文字へ変換します。音声、録音、モーション値を保存、分析、外部送信しません。文字起こしからタイトルと日時の候補を端末内で読み取り、追加画面に反映します。ユーザーが認識結果と日時を確認して「追加」を押した場合に、リマインダーとして保存します。文字起こしを分析、外部送信することはありません。AndroidではOSの端末内音声認識またはアプリに同梱した認識用モデルを使用します。準備時にOSの認識用モデルのダウンロードが発生する場合があり、その通信はOSや音声認識サービスの提供者が処理します。音声認識のために音声や文字起こしをクラウドへ送信する機能は使用しません。',
+      body: '音声入力にマイクを、「左右に傾けて音声入力」にマイクとモーション（加速度など）を利用します。通常のマイクボタンはユーザーが押した場合だけ動作します。「左右に傾けて音声入力」は初期状態でOFFであり、案内または設定画面から明示的に有効化した場合だけ、アプリを操作している間の傾きを検出します。設定画面から停止でき、マイクなどの権限は端末の設定から変更できます。音声認識はOS標準の音声認識機能（iOSのApple音声認識、AndroidのGoogle音声認識または端末内モデル）を利用して日本語を文字へ変換します。開発者が音声、録音、文字起こし、モーション値を保存、分析、収集することはありません。文字起こしからタイトルと日時の候補を端末内で読み取り、追加画面に反映します。ユーザーが認識結果と日時を確認して「追加」を押した場合に、リマインダーとして保存します。文字起こしを分析、外部送信することはありません。音声認識の精度向上のため、オンライン時はOSの音声認識サービス（AppleまたはGoogle）へ音声データが送信・処理される場合があります。また、Androidでは準備時にOSの認識用モデルのダウンロードが発生する場合があります。これらの通信および音声認識処理は各OSや音声認識サービスの提供者がそれぞれのプライバシーポリシーに従って処理します。オフライン時やOS認識が利用できないAndroid環境では、アプリに同梱した認識用モデル（Moonshine Tiny JA）が端末内で処理します。',
     },
     {
       title: '5. 匿名の利用状況について',
@@ -189,7 +190,7 @@ const thirdPartyLicensesDocument: LegalDocument = {
     },
     {
       title: 'react-native-sherpa-onnx',
-      body: 'Androidの端末内音声認識ランタイムには、MIT Licenseのreact-native-sherpa-onnxを使用しています。',
+      body: 'Androidのフォールバック用端末内音声認識ランタイムには、MIT Licenseのreact-native-sherpa-onnxを使用しています。',
     },
   ],
 };
@@ -455,7 +456,7 @@ export function SettingsScreen() {
         'model-unavailable':
           '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
         'speech-unavailable':
-          'この端末では日本語の端末内音声認識を利用できません。手入力をご利用ください。',
+          'この端末では日本語の音声認識を利用できません。手入力をご利用ください。',
       }[result.status];
       Alert.alert('左右に傾けて音声入力を利用できません', message);
     } catch (error) {
@@ -508,7 +509,7 @@ export function SettingsScreen() {
         'motion-unavailable': 'この端末ではモーション検出を利用できません。',
         'model-unavailable':
           '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
-        'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
+        'speech-unavailable': 'この端末では日本語の音声認識を利用できません。',
       }[result.status];
       setRaiseToSpeakCalibrationPhase('intro');
       setRaiseToSpeakSetupMessage(message);
@@ -1075,17 +1076,39 @@ export function SettingsScreen() {
   );
 }
 
+const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const FALLBACK_SAFE_AREA_INSETS_CONTEXT = createContext(ZERO_INSETS);
+
 type LegalDocumentModalProps = {
   document: LegalDocument | null;
   onClose: () => void;
 };
 
 function LegalDocumentModal({ document, onClose }: LegalDocumentModalProps) {
+  const safeAreaInsets =
+    useContext(SafeAreaInsetsContext ?? FALLBACK_SAFE_AREA_INSETS_CONTEXT) ?? ZERO_INSETS;
+
   return (
-    <Modal animationType="fade" transparent visible={document !== null} onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-[rgba(38,49,81,0.26)] px-[14px] pb-[14px]">
+    <Modal
+      animationType="fade"
+      transparent
+      statusBarTranslucent
+      navigationBarTranslucent
+      visible={document !== null}
+      onRequestClose={onClose}
+    >
+      <View
+        className="flex-1 items-center justify-end bg-[rgba(38,49,81,0.26)]"
+        style={{
+          paddingTop: Math.max(14, safeAreaInsets.top + 12),
+          paddingBottom: Math.max(14, safeAreaInsets.bottom + 12),
+          paddingLeft: Math.max(14, safeAreaInsets.left + 12),
+          paddingRight: Math.max(14, safeAreaInsets.right + 12),
+        }}
+      >
         <View
-          className="max-h-[84%] rounded-[28px] bg-[rgba(255,255,255,0.96)] px-[18px] pt-[18px]"
+          accessibilityViewIsModal
+          className="max-h-[84%] w-full max-w-[560px] rounded-[28px] bg-[rgba(255,255,255,0.96)] px-[18px] pt-[18px]"
           style={styles.legalModalShadow}
         >
           <View className="flex-row items-center justify-between gap-[14px] border-b border-[rgba(220,233,247,0.78)] pb-[12px]">

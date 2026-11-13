@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { REMINDER_CONTEXTUAL_STRINGS } from './orcaSpeechPipeline';
 import {
   createVoiceInputService,
   type NativeSpeechRecognitionModule,
@@ -47,7 +48,7 @@ function makeModule(overrides: Partial<NativeSpeechRecognitionModule> = {}) {
   };
 }
 
-test('iOS voice input starts Japanese on-device recognition without persisting audio', async () => {
+test('iOS voice input starts Japanese hybrid dictation recognition with contextual biasing without persisting audio', async () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
 
@@ -59,10 +60,12 @@ test('iOS voice input starts Japanese on-device recognition without persisting a
       interimResults: true,
       maxAlternatives: 1,
       continuous: true,
-      requiresOnDeviceRecognition: true,
+      requiresOnDeviceRecognition: false,
+      addsPunctuation: true,
+      contextualStrings: [...REMINDER_CONTEXTUAL_STRINGS],
       recordingOptions: { persist: false },
       volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
-      iosTaskHint: 'search',
+      iosTaskHint: 'dictation',
     },
   ]);
 });
@@ -82,7 +85,9 @@ test('Android platform recognizer can be configured for final-only short utteran
     interimResults: false,
     maxAlternatives: 1,
     continuous: false,
-    requiresOnDeviceRecognition: true,
+    requiresOnDeviceRecognition: false,
+    addsPunctuation: true,
+    contextualStrings: [...REMINDER_CONTEXTUAL_STRINGS],
     recordingOptions: { persist: false },
     volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
   });
@@ -118,24 +123,42 @@ test('iOS availability distinguishes permission and unsupported states', async (
     { status: 'permission-denied', canAskAgain: false },
   );
 
-  const unsupported = makeModule({ supportsOnDeviceRecognition: () => false });
+  const noRecognition = makeModule({ isRecognitionAvailable: () => false });
   assert.deepEqual(
-    await createVoiceInputService(unsupported.module, {
+    await createVoiceInputService(noRecognition.module, {
       os: 'ios',
       apiLevel: 18,
     }).getAvailability(),
     { status: 'unsupported', canAskAgain: false },
   );
+
+  const hybridWhenOnDeviceUnsupported = makeModule({ supportsOnDeviceRecognition: () => false });
+  assert.deepEqual(
+    await createVoiceInputService(hybridWhenOnDeviceUnsupported.module, {
+      os: 'ios',
+      apiLevel: 18,
+    }).getAvailability(),
+    { status: 'ready', canAskAgain: true },
+  );
+
+  assert.deepEqual(
+    await createVoiceInputService(
+      hybridWhenOnDeviceUnsupported.module,
+      { os: 'ios', apiLevel: 18 },
+      { requiresOnDeviceRecognition: true },
+    ).getAvailability(),
+    { status: 'unsupported', canAskAgain: false },
+  );
 });
 
-test('iOS voice input normalizes results, lifecycle events, and public errors', () => {
+test('iOS voice input normalizes results, cleans Japanese fillers, and handles lifecycle events', () => {
   const fake = makeModule();
   const service = createVoiceInputService(fake.module, { os: 'ios', apiLevel: 18 });
   const events: unknown[] = [];
   const subscription = service.subscribe((event) => events.push(event));
 
   fake.emit('start');
-  fake.emit('result', { results: [{ transcript: '買い物' }], isFinal: false });
+  fake.emit('result', { results: [{ transcript: 'えーと、買い物' }], isFinal: false });
   fake.emit('nomatch');
   fake.emit('error', { error: 'language-unavailable', message: 'model missing' });
   fake.emit('end');

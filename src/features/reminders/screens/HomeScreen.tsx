@@ -853,7 +853,7 @@ export function HomeScreen() {
         'motion-unavailable': 'この端末ではモーション検出を利用できません。',
         'model-unavailable':
           '音声モデルを読み込めません。アプリを再起動するか、手入力を利用してください。',
-        'speech-unavailable': 'この端末では日本語の端末内音声認識を利用できません。',
+        'speech-unavailable': 'この端末では日本語の音声認識を利用できません。',
       }[result.status];
       setRaiseToSpeakCalibrationPhase('intro');
       setRaiseToSpeakSetupMessage(message);

@@ -23,6 +23,7 @@ type AndroidOnDeviceVoiceInputOptions = {
   native: AndroidOnDeviceSpeechRecognitionModule;
   apiLevel: number;
   recognitionServicePackage?: string;
+  requiresOnDeviceRecognition?: boolean;
 };
 
 type AndroidOnDeviceVoiceInputService = VoiceInputService & {
@@ -44,11 +45,20 @@ function hasLocale(locales: string[], locale: string) {
 export function createAndroidOnDeviceVoiceInputService(
   options: AndroidOnDeviceVoiceInputOptions,
 ): AndroidOnDeviceVoiceInputService {
-  const { native, apiLevel, recognitionServicePackage = 'com.google.android.as' } = options;
+  const {
+    native,
+    apiLevel,
+    recognitionServicePackage = 'com.google.android.as',
+    requiresOnDeviceRecognition = false,
+  } = options;
   const speechService = createVoiceInputService(
     native,
     { os: 'android', apiLevel },
-    { interimResults: false, continuous: false },
+    {
+      interimResults: false,
+      continuous: false,
+      requiresOnDeviceRecognition,
+    },
   );
   let active = false;
   let offlineModelDownloadRequested = false;
@@ -66,17 +76,34 @@ export function createAndroidOnDeviceVoiceInputService(
   }
 
   async function getAvailability(): Promise<VoiceInputAvailability> {
-    if (apiLevel < 33) return { status: 'unsupported', canAskAgain: false };
+    if (apiLevel < 28) return { status: 'unsupported', canAskAgain: false };
+    if (requiresOnDeviceRecognition && apiLevel < 33) {
+      return { status: 'unsupported', canAskAgain: false };
+    }
 
     const baseAvailability = await speechService.getAvailability();
     if (baseAvailability.status !== 'ready') return baseAvailability;
 
+    if (apiLevel < 33) {
+      return { status: 'ready', canAskAgain: true };
+    }
+
     const supportedLocales = await getInstalledLocales();
-    if (!supportedLocales) return { status: 'unsupported', canAskAgain: false };
-    if (!hasLocale(supportedLocales.locales, VOICE_INPUT_LOCALE)) {
+    if (!supportedLocales) {
+      return requiresOnDeviceRecognition
+        ? { status: 'unsupported', canAskAgain: false }
+        : { status: 'ready', canAskAgain: true };
+    }
+    if (
+      supportedLocales.locales.length > 0 &&
+      !hasLocale(supportedLocales.locales, VOICE_INPUT_LOCALE)
+    ) {
       return { status: 'unsupported', canAskAgain: false };
     }
-    if (!hasLocale(supportedLocales.installedLocales, VOICE_INPUT_LOCALE)) {
+    if (
+      requiresOnDeviceRecognition &&
+      !hasLocale(supportedLocales.installedLocales, VOICE_INPUT_LOCALE)
+    ) {
       return { status: 'model-unavailable', canAskAgain: false };
     }
     return { status: 'ready', canAskAgain: true };

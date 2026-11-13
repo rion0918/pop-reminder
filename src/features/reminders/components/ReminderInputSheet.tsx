@@ -398,7 +398,7 @@ export function ReminderInputSheet({
 
       if (availability.status !== 'ready') {
         analytics.captureVoiceInputResult({ outcome: 'unavailable' });
-        setTitleNotice('この端末では日本語の端末内音声認識を利用できません。');
+        setTitleNotice('この端末では日本語の音声認識を利用できません。');
         setVoiceStatusValue('idle');
         completeVoiceInput();
         return;
@@ -500,7 +500,7 @@ export function ReminderInputSheet({
         clearVoiceStopFallback();
         const shouldConfirmEnd = voiceStatusRef.current !== 'idle';
         const completedTranscript = voiceVisibleTranscriptRef.current;
-        if (Platform.OS === 'android' && shouldConfirmEnd && completedTranscript) {
+        if (shouldConfirmEnd && completedTranscript) {
           try {
             const parseNow = new Date();
             const parsed = parseVoiceReminder({
@@ -509,7 +509,11 @@ export function ReminderInputSheet({
               currentUiDate: currentUiDateRef.current,
               currentUiTime: currentUiTimeRef.current,
             });
-            replaceDraftTitle(parsed.title.value);
+            replaceDraftTitle(
+              Platform.OS === 'android'
+                ? parsed.title.value
+                : joinVoiceText(voiceBaselineTitleRef.current, parsed.title.value),
+            );
             const schedulePatch = getVoiceReminderSchedulePatch(parsed, parseNow);
             if (schedulePatch.dateOffset !== null) setDateOffset(schedulePatch.dateOffset);
             if (schedulePatch.customTargetDate !== null) {
@@ -646,15 +650,24 @@ export function ReminderInputSheet({
       titleFocusRequestIdRef.current = focusRequestId;
       pendingTitleFocusRequestIdRef.current = shouldFocusTitleOnOpen ? focusRequestId : null;
       sheetRef.current?.present();
+      if (
+        quickAddInputMode === 'voice' &&
+        handledVoiceInputRequestIdRef.current !== voiceInputRequestId
+      ) {
+        handledVoiceInputRequestIdRef.current = voiceInputRequestId;
+        beginVoiceInputRef.current();
+      }
     }
   }, [
     defaultTargetTime,
     dismissalVersion,
     invalidateTitleFocusRequest,
     isOpen,
+    quickAddInputMode,
     resetDraftTitle,
     resetInput,
     shouldFocusTitleOnOpen,
+    voiceInputRequestId,
   ]);
 
   useEffect(() => {
@@ -1047,9 +1060,21 @@ export function ReminderInputSheet({
           visible={isDatePickerOpen}
           transparent
           animationType="fade"
+          statusBarTranslucent
+          navigationBarTranslucent
           onRequestClose={closeDatePicker}
         >
-          <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalOverlay,
+              {
+                paddingTop: Math.max(18, safeAreaInsets.top + 12),
+                paddingBottom: Math.max(18, safeAreaInsets.bottom + 12),
+                paddingLeft: Math.max(18, safeAreaInsets.left + 12),
+                paddingRight: Math.max(18, safeAreaInsets.right + 12),
+              },
+            ]}
+          >
             <View style={styles.pickerPanel}>
               <View style={styles.pickerHeader}>
                 <Text style={styles.calendarTitle}>日付を選択</Text>
@@ -1220,11 +1245,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
     backgroundColor: 'rgba(38,49,81,0.22)',
   },
   pickerPanel: {
     width: '100%',
+    maxWidth: 420,
+    maxHeight: '100%',
     borderRadius: 26,
     padding: 16,
     backgroundColor: 'rgba(255,255,255,0.98)',

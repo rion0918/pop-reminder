@@ -108,20 +108,20 @@ graph TB
 
 ## 5. ネイティブ統合・Widget (Native Features)
 
-| 技術 / ライブラリ               | バージョン                   | 用途・説明                                                     |
-| :------------------------------ | :--------------------------- | :------------------------------------------------------------- |
-| **expo-notifications**          | `~0.32.17`                   | ローカル通知予約・キャンセル、Android 通知チャンネル構築       |
-| **react-native-android-widget** | `^0.20.3`                    | Android ホーム画面 Widget の描画・タスク同期                   |
-| **expo-linking**                | `~8.0.12`                    | 通知や Widget からの Deep Link 処理                            |
-| **expo-haptics**                | `~15.0.8`                    | 泡が破裂する際の物理ハプティクスフィードバック                 |
-| **posthog-react-native**        | `^4.62.0`                    | 明示同意後の匿名イベント計測、手動画面追跡、永続的な同意状態   |
-| **react-native-purchases**      | `^10.7.0`                    | Android / iOSのRevenueCat購入権利取得・復元                    |
-| **react-native-purchases-ui**   | `^10.7.0`                    | RevenueCat管理Paywallの表示                                    |
-| **expo-speech-recognition**     | `3.1.3`                      | Android 13+のOSオンデバイス音声認識とiOS端末内認識             |
-| **react-native-sherpa-onnx**    | `0.4.3` / Android `1.13.2-1` | AndroidフォールバックのローカルSTTランタイム                   |
-| **Moonshine Tiny JA**           | `2026-02-27`                 | アプリ同梱の短文向け日本語モデル。音声・文字列を外部送信しない |
+| 技術 / ライブラリ               | バージョン                   | 用途・説明                                                                                  |
+| :------------------------------ | :--------------------------- | :------------------------------------------------------------------------------------------ |
+| **expo-notifications**          | `~0.32.17`                   | ローカル通知予約・キャンセル、Android 通知チャンネル構築                                    |
+| **react-native-android-widget** | `^0.20.3`                    | Android ホーム画面 Widget の描画・タスク同期                                                |
+| **expo-linking**                | `~8.0.12`                    | 通知や Widget からの Deep Link 処理                                                         |
+| **expo-haptics**                | `~15.0.8`                    | 泡が破裂する際の物理ハプティクスフィードバック                                              |
+| **posthog-react-native**        | `^4.62.0`                    | 明示同意後の匿名イベント計測、手動画面追跡、永続的な同意状態                                |
+| **react-native-purchases**      | `^10.7.0`                    | Android / iOSのRevenueCat購入権利取得・復元                                                 |
+| **react-native-purchases-ui**   | `^10.7.0`                    | RevenueCat管理Paywallの表示                                                                 |
+| **expo-speech-recognition**     | `3.1.3`                      | iOS / Android 9+ の OS ハイブリッド音声認識・コンテキスト語彙バイアス (`contextualStrings`) |
+| **react-native-sherpa-onnx**    | `0.4.3` / Android `1.13.2-1` | Android オフライン・非対応環境向けのローカル STT ランタイム                                 |
+| **Moonshine Tiny JA**           | `2026-02-27`                 | アプリ同梱の短文向け日本語ローカルフォールバックモデル                                      |
 
-Android音声入力はAndroid 9（API 28）以上を正式対応範囲とし、Android 13以上で日本語OSオンデバイスモデルが導入済みならそれを第一候補にします。未導入・非対応端末では、同梱Moonshineモデルを最初の利用時に遅延ロードします。モデルは同一フォアグラウンド中に再利用し、認識終了後にアプリがバックグラウンドへ移動すると解放します。Android 7・8ではSQLite、ローカル通知、手入力を維持し、音声入力だけを非対応にします。iOSは`expo-speech-recognition@3.1.3`の端末内認識を使用します。
+音声入力は iOS / Android 9（API 28）以上を正式対応範囲とし、OS 標準のハイブリッド音声認識（`requiresOnDeviceRecognition: false`、iOS `iosTaskHint: 'dictation'`、リマインダー語彙バイアス `contextualStrings`）を第一候補として使用します。また、Orca の音声入力パイプラインから移植した日本語フィラー除去（`removeJapaneseFillerWords`）およびプリロール付き無音トリミング（`trimSilenceWithPreroll`）を適用し、完了時には iOS / Android 両方で日時・終日表現の自動解析（`parseVoiceReminder`）を行います。Android 13 以上ではバックグラウンドでのオフライン日本語モデル準備も継続し、OS 音声認識が非対応またはオフラインで失敗した環境では同梱 Moonshine モデルへ自動フォールバックします。
 
 ---
 
@@ -129,7 +129,7 @@ Android音声入力はAndroid 9（API 28）以上を正式対応範囲とし、A
 
 | 技術 / ライブラリ | バージョン / 設定 | 用途・説明                                    |
 | :---------------- | :---------------- | :-------------------------------------------- |
-| **Node.js**       | Nix `v24.16.0`    | 開発シェルの規定環境                          |
+| **Node.js**       | `v24.22.1`        | Nix / CI / EAS の指定。Nix は公式配布を固定   |
 | **pnpm**          | `10.8.1`          | パッケージマネージャー                        |
 | **@types/node**   | `^24.0.0`         | Node.js ビルトインモジュール型定義            |
 | **Biome**         | `^2.5.2`          | 高速 Lint & コードスタイルチェック            |
@@ -155,7 +155,7 @@ src/
 ├── lib/
 │   ├── analytics/     # PostHog Adapter・イベント許可リスト
 │   ├── notifications/ # Expo Notifications 管理
-│   └── voice-input/   # Android OS/Moonshine / iOS端末内音声認識 Adapter
+│   └── voice-input/   # Android OS/Moonshine / iOS音声認識 Adapter
 ├── shared/            # 共通 UI コンポーネントおよびユーティリティ
 ├── test-utils/        # ソース契約・テストヘルパー
 └── widget/            # Android Widget snapshot & 更新ロジック

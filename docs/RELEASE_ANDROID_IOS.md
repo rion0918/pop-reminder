@@ -45,7 +45,7 @@ pnpm run verify:release
 
 ### 1.2 署名、番号、環境変数を確認する
 
-- Play Console の「アプリの完全性」で **Upload key certificate** の SHA-256 を確認する。EAS の production 用 Keystore と同じ鍵か確認し、過去の JKS など別の資格情報を選ばない。Google Play の App signing key certificate は別の鍵の場合がある。
+- Play Console の **Google Play による保護 → Google Play ストアの保護 → Play アプリ署名の管理** で、アップロード鍵の証明書を取得し、SHA-256 を確認する。EAS の production 用 Keystore と同じ鍵か確認し、過去の JKS など別の資格情報を選ばない。Google Play の App signing key certificate は別の鍵の場合がある。
 - Play Console にアップロード済みの最大 `versionCode` を控える。production profile は `appVersionSource: remote` と `autoIncrement: true` なので、クラウド・ローカルのどちらも EAS の remote 番号を使う。`app.json` の `android.versionCode` や `android/app/build.gradle` の値だけで提出番号を判断しない。
 - `eas.json` の production environment と、`EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`、`EXPO_PUBLIC_POSTHOG_API_KEY`、`EXPO_PUBLIC_POSTHOG_HOST` の実際の設定を確認する。値や秘密情報をログ、Issue、チャットへ貼らない。購入用の公開 SDK key の準備は[RevenueCat セットアップ](REVENUECAT_SETUP.md)を参照する。
 - アプリの package は `app.json` と `android/app/build.gradle` で `com.rion0918.popreminder` と一致させる。`android/` があるためビルドでは native の `applicationId` が優先される。
@@ -61,6 +61,8 @@ git ls-files credentials.json credentials/android/keystore.jks
 ```
 
 このコマンドでパスが表示される場合、`.gitignore` に書かれていても **すでに Git の追跡対象**です。現在のリポジトリもこの状態です。署名ファイルやパスワードを追加・更新してコミットしないでください。履歴を含む公開状況を確認し、公開済みの資格情報なら Play Console の Upload key リセットと EAS 資格情報の更新を先に扱います。Git の追跡解除だけでは過去の漏えいは解消しません。秘密情報を変更する作業は、このリリース手順とは別に実施します。
+
+2026年10月16日の照合では、追跡中の旧JKSと現在のPlay Upload keyは別の証明書でした。現在のPlay証明書とEAS productionの既定Keystoreは一致し、今回のビルドは現在の既定Keystoreを使用しています。証明書の照合結果は[申請準備記録](GOOGLE_PLAY_PRODUCTION_ACCESS.md)を参照してください。
 
 ## 2. AAB を一つの方法で作成する
 
@@ -130,6 +132,8 @@ npx -y eas-cli@24.8.0 build --platform android --profile production --local --ou
 
 ## 3. どちらの経路でも同じ AAB 検証
 
+2026年11月10日追記: 環境によってWorkletsの出力が`intermediates/cxx`になり、Reanimatedが期待する旧CMakeパスにライブラリがない場合がある。現在の`android/build.gradle`は生成後の不足分を補い、旧パスにある正規の出力は保持する。この対応を含むコミット`b1f3947`のEAS production AAB（versionCode 52）でクラウドビルドと成果物検査が成功した。詳細は[最終確認記録](ANDROID_RELEASE_READINESS.md)を参照する。
+
 以降は保存した `dist/pop-reminder.aab` を使います。AAB の出所（EAS のビルド ID またはローカルビルドの日時）、Git commit、実際の `versionCode`、Upload key の SHA-256 をリリース記録へ残します。
 
 ```bash
@@ -166,18 +170,18 @@ Play Console の対象アプリ `ふわっと。` を開きます。内部テス
 
 ### 4.2 Data safety と課金設定
 
-[Google Play データ確認記録](GOOGLE_PLAY_DATA_REVIEW.md)で、本番の PostHog / RevenueCat 設定、同意前の通信、収集・共有・保持期間を照合します。分析イベントの保持期間を12か月とし、同意 OFF 後は新規分析イベントを送らない設計です。RevenueCat は分析同意とは独立して動くため、購入用 ID や購入履歴を「分析同意後のみ」とまとめて申告しません。録音、文字起こし、リマインダー本文、具体的な日時、モーション値は外部送信しない実装か確認します。SDK の設定を変えた場合は古い回答を使い回しません。
+[Google Play データ確認記録](GOOGLE_PLAY_DATA_REVIEW.md)で、本番の PostHog / RevenueCat 設定、同意前の通信、収集・共有・保持期間を照合します。分析イベントの保持期間を12か月とし、同意 OFF 後は新規分析イベントを送らない設計です。RevenueCat は分析同意とは独立して動くため、購入用 ID や購入履歴を「分析同意後のみ」とまとめて申告しません。録音、文字起こし、リマインダー本文、具体的な日時、モーション値を開発者の解析・外部サーバーへ収集・送信しない実装か確認します（音声入力の音声認識自体は OS 標準の音声認識または端末内モデルが処理します）。SDK の設定を変えた場合は古い回答を使い回しません。
 
-| Data safety の分類             | 現行版で照合する内容                                                    |
-| ------------------------------ | ----------------------------------------------------------------------- |
-| Device or other IDs            | RevenueCat の購入用 ID と、PostHog の同意後の匿名 ID を分けて確認する。 |
-| App interactions               | 分析同意後のイベントだけが対象。OFF 後は新規送信しない。                |
-| Purchase history               | RevenueCat の購入・権利情報を確認する。                                 |
-| 音声・本文・日時・モーション値 | 外部へ収集・共有しない実装と申告を一致させる。                          |
+| Data safety の分類             | 現行版で照合する内容                                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Device or other IDs            | RevenueCat の購入用 ID と、PostHog の同意後の匿名 ID を分けて確認する。                                    |
+| App interactions               | 分析同意後のイベントだけが対象。OFF 後は新規送信しない。                                                   |
+| Purchase history               | RevenueCat の購入・権利情報を確認する。                                                                    |
+| 音声・本文・日時・モーション値 | 開発者側で外部へ収集・共有しない実装（音声認識は OS 標準機能または端末内モデルで処理）と申告を一致させる。 |
 
 「共有」の回答は SDK の連携設定次第です。[確認記録](GOOGLE_PLAY_DATA_REVIEW.md)と実際の管理画面を照合して確定します。
 
-[RevenueCat セットアップ](REVENUECAT_SETUP.md)に従い、Google Play の非消耗型商品 `fuwatto_pro_lifetime`、日本価格 800 円、RevenueCat の `pro` entitlement と `default` offering / `$rc_lifetime` を接続します。初回の AAB アップロード後に商品作成が可能な場合は、先に内部テストを作り、商品を有効化してから購入 QA を行います。ライセンステスターも設定します。
+[RevenueCat セットアップ](REVENUECAT_SETUP.md)に従い、Google Payments 販売アカウント、Google Play の非消耗型商品 `fuwatto_pro_lifetime`、日本価格 300 円、RevenueCat の `pro` entitlement と `default` offering / `$rc_lifetime` を接続します。初回の AAB アップロード後に商品作成が可能な場合は、先に内部テストを作り、商品を有効化してから購入 QA を行います。購入確認用アカウントは、配布対象とライセンステスターの両方に登録します。
 
 ## 5. 内部テストへ配布する
 
@@ -191,7 +195,7 @@ Play Console の対象アプリ `ふわっと。` を開きます。内部テス
 
 ```xml
 <ja-JP>
-内部テスト版です。リマインダー、通知、端末内音声入力、Android Widget、Pro版の購入・復元を確認します。
+内部テスト版です。リマインダー、通知、音声入力、Android Widget、Pro版の購入・復元を確認します。
 </ja-JP>
 ```
 
@@ -210,7 +214,7 @@ Play Console の対象アプリ `ふわっと。` を開きます。内部テス
 
 - [ ] 追加・タイトル更新・削除ができ、SQLite の内容が再起動後も残る。無料版の 7 件目で Paywall が出る。
 - [ ] 通知許可時に前日・当日の通知が届く。拒否してもアプリが壊れず、端末設定を開ける。
-- [ ] マイク許可時に端末内音声入力が動き、拒否時は手入力できる。機内モードで初回入力・保存・再起動・ローカル通知を確認する。Android 13 以上は OS 日本語モデル、Android 9 以上は同梱 Moonshine へのフォールバック、Android 7・8 は音声入力のみ非対応という実態を確認する。
+- [ ] マイク許可時に音声入力（OS 標準認識およびオフライン時のフォールバック）が動き、拒否時は手入力できる。機内モードで初回入力・保存・再起動・ローカル通知を確認する。Android 9 以上は OS 標準の音声認識または同梱 Moonshine へのフォールバック（Android 13 以上はオフラインモデル準備も利用可）、Android 7・8 は音声入力のみ非対応という実態を確認する。
 - [ ] 左右に傾ける操作で音声入力を明示的に有効化した場合だけ、モーション検出が動く。
 - [ ] Widget を追加・リサイズでき、リマインダー追加・更新・削除で同期し、追加ボタンの deep link と端末再起動後の表示が動く。
 - [ ] 端末別圧縮ダウンロードサイズは 150 MB 未満を目標とし、200 MB 以上なら配布を止める。AQUOS 相当のベースラインは約 90.0 MiB。予期しない増加を調べる。
@@ -237,6 +241,8 @@ Play Console の対象アプリ `ふわっと。` を開きます。内部テス
 5. 各テスターの参加日、14 日間の継続、フィードバックと修正をリポジトリ外で記録する。メールアドレスを Git に保存しない。
 
 ### 7.2 製品版アクセス申請と Android 公開
+
+今回の準備状況、対象AAB、実機確認、フィードバック、申請回答案は[製品版アクセス申請の準備記録](GOOGLE_PLAY_PRODUCTION_ACCESS.md)にまとめます。未確認のチェックを完了扱いにせず、申請直前に実際の管理画面と対象版を照合します。
 
 クローズドテストの条件を満たし、QA・ストア情報・価格・Data safety に矛盾がないことを確認してから、Play Console の案内に従って製品版アクセスを申請します。募集方法、テスターが試した内容、フィードバックと修正、製品版の準備状況を実態どおりに回答します。承認前は製品版を公開しません。
 

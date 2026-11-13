@@ -19,8 +19,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "ふわっと。がリマインダーのタイトルを端末内で文字にするために、マイクを使用します。",
-        "NSSpeechRecognitionUsageDescription": "ふわっと。が音声を端末内で文字に変換するために、音声認識を使用します。"
+        "NSMicrophoneUsageDescription": "ふわっと。がリマインダーのタイトルを音声入力するために、マイクを使用します。",
+        "NSSpeechRecognitionUsageDescription": "ふわっと。が音声を文字に変換するために、OSの音声認識を使用します。"
       },
       "bundleIdentifier": "com.rion0918.popreminder"
     },

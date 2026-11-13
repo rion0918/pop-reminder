@@ -24,13 +24,16 @@ test('published privacy policy documents local data, analytics, and purchases', 
 
   assert.match(privacy, /<meta name="viewport"/);
   assert.match(privacy, /プライバシーポリシー/);
-  assert.match(privacy, /最終更新日：2026年10月3日/);
+  assert.match(privacy, /最終更新日：2026年11月14日/);
   assert.match(privacy, /端末内に保存/);
   assert.match(privacy, /PostHog US\s+Cloud/);
   assert.match(privacy, /RevenueCat/);
   assert.match(privacy, /マイクとモーション/);
-  assert.match(privacy, /音声認識は端末内/);
-  assert.match(privacy, /音声、録音、モーション値は保存、分析、外部送信しません/);
+  assert.match(privacy, /音声認識はOS標準の音声認識機能/);
+  assert.match(
+    privacy,
+    /開発者が音声、録音、文字起こし、モーション値を保存、分析、収集することはありません/,
+  );
   assert.doesNotMatch(privacy, /近接センサー|近接情報/);
   assert.match(privacy, /タイトルと日時の候補/);
   assert.match(privacy, /AndroidとiOSの間で購入権利は共有されません/);
