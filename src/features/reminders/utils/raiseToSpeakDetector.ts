@@ -30,6 +30,8 @@ export type SideTiltMeasurement = {
   progress: number;
 };
 
+export type RaiseToSpeakScreenOrientation = 'portrait' | 'landscape';
+
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
 }
@@ -56,6 +58,7 @@ export function isValidGravityVector(
 
 export function getSideTiltMeasurement(
   gravity: { x: number; y: number; z: number } | null | undefined,
+  screenOrientation: RaiseToSpeakScreenOrientation = 'portrait',
 ): SideTiltMeasurement {
   if (!isValidGravityVector(gravity)) return { sideTilted: false, progress: 0 };
 
@@ -67,8 +70,10 @@ export function getSideTiltMeasurement(
     return { sideTilted: false, progress: 0 };
   }
 
-  const rollAngleDegrees = (Math.atan2(Math.abs(gravity.x), Math.abs(gravity.y)) * 180) / Math.PI;
-  const signedRollAngleDegrees = (Math.atan2(gravity.x, Math.abs(gravity.y)) * 180) / Math.PI;
+  const verticalGravity = Math.abs(screenOrientation === 'landscape' ? gravity.x : gravity.y);
+  const lateralGravity = screenOrientation === 'landscape' ? gravity.y : gravity.x;
+  const rollAngleDegrees = (Math.atan2(Math.abs(lateralGravity), verticalGravity) * 180) / Math.PI;
+  const signedRollAngleDegrees = (Math.atan2(lateralGravity, verticalGravity) * 180) / Math.PI;
   const progress = clamp(signedRollAngleDegrees / SIDE_TILT_ANGLE_DEGREES, -1, 1);
 
   return {
@@ -79,8 +84,9 @@ export function getSideTiltMeasurement(
 
 export function isSideTiltedVoicePose(
   gravity: { x: number; y: number; z: number } | null | undefined,
+  screenOrientation: RaiseToSpeakScreenOrientation = 'portrait',
 ) {
-  return getSideTiltMeasurement(gravity).sideTilted;
+  return getSideTiltMeasurement(gravity, screenOrientation).sideTilted;
 }
 
 export function createRaiseToSpeakDetectorState(): RaiseToSpeakDetectorState {

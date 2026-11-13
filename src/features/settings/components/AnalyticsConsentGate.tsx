@@ -1,17 +1,29 @@
-import { type PropsWithChildren, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  createContext,
+  type PropsWithChildren,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { usePathname } from 'expo-router';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { useAppServices } from '../../../bootstrap/appServicesContext';
 import { palette } from '../../../constants/colors';
 import { useAppSettingsQuery } from '../presentation/useAppSettingsQuery';
 
+const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const FALLBACK_SAFE_AREA_INSETS_CONTEXT = createContext(ZERO_INSETS);
 const trackedPathnames = new Set(['/', '/reminders-list', '/settings']);
 
 export function AnalyticsConsentGate({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const currentPathnameRef = useRef(pathname);
   currentPathnameRef.current = pathname;
+  const safeAreaInsets =
+    useContext(SafeAreaInsetsContext ?? FALLBACK_SAFE_AREA_INSETS_CONTEXT) ?? ZERO_INSETS;
   const { analytics } = useAppServices();
   const { settings, updateAnalyticsConsent } = useAppSettingsQuery();
   const [isSaving, setIsSaving] = useState(false);
@@ -60,35 +72,54 @@ export function AnalyticsConsentGate({ children }: PropsWithChildren) {
         visible={shouldAskForConsent}
         transparent
         animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => undefined}
       >
-        <View style={styles.consentOverlay}>
-          <View style={styles.consentCard}>
-            <Text style={styles.consentTitle}>匿名の利用状況を共有しますか？</Text>
-            <Text style={styles.consentBody}>
-              品質改善のため、匿名ID、イベントの発生時刻、画面表示、リマインダー操作、通知、Pro購入導線の結果をPostHog（米国）へ送信します。
-              リマインダーのタイトルや予定日時、音声、位置情報は分析データに含めません。共有しなくても基本機能を利用でき、設定画面でいつでも変更できます。
-            </Text>
-            <View style={styles.consentActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="匿名の利用状況を共有しない"
-                disabled={isSaving}
-                onPress={() => void chooseConsent('denied')}
-                style={[styles.consentButton, styles.consentButtonSecondary]}
-              >
-                <Text style={styles.consentButtonSecondaryLabel}>共有しない</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="匿名の利用状況を共有する"
-                disabled={isSaving}
-                onPress={() => void chooseConsent('granted')}
-                style={[styles.consentButton, styles.consentButtonPrimary]}
-              >
-                <Text style={styles.consentButtonPrimaryLabel}>共有する</Text>
-              </Pressable>
-            </View>
+        <View
+          style={[
+            styles.consentOverlay,
+            {
+              paddingTop: Math.max(24, safeAreaInsets.top + 12),
+              paddingBottom: Math.max(24, safeAreaInsets.bottom + 12),
+              paddingLeft: Math.max(24, safeAreaInsets.left + 16),
+              paddingRight: Math.max(24, safeAreaInsets.right + 16),
+            },
+          ]}
+        >
+          <View accessibilityViewIsModal style={styles.consentCard}>
+            <ScrollView
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+              style={styles.consentScroll}
+              contentContainerStyle={styles.consentCardContent}
+            >
+              <Text style={styles.consentTitle}>匿名の利用状況を共有しますか？</Text>
+              <Text style={styles.consentBody}>
+                品質改善のため、匿名ID、イベントの発生時刻、画面表示、リマインダー操作、通知、Pro購入導線の結果をPostHog（米国）へ送信します。
+                リマインダーのタイトルや予定日時、音声、位置情報は分析データに含めません。共有しなくても基本機能を利用でき、設定画面でいつでも変更できます。
+              </Text>
+              <View style={styles.consentActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="匿名の利用状況を共有しない"
+                  disabled={isSaving}
+                  onPress={() => void chooseConsent('denied')}
+                  style={[styles.consentButton, styles.consentButtonSecondary]}
+                >
+                  <Text style={styles.consentButtonSecondaryLabel}>共有しない</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="匿名の利用状況を共有する"
+                  disabled={isSaving}
+                  onPress={() => void chooseConsent('granted')}
+                  style={[styles.consentButton, styles.consentButtonPrimary]}
+                >
+                  <Text style={styles.consentButtonPrimaryLabel}>共有する</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -101,15 +132,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
     backgroundColor: 'rgba(20, 32, 58, 0.38)',
   },
   consentCard: {
     width: '100%',
     maxWidth: 420,
+    maxHeight: '100%',
+    overflow: 'hidden',
     borderRadius: 28,
-    padding: 22,
     backgroundColor: palette.white,
+  },
+  consentScroll: {
+    width: '100%',
+  },
+  consentCardContent: {
+    padding: 22,
   },
   consentTitle: {
     color: palette.ink,
@@ -130,7 +167,9 @@ const styles = StyleSheet.create({
   consentButton: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 18,
+    paddingHorizontal: 10,
     paddingVertical: 13,
   },
   consentButtonSecondary: {
@@ -143,9 +182,11 @@ const styles = StyleSheet.create({
   consentButtonSecondaryLabel: {
     color: palette.ink,
     fontWeight: '800',
+    textAlign: 'center',
   },
   consentButtonPrimaryLabel: {
     color: palette.white,
     fontWeight: '800',
+    textAlign: 'center',
   },
 });

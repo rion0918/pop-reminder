@@ -235,6 +235,66 @@ export function getVerticalEdgeClearance(
   return getEdgeClearance(boardSize);
 }
 
+export const EMPTY_HEADLINE_HEIGHT = 31 * 2;
+export const EMPTY_INSTRUCTION_LINE_HEIGHT = 19;
+export const EMPTY_SCENE_BOTTOM_PADDING = 18;
+
+export type EmptyBoardMetrics = {
+  bubbleSize: number;
+  topPadding: number;
+  headlineMarginBottom: number;
+  instructionGap: number;
+};
+
+export function resolveEmptyBoardMetrics(boardSize: BoardSize): EmptyBoardMetrics {
+  if (boardSize.width <= 0 || boardSize.height <= 0) {
+    return {
+      bubbleSize: 184,
+      topPadding: 0,
+      headlineMarginBottom: 32,
+      instructionGap: 32,
+    };
+  }
+
+  const isCompactHeight = boardSize.height < 420;
+  const headlineMarginBottom = isCompactHeight
+    ? Math.round(clamp(boardSize.height * 0.075, 8, 32))
+    : 32;
+  const instructionGap = Math.round(clamp(boardSize.height * 0.09, isCompactHeight ? 10 : 32, 68));
+  const fixedChromeHeight =
+    EMPTY_HEADLINE_HEIGHT +
+    headlineMarginBottom +
+    instructionGap +
+    EMPTY_INSTRUCTION_LINE_HEIGHT +
+    EMPTY_SCENE_BOTTOM_PADDING;
+  const availableBubbleHeight = isCompactHeight
+    ? Math.max(72, boardSize.height - fixedChromeHeight)
+    : 286;
+  const maxBubbleSize = isCompactHeight ? Math.min(286, availableBubbleHeight) : 286;
+  const minBubbleSize = isCompactHeight
+    ? Math.min(boardSize.height >= 385 ? 184 : 72, maxBubbleSize)
+    : 184;
+  const bubbleSize = Math.round(
+    clamp(Math.min(boardSize.width * 0.82, boardSize.height * 0.48), minBubbleSize, maxBubbleSize),
+  );
+  const preferredTopPadding = Math.max(
+    0,
+    Math.round(
+      (boardSize.height - bubbleSize) / 2 - (EMPTY_HEADLINE_HEIGHT + headlineMarginBottom),
+    ),
+  );
+  const maxFittingTopPadding = Math.max(0, boardSize.height - (fixedChromeHeight + bubbleSize));
+
+  return {
+    bubbleSize,
+    topPadding: isCompactHeight
+      ? Math.min(preferredTopPadding, maxFittingTopPadding)
+      : preferredTopPadding,
+    headlineMarginBottom,
+    instructionGap,
+  };
+}
+
 export function resolveBoardSizeMeasurement(
   current: BoardSize,
   measured: BoardSize,

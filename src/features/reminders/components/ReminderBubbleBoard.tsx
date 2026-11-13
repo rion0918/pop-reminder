@@ -8,7 +8,7 @@ import {
   type ComponentProps,
 } from 'react';
 import type { LayoutChangeEvent, ViewStyle } from 'react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -40,6 +40,7 @@ import {
   makeFittingBubbleLayout,
   makeLayoutForItem,
   resolveBoardSizeMeasurement,
+  resolveEmptyBoardMetrics,
   type BoardSize,
   type BubbleVerticalLayoutMode,
 } from './reminderBubbleLayout';
@@ -75,7 +76,6 @@ type ReminderBubbleBoardProps = {
   onVisibleReminderIdsChange?: (ids: string[]) => void;
 };
 
-const EMPTY_HEADLINE_BLOCK_HEIGHT = 31 * 2 + 32;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type BubbleDimensions = {
@@ -460,14 +460,7 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
     [boardContentMode, freezeLayout],
   );
   const boardReady = boardSize.width > 0 && boardSize.height > 0;
-  const emptyBubbleSize = Math.round(
-    clamp(Math.min(boardSize.width * 0.82, boardSize.height * 0.48), 184, 286),
-  );
-  const emptySceneTopPadding = Math.max(
-    0,
-    Math.round((boardSize.height - emptyBubbleSize) / 2 - EMPTY_HEADLINE_BLOCK_HEIGHT),
-  );
-  const emptyInstructionGap = Math.round(clamp(boardSize.height * 0.09, 32, 68));
+  const emptyMetrics = resolveEmptyBoardMetrics(boardSize);
 
   if (loading) {
     return (
@@ -493,18 +486,28 @@ export const ReminderBubbleBoard = memo(function ReminderBubbleBoard({
 
   if (reminders.length === 0) {
     return (
-      <View onLayout={handleBoardLayout} style={styles.board}>
-        <View style={[styles.emptyScene, { paddingTop: emptySceneTopPadding }]}>
-          <Text style={styles.emptyHeadline}>忘れる前に{`\n`}ふわっと残そう。</Text>
-          <EmptyReminderBubble
-            size={emptyBubbleSize}
-            disabled={emptyDisabled}
-            onPress={onEmptyPress}
-          />
-          <Text style={[styles.emptyInstruction, { marginTop: emptyInstructionGap }]}>
-            泡をタップして追加
-          </Text>
-        </View>
+      <View testID="reminder-bubble-board-empty" onLayout={handleBoardLayout} style={styles.board}>
+        <ScrollView
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.emptySceneScrollContent}
+        >
+          <View style={[styles.emptyScene, { paddingTop: emptyMetrics.topPadding }]}>
+            <Text
+              style={[styles.emptyHeadline, { marginBottom: emptyMetrics.headlineMarginBottom }]}
+            >
+              忘れる前に{`\n`}ふわっと残そう。
+            </Text>
+            <EmptyReminderBubble
+              size={emptyMetrics.bubbleSize}
+              disabled={emptyDisabled}
+              onPress={onEmptyPress}
+            />
+            <Text style={[styles.emptyInstruction, { marginTop: emptyMetrics.instructionGap }]}>
+              泡をタップして追加
+            </Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -619,6 +622,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+  emptySceneScrollContent: {
+    flexGrow: 1,
+  },
   emptyScene: {
     flex: 1,
     alignSelf: 'stretch',
@@ -627,7 +633,6 @@ const styles = StyleSheet.create({
   },
   emptyHeadline: {
     alignSelf: 'flex-start',
-    marginBottom: 32,
     color: palette.ink,
     fontSize: 22,
     lineHeight: 31,

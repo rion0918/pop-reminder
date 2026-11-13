@@ -13,6 +13,7 @@ import {
   makeFittingBubbleLayout,
   makeLayoutForItem,
   resolveBoardSizeMeasurement,
+  resolveEmptyBoardMetrics,
 } from './reminderBubbleLayout';
 
 const boardSource = readSource(import.meta.url, './ReminderBubbleBoard.tsx');
@@ -377,5 +378,34 @@ test('bubble layout grid slots remain bounded for sparse and dense boards', () =
     for (const slot of slots) {
       assert.ok(slot.y >= 0.14 && slot.y <= 0.8);
     }
+  }
+});
+
+test('empty board metrics preserve portrait proportions and fit compact landscape heights', () => {
+  const portrait = resolveEmptyBoardMetrics({ width: 350, height: 620 });
+  assert.equal(portrait.bubbleSize, 286);
+  assert.equal(portrait.headlineMarginBottom, 32);
+  assert.equal(portrait.instructionGap, 56);
+  assert.equal(portrait.topPadding, 73);
+
+  for (const boardSize of [
+    { width: 622, height: 258 },
+    { width: 540, height: 240 },
+    { width: 320, height: 220 },
+  ]) {
+    const metrics = resolveEmptyBoardMetrics(boardSize);
+    const totalHeight =
+      metrics.topPadding +
+      62 +
+      metrics.headlineMarginBottom +
+      metrics.bubbleSize +
+      metrics.instructionGap +
+      19 +
+      18;
+    assert.ok(metrics.bubbleSize >= 72);
+    assert.ok(
+      totalHeight <= boardSize.height,
+      `${boardSize.width}x${boardSize.height}: ${totalHeight}`,
+    );
   }
 });

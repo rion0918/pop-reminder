@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { palette } from '../../constants/colors';
 import { PrimaryButton } from './PrimaryButton';
+
+const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+const FALLBACK_SAFE_AREA_INSETS_CONTEXT = createContext(ZERO_INSETS);
 
 const timePickerDisplay = Platform.select({
   ios: 'spinner',
@@ -32,6 +36,8 @@ export function TimePickerModal({
   onClose,
 }: TimePickerModalProps) {
   const [draftTime, setDraftTime] = useState(value);
+  const safeAreaInsets =
+    useContext(SafeAreaInsetsContext ?? FALLBACK_SAFE_AREA_INSETS_CONTEXT) ?? ZERO_INSETS;
 
   useEffect(() => {
     setDraftTime(value);
@@ -92,8 +98,25 @@ export function TimePickerModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View
+        style={[
+          styles.modalOverlay,
+          {
+            paddingTop: Math.max(18, safeAreaInsets.top + 12),
+            paddingBottom: Math.max(18, safeAreaInsets.bottom + 12),
+            paddingLeft: Math.max(18, safeAreaInsets.left + 12),
+            paddingRight: Math.max(18, safeAreaInsets.right + 12),
+          },
+        ]}
+      >
         <View style={styles.pickerPanel}>
           <View style={styles.pickerHeader}>
             <Text style={styles.title}>{title}</Text>
@@ -134,11 +157,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
     backgroundColor: 'rgba(38,49,81,0.22)',
   },
   pickerPanel: {
     width: '100%',
+    maxWidth: 420,
+    maxHeight: '100%',
     borderRadius: 26,
     padding: 16,
     backgroundColor: 'rgba(255,255,255,0.98)',

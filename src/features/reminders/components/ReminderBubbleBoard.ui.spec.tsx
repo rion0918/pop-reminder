@@ -41,7 +41,11 @@ jest.mock('./EmptyReminderBubble', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
 
   return {
-    EmptyReminderBubble: () => React.createElement(View),
+    EmptyReminderBubble: ({ size }: { size: number }) =>
+      React.createElement(View, {
+        testID: 'empty-reminder-bubble',
+        style: { width: size, height: size },
+      }),
   };
 });
 
@@ -260,5 +264,16 @@ describe('ReminderBubbleBoard', () => {
       'こんばんは|5/19（日） 12:00',
     );
     expect(view.queryByText('こんにちは|5/19（日） 12:00')).not.toBeOnTheScreen();
+  });
+
+  it('shrinks the empty-state bubble so the prompt fits on short landscape boards', async () => {
+    const view = await render(<ReminderBubbleBoard reminders={[]} onEmptyPress={jest.fn()} />);
+
+    await fireEvent(view.getByTestId('reminder-bubble-board-empty'), 'layout', {
+      nativeEvent: { layout: { width: 622, height: 258 } },
+    });
+
+    expect(view.getByTestId('empty-reminder-bubble')).toHaveStyle({ width: 117, height: 117 });
+    expect(view.getByText('泡をタップして追加')).toBeOnTheScreen();
   });
 });

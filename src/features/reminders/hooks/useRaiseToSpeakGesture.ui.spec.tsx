@@ -533,4 +533,59 @@ describe('useRaiseToSpeakGesture', () => {
       view.unmount();
     });
   });
+
+  it('uses landscape screen axes when the window is wider than tall without resubscribing', async () => {
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' });
+    const reactNative = jest.requireActual<typeof import('react-native')>('react-native');
+    const windowDimensionsSpy = jest
+      .spyOn(reactNative, 'useWindowDimensions')
+      .mockReturnValue({ width: 840, height: 600, scale: 2, fontScale: 1 });
+    const onStart = jest.fn();
+    const onStop = jest.fn();
+    const view = await render(
+      <Harness enabled blocked={false} trackTiltProgress onStart={onStart} onStop={onStop} />,
+    );
+
+    await act(async () => {
+      mockFocusEffect?.();
+      await Promise.resolve();
+    });
+    await flushSensorStart();
+    expect(mockAccelerometer.addListener).toHaveBeenCalledTimes(1);
+
+    const now = jest.spyOn(Date, 'now');
+    await act(async () => {
+      now.mockReturnValueOnce(0).mockReturnValueOnce(300);
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+    });
+    expect(onStart).not.toHaveBeenCalled();
+    expect(Number(view.getByTestId('tilt-progress').props.children)).toBe(0);
+
+    await act(async () => {
+      now.mockReturnValueOnce(400).mockReturnValueOnce(600);
+      mockAccelerometerListener({ x: 0.68, y: 0.72, z: 0 });
+      mockAccelerometerListener({ x: 0.68, y: 0.72, z: 0 });
+    });
+    expect(onStart).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      now.mockReturnValueOnce(800).mockReturnValueOnce(1_150);
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+      mockAccelerometerListener({ x: 0.98, y: 0, z: 0 });
+    });
+    expect(onStop).toHaveBeenCalledWith('portrait');
+
+    windowDimensionsSpy.mockReturnValue({ width: 400, height: 840, scale: 2, fontScale: 1 });
+    await act(async () => {
+      view.rerender(
+        <Harness enabled blocked={false} trackTiltProgress onStart={onStart} onStop={onStop} />,
+      );
+    });
+    expect(mockAccelerometer.addListener).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      view.unmount();
+    });
+  });
 });

@@ -76,6 +76,36 @@ test('voice pose uses roll angle while tolerating a normal viewing pitch', () =>
   assert.equal(getSideTiltMeasurement(gravityAt(-20, 30)).progress < -0.45, true);
 });
 
+test('landscape orientation measures side tilt relative to the rotated screen vertical axis', () => {
+  const roll = (degrees: number) => (degrees * Math.PI) / 180;
+  const landscapeGravityAt = (rollDegrees: number, pitchDegrees: number) => ({
+    x: Math.cos(roll(rollDegrees)) * Math.cos(roll(pitchDegrees)),
+    y: Math.sin(roll(rollDegrees)) * Math.cos(roll(pitchDegrees)),
+    z: Math.sin(roll(pitchDegrees)),
+  });
+
+  assert.equal(isSideTiltedVoicePose({ x: 9.8, y: 0, z: 0 }, 'landscape'), false);
+  assert.equal(isSideTiltedVoicePose({ x: -9.8, y: 0, z: 0 }, 'landscape'), false);
+  assert.deepEqual(getSideTiltMeasurement({ x: 9.8, y: 0, z: 0 }, 'landscape'), {
+    sideTilted: false,
+    progress: 0,
+  });
+
+  assert.equal(isSideTiltedVoicePose({ x: 6.8, y: 7.2, z: 0 }, 'landscape'), true);
+  assert.equal(isSideTiltedVoicePose({ x: 6.8, y: -7.2, z: 0 }, 'landscape'), true);
+  assert.equal(isSideTiltedVoicePose(landscapeGravityAt(42, 30), 'landscape'), true);
+  assert.equal(isSideTiltedVoicePose(landscapeGravityAt(-42, 30), 'landscape'), true);
+  assert.equal(isSideTiltedVoicePose(landscapeGravityAt(39, 0), 'landscape'), false);
+  assert.equal(isSideTiltedVoicePose(landscapeGravityAt(42, 60), 'landscape'), false);
+
+  const positiveTilt = getSideTiltMeasurement(landscapeGravityAt(20, 30), 'landscape');
+  assert.ok(positiveTilt.progress > 0.45 && positiveTilt.progress < 0.55);
+  assert.equal(
+    getSideTiltMeasurement(landscapeGravityAt(-20, 30), 'landscape').progress < -0.45,
+    true,
+  );
+});
+
 test('portrait and a brief side-tilt bounce never start voice input', () => {
   let state = createRaiseToSpeakDetectorState();
 
