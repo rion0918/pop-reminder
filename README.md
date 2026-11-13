@@ -7,7 +7,7 @@ Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle 
 ![React Native 0.81](https://img.shields.io/badge/React%20Native-0.81-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Node.js 24](https://img.shields.io/badge/Node.js-24.16-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Node.js 24](https://img.shields.io/badge/Node.js-24.22-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![pnpm 10](https://img.shields.io/badge/pnpm-10.8-F69220?style=for-the-badge&logo=pnpm&logoColor=white)
 
 ---
@@ -24,7 +24,9 @@ Expo SDK 54 / React Native 0.81 / Expo Router をベースに、SQLite (Drizzle 
 
 ## 🚀 クイックスタート
 
-Nix / direnv 環境（推奨）または Node.js `24.16.0` / pnpm `10.8.1` を使用します。
+Nix / direnv 環境（推奨）または Node.js `24.22.1` / pnpm `10.8.1` を使用します。
+
+2026年10月21日のセキュリティ修正に合わせ、Nix / direnv・CI・EAS Build の Node.js を `24.22.1` に指定しています。Nix は公式配布バイナリをチェックサム付きで固定し、pnpm も同じ Node.js を使用します。
 
 ```bash
 # 1. 開発環境の有効化 (direnv 利用時)
